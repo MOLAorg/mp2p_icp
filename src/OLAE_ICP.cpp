@@ -4,13 +4,13 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   PointsPlanesICP.cpp
+ * @file   OLAE_ICP.cpp
  * @brief  ICP registration for points and planes
  * @author Jose Luis Blanco Claraco
  * @date   May 11, 2019
  */
 
-#include <mp2_icp/PointsPlanesICP.h>
+#include <mp2_icp/OLAE_ICP.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/CSetOfObjects.h>
@@ -20,9 +20,8 @@
 
 using namespace mp2_icp;
 
-void PointsPlanesICP::align_OLAE(
-    const PointsPlanesICP::pointcloud_t& pcs1,
-    const PointsPlanesICP::pointcloud_t& pcs2,
+void OLAE_ICP::align_OLAE(
+    const OLAE_ICP::pointcloud_t& pcs1, const OLAE_ICP::pointcloud_t& pcs2,
     const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
     Results& result)
 {
@@ -314,9 +313,8 @@ static auto vector_rot_Z_90d_CCW(const mrpt::math::TVector3D& v)
 // vector singularity (|Phi|~= \pi)
 // (Refer to technical report for details)
 static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
-    const PointsPlanesICP::OLAE_Match_Input& in,
-    const mrpt::math::TPoint3D& ct_other, const mrpt::math::TPoint3D& ct_this,
-    const bool do_relinearize_singularity)
+    const OLAE_ICP::OLAE_Match_Input& in, const mrpt::math::TPoint3D& ct_other,
+    const mrpt::math::TPoint3D& ct_this, const bool do_relinearize_singularity)
 {
     MRPT_START
 
@@ -514,8 +512,7 @@ static double olae_estimate_Phi(const double M_det, std::size_t n)
 }
 
 // See .h docs, and associated technical report.
-void PointsPlanesICP::olae_match(
-    const OLAE_Match_Input& in, OLAE_Match_Result& result)
+void OLAE_ICP::olae_match(const OLAE_Match_Input& in, OLAE_Match_Result& result)
 {
     MRPT_START
 
@@ -656,8 +653,8 @@ void PointsPlanesICP::olae_match(
 }
 
 /** Gets a renderizable view of all planes */
-void PointsPlanesICP::pointcloud_t::planesAsRenderizable(
-    mrpt::opengl::CSetOfObjects& o, const PointsPlanesICP::render_params_t& p)
+void OLAE_ICP::pointcloud_t::planesAsRenderizable(
+    mrpt::opengl::CSetOfObjects& o, const OLAE_ICP::render_params_t& p)
 {
     MRPT_START
 
@@ -677,9 +674,8 @@ void PointsPlanesICP::pointcloud_t::planesAsRenderizable(
     MRPT_END
 }
 
-void PointsPlanesICP::p2p_match(
-    const PointsPlanesICP::P2P_Match_Input& in,
-    PointsPlanesICP::P2P_Match_Result&      result)
+void OLAE_ICP::p2p_match(
+    const OLAE_ICP::P2P_Match_Input& in, OLAE_ICP::P2P_Match_Result& result)
 {
     using std::size_t;
 
@@ -785,9 +781,8 @@ void PointsPlanesICP::p2p_match(
     MRPT_END
 }
 
-void PointsPlanesICP::align(
-    const PointsPlanesICP::pointcloud_t& pcs1,
-    const PointsPlanesICP::pointcloud_t& pcs2,
+void OLAE_ICP::align(
+    const OLAE_ICP::pointcloud_t& pcs1, const OLAE_ICP::pointcloud_t& pcs2,
     const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
     Results& result)
 {

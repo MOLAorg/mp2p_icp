@@ -4,7 +4,7 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   PointsPlanesICP.h
+ * @file   OLAE_ICP.h
  * @brief  ICP registration for points and planes
  * @author Jose Luis Blanco Claraco
  * @date   May 11, 2019
@@ -28,7 +28,7 @@
  * Refer to technical report: XXX
  *
  * \ingroup mp2_icp_grp */
-namespace mp2_icp::PointsPlanesICP
+namespace mp2_icp::OLAE_ICP
 {
 struct plane_patch_t
 {
@@ -208,4 +208,4 @@ struct P2P_Match_Result
  */
 void p2p_match(const P2P_Match_Input& in, P2P_Match_Result& result);
 
-}  // namespace mp2_icp::PointsPlanesICP
+}  // namespace mp2_icp::OLAE_ICP
