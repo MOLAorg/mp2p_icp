@@ -109,7 +109,9 @@ struct OLAE_Match_Input
 
     /** Weights for paired_points: each entry specifies how many points have the
      * given (mapped second value) weight, in the same order as stored in
-     * paired_points */
+     * paired_points.
+     * If empty, all points will have equal weights.
+     */
     std::vector<std::pair<std::size_t, double>> point_weights;
 
     TMatchedLineList  paired_lines;

@@ -55,7 +55,7 @@ void PointsPlanesICP::align_OLAE(
     ASSERT_(pointcount2 > 0 || !pcs2.planes.empty());
 
     // ------------------------------------------------------
-	// The mp2_icp ICP loop
+    // The mp2_icp ICP loop
     // ------------------------------------------------------
     auto solution      = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
     auto prev_solution = solution;
@@ -333,8 +333,14 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
     const auto nAllMatches = nPoints + nLines + nPlanes;
 
     // weight of points, block by block:
-    ASSERT_(!in.point_weights.empty());
-    auto        cur_point_block_weights = in.point_weights.begin();
+    auto point_weights = in.point_weights;
+    if (point_weights.empty())
+    {
+        // Default, equal weights:
+        point_weights.emplace_back(nPoints, 1.0);
+    }
+
+    auto        cur_point_block_weights = point_weights.begin();
     std::size_t cur_point_block_start   = 0;
 
     // Normalized weights for attitude "waXX":
@@ -354,8 +360,9 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
         waPlanes     = wPl * k;
     }
 
-    // Accumulator of robust kernel terms to normalize at the end:
-    double robust_w_sum = .0;
+    // Accumulator of robust kernel terms (and other user-provided weights)
+    // to normalize the final linear equation at the end:
+    double w_sum = .0;
 
     // Terms contributed by points & vectors have now the uniform form of
     // unit vectors:
@@ -375,12 +382,12 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
 
             if (i >= cur_point_block_start + cur_point_block_weights->first)
             {
-                ASSERT_(cur_point_block_weights != in.point_weights.end());
+                ASSERT_(cur_point_block_weights != point_weights.end());
                 ++cur_point_block_weights;  // move to next block
                 cur_point_block_start = i;
             }
             wi *= cur_point_block_weights->second;
-            // (solution will be normalized via robust_w_sum a the end)
+            // (solution will be normalized via w_sum a the end)
 
             bi = TVector3D(p.this_x, p.this_y, p.this_z) - ct_this;
             ri = TVector3D(p.other_x, p.other_y, p.other_z) - ct_other;
@@ -436,7 +443,7 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
         }
 
         ASSERT_(wi > .0);
-        robust_w_sum += wi;
+        w_sum += wi;
 
         // M+=(1/2)* ([s_i]_{x})^2
         // with: s_i = b_i + r_i
@@ -487,11 +494,9 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
         v -= wi * dV;
     }
 
-    if (robust_w_sum)
-    {
-        M *= (1.0 / robust_w_sum);
-        v *= (1.0 / robust_w_sum);
-    }
+    ASSERT_(w_sum > .0);
+    M *= (1.0 / w_sum);
+    v *= (1.0 / w_sum);
 
     // The missing (1/2) from the formulas above:
     M *= 0.5;
@@ -802,7 +807,7 @@ void PointsPlanesICP::align(
     result = Results();
 
     // ------------------------------------------------------
-	// The mp2_icp ICP loop
+    // The mp2_icp ICP loop
     // ------------------------------------------------------
     auto solution      = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
     auto prev_solution = solution;
