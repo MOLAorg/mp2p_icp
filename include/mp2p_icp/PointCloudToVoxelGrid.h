@@ -10,7 +10,7 @@
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/math/lightweight_geom_data.h>
 
-namespace mp2_icp
+namespace mp2p_icp
 {
 /** Index of points in a point cloud by their 3D position according to a
  * predefined regular-sized voxel grid.
@@ -53,4 +53,4 @@ class PointCloudToVoxelGrid
     std::vector<bool> voxel_is_empty_;
 };
 
-}  // namespace mp2_icp
+}  // namespace mp2p_icp

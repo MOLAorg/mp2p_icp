@@ -10,7 +10,7 @@
 cmake_minimum_required(VERSION 3.4)
 
 # Tell CMake we'll use C++ for use in its tests/flags
-project(mp2_icp LANGUAGES CXX)
+project(mp2p_icp LANGUAGES CXX)
 
 # find dependencies:
 find_package(MRPT 1.9.9 REQUIRED

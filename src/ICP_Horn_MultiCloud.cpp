@@ -4,21 +4,21 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   MultiCloudICP.cpp
+ * @file   ICP_Horn_MultiCloud.cpp
  * @brief  ICP registration for pointclouds split in different "layers"
  * @author Jose Luis Blanco Claraco
  * @date   Jan 20, 2019
  */
 
-#include <mp2_icp/MultiCloudICP.h>
+#include <mp2p_icp/ICP_Horn_MultiCloud.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
 #include <Eigen/Dense>
 
-using namespace mp2_icp;
+using namespace mp2p_icp;
 
-void MultiCloudICP::align(
+void ICP_Horn_MultiCloud::align(
     const pointcloud_t& pcs1, const pointcloud_t& pcs2,
     const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
     Results& result)

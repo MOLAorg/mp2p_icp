@@ -4,24 +4,24 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   OLAE_ICP.cpp
+ * @file   ICP_OLAE.cpp
  * @brief  ICP registration for points and planes
  * @author Jose Luis Blanco Claraco
  * @date   May 11, 2019
  */
 
-#include <mp2_icp/OLAE_ICP.h>
+#include <mp2p_icp/ICP_OLAE.h>
 #include <mrpt/core/exceptions.h>
-#include <mrpt/opengl/CGridPlaneXY.h>
-#include <mrpt/opengl/CSetOfObjects.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
 #include <Eigen/Dense>
 
-using namespace mp2_icp;
+IMPLEMENTS_MRPT_OBJECT_NS_PREFIX(ICP_OLAE, mp2p_icp::ICP_Base, mp2p_icp)
 
-void OLAE_ICP::align_OLAE(
-    const OLAE_ICP::pointcloud_t& pcs1, const OLAE_ICP::pointcloud_t& pcs2,
+using namespace mp2p_icp;
+
+void ICP_OLAE::align(
+    const pointcloud_t& pcs1, const pointcloud_t& pcs2,
     const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
     Results& result)
 {
@@ -54,7 +54,7 @@ void OLAE_ICP::align_OLAE(
     ASSERT_(pointcount2 > 0 || !pcs2.planes.empty());
 
     // ------------------------------------------------------
-    // The mp2_icp ICP loop
+    // The mp2p_icp ICP loop
     // ------------------------------------------------------
     auto solution      = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
     auto prev_solution = solution;
@@ -313,7 +313,7 @@ static auto vector_rot_Z_90d_CCW(const mrpt::math::TVector3D& v)
 // vector singularity (|Phi|~= \pi)
 // (Refer to technical report for details)
 static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
-    const OLAE_ICP::OLAE_Match_Input& in, const mrpt::math::TPoint3D& ct_other,
+    const OLAE_Match_Input& in, const mrpt::math::TPoint3D& ct_other,
     const mrpt::math::TPoint3D& ct_this, const bool do_relinearize_singularity)
 {
     MRPT_START
@@ -512,7 +512,7 @@ static double olae_estimate_Phi(const double M_det, std::size_t n)
 }
 
 // See .h docs, and associated technical report.
-void OLAE_ICP::olae_match(const OLAE_Match_Input& in, OLAE_Match_Result& result)
+void mp2p_icp::olae_match(const OLAE_Match_Input& in, OLAE_Match_Result& result)
 {
     MRPT_START
 
@@ -652,30 +652,9 @@ void OLAE_ICP::olae_match(const OLAE_Match_Input& in, OLAE_Match_Result& result)
     MRPT_END
 }
 
-/** Gets a renderizable view of all planes */
-void OLAE_ICP::pointcloud_t::planesAsRenderizable(
-    mrpt::opengl::CSetOfObjects& o, const OLAE_ICP::render_params_t& p)
-{
-    MRPT_START
-
-    const float pw = p.plane_half_width, pf = p.plane_grid_spacing;
-
-    for (const auto& plane : planes)
-    {
-        auto gl_pl =
-            mrpt::opengl::CGridPlaneXY::Create(-pw, pw, -pw, pw, .0, pf);
-        gl_pl->setColor_u8(p.plane_color);
-        mrpt::math::TPose3D planePose;
-        plane.plane.getAsPose3DForcingOrigin(plane.centroid, planePose);
-        gl_pl->setPose(planePose);
-        o.insert(gl_pl);
-    }
-
-    MRPT_END
-}
-
-void OLAE_ICP::p2p_match(
-    const OLAE_ICP::P2P_Match_Input& in, OLAE_ICP::P2P_Match_Result& result)
+MRPT_TODO("refactor and recover this alternative implementation");
+#if 0
+void mp2p_icp::p2p_match(const P2P_Match_Input& in, P2P_Match_Result& result)
 {
     using std::size_t;
 
@@ -781,8 +760,8 @@ void OLAE_ICP::p2p_match(
     MRPT_END
 }
 
-void OLAE_ICP::align(
-    const OLAE_ICP::pointcloud_t& pcs1, const OLAE_ICP::pointcloud_t& pcs2,
+void mp2p_icp::align(
+    const pointcloud_t& pcs1, const pointcloud_t& pcs2,
     const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
     Results& result)
 {
@@ -802,7 +781,7 @@ void OLAE_ICP::align(
     result = Results();
 
     // ------------------------------------------------------
-    // The mp2_icp ICP loop
+    // The mp2p_icp ICP loop
     // ------------------------------------------------------
     auto solution      = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
     auto prev_solution = solution;
@@ -946,7 +925,7 @@ void OLAE_ICP::align(
         }
 
 #if 0
-		std::cout << "[mp2_icp pairings] " << pairings.paired_points.size()
+		std::cout << "[mp2p_icp pairings] " << pairings.paired_points.size()
                   << " pt2pt " << pairings.paired_pt2pl.size() << " pt2pl.\n";
 #endif
 
@@ -1012,3 +991,4 @@ void OLAE_ICP::align(
 
     MRPT_END
 }
+#endif

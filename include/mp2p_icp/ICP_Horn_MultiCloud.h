@@ -4,7 +4,7 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   MultiCloudICP.h
+ * @file   ICP_Horn_MultiCloud.h
  * @brief  ICP registration for pointclouds split in different "layers"
  * @author Jose Luis Blanco Claraco
  * @date   Jan 20, 2019
@@ -19,8 +19,8 @@
 
 /** ICP registration for pointclouds split in different "layers"
  *
- * \ingroup mp2_icp_grp */
-namespace mp2_icp::MultiCloudICP
+ * \ingroup mp2p_icp_grp */
+namespace mp2p_icp::ICP_Horn_MultiCloud
 {
 using pointcloud_t = std::vector<mrpt::maps::CPointsMap::Ptr>;
 
@@ -32,4 +32,4 @@ void align(
     const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
     Results& result);
 
-}  // namespace mp2_icp::MultiCloudICP
+}  // namespace mp2p_icp::ICP_Horn_MultiCloud

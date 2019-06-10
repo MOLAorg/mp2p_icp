@@ -7,9 +7,9 @@
 # ------------------------------------------------------------------------------
 
 mola_add_executable(
-    TARGET  tests-mp2_icp
-	SOURCES tests-mp2_icp.cpp
+    TARGET  tests-mp2p_icp
+    SOURCES tests-mp2p_icp.cpp
 	LINK_LIBRARIES
-	    mp2_icp
+	    mp2p_icp
 )
-add_test(P2P2_OLAE tests-mp2_icp)
+add_test(P2P2_OLAE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests-mp2p_icp)

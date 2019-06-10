@@ -4,69 +4,35 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   OLAE_ICP.h
+ * @file   ICP_OLAE.h
  * @brief  ICP registration for points and planes
  * @author Jose Luis Blanco Claraco
  * @date   May 11, 2019
  */
 #pragma once
 
-#include <mrpt/img/TColor.h>
-#include <mrpt/maps/CPointsMap.h>
-#include <mrpt/math/TLine3D.h>
-#include <mrpt/math/TPlane.h>
-#include <mrpt/math/TPoint3D.h>
-#include <mrpt/opengl/opengl_frwds.h>
-#include <mrpt/poses/CPose3D.h>
-#include <cstdint>
-#include <memory>
-#include "IterTermReason.h"
-#include "Parameters.h"
-#include "Results.h"
+#include <mp2p_icp/ICP_Base.h>
+#include <mp2p_icp/pointcloud.h>
 
-/** ICP registration for points and planes
+namespace mp2p_icp
+{
+/** ICP registration for points, planes, and lines.
  * Refer to technical report: XXX
  *
- * \ingroup mp2_icp_grp */
-namespace mp2_icp::OLAE_ICP
+ * \ingroup mp2p_icp_grp
+ */
+class ICP_OLAE : public ICP_Base
 {
-struct plane_patch_t
-{
-    mrpt::math::TPlane3D plane;
-    mrpt::math::TPoint3D centroid;
+    DEFINE_MRPT_OBJECT(ICP_OLAE)
 
-    plane_patch_t() = default;
-    plane_patch_t(
-        const mrpt::math::TPlane3D& pl, const mrpt::math::TPoint3D& center)
-        : plane(pl), centroid(center)
-    {
-    }
-};
+   public:
+    // See base class docs
+    void align(
+        const pointcloud_t& pc1, const pointcloud_t& pc2,
+        const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
+        Results& result) override;
 
-struct render_params_t
-{
-    render_params_t() = default;
-
-    mrpt::img::TColor plane_color{0xff, 0xff, 0xff, 0xff};
-    double            plane_half_width{1.0}, plane_grid_spacing{0.25};
-};
-
-struct pointcloud_t
-{
-    /** Different point layers, indexed by a descriptive name.
-     * Known layer names:
-     * - `raw`: reserved to the original, full point cloud (if kept here).
-     * - `plane_centroids`: a point for each plane in `planes` (same order).
-     */
-    std::map<std::string, mrpt::maps::CPointsMap::Ptr> point_layers;
-    std::vector<mrpt::math::TLine3D>                   lines;
-    std::vector<plane_patch_t>                         planes;
-
-    /** Gets a renderizable view of all planes. The target container `o` is not
-     * cleared(), clear() it manually if needed before calling. */
-    void planesAsRenderizable(
-        mrpt::opengl::CSetOfObjects& o,
-        const render_params_t&       p = render_params_t());
+   protected:
 };
 
 void align_OLAE(
@@ -74,10 +40,7 @@ void align_OLAE(
     const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
     Results& result);
 
-void align(
-    const pointcloud_t& pcs1, const pointcloud_t& pcs2,
-    const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
-    Results& result);
+// TODO: From this point on, refactor to its own OLAE.h header
 
 struct matched_plane_t
 {
@@ -177,6 +140,9 @@ struct point_plane_pair_t
 };
 using TMatchedPointPlaneList = std::vector<point_plane_pair_t>;
 
+// TODO: From this point on, refactor to its own GaussNewton solver.
+#if 0
+
 struct P2P_Match_Input
 {
     /// We reuse MRPT struct to allow using their matching functions.
@@ -199,13 +165,14 @@ struct P2P_Match_Input
     bool empty() const { return paired_points.empty() && paired_pt2pl.empty(); }
 };
 
+/** points-and-planes optimal pose solver.
+ */
+void p2p_match(const P2P_Match_Input& in, P2P_Match_Result& result);
+#endif
+
 struct P2P_Match_Result
 {
     mrpt::poses::CPose3D optimal_pose;
 };
 
-/** points-and-planes optimal pose solver.
- */
-void p2p_match(const P2P_Match_Input& in, P2P_Match_Result& result);
-
-}  // namespace mp2_icp::OLAE_ICP
+}  // namespace mp2p_icp

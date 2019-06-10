@@ -9,11 +9,15 @@
 #include <mrpt/core/bits_math.h>  // DEG2RAD()
 #include <cstddef>
 #include <cstdint>
-#include <set>
+#include <map>
 #include <string>
 
-namespace mp2_icp
+namespace mp2p_icp
 {
+/** ICP parameters.
+ * \sa ICP_Base
+ * \ingroup mp2p_icp_grp
+ */
 struct Parameters
 {
     /** @name Termination criteria
@@ -56,4 +60,4 @@ struct Parameters
     std::string                   pt2pl_layer;
 };
 
-}  // namespace mp2_icp
+}  // namespace mp2p_icp

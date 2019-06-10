@@ -9,7 +9,7 @@
 #include <cstdint>
 #include "IterTermReason.h"
 
-namespace mp2_icp
+namespace mp2p_icp
 {
 struct Results
 {
@@ -32,4 +32,4 @@ struct Results
     double quality{0};
 };
 
-}  // namespace mp2_icp
+}  // namespace mp2p_icp

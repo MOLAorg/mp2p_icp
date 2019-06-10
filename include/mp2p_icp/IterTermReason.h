@@ -6,7 +6,7 @@
 
 #pragma once
 
-namespace mp2_icp
+namespace mp2p_icp
 {
 /** Reason of iterating termination */
 enum class IterTermReason
@@ -17,4 +17,4 @@ enum class IterTermReason
     Stalled
 };
 
-}  // namespace mp2_icp
+}  // namespace mp2p_icp

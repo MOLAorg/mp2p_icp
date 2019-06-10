@@ -5,13 +5,13 @@
  * ------------------------------------------------------------------------- */
 
 /**
- * @file   mola-test-mp2_icp-olae.cpp
- * @brief  Unit tests for the mp2_icp OLAE solver
+ * @file   test-mp2p_icp-olae.cpp
+ * @brief  Unit tests for the mp2p_icp OLAE solver
  * @author Jose Luis Blanco Claraco
  * @date   May 12, 2019
  */
 
-#include <mp2_icp/OLAE_ICP.h>
+#include <mp2p_icp/ICP_OLAE.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPose3DQuat.h>
@@ -21,11 +21,11 @@
 #include <mrpt/system/CTimeLogger.h>
 #include <sstream>
 
-// Used to validate OLEA. May make the Gauss-Newton solver to fail, in turn.
+// Used to validate OLAE. May make the Gauss-Newton solver to fail, in turn.
 //#define TEST_LARGE_ROTATIONS
 
 using TPoints = std::vector<mrpt::math::TPoint3D>;
-using TPlanes = std::vector<mp2_icp::OLAE_ICP::plane_patch_t>;
+using TPlanes = std::vector<mp2p_icp::plane_patch_t>;
 
 TPoints generate_points(const size_t nPts)
 {
@@ -70,9 +70,9 @@ TPlanes generate_planes(const size_t nPlanes)
 mrpt::poses::CPose3D transform_points_planes(
     const TPoints& pA, TPoints& pB, mrpt::tfest::TMatchingPairList& pointsPairs,
     const TPlanes& plA, TPlanes& plB,
-    std::vector<mp2_icp::OLAE_ICP::matched_plane_t>& planePairs,
-    mp2_icp::OLAE_ICP::TMatchedPointPlaneList&       pt2plPairs,
-    const double xyz_noise_std, const double n_err_std /* normals noise*/)
+    std::vector<mp2p_icp::matched_plane_t>& planePairs,
+    mp2p_icp::TMatchedPointPlaneList& pt2plPairs, const double xyz_noise_std,
+    const double n_err_std /* normals noise*/)
 {
     auto& rnd = mrpt::random::getRandomGenerator();
 
@@ -158,13 +158,13 @@ mrpt::poses::CPose3D transform_points_planes(
         }
 
         // Add plane-plane pairing:
-        mp2_icp::OLAE_ICP::matched_plane_t pair;
+        mp2p_icp::matched_plane_t pair;
         pair.p_this  = plA[i];
         pair.p_other = plB[i];
         planePairs.push_back(pair);
 
         // Add point-plane pairing:
-        mp2_icp::OLAE_ICP::point_plane_pair_t pt2pl;
+        mp2p_icp::point_plane_pair_t pt2pl;
         pt2pl.pl_this  = plA[i];
         pt2pl.pt_other = mrpt::math::TPoint3Df(
             plB[i].centroid.x, plB[i].centroid.y, plB[i].centroid.z);
@@ -175,7 +175,7 @@ mrpt::poses::CPose3D transform_points_planes(
     return pose;
 }
 
-bool TEST_mp2_icp_olae(
+bool TEST_mp2p_icp_olae(
     const size_t numPts, const size_t numLines, const size_t numPlanes,
     const double xyz_noise_std = .0, const double n_err_std = .0)
 {
@@ -184,7 +184,8 @@ bool TEST_mp2_icp_olae(
     MRPT_START
 
     const std::string tstName = mrpt::format(
-        "TEST_mp2_icp_olae_nPt=%06u_nLin=%06u_nPl=%06u_xyzStd=%.04f_nStd=%.04f",
+        "TEST_mp2p_icp_olae_nPt=%06u_nLin=%06u_nPl=%06u_xyzStd=%.04f_nStd=%."
+        "04f",
         static_cast<unsigned int>(numPts), static_cast<unsigned int>(numLines),
         static_cast<unsigned int>(numPlanes), xyz_noise_std, n_err_std);
 
@@ -194,9 +195,9 @@ bool TEST_mp2_icp_olae(
     profiler.setMinLoggingLevel(mrpt::system::LVL_ERROR);  // to make it quiet
 
     // Repeat the test many times, with different random values:
-    mp2_icp::OLAE_ICP::OLAE_Match_Result res;
-    mp2_icp::OLAE_ICP::P2P_Match_Result  res2;
-    mrpt::poses::CPose3D                        gt_pose;
+    mp2p_icp::OLAE_Match_Result res;
+    mp2p_icp::P2P_Match_Result  res2;
+    mrpt::poses::CPose3D        gt_pose;
 
     const auto max_allowed_error =
         std::min(1.0, 0.1 + 10 * xyz_noise_std + 50 * n_err_std);
@@ -217,9 +218,9 @@ bool TEST_mp2_icp_olae(
         TPoints pB;
         TPlanes plB;
 
-        mrpt::tfest::TMatchingPairList                   pointPairs;
-        mp2_icp::OLAE_ICP::TMatchedPlaneList      planePairs;
-        mp2_icp::OLAE_ICP::TMatchedPointPlaneList pt2plPairs;
+        mrpt::tfest::TMatchingPairList   pointPairs;
+        mp2p_icp::TMatchedPlaneList      planePairs;
+        mp2p_icp::TMatchedPointPlaneList pt2plPairs;
 
         gt_pose = transform_points_planes(
             pA, pB, pointPairs, plA, plB, planePairs, pt2plPairs, xyz_noise_std,
@@ -227,13 +228,13 @@ bool TEST_mp2_icp_olae(
 
         // ========  TEST: olae_match ========
         {
-            mp2_icp::OLAE_ICP::OLAE_Match_Input in;
+            mp2p_icp::OLAE_Match_Input in;
             in.paired_points = pointPairs;
             in.paired_planes = planePairs;
 
             profiler.enter("olea_match");
 
-            mp2_icp::OLAE_ICP::olae_match(in, res);
+            mp2p_icp::olae_match(in, res);
 
             const double dt_last = profiler.leave("olea_match");
 
@@ -264,13 +265,13 @@ bool TEST_mp2_icp_olae(
 #if 0
         // ========  TEST: p2p_match ========
         {
-            mp2_icp::OLAE_ICP::P2P_Match_Input in2;
+            mp2p_icp::ICP_OLAE::P2P_Match_Input in2;
             in2.paired_points = pointPairs;
             in2.paired_pt2pl  = pt2plPairs;
 
             profiler.enter("p2p_match");
 
-            mp2_icp::OLAE_ICP::p2p_match(in2, res2);
+            mp2p_icp::ICP_OLAE::p2p_match(in2, res2);
 
             profiler.leave("p2p_match");
 
@@ -298,7 +299,7 @@ bool TEST_mp2_icp_olae(
 
     std::cout << " -Ground_truth   : " << gt_pose.asString() << "\n"
               << " -OLEA_output    : " << res.optimal_pose.asString() << "\n"
-              << " -OLEA avr. error: " << avr_err_olea
+              << " -OLAE avr. error: " << avr_err_olea
               << "  Time: " << dt_olea * 1e6 << " [us]\n"
               << " -P2P avr. error : " << avr_err_p2p
               << "  Time: " << dt_p2p * 1e6 << " [us]\n";
@@ -319,30 +320,30 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         // arguments: nPts, nLines, nPlanes
         // Points only. Noiseless:
-        ASSERT_(TEST_mp2_icp_olae(3 /*pt*/, 0 /*li*/, 0 /*pl*/));
-        ASSERT_(TEST_mp2_icp_olae(4 /*pt*/, 0 /*li*/, 0 /*pl*/));
-        ASSERT_(TEST_mp2_icp_olae(10 /*pt*/, 0 /*li*/, 0 /*pl*/));
-        ASSERT_(TEST_mp2_icp_olae(100 /*pt*/, 0 /*li*/, 0 /*pl*/));
-        ASSERT_(TEST_mp2_icp_olae(1000 /*pt*/, 0 /*li*/, 0 /*pl*/));
+        ASSERT_(TEST_mp2p_icp_olae(3 /*pt*/, 0 /*li*/, 0 /*pl*/));
+        ASSERT_(TEST_mp2p_icp_olae(4 /*pt*/, 0 /*li*/, 0 /*pl*/));
+        ASSERT_(TEST_mp2p_icp_olae(10 /*pt*/, 0 /*li*/, 0 /*pl*/));
+        ASSERT_(TEST_mp2p_icp_olae(100 /*pt*/, 0 /*li*/, 0 /*pl*/));
+        ASSERT_(TEST_mp2p_icp_olae(1000 /*pt*/, 0 /*li*/, 0 /*pl*/));
 
         // Points only. Noisy:
-        ASSERT_(TEST_mp2_icp_olae(100 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
-        ASSERT_(TEST_mp2_icp_olae(1000 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
+        ASSERT_(TEST_mp2p_icp_olae(100 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
+        ASSERT_(TEST_mp2p_icp_olae(1000 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
 
         // Planes only. Noiseless:
-        // ASSERT_(TEST_mp2_icp_olae(0 /*pt*/, 0 /*li*/, 3 /*pl*/));
-        ASSERT_(TEST_mp2_icp_olae(0 /*pt*/, 0 /*li*/, 10 /*pl*/));
-        ASSERT_(TEST_mp2_icp_olae(0 /*pt*/, 0 /*li*/, 100 /*pl*/));
+        // ASSERT_(TEST_mp2p_icp_olae(0 /*pt*/, 0 /*li*/, 3 /*pl*/));
+        ASSERT_(TEST_mp2p_icp_olae(0 /*pt*/, 0 /*li*/, 10 /*pl*/));
+        ASSERT_(TEST_mp2p_icp_olae(0 /*pt*/, 0 /*li*/, 100 /*pl*/));
 
         // Planes only. Noisy:
-        ASSERT_(TEST_mp2_icp_olae(0 /*pt*/, 0 /*li*/, 10 /*pl*/, 0, nN));
-        ASSERT_(TEST_mp2_icp_olae(0 /*pt*/, 0 /*li*/, 100 /*pl*/, 0, nN));
+        ASSERT_(TEST_mp2p_icp_olae(0 /*pt*/, 0 /*li*/, 10 /*pl*/, 0, nN));
+        ASSERT_(TEST_mp2p_icp_olae(0 /*pt*/, 0 /*li*/, 100 /*pl*/, 0, nN));
 
         // Points and planes, noisy.
-        // ASSERT_(TEST_mp2_icp_olae(1 /*pt*/, 0 /*li*/, 3 /*pl*/));
-        // ASSERT_(TEST_mp2_icp_olae(2 /*pt*/, 0 /*li*/, 1 /*pl*/));
-        ASSERT_(TEST_mp2_icp_olae(20 /*pt*/, 0 /*li*/, 10 /*pl*/, nXYZ, nN));
-        ASSERT_(TEST_mp2_icp_olae(400 /*pt*/, 0 /*li*/, 100 /*pl*/, nXYZ, nN));
+        // ASSERT_(TEST_mp2p_icp_olae(1 /*pt*/, 0 /*li*/, 3 /*pl*/));
+        // ASSERT_(TEST_mp2p_icp_olae(2 /*pt*/, 0 /*li*/, 1 /*pl*/));
+        ASSERT_(TEST_mp2p_icp_olae(20 /*pt*/, 0 /*li*/, 10 /*pl*/, nXYZ, nN));
+        ASSERT_(TEST_mp2p_icp_olae(400 /*pt*/, 0 /*li*/, 100 /*pl*/, nXYZ, nN));
     }
     catch (std::exception& e)
     {
