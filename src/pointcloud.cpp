@@ -90,3 +90,9 @@ void pointcloud_t::planesAsRenderizable(
 
     MRPT_END
 }
+
+bool pointcloud_t::empty() const
+{
+    return point_layers.empty() && lines.empty() && planes.empty();
+}
+void pointcloud_t::clear() { *this = pointcloud_t(); }

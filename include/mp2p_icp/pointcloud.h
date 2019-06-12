@@ -69,6 +69,11 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     std::vector<mrpt::math::TLine3D>                   lines;
     std::vector<plane_patch_t>                         planes;
 
+    /** return true if all point cloud layers, feature lists, etc. are empty */
+    bool empty() const;
+    /** clear all containers  */
+    void clear();
+
     /** Gets a renderizable view of all planes. The target container `o` is not
      * cleared(), clear() it manually if needed before calling. */
     void planesAsRenderizable(
