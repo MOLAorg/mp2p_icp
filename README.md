@@ -1,6 +1,6 @@
-# `mp2_icp`
+# `mp2p_icp`
 
-A repertory of multi primitive-to-primitive (MP2) ICP algorithms in C++. 
+A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++. 
 
 License: New BSD 3-Clause
 
