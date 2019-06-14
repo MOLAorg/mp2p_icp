@@ -436,7 +436,7 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
             const double ang =
                 std::acos(ri.x * bi.x + ri.y * bi.y + ri.z * bi.z);
             double f = 1.0;
-            if (ang > A) f = 1.0 / (1.0 + B * mrpt::square(ang - A));
+            if (ang > A) { f = 1.0 / (1.0 + B * mrpt::square(ang - A)); }
             wi *= f;
         }
 
@@ -509,6 +509,20 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
 static double olae_estimate_Phi(const double M_det, std::size_t n)
 {
     return std::acos((M_det / (n == 2 ? -1.0 : -1.178)) - 1.);
+}
+
+// Convert to quaternion by normalizing q=[1, optim_rot], then to rot. matrix:
+static mrpt::poses::CPose3D gibbs2pose(const Eigen::Vector3d& v)
+{
+    auto       x = v[0], y = v[1], z = v[2];
+    const auto r = 1.0 / std::sqrt(1.0 + x * x + y * y + z * z);
+    x *= r;
+    y *= r;
+    z *= r;
+    auto q = mrpt::math::CQuaternionDouble(r, -x, -y, -z);
+
+    // Quaternion to 3x3 rot matrix:
+    return mrpt::poses::CPose3D(q, .0, .0, .0);
 }
 
 // See .h docs, and associated technical report.
@@ -604,7 +618,7 @@ void mp2p_icp::olae_match(const OLAE_Match_Input& in, OLAE_Match_Result& result)
     const double estPhi1 = olae_estimate_Phi(Md, nAllMatches);
 
     // Threshold to decide whether to do a re-linearization:
-    const bool do_relinearize = (estPhi1 > mrpt::DEG2RAD(150.0));
+    const bool do_relinearize = (estPhi1 > in.OLEA_relinearize_threshold);
 
     if (do_relinearize)
     {
@@ -621,18 +635,8 @@ void mp2p_icp::olae_match(const OLAE_Match_Input& in, OLAE_Match_Result& result)
         optimal_rot = M.colPivHouseholderQr().solve(v);
     }
 
-    // Convert to quaternion by normalizing q=[1, optim_rot]:
-    {
-        auto       x = optimal_rot[0], y = optimal_rot[1], z = optimal_rot[2];
-        const auto r = 1.0 / std::sqrt(1.0 + x * x + y * y + z * z);
-        x *= r;
-        y *= r;
-        z *= r;
-        auto q = mrpt::math::CQuaternionDouble(r, -x, -y, -z);
+    result.optimal_pose = gibbs2pose(optimal_rot);
 
-        // Quaternion to 3x3 rot matrix:
-        result.optimal_pose = mrpt::poses::CPose3D(q, .0, .0, .0);
-    }
     // Undo transformation above:
     if (do_relinearize)
     {
