@@ -103,7 +103,7 @@ struct OLAE_Match_Input
     };
 
     bool   use_robust_kernel{true};
-    double robust_kernel_param{mrpt::DEG2RAD(5.0)}, robust_kernel_scale{400.0};
+    double robust_kernel_param{mrpt::DEG2RAD(0.1)}, robust_kernel_scale{400.0};
 
     /** Threshold for doing relinearization (2nd stage). Refer to technical
      * report. */

@@ -21,12 +21,14 @@
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>  // fileNameStripInvalidChars()
 #include <mrpt/tfest/se3.h>  // classic Horn method
+#include <cstdlib>
 #include <sstream>
 
-// Used to validate OLAE. May make the Gauss-Newton solver to fail, in turn.
-//#define TEST_LARGE_ROTATIONS
-
-const size_t num_reps = 2000;
+// Used to validate OLAE. However, it may make the Gauss-Newton solver, or the
+// robust kernel with outliers to fail.
+static bool TEST_LARGE_ROTATIONS = nullptr != ::getenv("TEST_LARGE_ROTATIONS");
+static bool DO_SAVE_STAT_FILES   = nullptr != ::getenv("DO_SAVE_STAT_FILES");
+static const size_t num_reps     = 2000;
 
 using TPoints = std::vector<mrpt::math::TPoint3D>;
 using TPlanes = std::vector<mp2p_icp::plane_patch_t>;
@@ -80,23 +82,27 @@ mrpt::poses::CPose3D transform_points_planes(
 {
     auto& rnd = mrpt::random::getRandomGenerator();
 
-#if defined(TEST_LARGE_ROTATIONS)
-    const double Dx = rnd.drawUniform(-10.0, 10.0);
-    const double Dy = rnd.drawUniform(-10.0, 10.0);
-    const double Dz = rnd.drawUniform(-10.0, 10.0);
+    double Dx, Dy, Dz, yaw, pitch, roll;
+    if (TEST_LARGE_ROTATIONS)
+    {
+        Dx = rnd.drawUniform(-10.0, 10.0);
+        Dy = rnd.drawUniform(-10.0, 10.0);
+        Dz = rnd.drawUniform(-10.0, 10.0);
 
-    const double yaw   = mrpt::DEG2RAD(rnd.drawUniform(-180.0, 180.0));
-    const double pitch = mrpt::DEG2RAD(rnd.drawUniform(-89.0, 89.0));
-    const double roll  = mrpt::DEG2RAD(rnd.drawUniform(-89.0, 89.0));
-#else
-    const double Dx = rnd.drawUniform(-2.0, 2.0);
-    const double Dy = rnd.drawUniform(-2.0, 2.0);
-    const double Dz = rnd.drawUniform(-2.0, 2.0);
+        yaw   = mrpt::DEG2RAD(rnd.drawUniform(-180.0, 180.0));
+        pitch = mrpt::DEG2RAD(rnd.drawUniform(-89.0, 89.0));
+        roll  = mrpt::DEG2RAD(rnd.drawUniform(-89.0, 89.0));
+    }
+    else
+    {
+        Dx = rnd.drawUniform(-0.2, 0.2);
+        Dy = rnd.drawUniform(-0.2, 0.2);
+        Dz = rnd.drawUniform(-0.2, 0.2);
 
-    const double yaw   = mrpt::DEG2RAD(rnd.drawUniform(-40.0, 40.0));
-    const double pitch = mrpt::DEG2RAD(rnd.drawUniform(-40.0, 40.0));
-    const double roll  = mrpt::DEG2RAD(rnd.drawUniform(-40.0, 40.0));
-#endif
+        yaw   = mrpt::DEG2RAD(rnd.drawUniform(-4.0, 4.0));
+        pitch = mrpt::DEG2RAD(rnd.drawUniform(-4.0, 4.0));
+        roll  = mrpt::DEG2RAD(rnd.drawUniform(-4.0, 4.0));
+    }
 
     const auto pose = mrpt::poses::CPose3D(Dx, Dy, Dz, yaw, pitch, roll);
     // just the rotation, to transform vectors (vs. R^3 points):
@@ -139,19 +145,22 @@ mrpt::poses::CPose3D transform_points_planes(
 
     for (std::size_t i = 0; i < plA.size(); ++i)
     {
-        // Centroid: transform + noise
-        plB[i].centroid = pose.inverseComposePoint(plA[i].centroid);
-
         const bool is_outlier = (rnd.drawUniform(0.0, 1.0) < outliers_ratio);
-        const auto sigma_c    = xyz_noise_std;
-        const auto sigma_n    = n_err_std;
+        auto       i_b        = i;
+        if (is_outlier) rnd.drawUniformUnsignedIntRange(i_b, 0, plA.size() - 1);
+
+        // Centroid: transform + noise
+        plB[i].centroid = pose.inverseComposePoint(plA[i_b].centroid);
+
+        const auto sigma_c = xyz_noise_std;
+        const auto sigma_n = n_err_std;
 
         plB[i].centroid.x += rnd.drawGaussian1D(0, sigma_c);
         plB[i].centroid.y += rnd.drawGaussian1D(0, sigma_c);
         plB[i].centroid.z += rnd.drawGaussian1D(0, sigma_c);
 
         // Plane: rotate + noise
-        plB[i].plane = plA[i].plane;
+        plB[i].plane = plA[i_b].plane;
         {
             const mrpt::math::TVector3D ug = plA[i].plane.getNormalVector();
             mrpt::math::TVector3D       ul;
@@ -307,9 +316,11 @@ bool TEST_mp2p_icp_olae(
                 ASSERT_BELOW_(err_log_n, max_allowed_error);
             }
 
+            stats(rep, 2) = err_log_n;
             avr_err_horn += err_log_n;
         }
-    }
+    }  // for each repetition
+
     avr_err_olea /= num_reps;
     avr_err_horn /= num_reps;
 
@@ -323,8 +334,10 @@ bool TEST_mp2p_icp_olae(
               << " -Horn avr. error : " << avr_err_horn
               << "  Time: " << dt_p2p * 1e6 << " [us]\n";
 
-    stats.saveToTextFile(
-        mrpt::system::fileNameStripInvalidChars(tstName) + std::string(".txt"));
+    if (DO_SAVE_STAT_FILES)
+        stats.saveToTextFile(
+            mrpt::system::fileNameStripInvalidChars(tstName) +
+            std::string(".txt"));
 
     return true;  // all ok.
     MRPT_END
