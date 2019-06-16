@@ -25,7 +25,11 @@ struct Parameters
     /** Maximum number of iterations to run. */
     size_t maxIterations{40};
 
-    /** Max. number of pairings per layer (point-to-point, plane-to-plane...) */
+    /** Max. number of pairings per layer (point-to-point, plane-to-plane...).
+     * Decimation of the point cloud being registered against the reference
+     * one. The speed-up comes from a decimation of the number of KD-tree
+     * queries, the most expensive step in ICP
+     */
     unsigned int maxPairsPerLayer{500};
 
     /** If the correction in all translation coordinates (X,Y,Z) is below
@@ -41,23 +45,19 @@ struct Parameters
     /** Treshold distance for pair two near points */
     double thresholdDist{0.75}, thresholdAng{mrpt::DEG2RAD(0.15)};
 
-    /** Cauchy kernel rho, for estimating the optimal transformation
-     * covariance, in meters (default = 0.07m) */
-    double kernel_rho{0.07};
     /** Whether to use kernel_rho to smooth distances, or use distances
      * directly (default=true) */
     bool use_kernel{false};
 
-    /** Decimation of the point cloud being registered against the reference
-     * one. The speed-up comes from a decimation of the number of KD-tree
-     * queries, the most expensive step in ICP */
-    uint32_t corresponding_points_decimation{5};
-    // TODO: Remove, not used for PlanesPointsICP!
-
     double relative_weight_planes_attitude{1.0};
 
-    std::map<std::string, double> pt2pt_layers;  //!< Weight for each layer
-    std::string                   pt2pl_layer;
+    /** Weight for each layer. Those not present here  */
+    std::map<std::string, double> weight_pt2pt_layers;
+
+    /** [Only used by ICP_GaussNewton] The name of a layer of points
+     * to be paired individually to planes (pointcloud_t::planes).
+     */
+    std::string pt2pl_layer;
 };
 
 }  // namespace mp2p_icp

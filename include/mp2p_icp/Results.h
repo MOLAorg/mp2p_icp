@@ -17,6 +17,9 @@ struct Results
      * m2 wrt m1. */
     mrpt::poses::CPose3DPDFGaussian optimal_tf;
 
+    /** Found scale (if supported by the underlying algorithm) for optimal_tf */
+    double optimal_scale{1.0};
+
     /** The number of executed iterations until convergence */
     size_t nIterations{0};
 

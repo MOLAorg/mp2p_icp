@@ -4,31 +4,26 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   ICP_Horn_MultiCloud.h
- * @brief  ICP registration for pointclouds split in different "layers"
+ * @file   ICP_GaussNewton.h
+ * @brief  ICP registration for points and planes
  * @author Jose Luis Blanco Claraco
- * @date   Jan 20, 2019
+ * @date   May 11, 2019
  */
 #pragma once
 
 #include <mp2p_icp/ICP_Base.h>
-#include <mp2p_icp/IterTermReason.h>
-#include <mp2p_icp/Parameters.h>
-#include <mp2p_icp/Results.h>
 #include <mp2p_icp/pointcloud.h>
-#include <mrpt/maps/CPointsMap.h>
-#include <mrpt/rtti/CObject.h>
-#include <vector>
 
 namespace mp2p_icp
 {
-/** ICP registration for pointclouds split in different "layers"
+/** ICP registration for points, planes, and lines, using an iterative
+ * Gauss-Newton numerical solver.
  *
  * \ingroup mp2p_icp_grp
  */
-class ICP_Horn_MultiCloud : public ICP_Base
+class ICP_GaussNewton : public ICP_Base
 {
-    DEFINE_MRPT_OBJECT(ICP_Horn_MultiCloud)
+    DEFINE_MRPT_OBJECT(ICP_GaussNewton)
 
    protected:
     // See base class docs
@@ -36,4 +31,4 @@ class ICP_Horn_MultiCloud : public ICP_Base
         ICP_State& s, const Parameters& p, ICP_iteration_result& out) override;
 };
 
-}  // namespace mp2p_icp::ICP_Horn_MultiCloud
+}  // namespace mp2p_icp

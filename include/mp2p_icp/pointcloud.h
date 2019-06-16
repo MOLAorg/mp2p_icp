@@ -60,10 +60,19 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     DEFINE_SERIALIZABLE(pointcloud_t)
 
    public:
+    /** @name Reserved point-cloud layer names (for use in `point_layers`)
+     * @{ */
+
+    constexpr static const char* PT_LAYER_RAW{"raw"};
+    constexpr static const char* PT_LAYER_PLANE_CENTROIDS{"plane_centroids"};
+
+    /** @} */
+
     /** Different point layers, indexed by a descriptive name.
-     * Known layer names:
-     * - `raw`: reserved to the original, full point cloud (if kept here).
-     * - `plane_centroids`: a point for each plane in `planes` (same order).
+     * Known layer names: See section above.
+     * - PT_LAYER_RAW: reserved to the original, full point cloud (if kept)
+     * - PT_LAYER_PLANE_CENTROIDS: a point for each plane in `planes` (same
+     * order).
      */
     std::map<std::string, mrpt::maps::CPointsMap::Ptr> point_layers;
     std::vector<mrpt::math::TLine3D>                   lines;

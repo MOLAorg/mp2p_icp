@@ -19,19 +19,22 @@
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
 #include <cstdint>
+#include <functional>  //reference_wrapper
 #include <memory>
 
 namespace mp2p_icp
 {
-/** Virtual interface for ICP algorithms. Useful for RTTI class searches.
- *
+/** Common interface for ICP algorithms.
  * The main API entry point is align().
+ *
+ * \sa This class can be used as parent class in RTTI queries to find available
+ * ICP algorithms.
  *
  * \ingroup mp2p_icp_grp
  */
 class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 {
-    DEFINE_MRPT_OBJECT(ICP_Base)
+    DEFINE_VIRTUAL_MRPT_OBJECT(ICP_Base)
 
    public:
     /** Register two point clouds (possibly after having been preprocessed to
@@ -44,5 +47,41 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         Results& result);
 
    protected:
+    struct ICP_State
+    {
+        ICP_State(const pointcloud_t& pcs1, const pointcloud_t& pcs2)
+            : pc1(pcs1), pc2(pcs2)
+        {
+        }
+
+        const pointcloud_t&                                      pc1;
+        const pointcloud_t&                                      pc2;
+        std::map<std::string, mrpt::maps::TMatchingParams>       mps;
+        std::map<std::string, mrpt::maps::TMatchingExtraResults> mres;
+        std::string layerOfLargestPc;
+        // Current best transform:
+        mrpt::poses::CPose3D current_solution;
+        double               current_scale{1.0};
+    };
+
+    struct ICP_iteration_result
+    {
+        bool                 success{false};
+        mrpt::poses::CPose3D new_solution;
+        double               new_scale{1.0};
+        // TODO: Outliers info
+    };
+
+    /** Implemented by specific ICP algorithms, to be run at each ICP iteration.
+     * It must search for matchings given the current pose estimate, and
+     * evaluate the next new pose, if enough data is available possible.
+     */
+    virtual void impl_ICP_iteration(
+        ICP_State& state, const Parameters& p, ICP_iteration_result& out) = 0;
+
+   private:
+    /** Populates state.mps according to pointcloud stats and to input
+     * parameters */
+    void prepareMatchingParams(ICP_State& state, const Parameters& p) const;
 };
 }  // namespace mp2p_icp

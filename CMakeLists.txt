@@ -13,10 +13,9 @@ cmake_minimum_required(VERSION 3.4)
 project(mp2p_icp LANGUAGES CXX)
 
 # find dependencies:
-find_package(MRPT 1.9.9 REQUIRED
-	COMPONENTS
-		slam containers
-)
+find_package(mrpt-tfest REQUIRED)
+find_package(mrpt-containers REQUIRED)
+find_package(mrpt-maps REQUIRED)
 
 # MOLA CMake scripts: "mola_xxx()"
 find_package(mola-common REQUIRED)
@@ -30,8 +29,9 @@ mola_add_library(
 	TARGET ${PROJECT_NAME}
 	SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
 	PUBLIC_LINK_LIBRARIES
-	    mrpt::containers
-		mrpt::slam
+		mrpt::containers
+		mrpt::tfest
+		mrpt::maps
 )
 
 # -----------------------
