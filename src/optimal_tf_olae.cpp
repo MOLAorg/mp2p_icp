@@ -28,9 +28,11 @@ static auto vector_rot_Z_90d_CCW(const mrpt::math::TVector3D& v)
  * Factored out here so it can be re-evaluated if the solution is near the Gibbs
  * vector singularity (|Phi|~= \pi)
  * (Refer to technical report for details) */
-static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
-    const Pairings_OLAE& in, const mrpt::math::TPoint3D& ct_other,
-    const mrpt::math::TPoint3D& ct_this, const bool do_relinearize_singularity)
+static std::tuple<Eigen::Matrix3d, Eigen::Vector3d, std::vector<std::size_t>>
+    olae_build_linear_system(
+        const Pairings_OLAE& in, const mrpt::math::TPoint3D& ct_other,
+        const mrpt::math::TPoint3D& ct_this,
+        const bool                  do_relinearize_singularity)
 {
     MRPT_START
 
@@ -38,8 +40,9 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
     using mrpt::math::TVector3D;
 
     // Build the linear system: M g = v
-    Eigen::Matrix3d M = Eigen::Matrix3d::Zero();
-    Eigen::Vector3d v = Eigen::Vector3d::Zero();
+    Eigen::Matrix3d          M = Eigen::Matrix3d::Zero();
+    Eigen::Vector3d          v = Eigen::Vector3d::Zero();
+    std::vector<std::size_t> outlierIndices;
 
     const auto nPoints     = in.paired_points.size();
     const auto nLines      = in.paired_lines.size();
@@ -109,9 +112,21 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
             ASSERT_ABOVE_(bi_n, 1e-8);
             ASSERT_ABOVE_(ri_n, 1e-8);
             // (Note: ideally, both norms should be equal if noiseless and a
-            // real pairing )
+            // real pairing)
             bi *= 1.0 / bi_n;
             ri *= 1.0 / ri_n;
+
+            if (in.use_scale_outlier_detector)
+            {
+                const double scale_mismatch =
+                    std::max(bi_n, ri_n) / std::min(bi_n, ri_n);
+                if (scale_mismatch > in.scale_outlier_threshold)
+                {
+                    // Discard this pairing:
+                    outlierIndices.push_back(i);
+                    continue;  // Skip (same effect than: wi = 0)
+                }
+            }
         }
         else if (i < nPoints + nLines)
         {
@@ -135,6 +150,26 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
             ASSERTDEB_BELOW_(std::abs(ri.norm() - 1.0), 0.01);
         }
 
+        // If we are about to apply a robust kernel, we need a reference
+        // attitude wrt which apply such kernel, i.e. the "current SE(3)
+        // estimation" inside a caller ICP loop.
+        if (in.use_robust_kernel)
+        {
+            const TVector3D ri2 =
+                in.current_estimate_for_robust.composePoint(ri);
+
+            // mismatch angle between the two vectors:
+            const double ang =
+                std::acos(ri2.x * bi.x + ri2.y * bi.y + ri2.z * bi.z);
+            const double A = in.robust_kernel_param;
+            const double B = in.robust_kernel_scale;
+            if (ang > A)
+            {
+                const auto f = 1.0 / (1.0 + B * mrpt::square(ang - A));
+                wi *= f;
+            }
+        }
+
         // If we are in a second stage, let's relinearize around a rotation
         // of +PI/2 along +Z, to avoid working near the Gibbs vector
         // singularity:
@@ -142,18 +177,6 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
         {
             // Rotate:
             ri = vector_rot_Z_90d_CCW(ri);
-        }
-
-        // Robust kernel:
-        if (in.use_robust_kernel)
-        {
-            const double A = in.robust_kernel_param;
-            const double B = in.robust_kernel_scale;
-            const double ang =
-                std::acos(ri.x * bi.x + ri.y * bi.y + ri.z * bi.z);
-            double f = 1.0;
-            if (ang > A) { f = 1.0 / (1.0 + B * mrpt::square(ang - A)); }
-            wi *= f;
         }
 
         ASSERT_(wi > .0);
@@ -208,17 +231,22 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d> olae_build_linear_system(
         v -= wi * dV;
     }
 
-    ASSERT_(w_sum > .0);
-    M *= (1.0 / w_sum);
-    v *= (1.0 / w_sum);
+    if (w_sum > .0)
+    {
+        M *= (1.0 / w_sum);
+        v *= (1.0 / w_sum);
+    }
+    else
+    {
+        // We either had NO input correspondences, or ALL were detected as
+        // inliers... What to do in this case?
+    }
 
     // The missing (1/2) from the formulas above:
     M *= 0.5;
 
-    MRPT_TODO("Report detected outliers");
+    return {M, v, outlierIndices};
 
-    return {M, v};
-    //
     MRPT_END
 }
 
@@ -241,6 +269,90 @@ static mrpt::poses::CPose3D gibbs2pose(const Eigen::Vector3d& v)
 
     // Quaternion to 3x3 rot matrix:
     return mrpt::poses::CPose3D(q, .0, .0, .0);
+}
+
+// Evaluates the centroids [ct_other, ct_this] for points and plane
+// correspondences, taking into account the current guess for outliers:
+static std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
+    eval_centroids_robust(
+        const Pairings_OLAE& in, const std::vector<std::size_t>& pt2pt_outliers)
+{
+    using mrpt::math::TPoint3D;
+
+    TPoint3D   ct_other(0, 0, 0), ct_this(0, 0, 0);
+    const auto nPoints = in.paired_points.size();
+    const auto nLines  = in.paired_lines.size();
+    const auto nPlanes = in.paired_planes.size();
+
+    // Normalized weights for centroid "wcXX":
+    double wcPoints, wcPlanes;
+    {
+        const auto wPt = in.weights.translation.points,
+                   wPl = in.weights.translation.planes;
+
+        ASSERTMSG_(
+            wPt + wPl > .0,
+            "Both, point and plane translation weights, are <=0 (!)");
+
+        // Discount outliers:
+        const auto k =
+            1.0 / (wPt * (nPoints - pt2pt_outliers.size()) + wPl * nPlanes);
+        wcPoints = wPt * k;
+        wcPlanes = wPl * k;
+    }
+
+    // Add global coordinate of points for now, we'll convert them later to
+    // unit vectors relative to the centroids:
+    {
+        TPoint3D ct_other_pt(0, 0, 0), ct_this_pt(0, 0, 0);
+
+        std::size_t cnt             = 0;
+        auto        it_next_outlier = pt2pt_outliers.begin();
+        for (std::size_t i = 0; i < in.paired_points.size(); i++)
+        {
+            // Skip outlier?
+            if (it_next_outlier != pt2pt_outliers.end() &&
+                i == *it_next_outlier)
+            {
+                ++it_next_outlier;
+                continue;
+            }
+            const auto& pair = in.paired_points[i];
+
+            ct_this_pt += TPoint3D(pair.this_x, pair.this_y, pair.this_z);
+            ct_other_pt += TPoint3D(pair.other_x, pair.other_y, pair.other_z);
+            cnt++;
+        }
+        ASSERT_EQUAL_(cnt, nPoints - pt2pt_outliers.size());
+
+        ct_other_pt *= wcPoints;
+        ct_this_pt *= wcPoints;
+
+        // Add plane centroids to the computation of centroids as well:
+        TPoint3D ct_other_pl(0, 0, 0), ct_this_pl(0, 0, 0);
+        if (wcPlanes > 0)
+        {
+            for (const auto& pair : in.paired_planes)
+            {
+                ct_this_pl += pair.p_this.centroid;
+                ct_other_pl += pair.p_other.centroid;
+            }
+            ct_this_pl *= wcPlanes;
+            ct_other_pl *= wcPlanes;
+        }
+
+        // Normalize sum of centroids:
+        ct_other = ct_other_pt + ct_other_pl;
+        ct_this  = ct_this_pt + ct_this_pl;
+
+        // sanity check of weights:
+        const double expected_sum_1 =
+            wcPlanes * in.paired_planes.size() +
+            wcPoints * (nPoints - pt2pt_outliers.size());
+        ASSERT_BELOW_(std::abs(expected_sum_1 - 1.0), 0.01);
+    }
+
+    return {ct_other, ct_this};
 }
 
 // See .h docs, and associated technical report.
@@ -274,58 +386,31 @@ void mp2p_icp::optimal_tf_olae(
     ASSERT_(in.weights.translation.points >= .0);
     ASSERT_(in.weights.translation.planes >= .0);
 
-    // Normalized weights for centroid "wcXX":
-    double wcPoints, wcPlanes;
-    {
-        const auto wPt = in.weights.translation.points,
-                   wPl = in.weights.translation.planes;
-
-        ASSERTMSG_(
-            wPt + wPl > .0,
-            "Both, point and plane translation weights, are <=0 (!)");
-
-        const auto k = 1.0 / (wPt * nPoints + wPl * nPlanes);
-        wcPoints     = wPt * k;
-        wcPlanes     = wPl * k;
-    }
-
     // Compute the centroids:
-    TPoint3D ct_other(0, 0, 0), ct_this(0, 0, 0);
-
-    // Add global coordinate of points for now, we'll convert them later to
-    // unit vectors relative to the centroids:
-    {
-        TPoint3D ct_other_pt(0, 0, 0), ct_this_pt(0, 0, 0);
-
-        for (const auto& pair : in.paired_points)
-        {
-            ct_this_pt += TPoint3D(pair.this_x, pair.this_y, pair.this_z);
-            ct_other_pt += TPoint3D(pair.other_x, pair.other_y, pair.other_z);
-        }
-        ct_other_pt *= wcPoints;
-        ct_this_pt *= wcPoints;
-
-        // Add plane centroids to the computation of centroids as well:
-        TPoint3D ct_other_pl(0, 0, 0), ct_this_pl(0, 0, 0);
-        if (wcPlanes > 0)
-        {
-            for (const auto& pair : in.paired_planes)
-            {
-                ct_this_pl += pair.p_this.centroid;
-                ct_other_pl += pair.p_other.centroid;
-            }
-            ct_this_pl *= wcPlanes;
-            ct_other_pl *= wcPlanes;
-        }
-
-        // Normalize sum of centroids:
-        ct_other = ct_other_pt + ct_other_pl;
-        ct_this  = ct_this_pt + ct_this_pl;
-    }
+    auto [ct_other, ct_this] =
+        eval_centroids_robust(in, result.outliers /* empty for now  */);
 
     // Build the linear system: M g = v
-    const auto [M, v] = olae_build_linear_system(
+    auto [M, v, outliers] = olae_build_linear_system(
         in, ct_other, ct_this, false /*dont relinearize singularity*/);
+
+    // Re-evaluate the centroids, now that we have a guess on outliers.
+    if (!outliers.empty())
+    {
+        // Re-evaluate the centroids:
+        const auto [new_ct_other, new_ct_this] =
+            eval_centroids_robust(in, outliers);
+
+        ct_other = new_ct_other;
+        ct_this  = new_ct_this;
+
+        // And rebuild the linear system with the new values:
+        auto [new_M, new_v, new_outliers] = olae_build_linear_system(
+            in, ct_other, ct_this, false /*dont relinearize singularity*/);
+
+        M = new_M;
+        v = new_v;
+    }
 
     // We are finding this optimal rotation, as a Gibbs vector:
     Eigen::Vector3d optimal_rot;
@@ -337,21 +422,23 @@ void mp2p_icp::optimal_tf_olae(
     const double estPhi1 = olae_estimate_Phi(Md, nAllMatches);
 
     // Threshold to decide whether to do a re-linearization:
-    const bool do_relinearize = (estPhi1 > in.OLEA_relinearize_threshold);
+    const bool do_relinearize = (estPhi1 > in.OLAE_relinearize_threshold);
 
     if (do_relinearize)
     {
         // relinearize on a different orientation:
-        const auto [M2, v2] = olae_build_linear_system(
+        const auto [M2, v2, outliers2] = olae_build_linear_system(
             in, ct_other, ct_this, true /*DO relinearize singularity*/);
 
         // Find the optimal Gibbs vector:
-        optimal_rot = M2.colPivHouseholderQr().solve(v2);
+        optimal_rot     = M2.colPivHouseholderQr().solve(v2);
+        result.outliers = outliers2;
     }
     else
     {
         // Find the optimal Gibbs vector:
-        optimal_rot = M.colPivHouseholderQr().solve(v);
+        optimal_rot     = M.colPivHouseholderQr().solve(v);
+        result.outliers = outliers;
     }
 
     result.optimal_pose = gibbs2pose(optimal_rot);

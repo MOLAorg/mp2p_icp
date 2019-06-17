@@ -58,12 +58,29 @@ struct Pairings_OLAE
         } translation;
     };
 
-    bool   use_robust_kernel{true};
+    /** The current guess for the sought transformation. Must be supplied if
+     * use_robust_kernel==true. */
+    const mrpt::poses::CPose3D current_estimate_for_robust;
+    bool                       use_robust_kernel{false};
     double robust_kernel_param{mrpt::DEG2RAD(0.1)}, robust_kernel_scale{400.0};
+
+    /** Enables the use of the scale-based outlier detector. Refer to the
+     * technical report.  This robustness feature is independent from
+     * use_robust_kernel.
+     */
+    bool use_scale_outlier_detector{true};
+
+    /** If use_scale_outlier_detector==true, discard a potential point-to-point
+     * pairing if the ratio between the norm of their final vectors is larger
+     * than this value. A value of "1.0" will only allow numerically perfect
+     * pairings, so a slightly larger value is required. The closer to 1, the
+     * stricter. A much larger threshold (e.g. 5.0) would only reject the
+     * most obvious outliers. Refer to the technical report. */
+    double scale_outlier_threshold{1.20};
 
     /** Threshold for doing relinearization (2nd stage). Refer to technical
      * report. */
-    double OLEA_relinearize_threshold{mrpt::DEG2RAD(170.0)};
+    double OLAE_relinearize_threshold{mrpt::DEG2RAD(170.0)};
 
     /// See docs for Weights
     Weights weights;

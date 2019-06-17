@@ -12,7 +12,6 @@
 #pragma once
 
 #include <mp2p_icp/pointcloud.h>
-#include <mrpt/core/optional_ref.h>
 
 namespace mp2p_icp
 {
@@ -46,12 +45,9 @@ struct OptimalTF_Result
     mrpt::poses::CPose3D optimal_pose;
     double               optimal_scale{1.0};
 
-    /** If provided, will be filled in with a boolean indicating whether each of
-     * the input pairings was detected as an outlier (true) or inlier (false).
-     * The vector may be left unmodified if the underlying optimal
-     * transformation method does not handle outliers (non-robust estimators).
+    /** A vector of those correspondence indices that were detected as outliers.
      */
-    mrpt::optional_ref<std::vector<bool>> outliers;
+    std::vector<std::size_t> outliers;
 };
 
 }  // namespace mp2p_icp

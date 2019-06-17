@@ -37,18 +37,28 @@ struct Pairings_GaussNewton
     /// \note on MRPT naming convention: "this"=global; "other"=local.
     mrpt::tfest::TMatchingPairList paired_points;
 
-    /** Weights for paired_points: each entry specifies how many points have the
-     * given (mapped second value) weight, in the same order as stored in
-     * paired_points */
-    std::vector<std::pair<std::size_t, double>> point_weights;
-
     TMatchedPointPlaneList paired_pt2pl;
+
+    /** Default weight (i.e. scalar information matrix) of point-to-point
+     * pairings. \sa point_weights */
+    double weight_point2point{1.0};
+
+    /** Weight (i.e. scalar information matrix) of point-to-plane pairings */
+    double weight_point2plane{1.0};
+
+    /** If non-empty, overrides weight_point2point.
+     * This contains weights for paired_points: each entry specifies how many
+     * points have the given (mapped second value) weight, in the same order as
+     * stored in paired_points. */
+    std::vector<std::pair<std::size_t, double>> point_weights;
 
     bool                 use_robust_kernel{true};
     double               robust_kernel_param{0.05};  /// [meters]
-    std::size_t          max_iterations{25};
-    double               min_delta{1e-9};
+    std::size_t          max_iterations{20};
+    double               min_delta{1e-6};
     mrpt::poses::CPose3D initial_guess;
+
+    bool verbose{false};
 
     bool empty() const { return paired_points.empty() && paired_pt2pl.empty(); }
 };

@@ -13,6 +13,7 @@
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <Eigen/Dense>
+#include <iostream>
 
 using namespace mp2p_icp;
 
@@ -32,10 +33,16 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
     const auto nErrorTerms = nPt2Pt * 3 + nPt2Pl;
 
-    Eigen::VectorXd err(nErrorTerms);
-    Eigen::MatrixXd J(nErrorTerms, 6);
+    Eigen::VectorXd                          err(nErrorTerms);
+    Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
 
-    double w_pt = 1.0, w_pl = 50.0;
+    double w_pt = in.weight_point2point, w_pl = in.weight_point2plane;
+
+    const bool  has_per_pt_weight       = !in.point_weights.empty();
+    auto        cur_point_block_weights = in.point_weights.begin();
+    std::size_t cur_point_block_start   = 0;
+
+    MRPT_TODO("Implement robust Kernel in this solver");
 
     for (size_t iter = 0; iter < in.max_iterations; iter++)
     {
@@ -64,6 +71,20 @@ void mp2p_icp::optimal_tf_gauss_newton(
                  ).finished();
             // clang-format on
 
+            // Get weight:
+            if (has_per_pt_weight)
+            {
+                if (idx_pt >=
+                    cur_point_block_start + cur_point_block_weights->first)
+                {
+                    ASSERT_(cur_point_block_weights != in.point_weights.end());
+                    ++cur_point_block_weights;  // move to next block
+                    cur_point_block_start = idx_pt;
+                }
+                w_pt = cur_point_block_weights->second;
+            }
+
+            // Build Jacobian:
             J.block<3, 6>(idx_pt * 3, 0) = w_pt * J1 * dDexpe_de.asEigen();
         }
 
@@ -113,8 +134,11 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
         result.optimal_pose = result.optimal_pose + dE;
 
-        //        std::cout << "[P2P GN] iter:" << iter << " err:" << err.norm()
-        //                  << " delta:" << delta.transpose() << "\n";
+        if (in.verbose)
+        {
+            std::cout << "[P2P GN] iter:" << iter << " err:" << err.norm()
+                      << " delta:" << delta.transpose() << "\n";
+        }
 
         // Simple convergence test:
         if (delta.norm() < in.min_delta) break;
