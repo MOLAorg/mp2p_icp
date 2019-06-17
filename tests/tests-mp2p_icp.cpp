@@ -458,7 +458,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     try
     {
         auto& rnd = mrpt::random::getRandomGenerator();
-        rnd.randomize();
+        rnd.randomize(1234);  // for reproducible tests
 
         const double nXYZ = 0.1;  // [meters] std. noise of XYZ points
         const double nN   = mrpt::DEG2RAD(0.5);  // normals noise
