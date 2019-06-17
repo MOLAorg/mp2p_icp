@@ -27,7 +27,7 @@
 
 // Used to validate OLAE. However, it may make the Gauss-Newton solver, or the
 // robust kernel with outliers to fail.
-static bool TEST_LARGE_ROTATIONS = true;
+static bool TEST_LARGE_ROTATIONS = false;
 // nullptr != ::getenv("TEST_LARGE_ROTATIONS");
 
 static bool DO_SAVE_STAT_FILES = nullptr != ::getenv("DO_SAVE_STAT_FILES");
@@ -104,13 +104,13 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
     }
     else
     {
-        Dx = rnd.drawUniform(-3.0, 3.0);
-        Dy = rnd.drawUniform(-3.0, 3.0);
-        Dz = rnd.drawUniform(-3.0, 3.0);
+        Dx = rnd.drawUniform(-1.0, 1.0);
+        Dy = rnd.drawUniform(-1.0, 1.0);
+        Dz = rnd.drawUniform(-1.0, 1.0);
 
-        yaw   = mrpt::DEG2RAD(rnd.drawUniform(-20.0, 20.0));
-        pitch = mrpt::DEG2RAD(rnd.drawUniform(-20.0, 20.0));
-        roll  = mrpt::DEG2RAD(rnd.drawUniform(-20.0, 20.0));
+        yaw   = mrpt::DEG2RAD(rnd.drawUniform(-5.0, 5.0));
+        pitch = mrpt::DEG2RAD(rnd.drawUniform(-5.0, 5.0));
+        roll  = mrpt::DEG2RAD(rnd.drawUniform(-5.0, 5.0));
     }
 
     const auto pose = mrpt::poses::CPose3D(Dx, Dy, Dz, yaw, pitch, roll);
@@ -268,8 +268,8 @@ bool test_icp_algos(
     // Collect stats: columns are (see write TXT to file code at the bottom)
     mrpt::math::CMatrixDouble stats(num_reps, 1 + 3 + 3);
 
-    double avr_err_olea = 0, avr_err_horn = 0, avr_err_gn = 0;
-    double avr_xyz_err_olea = 0, avr_xyz_err_horn = 0, avr_xyz_err_gn = 0;
+    double rmse_olea = 0, rmse_horn = 0, rmse_gn = 0;
+    double rmse_xyz_olea = 0, rmse_xyz_horn = 0, rmse_xyz_gn = 0;
 
     for (size_t rep = 0; rep < num_reps; rep++)
     {
@@ -340,8 +340,8 @@ bool test_icp_algos(
             stats(rep, 0)     = dt_last;
             stats(rep, 1)     = err_log_n;
             stats(rep, 3 + 1) = err_xyz;
-            avr_err_olea += err_log_n;
-            avr_xyz_err_olea += err_xyz;
+            rmse_olea += mrpt::square(err_log_n);
+            rmse_xyz_olea += mrpt::square(err_xyz);
         }
 
         // ========  TEST: Classic Horn ========
@@ -369,8 +369,8 @@ bool test_icp_algos(
 
             stats(rep, 2)     = err_log_n;
             stats(rep, 3 + 2) = err_xyz;
-            avr_err_horn += err_log_n;
-            avr_xyz_err_horn += err_xyz;
+            rmse_horn += mrpt::square(err_log_n);
+            rmse_xyz_horn += mrpt::square(err_xyz);
         }
 
         // ========  TEST: GaussNewton method ========
@@ -407,18 +407,18 @@ bool test_icp_algos(
 
             stats(rep, 3)     = err_log_n;
             stats(rep, 3 + 3) = err_xyz;
-            avr_err_gn += err_log_n;
-            avr_xyz_err_gn += err_xyz;
+            rmse_gn += mrpt::square(err_log_n);
+            rmse_xyz_gn += mrpt::square(err_xyz);
         }
     }  // for each repetition
 
     // RMSE:
-    avr_err_olea     = std::sqrt(avr_err_olea / num_reps);
-    avr_xyz_err_olea = std::sqrt(avr_xyz_err_olea / num_reps);
-    avr_err_horn     = std::sqrt(avr_err_horn / num_reps);
-    avr_xyz_err_horn = std::sqrt(avr_xyz_err_horn / num_reps);
-    avr_err_gn       = std::sqrt(avr_err_gn / num_reps);
-    avr_xyz_err_gn   = std::sqrt(avr_xyz_err_gn / num_reps);
+    rmse_olea     = std::sqrt(rmse_olea / num_reps);
+    rmse_xyz_olea = std::sqrt(rmse_xyz_olea / num_reps);
+    rmse_horn     = std::sqrt(rmse_horn / num_reps);
+    rmse_xyz_horn = std::sqrt(rmse_xyz_horn / num_reps);
+    rmse_gn       = std::sqrt(rmse_gn / num_reps);
+    rmse_xyz_gn   = std::sqrt(rmse_xyz_gn / num_reps);
 
     const double dt_olea = profiler.getMeanTime("olea_match");
     const double dt_horn = profiler.getMeanTime("se3_l2");
@@ -431,14 +431,14 @@ bool test_icp_algos(
               << "\n"
               << " -GaussNewton output  : " << res_gn.optimal_pose.asString()
               << "\n"
-              << " -OLAE SO3 rmse        : " << avr_err_olea
-              << " XYZ rmse: " << avr_xyz_err_olea
-              << "  Time: " << dt_olea * 1e6 << " [us]\n"
-              << " -Horn SO3 rmse        : " << avr_err_horn
-              << " XYZ rmse: " << avr_xyz_err_horn
-              << "  Time: " << dt_horn * 1e6 << " [us]\n"
-              << " -GaussNewton SO3 rmse : " << avr_err_gn
-              << " XYZ rmse: " << avr_xyz_err_gn << "  Time: " << dt_gn * 1e6
+              << " -OLAE SO3 rmse        : " << rmse_olea
+              << " XYZ rmse: " << rmse_xyz_olea << "  Time: " << dt_olea * 1e6
+              << " [us]\n"
+              << " -Horn SO3 rmse        : " << rmse_horn
+              << " XYZ rmse: " << rmse_xyz_horn << "  Time: " << dt_horn * 1e6
+              << " [us]\n"
+              << " -GaussNewton SO3 rmse : " << rmse_gn
+              << " XYZ rmse: " << rmse_xyz_gn << "  Time: " << dt_gn * 1e6
               << " [us]\n";
 
     if (DO_SAVE_STAT_FILES)
