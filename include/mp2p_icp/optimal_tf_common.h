@@ -41,6 +41,27 @@ struct matched_line_t
 };
 using TMatchedLineList = std::vector<matched_line_t>;
 
+/** Vector of pairings that are considered outliers, from those in the
+ * corresponding `Pairings_Common` structure.
+ *
+ * \note Indices are always assumed to be sorted in these containers.
+ */
+struct OutlierIndices
+{
+    std::vector<std::size_t> point2point;
+    std::vector<std::size_t> line2line;
+    std::vector<std::size_t> plane2plane;
+
+    inline bool empty() const
+    {
+        return point2point.empty() && line2line.empty() && plane2plane.empty();
+    }
+    inline std::size_t size() const
+    {
+        return point2point.size() + line2line.size() + plane2plane.size();
+    }
+};
+
 /** The is the output structure for all optimal transformation methods.
  */
 struct OptimalTF_Result
@@ -48,9 +69,8 @@ struct OptimalTF_Result
     mrpt::poses::CPose3D optimal_pose;
     double               optimal_scale{1.0};
 
-    /** A vector of those correspondence indices that were detected as outliers.
-     */
-    std::vector<std::size_t> outliers;
+    /** Correspondence that were detected as outliers. */
+    OutlierIndices outliers;
 };
 
 /** Common input data for OLAE and Horn's solvers. */
@@ -123,6 +143,12 @@ struct Pairings_Common
 
     /** @} */
 };
+
+/** Evaluates the centroids [ct_other, ct_this] for point-to-point
+ * correspondences only, taking into account the current guess for outliers
+ */
+std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D> eval_centroids_robust(
+    const Pairings_Common& in, const OutlierIndices& outliers);
 
 /** @} */
 

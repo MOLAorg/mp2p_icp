@@ -21,20 +21,13 @@ namespace mp2p_icp
 /** \addtogroup  mp2p_icp_grp
  * @{ */
 
-/** Inherits from the common set of pairings data, and adds weights information.
- *
- */
-struct Pairings_OLAE : public Pairings_Common
-{
-};
-
 /** OLAE algorithm to find the SE(3) optimal transformation given a set of
  * correspondences between points-points, lines-lines, planes-planes. Refer to
  * technical report: Jose-Luis Blanco-Claraco. OLAE-ICP: Robust and fast
  * alignment of geometric features with the optimal linear attitude estimator,
  * Arxiv 2019.
  */
-void optimal_tf_olae(const Pairings_OLAE& in, OptimalTF_Result& result);
+void optimal_tf_olae(const Pairings_Common& in, OptimalTF_Result& result);
 
 /** @} */
 

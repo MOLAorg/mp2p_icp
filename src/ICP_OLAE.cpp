@@ -22,7 +22,7 @@ void ICP_OLAE::impl_ICP_iteration(
 {
     MRPT_START
     // the global list of pairings:
-    Pairings_OLAE pairings;
+    Pairings_Common pairings;
 
     // Correspondences for each point layer:
     // ---------------------------------------

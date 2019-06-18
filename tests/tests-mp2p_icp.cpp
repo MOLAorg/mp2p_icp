@@ -300,15 +300,17 @@ bool test_icp_algos(
         // to show the result of the last iteration at end
         gt_pose = this_gt_pose;
 
+        mp2p_icp::Pairings_Common in_common;
+        in_common.paired_points     = pointPairs;
+        in_common.paired_planes     = planePairs;
+        in_common.use_robust_kernel = false;  // this requires a first guess
+        in_common.use_scale_outlier_detector = use_robust;
+
         // ========  TEST: olae_match ========
         {
-            mp2p_icp::Pairings_OLAE in;
-            in.paired_points     = pointPairs;
-            in.paired_planes     = planePairs;
-            in.use_robust_kernel = false;  // this requires a first guess
-            in.use_scale_outlier_detector = use_robust;
-
             profiler.enter("olea_match");
+
+            mp2p_icp::Pairings_Common in = in_common;
 
             mp2p_icp::optimal_tf_olae(in, res_olae);
 
@@ -344,7 +346,7 @@ bool test_icp_algos(
         // ========  TEST: Classic Horn ========
         {
             profiler.enter("se3_l2");
-            mp2p_icp::optimal_tf_horn(pointPairs, res_horn);
+            mp2p_icp::optimal_tf_horn(in_common, res_horn);
             profiler.leave("se3_l2");
 
             const auto pos_error = gt_pose - res_horn.optimal_pose;
@@ -459,6 +461,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const double nXYZ = 0.001;  // [meters] std. noise of XYZ points
         const double nN   = mrpt::DEG2RAD(0.5);  // normals noise
 
+#if 0
         // arguments: nPts, nLines, nPlanes
         // Points only. Noiseless:
         ASSERT_(test_icp_algos(3 /*pt*/, 0 /*li*/, 0 /*pl*/));
@@ -470,14 +473,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         // Points only. Noisy:
         ASSERT_(test_icp_algos(100 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
         ASSERT_(test_icp_algos(1000 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
-
+#endif
         // Planes + 1 pt. Noiseless:
-        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 1 /*pl*/));
-        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 10 /*pl*/));
-        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 100 /*pl*/));
+        ASSERT_(test_icp_algos(2 /*pt*/, 0 /*li*/, 1 /*pl*/));
+        ASSERT_(test_icp_algos(2 /*pt*/, 0 /*li*/, 10 /*pl*/));
+        ASSERT_(test_icp_algos(2 /*pt*/, 0 /*li*/, 100 /*pl*/));
 
         // Points and planes, noisy.
-        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 1 /*pl*/, nXYZ, nN));
+        ASSERT_(test_icp_algos(2 /*pt*/, 0 /*li*/, 1 /*pl*/, nXYZ, nN));
         ASSERT_(test_icp_algos(10 /*pt*/, 0 /*li*/, 10 /*pl*/, nXYZ, nN));
         ASSERT_(test_icp_algos(100 /*pt*/, 0 /*li*/, 100 /*pl*/, nXYZ, nN));
 
