@@ -18,31 +18,58 @@
 
 using namespace mp2p_icp;
 
-/** Rotates a vector along +Z 90 degrees CCW */
-static auto vector_rot_Z_90d_CCW(const mrpt::math::TVector3D& v)
+// Convert to quaternion by normalizing q=[1, optim_rot], then to rot. matrix:
+static mrpt::poses::CPose3D gibbs2pose(const Eigen::Vector3d& v)
 {
-    return mrpt::math::TVector3D(-v.y, v.x, v.z);
+    auto       x = v[0], y = v[1], z = v[2];
+    const auto r = 1.0 / std::sqrt(1.0 + x * x + y * y + z * z);
+    x *= r;
+    y *= r;
+    z *= r;
+    auto q = mrpt::math::CQuaternionDouble(r, -x, -y, -z);
+
+    // Quaternion to 3x3 rot matrix:
+    return mrpt::poses::CPose3D(q, .0, .0, .0);
 }
 
-/** Core of the OLAE algorithm.
- * Factored out here so it can be re-evaluated if the solution is near the Gibbs
- * vector singularity (|Phi|~= \pi)
- * (Refer to technical report for details) */
-static std::tuple<Eigen::Matrix3d, Eigen::Vector3d, std::vector<std::size_t>>
-    olae_build_linear_system(
-        const Pairings_OLAE& in, const mrpt::math::TPoint3D& ct_other,
-        const mrpt::math::TPoint3D& ct_this,
-        const bool                  do_relinearize_singularity)
+/** The systems built by olae_build_linear_system.
+ * The system is: "M g = v".
+ *
+ * However, if the solution is near the Gibbs vector singularity (|Phi|~= \pi)
+ * we may need to use the alternative systems built by the
+ * "sequential rotation method" [shuster1981attitude].
+ *
+ * (Refer to technical report for details)
+ */
+struct OLAE_LinearSystems
+{
+    Eigen::Matrix3d M, Mx, My, Mz;
+    Eigen::Vector3d v, vx, vy, vz;
+
+    /** Attitude profile matrix */
+    Eigen::Matrix3d B;
+
+    std::vector<std::size_t> outlierIndices;
+};
+
+/** Core of the OLAE algorithm  */
+static OLAE_LinearSystems olae_build_linear_system(
+    const Pairings_OLAE& in, const mrpt::math::TPoint3D& ct_other,
+    const mrpt::math::TPoint3D& ct_this)
 {
     MRPT_START
 
     using mrpt::math::TPoint3D;
     using mrpt::math::TVector3D;
 
+    OLAE_LinearSystems res;
+
     // Build the linear system: M g = v
-    Eigen::Matrix3d          M = Eigen::Matrix3d::Zero();
-    Eigen::Vector3d          v = Eigen::Vector3d::Zero();
-    std::vector<std::size_t> outlierIndices;
+    res.M = Eigen::Matrix3d::Zero();
+    res.v = Eigen::Vector3d::Zero();
+
+    // Attitude profile matrix:
+    res.B = Eigen::Matrix3d::Zero();
 
     const auto nPoints     = in.paired_points.size();
     const auto nLines      = in.paired_lines.size();
@@ -109,10 +136,16 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d, std::vector<std::size_t>>
             bi = TVector3D(p.this_x, p.this_y, p.this_z) - ct_this;
             ri = TVector3D(p.other_x, p.other_y, p.other_z) - ct_other;
             const auto bi_n = bi.norm(), ri_n = ri.norm();
-            ASSERT_ABOVE_(bi_n, 1e-8);
-            ASSERT_ABOVE_(ri_n, 1e-8);
-            // (Note: ideally, both norms should be equal if noiseless and a
-            // real pairing)
+
+            if (bi_n < 1e-4 || ri_n < 1e-4)
+            {
+                // In the rare event of a point (almost) exactly on the
+                // centroid, just discard it:
+                continue;
+            }
+
+            // Note: ideally, both norms should be equal if noiseless and a
+            // real pairing. Let's use this property to detect outliers:
             bi *= 1.0 / bi_n;
             ri *= 1.0 / ri_n;
 
@@ -123,7 +156,7 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d, std::vector<std::size_t>>
                 if (scale_mismatch > in.scale_outlier_threshold)
                 {
                     // Discard this pairing:
-                    outlierIndices.push_back(i);
+                    res.outlierIndices.push_back(i);
                     continue;  // Skip (same effect than: wi = 0)
                 }
             }
@@ -170,18 +203,14 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d, std::vector<std::size_t>>
             }
         }
 
-        // If we are in a second stage, let's relinearize around a rotation
-        // of +PI/2 along +Z, to avoid working near the Gibbs vector
-        // singularity:
-        if (do_relinearize_singularity)
-        {
-            // Rotate:
-            ri = vector_rot_Z_90d_CCW(ri);
-        }
-
         ASSERT_(wi > .0);
         w_sum += wi;
 
+        // We will evaluate M from an alternative expression below from the
+        // attitude profile matrix B instead, since it seems to be slightly more
+        // stable, numerically. The original code for M is left here for
+        // reference, though.
+#if 0
         // M+=(1/2)* ([s_i]_{x})^2
         // with: s_i = b_i + r_i
         const double sx = bi.x + ri.x, sy = bi.y + ri.y, sz = bi.z + ri.z;
@@ -211,13 +240,21 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d, std::vector<std::size_t>>
            c02, c12, c22 ).finished();
         // clang-format on
 
-        /* v-= [b_i]_{x}  r_i
+        // res.M += wi * dM;
+#endif
+
+        /* v-= weight *  [b_i]_{x}  r_i
          *  Each term is:
-         *  ⎡by⋅rz - bz⋅ry ⎤
-         *  ⎢              ⎥
-         *  ⎢-bx⋅rz + bz⋅rx⎥
-         *  ⎢              ⎥
-         *  ⎣bx⋅ry - by⋅rx ⎦
+         *  ⎡by⋅rz - bz⋅ry ⎤   ⎡ B23 - B32 ⎤
+         *  ⎢              ⎥   |           ⎥
+         *  ⎢-bx⋅rz + bz⋅rx⎥ = | B31 - B13 ⎥
+         *  ⎢              ⎥   |           ⎥
+         *  ⎣bx⋅ry - by⋅rx ⎦   ⎣ B12 - B21 ⎦
+         *
+         * B (attitude profile matrix):
+         *
+         * B+= weight * (b_i * r_i')
+         *
          */
 
         // clang-format off
@@ -227,14 +264,24 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d, std::vector<std::size_t>>
            (bi.x * ri.y - bi.y * ri.x) ).finished();
         // clang-format on
 
-        M += wi * dM;
-        v -= wi * dV;
+        res.v -= wi * dV;
+
+        // clang-format off
+        const auto dB = (Eigen::Matrix3d() <<
+           bi.x * ri.x, bi.x * ri.y, bi.x * ri.z,
+           bi.y * ri.x, bi.y * ri.y, bi.y * ri.z,
+           bi.z * ri.x, bi.z * ri.y, bi.z * ri.z).finished();
+        // clang-format on
+        res.B += wi * dB;
     }
 
+    // Normalize weights. OLAE assumes \sum(w_i) = 1.0
     if (w_sum > .0)
     {
-        M *= (1.0 / w_sum);
-        v *= (1.0 / w_sum);
+        const auto f = (1.0 / w_sum);
+        res.M *= f;
+        res.v *= f;
+        res.B *= f;
     }
     else
     {
@@ -243,32 +290,65 @@ static std::tuple<Eigen::Matrix3d, Eigen::Vector3d, std::vector<std::size_t>>
     }
 
     // The missing (1/2) from the formulas above:
-    M *= 0.5;
+    res.M *= 0.5;
 
-    return {M, v, outlierIndices};
+    // Now, compute the other three sets of linear systems, corresponding
+    // to the "sequential rotation method" [shuster1981attitude], so we can
+    // later keep the best one (i.e. the one with the largest |M|).
+    {
+        const Eigen::Matrix3d S = res.B + res.B.transpose();
+        const double          p = res.B.trace() + 1;
+        const double          m = res.B.trace() - 1;
+        // Short cut:
+        const auto& v = res.v;
+
+        // Set #0: M g=v, without further rotations (the system built above).
+        // clang-format off
+        res.M = (Eigen::Matrix3d() <<
+           S(0,0)-p,  S(0,1), S(0,2),
+           S(0,1),   S(1,1)-p, S(1,2),
+           S(0,2),   S(1,2),  S(2,2)-p ).finished();
+
+        const auto &M0 = res.M; // shortcut
+        const double z1 = v[0], z2 = v[1], z3 = v[2];
+
+        // Set #1: rotating 180 deg around "x":
+        // clang-format off
+        res.Mx = (Eigen::Matrix3d() <<
+           m     ,      -z3  ,     z2,
+           -z3   ,  M0(2,2),     -S(1,2),
+           z2    ,  -S(1,2),    M0(1,1)).finished();
+        res.vx = (Eigen::Vector3d() <<
+            -z1, S(0,2), -S(0,1)
+            ).finished();
+        // clang-format on
+
+        // Set #2: rotating 180 deg around "y":
+        // clang-format off
+        res.My = (Eigen::Matrix3d() <<
+           M0(2,2),     z3  ,     -S(0,2),
+           z3     ,       m ,     -z1,
+         -S(0,2)  ,     -z1 ,   M0(0,0)).finished();
+        res.vy = (Eigen::Vector3d() <<
+            -S(1,2), -z2, S(0,1)
+            ).finished();
+        // clang-format on
+
+        // Set #3: rotating 180 deg around "z":
+        // clang-format off
+        res.Mz = (Eigen::Matrix3d() <<
+           M0(1,1),  -S(0,1),     -z2,
+          -S(0,1) ,  M0(0,0),      z1,
+             -z2  ,      z1 ,      m).finished();
+        res.vz = (Eigen::Vector3d() <<
+            S(1,2), -S(0,2), -z3
+            ).finished();
+        // clang-format on
+    }
+
+    return res;
 
     MRPT_END
-}
-
-// "Markley, F. L., & Mortari, D. (1999). How to estimate attitude from
-// vector observations."
-static double olae_estimate_Phi(const double M_det, std::size_t n)
-{
-    return std::acos((M_det / (n == 2 ? -1.0 : -1.178)) - 1.);
-}
-
-// Convert to quaternion by normalizing q=[1, optim_rot], then to rot. matrix:
-static mrpt::poses::CPose3D gibbs2pose(const Eigen::Vector3d& v)
-{
-    auto       x = v[0], y = v[1], z = v[2];
-    const auto r = 1.0 / std::sqrt(1.0 + x * x + y * y + z * z);
-    x *= r;
-    y *= r;
-    z *= r;
-    auto q = mrpt::math::CQuaternionDouble(r, -x, -y, -z);
-
-    // Quaternion to 3x3 rot matrix:
-    return mrpt::poses::CPose3D(q, .0, .0, .0);
 }
 
 // Evaluates the centroids [ct_other, ct_this] for points and plane
@@ -370,11 +450,6 @@ void mp2p_icp::optimal_tf_olae(
     //   p_this = pose \oplus p_other
     //   p_A    = pose \oplus p_B      --> pB = p_A \ominus pose
 
-    const auto nPoints     = in.paired_points.size();
-    const auto nLines      = in.paired_lines.size();
-    const auto nPlanes     = in.paired_planes.size();
-    const auto nAllMatches = nPoints + nLines + nPlanes;
-
     // Reset output to defaults:
     result = OptimalTF_Result();
 
@@ -391,64 +466,94 @@ void mp2p_icp::optimal_tf_olae(
         eval_centroids_robust(in, result.outliers /* empty for now  */);
 
     // Build the linear system: M g = v
-    auto [M, v, outliers] = olae_build_linear_system(
-        in, ct_other, ct_this, false /*dont relinearize singularity*/);
+    OLAE_LinearSystems linsys = olae_build_linear_system(in, ct_other, ct_this);
+
+    MRPT_TODO("Refactor to avoid duplicated code? Is it possible?");
 
     // Re-evaluate the centroids, now that we have a guess on outliers.
-    if (!outliers.empty())
+    if (!linsys.outlierIndices.empty())
     {
         // Re-evaluate the centroids:
         const auto [new_ct_other, new_ct_this] =
-            eval_centroids_robust(in, outliers);
+            eval_centroids_robust(in, linsys.outlierIndices);
 
         ct_other = new_ct_other;
         ct_this  = new_ct_this;
 
         // And rebuild the linear system with the new values:
-        auto [new_M, new_v, new_outliers] = olae_build_linear_system(
-            in, ct_other, ct_this, false /*dont relinearize singularity*/);
-
-        M = new_M;
-        v = new_v;
+        linsys = olae_build_linear_system(in, ct_other, ct_this);
     }
 
-    // We are finding this optimal rotation, as a Gibbs vector:
-    Eigen::Vector3d optimal_rot;
+    // We are finding the optimal rotation "g", as a Gibbs vector.
+    // Solve linear system for optimal rotation: M g = v
 
-    // Solve linear system for optimal rotation:
-    const double Md = M.determinant();
+    const double detM_orig = std::abs(linsys.M.determinant()),
+                 detMx     = std::abs(linsys.Mx.determinant()),
+                 detMy     = std::abs(linsys.My.determinant()),
+                 detMz     = std::abs(linsys.Mz.determinant());
 
-    // Estimate |Phi|:
-    const double estPhi1 = olae_estimate_Phi(Md, nAllMatches);
+#if 0
+    // clang-format off
+    std::cout << " |M_orig|= " << detM_orig << "\n"
+                 " |M_x|   = " << detMx << "\n"
+                 " |M_t|   = " << detMy << "\n"
+                 " |M_z|   = " << detMz << "\n";
+    // clang-format on
+#endif
 
-    // Threshold to decide whether to do a re-linearization:
-    const bool do_relinearize = (estPhi1 > in.OLAE_relinearize_threshold);
-
-    if (do_relinearize)
+    if (detM_orig > mrpt::max3(detMx, detMy, detMz))
     {
-        // relinearize on a different orientation:
-        const auto [M2, v2, outliers2] = olae_build_linear_system(
-            in, ct_other, ct_this, true /*DO relinearize singularity*/);
-
-        // Find the optimal Gibbs vector:
-        optimal_rot     = M2.colPivHouseholderQr().solve(v2);
-        result.outliers = outliers2;
+        // original rotation is the best numerically-determined problem:
+        const auto sol0 =
+            gibbs2pose(linsys.M.colPivHouseholderQr().solve(linsys.v));
+        result.optimal_pose = sol0;
+#if 0
+        std::cout << "M   : |M|="
+                  << mrpt::format("%16.07f", linsys.M.determinant())
+                  << " sol: " << sol0.asString() << "\n";
+#endif
+    }
+    else if (detMx > mrpt::max3(detM_orig, detMy, detMz))
+    {
+        // rotation wrt X is the best choice:
+        auto sol1 =
+            gibbs2pose(linsys.Mx.colPivHouseholderQr().solve(linsys.vx));
+        sol1                = mrpt::poses::CPose3D(0, 0, 0, 0, 0, M_PI) + sol1;
+        result.optimal_pose = sol1;
+#if 0
+        std::cout << "M_x : |M|="
+                  << mrpt::format("%16.07f", linsys.Mx.determinant())
+                  << " sol: " << sol1.asString() << "\n";
+#endif
+    }
+    else if (detMy > mrpt::max3(detM_orig, detMx, detMz))
+    {
+        // rotation wrt Y is the best choice:
+        auto sol2 =
+            gibbs2pose(linsys.My.colPivHouseholderQr().solve(linsys.vy));
+        sol2                = mrpt::poses::CPose3D(0, 0, 0, 0, M_PI, 0) + sol2;
+        result.optimal_pose = sol2;
+#if 0
+        std::cout << "M_y : |M|="
+                  << mrpt::format("%16.07f", linsys.My.determinant())
+                  << " sol: " << sol2.asString() << "\n";
+#endif
     }
     else
     {
-        // Find the optimal Gibbs vector:
-        optimal_rot     = M.colPivHouseholderQr().solve(v);
-        result.outliers = outliers;
+        // rotation wrt Z is the best choice:
+        auto sol3 =
+            gibbs2pose(linsys.Mz.colPivHouseholderQr().solve(linsys.vz));
+        sol3                = mrpt::poses::CPose3D(0, 0, 0, M_PI, 0, 0) + sol3;
+        result.optimal_pose = sol3;
+#if 0
+        std::cout << "M_z : |M|="
+                  << mrpt::format("%16.07f", linsys.Mz.determinant())
+                  << " sol: " << sol3.asString() << "\n";
+#endif
     }
 
-    result.optimal_pose = gibbs2pose(optimal_rot);
-
-    // Undo transformation above:
-    if (do_relinearize)
-    {
-        result.optimal_pose = result.optimal_pose +
-                              mrpt::poses::CPose3D(0, 0, 0, M_PI * 0.5, 0, 0);
-    }
+    result.outliers = linsys.outlierIndices;
 
     // Use centroids to solve for optimal translation:
     mrpt::math::TPoint3D pp;

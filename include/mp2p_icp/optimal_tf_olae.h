@@ -78,10 +78,6 @@ struct Pairings_OLAE
      * most obvious outliers. Refer to the technical report. */
     double scale_outlier_threshold{1.20};
 
-    /** Threshold for doing relinearization (2nd stage). Refer to technical
-     * report. */
-    double OLAE_relinearize_threshold{mrpt::DEG2RAD(170.0)};
-
     /// See docs for Weights
     Weights weights;
 
