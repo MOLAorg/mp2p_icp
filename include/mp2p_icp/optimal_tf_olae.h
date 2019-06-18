@@ -26,45 +26,6 @@ namespace mp2p_icp
  */
 struct Pairings_OLAE : public Pairings_Common
 {
-    /** Weights for paired_points: each entry specifies how many points have the
-     * given (mapped second value) weight, in the same order as stored in
-     * paired_points.
-     * If empty, all point layers will have equal weights. If weights is
-     * provided for only some layers, the layers not listed here will be totally
-     * ignored.
-     */
-    std::vector<std::pair<std::size_t, double>> point_weights;
-
-    /** Relative weight of points, lines, and planes. They will be automatically
-     * normalized to sum the unity, so feel free of setting weights at any
-     * convenient scale. Weights are used in two steps: in the orientation cost
-     * function, and in the evaluation of the centroids to find the final
-     * translation; hence we have two sets of weights.
-     */
-    struct Weights
-    {
-        struct Attitude
-        {
-            double points{1.0};  //!< Weight for points in attitude estimation
-            double lines{1.0};  //!< Weight for lines in attitude estimation
-            double planes{1.0};  //!< Weight for planes in attitude estimation
-        } attitude;
-
-        struct Translation
-        {
-            double points{1.0};  //!< Points weight in translation estimation
-            double planes{1.0};  //!< Planes weight in translation estimation
-        } translation;
-    };
-
-    /** The current guess for the sought transformation. Must be supplied if
-     * use_robust_kernel==true. */
-    const mrpt::poses::CPose3D current_estimate_for_robust;
-    bool                       use_robust_kernel{false};
-    double robust_kernel_param{mrpt::DEG2RAD(0.1)}, robust_kernel_scale{400.0};
-
-    /// See docs for Weights
-    Weights weights;
 };
 
 /** OLAE algorithm to find the SE(3) optimal transformation given a set of

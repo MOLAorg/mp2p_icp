@@ -251,7 +251,7 @@ bool test_icp_algos(
         static_cast<unsigned int>(numPlanes), xyz_noise_std, n_err_std,
         outliers_ratio, use_robust ? 1 : 0);
 
-    std::cout << "[TEST] " << tstName << "\n";
+    std::cout << "\n[TEST] " << tstName << "\n";
 
     mrpt::system::CTimeLogger profiler;
     profiler.setMinLoggingLevel(mrpt::system::LVL_ERROR);  // to make it quiet
@@ -287,6 +287,16 @@ bool test_icp_algos(
             pA, pB, pointPairs, plA, plB, planePairs, pt2plPairs, xyz_noise_std,
             n_err_std, outliers_ratio);
 
+#if 0
+        // Also add the plane-centroid-to-plane-centroid as point-to-point
+        // constraints:
+        for (const auto& p : pt2plPairs)
+            pointPairs.emplace_back(
+                0, 0, /*indices not used here*/ p.pl_this.centroid.x,
+                p.pl_this.centroid.y, p.pl_this.centroid.z, p.pt_other.x,
+                p.pt_other.y, p.pt_other.z);
+#endif
+
         // to show the result of the last iteration at end
         gt_pose = this_gt_pose;
 
@@ -305,21 +315,6 @@ bool test_icp_algos(
             // const double dt_last =
             profiler.leave("olea_match");
 
-            // Check that outliers do match?
-            const auto gt_outliers_count       = this_outliers.size();
-            const auto detected_outliers_count = res_olae.outliers.size();
-#if 0
-            if (use_robust && gt_outliers_count > 0 &&
-                mrpt::abs_diff(gt_outliers_count, detected_outliers_count) /
-                        static_cast<double>(gt_outliers_count) >
-                    0.1)
-            {
-                THROW_EXCEPTION(mrpt::format(
-                    "Outlier detector mismatch: %u real outliers. %u detected.",
-                    static_cast<unsigned int>(gt_outliers_count),
-                    static_cast<unsigned int>(detected_outliers_count)));
-            }
-#endif
             // Collect stats:
 
             // Measure errors in SE(3) if we have many points, in SO(3)
@@ -347,7 +342,6 @@ bool test_icp_algos(
         }
 
         // ========  TEST: Classic Horn ========
-        if (numPts > 0 && numLines == 0 && numPlanes == 0)
         {
             profiler.enter("se3_l2");
             mp2p_icp::optimal_tf_horn(pointPairs, res_horn);
@@ -382,13 +376,6 @@ bool test_icp_algos(
             mp2p_icp::Pairings_GaussNewton in;
             in.paired_points = pointPairs;
             in.paired_pt2pl  = pt2plPairs;
-            // To make the comparison fair, also add the plane centroid to plane
-            // centroid constraints:
-            for (const auto& p : pt2plPairs)
-                in.paired_points.emplace_back(
-                    0, 0, /*indices not used here*/ p.pl_this.centroid.x,
-                    p.pl_this.centroid.y, p.pl_this.centroid.z, p.pt_other.x,
-                    p.pt_other.y, p.pt_other.z);
 
             in.use_robust_kernel = use_robust;
             // in.verbose           = true;
@@ -484,19 +471,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         ASSERT_(test_icp_algos(100 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
         ASSERT_(test_icp_algos(1000 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
 
-        // Planes only. Noiseless:
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 3 /*pl*/));
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 10 /*pl*/));
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 100 /*pl*/));
+        // Planes + 1 pt. Noiseless:
+        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 1 /*pl*/));
+        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 10 /*pl*/));
+        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 100 /*pl*/));
 
-        // Planes only. Noisy:
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 10 /*pl*/, 0, nN));
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 100 /*pl*/, 0, nN));
         // Points and planes, noisy.
-        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 3 /*pl*/));
-        ASSERT_(test_icp_algos(2 /*pt*/, 0 /*li*/, 1 /*pl*/));
-        ASSERT_(test_icp_algos(20 /*pt*/, 0 /*li*/, 10 /*pl*/, nXYZ, nN));
-        ASSERT_(test_icp_algos(400 /*pt*/, 0 /*li*/, 100 /*pl*/, nXYZ, nN));
+        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 1 /*pl*/, nXYZ, nN));
+        ASSERT_(test_icp_algos(10 /*pt*/, 0 /*li*/, 10 /*pl*/, nXYZ, nN));
+        ASSERT_(test_icp_algos(100 /*pt*/, 0 /*li*/, 100 /*pl*/, nXYZ, nN));
 
         // Points only. Noisy w. outliers:
         for (int robust = 0; robust <= 1; robust++)

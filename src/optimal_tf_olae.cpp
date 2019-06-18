@@ -90,9 +90,9 @@ static OLAE_LinearSystems olae_build_linear_system(
     // Normalized weights for attitude "waXX":
     double waPoints, waLines, waPlanes;
     {
-        const auto wPt = in.weights.attitude.points,
-                   wLi = in.weights.attitude.lines,
-                   wPl = in.weights.attitude.planes;
+        const auto wPt = in.attitude_weights.pt2pt,
+                   wLi = in.attitude_weights.l2l,
+                   wPl = in.attitude_weights.pl2pl;
 
         ASSERTMSG_(
             wPt + wLi + wPl > .0,
@@ -359,33 +359,21 @@ static std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
 {
     using mrpt::math::TPoint3D;
 
-    TPoint3D   ct_other(0, 0, 0), ct_this(0, 0, 0);
     const auto nPoints = in.paired_points.size();
     const auto nLines  = in.paired_lines.size();
     const auto nPlanes = in.paired_planes.size();
 
-    // Normalized weights for centroid "wcXX":
-    double wcPoints, wcPlanes;
-    {
-        const auto wPt = in.weights.translation.points,
-                   wPl = in.weights.translation.planes;
+    // We need more points than outliers (!)
+    ASSERT_ABOVE_(nPoints, pt2pt_outliers.size());
 
-        ASSERTMSG_(
-            wPt + wPl > .0,
-            "Both, point and plane translation weights, are <=0 (!)");
-
-        // Discount outliers:
-        const auto k =
-            1.0 / (wPt * (nPoints - pt2pt_outliers.size()) + wPl * nPlanes);
-        wcPoints = wPt * k;
-        wcPlanes = wPl * k;
-    }
+    // Normalized weights for centroids.
+    // Discount outliers.
+    const double wcPoints = 1.0 / (nPoints - pt2pt_outliers.size());
 
     // Add global coordinate of points for now, we'll convert them later to
     // unit vectors relative to the centroids:
+    TPoint3D ct_other(0, 0, 0), ct_this(0, 0, 0);
     {
-        TPoint3D ct_other_pt(0, 0, 0), ct_this_pt(0, 0, 0);
-
         std::size_t cnt             = 0;
         auto        it_next_outlier = pt2pt_outliers.begin();
         for (std::size_t i = 0; i < in.paired_points.size(); i++)
@@ -399,37 +387,14 @@ static std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
             }
             const auto& pair = in.paired_points[i];
 
-            ct_this_pt += TPoint3D(pair.this_x, pair.this_y, pair.this_z);
-            ct_other_pt += TPoint3D(pair.other_x, pair.other_y, pair.other_z);
+            ct_this += TPoint3D(pair.this_x, pair.this_y, pair.this_z);
+            ct_other += TPoint3D(pair.other_x, pair.other_y, pair.other_z);
             cnt++;
         }
         ASSERT_EQUAL_(cnt, nPoints - pt2pt_outliers.size());
 
-        ct_other_pt *= wcPoints;
-        ct_this_pt *= wcPoints;
-
-        // Add plane centroids to the computation of centroids as well:
-        TPoint3D ct_other_pl(0, 0, 0), ct_this_pl(0, 0, 0);
-        if (wcPlanes > 0)
-        {
-            for (const auto& pair : in.paired_planes)
-            {
-                ct_this_pl += pair.p_this.centroid;
-                ct_other_pl += pair.p_other.centroid;
-            }
-            ct_this_pl *= wcPlanes;
-            ct_other_pl *= wcPlanes;
-        }
-
-        // Normalize sum of centroids:
-        ct_other = ct_other_pt + ct_other_pl;
-        ct_this  = ct_this_pt + ct_this_pl;
-
-        // sanity check of weights:
-        const double expected_sum_1 =
-            wcPlanes * in.paired_planes.size() +
-            wcPoints * (nPoints - pt2pt_outliers.size());
-        ASSERT_BELOW_(std::abs(expected_sum_1 - 1.0), 0.01);
+        ct_other *= wcPoints;
+        ct_this *= wcPoints;
     }
 
     return {ct_other, ct_this};
@@ -455,11 +420,9 @@ void mp2p_icp::optimal_tf_olae(
 
     // Normalize weights for each feature type and for each target (attitude
     // / translation):
-    ASSERT_(in.weights.attitude.points >= .0);
-    ASSERT_(in.weights.attitude.lines >= .0);
-    ASSERT_(in.weights.attitude.planes >= .0);
-    ASSERT_(in.weights.translation.points >= .0);
-    ASSERT_(in.weights.translation.planes >= .0);
+    ASSERT_(in.attitude_weights.pt2pt >= .0);
+    ASSERT_(in.attitude_weights.l2l >= .0);
+    ASSERT_(in.attitude_weights.pl2pl >= .0);
 
     // Compute the centroids:
     auto [ct_other, ct_this] =
