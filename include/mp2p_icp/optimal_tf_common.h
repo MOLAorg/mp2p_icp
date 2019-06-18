@@ -15,6 +15,9 @@
 
 namespace mp2p_icp
 {
+/** \addtogroup  mp2p_icp_grp
+ * @{ */
+
 struct matched_plane_t
 {
     /** \note "this"=global, "other"=local, while finding the transformation
@@ -49,5 +52,37 @@ struct OptimalTF_Result
      */
     std::vector<std::size_t> outliers;
 };
+
+/** Common input data for OLAE and Horn's solvers. */
+struct Pairings_Common
+{
+    /// We reuse MRPT struct to allow using their matching functions.
+    /// \note on MRPT naming convention: "this"=global; "other"=local.
+    mrpt::tfest::TMatchingPairList paired_points;
+    TMatchedLineList               paired_lines;
+    TMatchedPlaneList              paired_planes;
+
+    /** Enables the use of the scale-based outlier detector. Refer to the
+     * technical report.  This robustness feature is independent from
+     * use_robust_kernel.
+     */
+    bool use_scale_outlier_detector{true};
+
+    /** If use_scale_outlier_detector==true, discard a potential point-to-point
+     * pairing if the ratio between the norm of their final vectors is larger
+     * than this value. A value of "1.0" will only allow numerically perfect
+     * pairings, so a slightly larger value is required. The closer to 1, the
+     * stricter. A much larger threshold (e.g. 5.0) would only reject the
+     * most obvious outliers. Refer to the technical report. */
+    double scale_outlier_threshold{1.20};
+
+    virtual bool empty() const
+    {
+        return paired_points.empty() && paired_planes.empty() &&
+               paired_lines.empty();
+    }
+};
+
+/** @} */
 
 }  // namespace mp2p_icp

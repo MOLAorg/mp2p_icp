@@ -8,7 +8,9 @@
 
 namespace mp2p_icp
 {
-/** Reason of iterating termination */
+/** Reason of iterating termination.
+ * \ingroup mp2p_icp_grp
+ */
 enum class IterTermReason
 {
     Undefined = 0,

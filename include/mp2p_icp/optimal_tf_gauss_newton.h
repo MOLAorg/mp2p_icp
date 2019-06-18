@@ -15,6 +15,9 @@
 
 namespace mp2p_icp
 {
+/** \addtogroup  mp2p_icp_grp
+ * @{ */
+
 struct point_plane_pair_t
 {
     /// \note "this"=global, "other"=local, while finding the transformation
@@ -68,5 +71,7 @@ struct Pairings_GaussNewton
  */
 void optimal_tf_gauss_newton(
     const Pairings_GaussNewton& in, OptimalTF_Result& result);
+
+/** @} */
 
 }  // namespace mp2p_icp
