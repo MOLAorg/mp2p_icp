@@ -376,13 +376,20 @@ bool test_icp_algos(
         }
 
         // ========  TEST: GaussNewton method ========
-        if (numPts > 3)
         {
             profiler.enter("optimal_tf_gauss_newton");
 
             mp2p_icp::Pairings_GaussNewton in;
-            in.paired_points     = pointPairs;
-            in.paired_pt2pl      = pt2plPairs;
+            in.paired_points = pointPairs;
+            in.paired_pt2pl  = pt2plPairs;
+            // To make the comparison fair, also add the plane centroid to plane
+            // centroid constraints:
+            for (const auto& p : pt2plPairs)
+                in.paired_points.emplace_back(
+                    0, 0, /*indices not used here*/ p.pl_this.centroid.x,
+                    p.pl_this.centroid.y, p.pl_this.centroid.z, p.pt_other.x,
+                    p.pt_other.y, p.pt_other.z);
+
             in.use_robust_kernel = use_robust;
             // in.verbose           = true;
 
