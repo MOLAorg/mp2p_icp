@@ -21,7 +21,7 @@ namespace mp2p_icp
 /** Visit each correspondence */
 template <class LAMBDA, class LAMBDA2>
 void visit_correspondences(
-    const Pairings_Common& in, const mrpt::math::TPoint3D& ct_other,
+    const WeightedPairings& in, const mrpt::math::TPoint3D& ct_other,
     const mrpt::math::TPoint3D& ct_this, OutlierIndices& in_out_outliers,
     LAMBDA lambda_each_pair, LAMBDA2 lambda_final,
     bool normalize_relative_point_vectors)

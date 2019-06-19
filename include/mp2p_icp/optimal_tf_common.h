@@ -42,7 +42,7 @@ struct matched_line_t
 using TMatchedLineList = std::vector<matched_line_t>;
 
 /** Vector of pairings that are considered outliers, from those in the
- * corresponding `Pairings_Common` structure.
+ * corresponding `PairingsCommon` structure.
  *
  * \note Indices are always assumed to be sorted in these containers.
  */
@@ -73,12 +73,9 @@ struct OptimalTF_Result
     OutlierIndices outliers;
 };
 
-/** Common input data for OLAE and Horn's solvers. */
-struct Pairings_Common
+/** Common pairing input data for OLAE and Horn's solvers. */
+struct PairingsCommon
 {
-    /** @name Pairings data
-     * @{ */
-
     /// We reuse MRPT struct to allow using their matching functions.
     /// \note on MRPT naming convention: "this"=global; "other"=local.
     mrpt::tfest::TMatchingPairList paired_points;
@@ -90,12 +87,11 @@ struct Pairings_Common
         return paired_points.empty() && paired_planes.empty() &&
                paired_lines.empty();
     }
+};
 
-    /** @} */
-
-    /** @name Parameters for the optimal transformation estimators
-     * @{ */
-
+/** Common weight parameters for OLAE and Horn's solvers. */
+struct WeightParameters
+{
     /** Enables the use of the scale-based outlier detector. Refer to the
      * technical report.  This robustness feature is independent from
      * use_robust_kernel.
@@ -140,15 +136,17 @@ struct Pairings_Common
     const mrpt::poses::CPose3D current_estimate_for_robust;
     bool                       use_robust_kernel{false};
     double robust_kernel_param{mrpt::DEG2RAD(0.1)}, robust_kernel_scale{400.0};
+};
 
-    /** @} */
+struct WeightedPairings : public PairingsCommon, public WeightParameters
+{
 };
 
 /** Evaluates the centroids [ct_other, ct_this] for point-to-point
  * correspondences only, taking into account the current guess for outliers
  */
 std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D> eval_centroids_robust(
-    const Pairings_Common& in, const OutlierIndices& outliers);
+    const PairingsCommon& in, const OutlierIndices& outliers);
 
 /** @} */
 

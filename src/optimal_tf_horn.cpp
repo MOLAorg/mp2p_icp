@@ -18,6 +18,8 @@
 
 using namespace mp2p_icp;
 
+MRPT_TODO("Observe: AttitudeWeights for Horn too");
+
 // The next function is code ported from our former implementation in MRPT,
 // from function: mrpt::tfest::se3_l2_internal()
 // (BSD-3 Licence)
@@ -65,7 +67,7 @@ using namespace mp2p_icp;
 //		t = ct_this-sR(ct_others)
 
 static bool se3_l2_internal(
-    const mp2p_icp::Pairings_Common& in, const mrpt::math::TPoint3D& ct_other,
+    const mp2p_icp::WeightedPairings& in, const mrpt::math::TPoint3D& ct_other,
     const mrpt::math::TPoint3D&    ct_this,
     mrpt::math::CQuaternionDouble& out_attitude,
     OutlierIndices&                in_out_outliers)
@@ -186,7 +188,7 @@ static bool se3_l2_internal(
 }
 
 void mp2p_icp::optimal_tf_horn(
-    const mp2p_icp::Pairings_Common& in, OptimalTF_Result& result)
+    const mp2p_icp::WeightedPairings& in, OptimalTF_Result& result)
 {
     MRPT_START
 
@@ -225,8 +227,8 @@ void mp2p_icp::optimal_tf_horn(
             in, ct_other, ct_this, optimal_q, result.outliers /* in/out */);
     }
 
-    double     out_scale;
-    const bool force_scale_unity = true;
+    // quaternion to rotation matrix:
+    result.optimal_pose = mrpt::poses::CPose3D(optimal_q, 0, 0, 0);
 
     // Use centroids to solve for optimal translation:
     mrpt::math::TPoint3D pp;

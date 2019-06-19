@@ -16,7 +16,7 @@ using namespace mp2p_icp;
 
 std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
     mp2p_icp::eval_centroids_robust(
-        const Pairings_Common& in, const OutlierIndices& outliers)
+        const PairingsCommon& in, const OutlierIndices& outliers)
 {
     using mrpt::math::TPoint3D;
 

@@ -34,12 +34,11 @@ struct point_plane_pair_t
 };
 using TMatchedPointPlaneList = std::vector<point_plane_pair_t>;
 
-struct Pairings_GaussNewton
+struct Pairings_GaussNewton : public PairingsCommon
 {
-    /// We reuse MRPT struct to allow using their matching functions.
-    /// \note on MRPT naming convention: "this"=global; "other"=local.
-    mrpt::tfest::TMatchingPairList paired_points;
-
+    /** In addition to base members in PairingsCommon, the Gauss-Newton method
+     * supports point-to-plane pairings:
+     */
     TMatchedPointPlaneList paired_pt2pl;
 
     /** Default weight (i.e. scalar information matrix) of point-to-point
@@ -48,6 +47,9 @@ struct Pairings_GaussNewton
 
     /** Weight (i.e. scalar information matrix) of point-to-plane pairings */
     double weight_point2plane{1.0};
+
+    /** Weight (i.e. scalar information matrix) of plane-to-plane pairings */
+    double weight_plane2plane{1.0};
 
     /** If non-empty, overrides weight_point2point.
      * This contains weights for paired_points: each entry specifies how many

@@ -53,7 +53,7 @@ struct OLAE_LinearSystems
 
 /** Core of the OLAE algorithm  */
 static OLAE_LinearSystems olae_build_linear_system(
-    const Pairings_Common& in, const mrpt::math::TPoint3D& ct_other,
+    const WeightedPairings& in, const mrpt::math::TPoint3D& ct_other,
     const mrpt::math::TPoint3D& ct_this, OutlierIndices& in_out_outliers)
 {
     MRPT_START
@@ -227,8 +227,7 @@ static OLAE_LinearSystems olae_build_linear_system(
 }
 
 // See .h docs, and associated technical report.
-void mp2p_icp::optimal_tf_olae(
-    const Pairings_Common& in, OptimalTF_Result& result)
+void mp2p_icp::optimal_tf_olae(const WeightedPairings& in, OptimalTF_Result& result)
 {
     MRPT_START
 
