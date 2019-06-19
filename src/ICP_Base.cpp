@@ -42,7 +42,8 @@ void ICP_Base::align(
 
     // Count of points:
     size_t pointcount1 = 0, pointcount2 = 0;
-    for (const auto& kv1 : pcs1.point_layers) {
+    for (const auto& kv1 : pcs1.point_layers)
+    {
         // Ignore this layer?
         if (p.weight_pt2pt_layers.count(kv1.first) == 0) continue;
 
@@ -71,12 +72,16 @@ void ICP_Base::align(
         // Call to algorithm-specific implementation of one ICP iteration:
         impl_ICP_iteration(state, p, iter_result);
 
-        if (!iter_result.success) {
+        if (!iter_result.success)
+        {
             // Nothing we can do !!
             result.terminationReason = IterTermReason::NoPairings;
             result.goodness          = 0;
             break;
         }
+
+        // Update to new solution:
+        state.current_solution = iter_result.new_solution;
 
         // If matching has not changed, we are done:
         const auto deltaSol = state.current_solution - prev_solution;
@@ -125,24 +130,26 @@ void ICP_Base::prepareMatchingParams(
 
     // Prepare params for "find pairings" for each layer & find largest point
     // cloud:
-    std::string layerOfLargestPc;
     std::size_t pointCountLargestPc = 0;
 
-    for (const auto& kv1 : state.pc1.point_layers) {
+    for (const auto& kv1 : state.pc1.point_layers)
+    {
         const bool is_layer_of_planes =
             (kv1.first == pointcloud_t::PT_LAYER_PLANE_CENTROIDS);
 
         mrpt::maps::TMatchingParams& mp = state.mps[kv1.first];
 
-        if (!is_layer_of_planes) {
+        if (!is_layer_of_planes)
+        {
             if (p.weight_pt2pt_layers.count(kv1.first) == 0) continue;
 
             const auto& m1 = kv1.second;
             ASSERT_(m1);
 
-            if (m1->size() > pointCountLargestPc) {
-                pointCountLargestPc = m1->size();
-                layerOfLargestPc    = kv1.first;
+            if (m1->size() > pointCountLargestPc)
+            {
+                pointCountLargestPc    = m1->size();
+                state.layerOfLargestPc = kv1.first;
             }
 
             // Matching params for point-to-point:
