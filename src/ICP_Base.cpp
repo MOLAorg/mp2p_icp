@@ -113,6 +113,7 @@ void ICP_Base::align(
     result.optimal_tf.mean = state.current_solution;
     result.optimal_scale   = state.current_scale;
     MRPT_TODO("covariance of the estimation");
+    // See: http://censi.mit.edu/pub/research/2007-icra-icpcov-slides.pdf
 
     MRPT_END
 }
