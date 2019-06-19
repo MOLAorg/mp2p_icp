@@ -48,7 +48,7 @@ void ICP_OLAE::impl_ICP_iteration(
         // Find closest pairings
         mrpt::tfest::TMatchingPairList mpl;
         m1->determineMatching3D(
-            m2.get(), s.current_solution, mpl, mp, s.mres.at(kv1.first));
+            m2.get(), s.current_solution, mpl, mp, s.mres[kv1.first]);
 
         // Shuffle decimated points for next iter:
         if (++mp.offset_other_map_points >= mp.decimation_other_map_points)
