@@ -108,8 +108,8 @@ static bool se3_l2_internal(
     };
 
     visit_correspondences(
-        in, ct_this, ct_other, in_out_outliers /*in/out*/, lambda_each_pair,
-        lambda_final);
+        in, ct_other, ct_this, in_out_outliers /*in/out*/, lambda_each_pair,
+        lambda_final, false /* do not make unit point vectors for Horn */);
 
     // Construct the N matrix
     auto N = mrpt::math::CMatrixDouble44::Zero();

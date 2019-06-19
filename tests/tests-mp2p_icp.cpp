@@ -45,9 +45,9 @@ TPoints generate_points(const size_t nPts)
 
     for (size_t i = 0; i < nPts; i++)
     {
-        pA[i].x = rnd.drawUniform(-50.0, 50.0);
-        pA[i].y = rnd.drawUniform(-50.0, 50.0);
-        pA[i].z = rnd.drawUniform(-50.0, 50.0);
+        pA[i].x = rnd.drawUniform(0.0, 50.0);
+        pA[i].y = rnd.drawUniform(0.0, 50.0);
+        pA[i].z = rnd.drawUniform(0.0, 50.0);
     }
     return pA;
 }
@@ -61,9 +61,9 @@ TPlanes generate_planes(const size_t nPlanes)
 
     for (size_t i = 0; i < nPlanes; i++)
     {
-        plA[i].centroid.x = rnd.drawUniform(-50.0, 50.0);
-        plA[i].centroid.y = rnd.drawUniform(-50.0, 50.0);
-        plA[i].centroid.z = rnd.drawUniform(-50.0, 50.0);
+        plA[i].centroid.x = rnd.drawUniform(0.0, 50.0);
+        plA[i].centroid.y = rnd.drawUniform(0.0, 50.0);
+        plA[i].centroid.z = rnd.drawUniform(0.0, 50.0);
 
         auto n = mrpt::math::TVector3D(
             rnd.drawUniform(-1.0, 1.0), rnd.drawUniform(-1.0, 1.0),
@@ -93,9 +93,9 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
     double Dx, Dy, Dz, yaw, pitch, roll;
     if (TEST_LARGE_ROTATIONS)
     {
-        Dx = rnd.drawUniform(-10.0, 10.0);
-        Dy = rnd.drawUniform(-10.0, 10.0);
-        Dz = rnd.drawUniform(-10.0, 10.0);
+        Dx = rnd.drawUniform(10.0, 20.0);
+        Dy = rnd.drawUniform(-30.0, -20.0);
+        Dz = rnd.drawUniform(5.0, 9.0);
 
         yaw   = mrpt::DEG2RAD(rnd.drawUniform(-180.0, 180.0));
         pitch = mrpt::DEG2RAD(rnd.drawUniform(-89.0, 89.0));

@@ -22,8 +22,9 @@ namespace mp2p_icp
 template <class LAMBDA, class LAMBDA2>
 void visit_correspondences(
     const Pairings_Common& in, const mrpt::math::TPoint3D& ct_other,
-    const mrpt::math::TPoint3D& ct_this,OutlierIndices& in_out_outliers,
-    LAMBDA lambda_each_pair, LAMBDA2 lambda_final)
+    const mrpt::math::TPoint3D& ct_this, OutlierIndices& in_out_outliers,
+    LAMBDA lambda_each_pair, LAMBDA2 lambda_final,
+    bool normalize_relative_point_vectors)
 {
     using mrpt::math::TPoint3D;
     using mrpt::math::TVector3D;
@@ -116,11 +117,16 @@ void visit_correspondences(
                 continue;
             }
 
+            // Horn requires normal relative vectors.
+            // OLAE requires unit vectors.
+            if (normalize_relative_point_vectors)
+            {
+                bi *= 1.0 / bi_n;
+                ri *= 1.0 / ri_n;
+            }
+
             // Note: ideally, both norms should be equal if noiseless and a
             // real pairing. Let's use this property to detect outliers:
-            bi *= 1.0 / bi_n;
-            ri *= 1.0 / ri_n;
-
             if (in.use_scale_outlier_detector)
             {
                 const double scale_mismatch =

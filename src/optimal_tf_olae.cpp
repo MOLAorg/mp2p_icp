@@ -163,8 +163,8 @@ static OLAE_LinearSystems olae_build_linear_system(
     };
 
     visit_correspondences(
-        in, ct_this, ct_other, in_out_outliers /*in/out*/, lambda_each_pair,
-        lambda_final);
+        in, ct_other, ct_this, in_out_outliers, lambda_each_pair, lambda_final,
+        true /* DO make unit point vectors for OLAE */);
 
     // Now, compute the other three sets of linear systems, corresponding
     // to the "sequential rotation method" [shuster1981attitude], so we can
