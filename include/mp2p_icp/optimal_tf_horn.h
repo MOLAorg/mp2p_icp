@@ -15,14 +15,15 @@
 
 namespace mp2p_icp
 {
-/** Classic Horn's solution for optimal SE(3) transformation.
- * Only accepts point-to-point pairings. No robust estimation is attempted.
+/** Classic Horn's solution for optimal SE(3) transformation, modified to
+ * accept point-to-point, line-to-line, plane-to-plane pairings.
  *
- * Just a wrapper on MRPT implementation mrpt::tfest::se3_l2()
  *
  * \note On MRPT naming convention: "this"=global; "other"=local.
  */
 void optimal_tf_horn(
-    const mrpt::tfest::TMatchingPairList& in, OptimalTF_Result& result);
+    const mp2p_icp::WeightedPairings& in, OptimalTF_Result& result);
+
+/** @} */
 
 }  // namespace mp2p_icp

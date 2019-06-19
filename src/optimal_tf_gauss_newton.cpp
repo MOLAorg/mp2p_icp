@@ -30,13 +30,15 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
     const auto nPt2Pt = in.paired_points.size();
     const auto nPt2Pl = in.paired_pt2pl.size();
+    const auto nPl2Pl = in.paired_planes.size();
 
-    const auto nErrorTerms = nPt2Pt * 3 + nPt2Pl;
+    const auto nErrorTerms = (nPt2Pt + nPl2Pl) * 3 + nPt2Pl;
 
     Eigen::VectorXd                          err(nErrorTerms);
     Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
 
-    double w_pt = in.weight_point2point, w_pl = in.weight_point2plane;
+    double       w_pt = in.weight_point2point;
+    const double w_pl = in.weight_point2plane, w_pl2pl = in.weight_plane2plane;
 
     const bool  has_per_pt_weight       = !in.point_weights.empty();
     auto        cur_point_block_weights = in.point_weights.begin();
@@ -46,6 +48,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
     for (size_t iter = 0; iter < in.max_iterations; iter++)
     {
+        // (12x6 Jacobian)
         const auto dDexpe_de =
             mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(result.optimal_pose);
 
@@ -89,6 +92,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
         }
 
         // Point-to-plane:
+        auto base_idx = nPt2Pt * 3;
         for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
         {
             // Error:
@@ -99,7 +103,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::TPoint3D g;
             result.optimal_pose.composePoint(lx, ly, lz, g.x, g.y, g.z);
 
-            err(idx_pl + nPt2Pt * 3) = p.pl_this.plane.evaluatePoint(g);
+            err(idx_pl + base_idx) = p.pl_this.plane.evaluatePoint(g);
 
             // Eval Jacobian:
             // clang-format off
@@ -119,7 +123,43 @@ void mp2p_icp::optimal_tf_gauss_newton(
             const Eigen::Matrix<double, 1, 6> Jb =
                 Jpl * J1 * dDexpe_de.asEigen();
 
-            J.block<1, 6>(idx_pl + nPt2Pt * 3, 0) = w_pl * Jb;
+            J.block<1, 6>(idx_pl + base_idx, 0) = w_pl * Jb;
+        }
+
+        // Plane-to-plane (only direction of normal vectors):
+        base_idx += nPt2Pl * 1;
+        for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
+        {
+            // Error term:
+            const auto& p = in.paired_planes[idx_pl];
+
+            const auto nl = p.p_other.plane.getNormalVector();
+            const auto ng = p.p_this.plane.getNormalVector();
+
+            const auto p_oplus_nl = result.optimal_pose.rotateVector(nl);
+
+            for (int i = 0; i < 3; i++)
+                err(i + idx_pl * 3 + base_idx) = ng[i] - p_oplus_nl[i];
+
+            // Eval Jacobian:
+
+            // df_oplus(A,p)/d_A. Section 7.3.2 tech. report:
+            // "A tutorial on SE(3) transformation parameterizations and
+            // on-manifold optimization"
+            // Modified, to discard the last I_3 block, since this particular
+            // cost function is insensible to translations.
+
+            // clang-format off
+            const Eigen::Matrix<double, 3, 12> J1 =
+                (Eigen::Matrix<double, 3, 12>() <<
+                   nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0,  0,  0,
+                    0, nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0,  0,
+                    0,  0, nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0
+                 ).finished();
+            // clang-format on
+
+            J.block<3, 6>(3 * idx_pl + base_idx, 0) =
+                w_pl2pl * J1 * dDexpe_de.asEigen();
         }
 
         // 3) Solve Gauss-Newton:

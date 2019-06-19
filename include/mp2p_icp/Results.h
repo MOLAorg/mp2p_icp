@@ -11,6 +11,9 @@
 
 namespace mp2p_icp
 {
+/** \addtogroup  mp2p_icp_grp
+ * @{ */
+
 struct Results
 {
     /** The found value (mean + covariance) of the optimal transformation of
@@ -34,5 +37,6 @@ struct Results
      * found in ill-conditioned situations (e.g. a corridor) */
     double quality{0};
 };
+/** @} */
 
 }  // namespace mp2p_icp

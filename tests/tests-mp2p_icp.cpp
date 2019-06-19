@@ -27,10 +27,9 @@
 
 // Used to validate OLAE. However, it may make the Gauss-Newton solver, or the
 // robust kernel with outliers to fail.
-static bool TEST_LARGE_ROTATIONS = false;
-// nullptr != ::getenv("TEST_LARGE_ROTATIONS");
-
-static bool DO_SAVE_STAT_FILES = nullptr != ::getenv("DO_SAVE_STAT_FILES");
+static bool TEST_LARGE_ROTATIONS = nullptr != ::getenv("TEST_LARGE_ROTATIONS");
+static bool DO_SAVE_STAT_FILES   = nullptr != ::getenv("DO_SAVE_STAT_FILES");
+static bool DO_PRINT_ALL         = nullptr != ::getenv("DO_PRINT_ALL");
 static const size_t num_reps =
     (nullptr != ::getenv("NUM_REPS") ? ::atoi(::getenv("NUM_REPS")) : 100);
 
@@ -46,9 +45,9 @@ TPoints generate_points(const size_t nPts)
 
     for (size_t i = 0; i < nPts; i++)
     {
-        pA[i].x = rnd.drawUniform(-50.0, 50.0);
-        pA[i].y = rnd.drawUniform(-50.0, 50.0);
-        pA[i].z = rnd.drawUniform(-50.0, 50.0);
+        pA[i].x = rnd.drawUniform(0.0, 50.0);
+        pA[i].y = rnd.drawUniform(0.0, 50.0);
+        pA[i].z = rnd.drawUniform(0.0, 50.0);
     }
     return pA;
 }
@@ -62,9 +61,9 @@ TPlanes generate_planes(const size_t nPlanes)
 
     for (size_t i = 0; i < nPlanes; i++)
     {
-        plA[i].centroid.x = rnd.drawUniform(-50.0, 50.0);
-        plA[i].centroid.y = rnd.drawUniform(-50.0, 50.0);
-        plA[i].centroid.z = rnd.drawUniform(-50.0, 50.0);
+        plA[i].centroid.x = rnd.drawUniform(0.0, 50.0);
+        plA[i].centroid.y = rnd.drawUniform(0.0, 50.0);
+        plA[i].centroid.z = rnd.drawUniform(0.0, 50.0);
 
         auto n = mrpt::math::TVector3D(
             rnd.drawUniform(-1.0, 1.0), rnd.drawUniform(-1.0, 1.0),
@@ -86,7 +85,7 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
         const double xyz_noise_std, const double n_err_std /* normals noise*/,
         const double outliers_ratio)
 {
-    const double             outliers_bbox = 1.0;
+    const double             outliers_bbox = 50.0;
     std::vector<std::size_t> gt_outlier_indices;
 
     auto& rnd = mrpt::random::getRandomGenerator();
@@ -94,9 +93,9 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
     double Dx, Dy, Dz, yaw, pitch, roll;
     if (TEST_LARGE_ROTATIONS)
     {
-        Dx = rnd.drawUniform(-10.0, 10.0);
-        Dy = rnd.drawUniform(-10.0, 10.0);
-        Dz = rnd.drawUniform(-10.0, 10.0);
+        Dx = rnd.drawUniform(10.0, 20.0);
+        Dy = rnd.drawUniform(-30.0, -20.0);
+        Dz = rnd.drawUniform(5.0, 9.0);
 
         yaw   = mrpt::DEG2RAD(rnd.drawUniform(-180.0, 180.0));
         pitch = mrpt::DEG2RAD(rnd.drawUniform(-89.0, 89.0));
@@ -253,7 +252,7 @@ bool test_icp_algos(
         static_cast<unsigned int>(numPlanes), xyz_noise_std, n_err_std,
         outliers_ratio, use_robust ? 1 : 0);
 
-    std::cout << "[TEST] " << tstName << "\n";
+    std::cout << "\n== [TEST] " << tstName << " =================\n";
 
     mrpt::system::CTimeLogger profiler;
     profiler.setMinLoggingLevel(mrpt::system::LVL_ERROR);  // to make it quiet
@@ -264,6 +263,7 @@ bool test_icp_algos(
 
     const auto max_allowed_error =
         std::min(1.0, 0.1 + 10 * xyz_noise_std + 50 * n_err_std);
+    // 0.01;
 
     // Collect stats: columns are (see write TXT to file code at the bottom)
     mrpt::math::CMatrixDouble stats(num_reps, 1 + 3 + 3);
@@ -288,36 +288,37 @@ bool test_icp_algos(
             pA, pB, pointPairs, plA, plB, planePairs, pt2plPairs, xyz_noise_std,
             n_err_std, outliers_ratio);
 
+        MRPT_UNUSED_PARAM(this_outliers);
+
+#if 0
+        // Also add the plane-centroid-to-plane-centroid as point-to-point
+        // constraints:
+        for (const auto& p : pt2plPairs)
+            pointPairs.emplace_back(
+                0, 0, /*indices not used here*/ p.pl_this.centroid.x,
+                p.pl_this.centroid.y, p.pl_this.centroid.z, p.pt_other.x,
+                p.pt_other.y, p.pt_other.z);
+#endif
+
         // to show the result of the last iteration at end
         gt_pose = this_gt_pose;
 
+        mp2p_icp::WeightedPairings in_common;
+        in_common.paired_points     = pointPairs;
+        in_common.paired_planes     = planePairs;
+        in_common.use_robust_kernel = false;  // this requires a first guess
+        in_common.use_scale_outlier_detector = use_robust;
+
         // ========  TEST: olae_match ========
         {
-            mp2p_icp::Pairings_OLAE in;
-            in.paired_points     = pointPairs;
-            in.paired_planes     = planePairs;
-            in.use_robust_kernel = false;  // this requires a first guess
-            in.use_scale_outlier_detector = use_robust;
-
             profiler.enter("olea_match");
+
+            mp2p_icp::WeightedPairings in = in_common;
 
             mp2p_icp::optimal_tf_olae(in, res_olae);
 
-            const double dt_last = profiler.leave("olea_match");
-
-            // Check that outliers do match?
-            const auto gt_outliers_count       = this_outliers.size();
-            const auto detected_outliers_count = res_olae.outliers.size();
-            if (use_robust && gt_outliers_count > 0 &&
-                mrpt::abs_diff(gt_outliers_count, detected_outliers_count) /
-                        static_cast<double>(gt_outliers_count) >
-                    0.1)
-            {
-                THROW_EXCEPTION(mrpt::format(
-                    "Outlier detector mismatch: %u real outliers. %u detected.",
-                    static_cast<unsigned int>(gt_outliers_count),
-                    static_cast<unsigned int>(detected_outliers_count)));
-            }
+            // const double dt_last =
+            profiler.leave("olea_match");
 
             // Collect stats:
 
@@ -328,16 +329,18 @@ bool test_icp_algos(
                 SO<3>::log(pos_error.getRotationMatrix()).norm();
             const auto err_xyz = pos_error.norm();
 
-            if (outliers_ratio < 1e-5 && err_log_n > max_allowed_error)
+            if (DO_PRINT_ALL ||
+                (outliers_ratio < 1e-5 && err_log_n > max_allowed_error))
             {
                 std::cout << " -Ground_truth : " << gt_pose.asString() << "\n"
                           << " -OLAE_output  : "
                           << res_olae.optimal_pose.asString() << "\n -GT_rot:\n"
-                          << gt_pose.getRotationMatrix() << "\n";
+                          << gt_pose.getRotationMatrix() << "\n -OLAE_rot:\n"
+                          << res_olae.optimal_pose.getRotationMatrix() << "\n";
                 ASSERT_BELOW_(err_log_n, max_allowed_error);
             }
 
-            stats(rep, 0)     = dt_last;
+            stats(rep, 0)     = SO<3>::log(gt_pose.getRotationMatrix()).norm();
             stats(rep, 1)     = err_log_n;
             stats(rep, 3 + 1) = err_xyz;
             rmse_olea += mrpt::square(err_log_n);
@@ -345,10 +348,9 @@ bool test_icp_algos(
         }
 
         // ========  TEST: Classic Horn ========
-        if (numPts > 0 && numLines == 0 && numPlanes == 0)
         {
             profiler.enter("se3_l2");
-            mp2p_icp::optimal_tf_horn(pointPairs, res_horn);
+            mp2p_icp::optimal_tf_horn(in_common, res_horn);
             profiler.leave("se3_l2");
 
             const auto pos_error = gt_pose - res_horn.optimal_pose;
@@ -358,7 +360,8 @@ bool test_icp_algos(
 
             // Don't make the tests fail if we have outliers, since it IS
             // expected that, sometimes, we don't get to the optimum
-            if (outliers_ratio < 1e-5 && err_log_n > max_allowed_error)
+            if (DO_PRINT_ALL ||
+                (outliers_ratio < 1e-5 && err_log_n > max_allowed_error))
             {
                 std::cout << " -Ground_truth : " << gt_pose.asString() << "\n"
                           << " -Horn_output  : "
@@ -374,13 +377,14 @@ bool test_icp_algos(
         }
 
         // ========  TEST: GaussNewton method ========
-        if (numPts > 3)
         {
             profiler.enter("optimal_tf_gauss_newton");
 
             mp2p_icp::Pairings_GaussNewton in;
-            in.paired_points     = pointPairs;
-            in.paired_pt2pl      = pt2plPairs;
+
+            // Copy common parts:
+            in.PairingsCommon::operator=(in_common);
+
             in.use_robust_kernel = use_robust;
             // in.verbose           = true;
 
@@ -395,7 +399,11 @@ bool test_icp_algos(
 
             // Don't make the tests fail if we have outliers, since it IS
             // expected that, sometimes, we don't get to the optimum
-            if (outliers_ratio < 1e-5 && err_log_n > max_allowed_error)
+            // Also, disable gauss-newton checks for large rotations, as it
+            // fails, and that's expected since it's a local algorithm.
+            if (!TEST_LARGE_ROTATIONS &&
+                (DO_PRINT_ALL ||
+                 (outliers_ratio < 1e-5 && err_log_n > max_allowed_error)))
             {
                 std::cout << " -Ground truth        : " << gt_pose.asString()
                           << "\n"
@@ -424,22 +432,17 @@ bool test_icp_algos(
     const double dt_horn = profiler.getMeanTime("se3_l2");
     const double dt_gn   = profiler.getMeanTime("optimal_tf_gauss_newton");
 
-    std::cout << " -Ground_truth        : " << gt_pose.asString() << "\n"
-              << " -OLAE output         : " << res_olae.optimal_pose.asString()
-              << " (" << res_olae.outliers.size() << " outliers detected)\n"
-              << " -Horn output         : " << res_horn.optimal_pose.asString()
+    std::cout << " -Ground_truth: " << gt_pose.asString() << "\n"
+              << " -OLAE output : " << res_olae.optimal_pose.asString() << " ("
+              << res_olae.outliers.size() << " outliers detected)\n"
+              << " -Horn output : " << res_horn.optimal_pose.asString() << "\n"
+              << " -GN output   : " << res_gn.optimal_pose.asString()
               << "\n"
-              << " -GaussNewton output  : " << res_gn.optimal_pose.asString()
-              << "\n"
-              << " -OLAE SO3 rmse        : " << rmse_olea
-              << " XYZ rmse: " << rmse_xyz_olea << "  Time: " << dt_olea * 1e6
-              << " [us]\n"
-              << " -Horn SO3 rmse        : " << rmse_horn
-              << " XYZ rmse: " << rmse_xyz_horn << "  Time: " << dt_horn * 1e6
-              << " [us]\n"
-              << " -GaussNewton SO3 rmse : " << rmse_gn
-              << " XYZ rmse: " << rmse_xyz_gn << "  Time: " << dt_gn * 1e6
-              << " [us]\n";
+              // clang-format off
+              << " -OLAE        : " << mrpt::format("SO3 rmse=%e XYZ rmse=%e time=%7.03f us\n",rmse_olea, rmse_xyz_olea, dt_olea * 1e6)
+              << " -Horn        : " << mrpt::format("SO3 rmse=%e XYZ rmse=%e time=%7.03f us\n",rmse_horn, rmse_xyz_horn, dt_horn * 1e6)
+              << " -Gauss-Newton: " << mrpt::format("SO3 rmse=%e XYZ rmse=%e time=%7.03f us\n",rmse_gn, rmse_xyz_gn, dt_gn * 1e6);
+    // clang-format on
 
     if (DO_SAVE_STAT_FILES)
         stats.saveToTextFile(
@@ -460,7 +463,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         auto& rnd = mrpt::random::getRandomGenerator();
         rnd.randomize(1234);  // for reproducible tests
 
-        const double nXYZ = 0.1;  // [meters] std. noise of XYZ points
+        const double nXYZ = 0.001;  // [meters] std. noise of XYZ points
         const double nN   = mrpt::DEG2RAD(0.5);  // normals noise
 
         // arguments: nPts, nLines, nPlanes
@@ -475,25 +478,21 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         ASSERT_(test_icp_algos(100 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
         ASSERT_(test_icp_algos(1000 /*pt*/, 0 /*li*/, 0 /*pl*/, nXYZ));
 
-        // Planes only. Noiseless:
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 3 /*pl*/));
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 10 /*pl*/));
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 100 /*pl*/));
-
-        // Planes only. Noisy:
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 10 /*pl*/, 0, nN));
-        ASSERT_(test_icp_algos(0 /*pt*/, 0 /*li*/, 100 /*pl*/, 0, nN));
-        // Points and planes, noisy.
-        ASSERT_(test_icp_algos(1 /*pt*/, 0 /*li*/, 3 /*pl*/));
+        // Planes + 1 pt. Noiseless:
         ASSERT_(test_icp_algos(2 /*pt*/, 0 /*li*/, 1 /*pl*/));
-        ASSERT_(test_icp_algos(20 /*pt*/, 0 /*li*/, 10 /*pl*/, nXYZ, nN));
-        ASSERT_(test_icp_algos(400 /*pt*/, 0 /*li*/, 100 /*pl*/, nXYZ, nN));
+        ASSERT_(test_icp_algos(2 /*pt*/, 0 /*li*/, 10 /*pl*/));
+        ASSERT_(test_icp_algos(2 /*pt*/, 0 /*li*/, 100 /*pl*/));
+
+        // Points and planes, noisy.
+        ASSERT_(test_icp_algos(2 /*pt*/, 0 /*li*/, 1 /*pl*/, nXYZ, nN));
+        ASSERT_(test_icp_algos(10 /*pt*/, 0 /*li*/, 10 /*pl*/, nXYZ, nN));
+        ASSERT_(test_icp_algos(100 /*pt*/, 0 /*li*/, 100 /*pl*/, nXYZ, nN));
 
         // Points only. Noisy w. outliers:
         for (int robust = 0; robust <= 1; robust++)
             for (double Or = .05; Or < 0.91; Or += 0.05)
                 ASSERT_(test_icp_algos(
-                    1000 /*pt*/, 0, 0, nXYZ, .0, robust != 0, Or));
+                    200 /*pt*/, 0, 0, 0 * nXYZ, .0, robust != 0, Or));
     }
     catch (std::exception& e)
     {

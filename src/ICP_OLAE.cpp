@@ -22,7 +22,7 @@ void ICP_OLAE::impl_ICP_iteration(
 {
     MRPT_START
     // the global list of pairings:
-    Pairings_OLAE pairings;
+    WeightedPairings pairings;
 
     // Correspondences for each point layer:
     // ---------------------------------------
@@ -114,10 +114,8 @@ void ICP_OLAE::impl_ICP_iteration(
     OptimalTF_Result res;
 
     // Weights: translation => trust points; attitude => trust planes
-    pairings.weights.translation.planes = 0.0;
-    pairings.weights.translation.points = 1.0;
-    pairings.weights.attitude.planes    = p.relative_weight_planes_attitude;
-    pairings.weights.attitude.points    = 1.0;
+    pairings.attitude_weights.pl2pl = p.relative_weight_planes_attitude;
+    pairings.attitude_weights.pt2pt = 1.0;
 
     pairings.use_robust_kernel = p.use_kernel;
     MRPT_TODO("make param");
