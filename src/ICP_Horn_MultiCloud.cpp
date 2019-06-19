@@ -14,7 +14,9 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
-//#include <Eigen/Dense>
+
+IMPLEMENTS_MRPT_OBJECT_NS_PREFIX(
+    ICP_Horn_MultiCloud, mp2p_icp::ICP_Base, mp2p_icp);
 
 using namespace mp2p_icp;
 
@@ -32,7 +34,8 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
     mrpt::tfest::TMatchingPairList pairings;
 
     // Find correspondences for each point cloud "layer":
-    for (const auto& kv1 : s.pc1.point_layers) {
+    for (const auto& kv1 : s.pc1.point_layers)
+    {
         // Ignore layers of plane centroids, since they are not actual accurate
         // 3D points for this algorithm.
         if (kv1.first == pointcloud_t::PT_LAYER_PLANE_CENTROIDS) continue;
@@ -56,7 +59,8 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
 
     }  // end for each "layer"
 
-    if (pairings.empty()) {
+    if (pairings.empty())
+    {
         // Nothing we can do !!
         out.success = false;
         // result.terminationReason = IterTermReason::NoPairings;
