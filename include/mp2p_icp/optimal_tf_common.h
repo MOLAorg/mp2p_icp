@@ -133,8 +133,8 @@ struct WeightParameters
 
     /** The current guess for the sought transformation. Must be supplied if
      * use_robust_kernel==true. */
-    const mrpt::poses::CPose3D current_estimate_for_robust;
-    bool                       use_robust_kernel{false};
+    mrpt::poses::CPose3D current_estimate_for_robust;
+    bool                 use_robust_kernel{false};
     double robust_kernel_param{mrpt::DEG2RAD(0.1)}, robust_kernel_scale{400.0};
 };
 
