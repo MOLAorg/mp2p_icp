@@ -18,8 +18,6 @@
 
 using namespace mp2p_icp;
 
-MRPT_TODO("Observe: AttitudeWeights for Horn too");
-
 // The next function is code ported from our former implementation in MRPT,
 // from function: mrpt::tfest::se3_l2_internal()
 // (BSD-3 Licence)
@@ -66,7 +64,7 @@ MRPT_TODO("Observe: AttitudeWeights for Horn too");
 // scaled and rotated Left centroid)
 //		t = ct_this-sR(ct_others)
 
-static bool se3_l2_internal(
+static void se3_l2_internal(
     const mp2p_icp::WeightedPairings& in, const mrpt::math::TPoint3D& ct_other,
     const mrpt::math::TPoint3D&    ct_this,
     mrpt::math::CQuaternionDouble& out_attitude,
@@ -80,8 +78,7 @@ static bool se3_l2_internal(
     const auto nPlanes     = in.paired_planes.size();
     const auto nAllMatches = nPoints + nLines + nPlanes;
 
-    if (nAllMatches < 3)
-        return false;  // Nothing we can estimate without 3 points!!
+    ASSERTMSG_(nAllMatches >= 3, "Horn method needs at least 3 references!");
 
     auto S = mrpt::math::CMatrixDouble33::Zero();
 
@@ -92,21 +89,22 @@ static bool se3_l2_internal(
         // These vectors are already direction vectors, or the
         // centroids-centered relative positions of points. Compute the S matrix
         // of cross products.
-        S(0, 0) += ri.x * bi.x;
-        S(0, 1) += ri.x * bi.y;
-        S(0, 2) += ri.x * bi.z;
+        S(0, 0) += wi * ri.x * bi.x;
+        S(0, 1) += wi * ri.x * bi.y;
+        S(0, 2) += wi * ri.x * bi.z;
 
-        S(1, 0) += ri.y * bi.x;
-        S(1, 1) += ri.y * bi.y;
-        S(1, 2) += ri.y * bi.z;
+        S(1, 0) += wi * ri.y * bi.x;
+        S(1, 1) += wi * ri.y * bi.y;
+        S(1, 2) += wi * ri.y * bi.z;
 
-        S(2, 0) += ri.z * bi.x;
-        S(2, 1) += ri.z * bi.y;
-        S(2, 2) += ri.z * bi.z;
+        S(2, 0) += wi * ri.z * bi.x;
+        S(2, 1) += wi * ri.z * bi.y;
+        S(2, 2) += wi * ri.z * bi.z;
     };
 
     auto lambda_final = [&](const double w_sum) {
-        // nothing to do.
+        // Normalize weights. OLAE assumes \sum(w_i) = 1.0
+        if (w_sum > .0) S *= (1.0 / w_sum);
     };
 
     visit_correspondences(
@@ -182,8 +180,6 @@ static bool se3_l2_internal(
     }
 #endif
 
-    return true;
-
     MRPT_END
 }
 
@@ -207,7 +203,7 @@ void mp2p_icp::optimal_tf_horn(
     mrpt::math::CQuaternionDouble optimal_q;
 
     // Build the linear system & solves for optimal quaternion:
-    bool success = se3_l2_internal(
+    se3_l2_internal(
         in, ct_other, ct_this, optimal_q, result.outliers /* in/out */);
 
     MRPT_TODO("Refactor to avoid duplicated code? Is it possible?");
@@ -223,7 +219,7 @@ void mp2p_icp::optimal_tf_horn(
         ct_this  = new_ct_this;
 
         // And rebuild the linear system with the new values:
-        success = se3_l2_internal(
+        se3_l2_internal(
             in, ct_other, ct_this, optimal_q, result.outliers /* in/out */);
     }
 

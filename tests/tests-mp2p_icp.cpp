@@ -266,7 +266,7 @@ bool test_icp_algos(
     // 0.01;
 
     // Collect stats: columns are (see write TXT to file code at the bottom)
-    mrpt::math::CMatrixDouble stats(num_reps, 1 + 3 + 3);
+    mrpt::math::CMatrixDouble stats(num_reps, 1 + 3 + 3 + 3);
 
     double rmse_olea = 0, rmse_horn = 0, rmse_gn = 0;
     double rmse_xyz_olea = 0, rmse_xyz_horn = 0, rmse_xyz_gn = 0;
@@ -290,6 +290,8 @@ bool test_icp_algos(
 
         MRPT_UNUSED_PARAM(this_outliers);
 
+        stats(rep, 0) = SO<3>::log(gt_pose.getRotationMatrix()).norm();
+
 #if 0
         // Also add the plane-centroid-to-plane-centroid as point-to-point
         // constraints:
@@ -304,10 +306,21 @@ bool test_icp_algos(
         gt_pose = this_gt_pose;
 
         mp2p_icp::WeightedPairings in_common;
-        in_common.paired_points     = pointPairs;
-        in_common.paired_planes     = planePairs;
-        in_common.use_robust_kernel = false;  // this requires a first guess
+        in_common.paired_points              = pointPairs;
+        in_common.paired_planes              = planePairs;
         in_common.use_scale_outlier_detector = use_robust;
+        if (auto sTh = ::getenv("SCALE_OUTLIER_THRESHOLD"); sTh != nullptr)
+            in_common.scale_outlier_threshold = ::atof(sTh);
+
+        // Only for tests with outliers, and if we are using small rotations,
+        // use the robust kernel, using the identity SE(3) transform as
+        // gross initial guess for the pose:
+        if (!TEST_LARGE_ROTATIONS && outliers_ratio > 0)
+        {
+            in_common.use_robust_kernel = true;
+            in_common.current_estimate_for_robust =
+                mrpt::poses::CPose3D::Identity();
+        }
 
         // ========  TEST: olae_match ========
         {
@@ -318,7 +331,7 @@ bool test_icp_algos(
             mp2p_icp::optimal_tf_olae(in, res_olae);
 
             // const double dt_last =
-            profiler.leave("olea_match");
+            const auto dt_olea = profiler.leave("olea_match");
 
             // Collect stats:
 
@@ -340,9 +353,9 @@ bool test_icp_algos(
                 ASSERT_BELOW_(err_log_n, max_allowed_error);
             }
 
-            stats(rep, 0)     = SO<3>::log(gt_pose.getRotationMatrix()).norm();
-            stats(rep, 1)     = err_log_n;
-            stats(rep, 3 + 1) = err_xyz;
+            stats(rep, 1 + 3 * 0 + 0) = err_log_n;
+            stats(rep, 1 + 3 * 1 + 0) = err_xyz;
+            stats(rep, 1 + 3 * 2 + 0) = dt_olea;
             rmse_olea += mrpt::square(err_log_n);
             rmse_xyz_olea += mrpt::square(err_xyz);
         }
@@ -350,8 +363,10 @@ bool test_icp_algos(
         // ========  TEST: Classic Horn ========
         {
             profiler.enter("se3_l2");
+
             mp2p_icp::optimal_tf_horn(in_common, res_horn);
-            profiler.leave("se3_l2");
+
+            const auto dt_horn = profiler.leave("se3_l2");
 
             const auto pos_error = gt_pose - res_horn.optimal_pose;
             const auto err_log_n =
@@ -370,8 +385,10 @@ bool test_icp_algos(
                 ASSERT_BELOW_(err_log_n, max_allowed_error);
             }
 
-            stats(rep, 2)     = err_log_n;
-            stats(rep, 3 + 2) = err_xyz;
+            stats(rep, 1 + 3 * 0 + 1) = err_log_n;
+            stats(rep, 1 + 3 * 1 + 1) = err_xyz;
+            stats(rep, 1 + 3 * 2 + 1) = dt_horn;
+
             rmse_horn += mrpt::square(err_log_n);
             rmse_xyz_horn += mrpt::square(err_xyz);
         }
@@ -390,7 +407,7 @@ bool test_icp_algos(
 
             mp2p_icp::optimal_tf_gauss_newton(in, res_gn);
 
-            profiler.leave("optimal_tf_gauss_newton");
+            const auto dt_gn = profiler.leave("optimal_tf_gauss_newton");
 
             const auto pos_error = gt_pose - res_gn.optimal_pose;
             const auto err_log_n =
@@ -401,9 +418,12 @@ bool test_icp_algos(
             // expected that, sometimes, we don't get to the optimum
             // Also, disable gauss-newton checks for large rotations, as it
             // fails, and that's expected since it's a local algorithm.
-            if (!TEST_LARGE_ROTATIONS &&
-                (DO_PRINT_ALL ||
-                 (outliers_ratio < 1e-5 && err_log_n > max_allowed_error)))
+            if (0)
+            /*
+            !TEST_LARGE_ROTATIONS &&
+            //(DO_PRINT_ALL ||
+             (outliers_ratio < 1e-5 && err_log_n > max_allowed_error)))
+             */
             {
                 std::cout << " -Ground truth        : " << gt_pose.asString()
                           << "\n"
@@ -413,8 +433,10 @@ bool test_icp_algos(
                 ASSERT_BELOW_(err_log_n, max_allowed_error);
             }
 
-            stats(rep, 3)     = err_log_n;
-            stats(rep, 3 + 3) = err_xyz;
+            stats(rep, 1 + 3 * 0 + 2) = err_log_n;
+            stats(rep, 1 + 3 * 1 + 2) = err_xyz;
+            stats(rep, 1 + 3 * 2 + 2) = dt_gn;
+
             rmse_gn += mrpt::square(err_log_n);
             rmse_xyz_gn += mrpt::square(err_xyz);
         }
@@ -449,8 +471,8 @@ bool test_icp_algos(
             mrpt::system::fileNameStripInvalidChars(tstName) +
                 std::string(".txt"),
             mrpt::math::MATRIX_FORMAT_ENG, true,
-            "% Columns: execution time, norm(SO3_error) for OLAE, Horn, "
-            "GaussNewton, norm(XYZ_error) for OLAE, Horn, GaussNewton\n\n");
+            "% Columns: execution time x 3, norm(SO3_error) x3, "
+            "norm(XYZ_error) x3 (OLAE, Horn, GaussNewton)\n\n");
 
     return true;  // all ok.
     MRPT_END
@@ -490,9 +512,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         // Points only. Noisy w. outliers:
         for (int robust = 0; robust <= 1; robust++)
-            for (double Or = .05; Or < 0.91; Or += 0.05)
+            for (double Or = .025; Or < 0.76; Or += 0.025)
                 ASSERT_(test_icp_algos(
-                    200 /*pt*/, 0, 0, 0 * nXYZ, .0, robust != 0, Or));
+                    200 /*pt*/, 0, 0, nXYZ, .0, robust != 0, Or));
     }
     catch (std::exception& e)
     {

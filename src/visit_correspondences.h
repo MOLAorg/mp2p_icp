@@ -69,8 +69,7 @@ void visit_correspondences(
     OutlierIndices new_outliers;
     new_outliers.point2point.reserve(in_out_outliers.point2point.size());
 
-    std::size_t cnt             = 0;
-    auto        it_next_outlier = in_out_outliers.point2point.begin();
+    auto it_next_outlier = in_out_outliers.point2point.begin();
 
     // Terms contributed by points & vectors have now the uniform form of
     // unit vectors:
