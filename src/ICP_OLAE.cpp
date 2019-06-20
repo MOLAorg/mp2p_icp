@@ -117,7 +117,9 @@ void ICP_OLAE::impl_ICP_iteration(
     pairings.attitude_weights.pl2pl = p.relative_weight_planes_attitude;
     pairings.attitude_weights.pt2pt = 1.0;
 
-    pairings.use_robust_kernel = p.use_kernel;
+    pairings.use_scale_outlier_detector = p.use_scale_outlier_detector;
+    pairings.scale_outlier_threshold    = p.scale_outlier_threshold;
+    pairings.use_robust_kernel          = p.use_kernel;
     MRPT_TODO("make param");
     // pairings.robust_kernel_param = mrpt::DEG2RAD(0.05);
     // pairings.robust_kernel_scale = 1500.0;

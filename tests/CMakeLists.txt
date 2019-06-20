@@ -7,9 +7,22 @@
 # ------------------------------------------------------------------------------
 
 mola_add_executable(
-    TARGET  tests-mp2p_icp
-    SOURCES tests-mp2p_icp.cpp
+    TARGET  test-mp2p_optimal_tf_algos
+    SOURCES test-mp2p_optimal_tf_algos.cpp
 	LINK_LIBRARIES
 	    mp2p_icp
 )
-add_test(P2P2_OLAE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests-mp2p_icp)
+add_test(MP2P_optimal_tf_algorithms ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_optimal_tf_algos)
+
+
+mola_add_executable(
+    TARGET  test-mp2p_icp_algos
+    SOURCES test-mp2p_icp_algos.cpp
+    LINK_LIBRARIES
+        mp2p_icp
+)
+add_test(MP2P_ICP_algorithms ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_icp_algos)
+
+target_compile_definitions(test-mp2p_icp_algos
+    PRIVATE
+    MP2P_DATASET_DIR="${mp2p_icp_SOURCE_DIR}/test-datasets/")

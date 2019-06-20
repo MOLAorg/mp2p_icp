@@ -17,7 +17,6 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPose3DQuat.h>
-#include <mrpt/poses/Lie/SE.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/random.h>
 #include <mrpt/system/CTimeLogger.h>

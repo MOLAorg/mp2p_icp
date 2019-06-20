@@ -67,6 +67,8 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
         return;
     }
 
+    MRPT_TODO("Port to the new optimal_tf function");
+
     // Compute the estimated pose, using Horn's method:
     mrpt::poses::CPose3DQuat estPoseQuat;
     double                   transf_scale;

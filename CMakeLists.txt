@@ -16,6 +16,7 @@ project(mp2p_icp LANGUAGES CXX)
 find_package(mrpt-tfest REQUIRED)
 find_package(mrpt-containers REQUIRED)
 find_package(mrpt-maps REQUIRED)
+find_package(mrpt-gui REQUIRED) # for tests/demos
 
 # MOLA CMake scripts: "mola_xxx()"
 find_package(mola-common REQUIRED)
