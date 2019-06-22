@@ -257,8 +257,7 @@ WeightedPairings ICP_Base::commonFindPairings(ICP_State& s, const Parameters& p)
                 const double n2n_ang = std::acos(dp);
 
                 // 2) append to list of plane pairs:
-                MRPT_TODO("Set threshold parameter");
-                if (n2n_ang < mrpt::DEG2RAD(5.0))
+                if (n2n_ang < p.thresholdPlane2PlaneNormalAng)
                 {
                     // Accept pairing:
                     pairings.paired_planes.emplace_back(p1, p2);

@@ -145,8 +145,12 @@ void visit_correspondences(
             wi = waLines;
 
             const auto idxLine = i - nPoints;
-            MRPT_TODO("handle lines");
-            THROW_EXCEPTION("handle lines");
+
+            bi = in.paired_lines[idxLine].l_this.getDirectorVector();
+            ri = in.paired_lines[idxLine].l_other.getDirectorVector();
+
+            ASSERTDEB_BELOW_(std::abs(bi.norm() - 1.0), 0.01);
+            ASSERTDEB_BELOW_(std::abs(ri.norm() - 1.0), 0.01);
         }
         else
         {

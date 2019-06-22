@@ -45,6 +45,10 @@ struct Parameters
     /** Treshold distance for pair two near points */
     double thresholdDist{0.75}, thresholdAng{mrpt::DEG2RAD(0.15)};
 
+    /** Maximum angle (radians) between potential matching plane normals to be
+     * accepted as a pairing. */
+    double thresholdPlane2PlaneNormalAng{mrpt::DEG2RAD(5.0)};
+
     /** Whether to use kernel_rho to smooth distances, or use distances
      * directly (default=true) */
     bool use_kernel{false};

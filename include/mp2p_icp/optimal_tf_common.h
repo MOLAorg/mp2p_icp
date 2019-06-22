@@ -73,7 +73,9 @@ struct OptimalTF_Result
     OutlierIndices outliers;
 };
 
-/** Common pairing input data for OLAE and Horn's solvers. */
+/** Common pairing input data for OLAE and Horn's solvers.
+ * Planes and lines must have unit director and normal vectors, respectively.
+ */
 struct PairingsCommon
 {
     /// We reuse MRPT struct to allow using their matching functions.
