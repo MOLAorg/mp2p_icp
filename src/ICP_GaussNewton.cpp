@@ -111,8 +111,13 @@ void ICP_GaussNewton::impl_ICP_iteration(
         }
     }
 
-    if (pairings.empty())
+    if (pairings.empty() || pairings.paired_points.size() < 3)
     {
+        // Skip ill-defined problems if the no. of points is too small.
+        // There's no check for this inside olae_match() because it also
+        // handled lines, planes, etc. but we don't want to rely on that for
+        // this application.
+
         // Nothing we can do !!
         out.success = false;
         return;
@@ -128,20 +133,8 @@ void ICP_GaussNewton::impl_ICP_iteration(
     // pairings.robust_kernel_param = mrpt::DEG2RAD(0.05);
     // pairings.robust_kernel_scale = 1500.0;
 
-    if (pairings.paired_points.size() >= 3)
-    {
-        // Skip ill-defined problems if the no. of points is too small.
-        // There's no check for this inside olae_match() because it also
-        // handled lines, planes, etc. but we don't want to rely on that for
-        // this application.
-        optimal_tf_gauss_newton(pairings, res);
-        out.success = true;
-    }
-    else
-    {
-        out.success = false;
-    }
-
+    optimal_tf_gauss_newton(pairings, res);
+    out.success      = true;
     out.new_solution = mrpt::poses::CPose3D(res.optimal_pose);
 
     MRPT_END

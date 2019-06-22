@@ -185,3 +185,87 @@ void ICP_Base::prepareMatchingParams(
 
     MRPT_END
 }
+
+WeightedPairings ICP_Base::commonFindPairings(ICP_State& s, const Parameters& p)
+{
+    WeightedPairings pairings;
+
+    // Correspondences for each point layer:
+    // ---------------------------------------
+    // Find correspondences for each point cloud "layer":
+    for (const auto& kv1 : s.pc1.point_layers)
+    {
+        const auto &m1 = kv1.second, &m2 = s.pc2.point_layers.at(kv1.first);
+        ASSERT_(m1);
+        ASSERT_(m2);
+
+        const bool is_layer_of_planes =
+            (kv1.first == pointcloud_t::PT_LAYER_PLANE_CENTROIDS);
+
+        // Ignore this layer if it has no weight:
+        if (!is_layer_of_planes && p.weight_pt2pt_layers.count(kv1.first) == 0)
+            continue;
+
+        auto& mp = s.mps.at(kv1.first);
+        // Measure angle distances from the current estimate:
+        mp.angularDistPivotPoint =
+            mrpt::math::TPoint3D(s.current_solution.asTPose());
+
+        // Find closest pairings
+        mrpt::tfest::TMatchingPairList mpl;
+        m1->determineMatching3D(
+            m2.get(), s.current_solution, mpl, mp, s.mres[kv1.first]);
+
+        // Shuffle decimated points for next iter:
+        if (++mp.offset_other_map_points >= mp.decimation_other_map_points)
+            mp.offset_other_map_points = 0;
+
+        // merge lists:
+        // handle specially the plane-to-plane matching:
+        if (!is_layer_of_planes)
+        {
+            // layer weight:
+            const double lyWeight = p.weight_pt2pt_layers.at(kv1.first);
+
+            // A standard layer: point-to-point correspondences:
+            pairings.paired_points.insert(
+                pairings.paired_points.end(), mpl.begin(), mpl.end());
+
+            // and their weights:
+            pairings.point_weights.emplace_back(mpl.size(), lyWeight);
+        }
+        else
+        {
+            // Plane-to-plane correspondence:
+
+            // We have pairs of planes whose centroids are quite close.
+            // Check their normals too:
+            for (const auto& pair : mpl)
+            {
+                // 1) Check fo pairing sanity:
+                ASSERTDEB_(pair.this_idx < pcs1.planes.size());
+                ASSERTDEB_(pair.other_idx < pcs2.planes.size());
+
+                const auto& p1 = s.pc1.planes[pair.this_idx];
+                const auto& p2 = s.pc2.planes[pair.other_idx];
+
+                const mrpt::math::TVector3D n1 = p1.plane.getNormalVector();
+                const mrpt::math::TVector3D n2 = p2.plane.getNormalVector();
+
+                // dot product to find the angle between normals:
+                const double dp      = n1.x * n2.x + n1.y * n2.y + n1.z * n2.z;
+                const double n2n_ang = std::acos(dp);
+
+                // 2) append to list of plane pairs:
+                MRPT_TODO("Set threshold parameter");
+                if (n2n_ang < mrpt::DEG2RAD(5.0))
+                {
+                    // Accept pairing:
+                    pairings.paired_planes.emplace_back(p1, p2);
+                }
+            }
+        }
+    }
+
+    return pairings;
+}

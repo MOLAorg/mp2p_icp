@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp/ICP_Horn_MultiCloud.h>
+#include <mp2p_icp/optimal_tf_horn.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
@@ -30,53 +31,44 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
     const auto nLayers = s.pc1.point_layers.size();
     ASSERT_(nLayers >= 1);
 
-    // the global list of pairings, including all layers:
-    mrpt::tfest::TMatchingPairList pairings;
+    // the global list of pairings:
+    WeightedPairings pairings = ICP_Base::commonFindPairings(s, p);
 
-    // Find correspondences for each point cloud "layer":
-    for (const auto& kv1 : s.pc1.point_layers)
+    if (pairings.empty() && pairings.paired_points.size() < 3)
     {
-        // Ignore layers of plane centroids, since they are not actual accurate
-        // 3D points for this algorithm.
-        if (kv1.first == pointcloud_t::PT_LAYER_PLANE_CENTROIDS) continue;
+        // Skip ill-defined problems if the no. of points is too small.
+        // There's no check for this inside olae_match() because it also
+        // handled lines, planes, etc. but we don't want to rely on that for
+        // this application.
 
-        const auto &m1 = kv1.second, &m2 = s.pc2.point_layers.at(kv1.first);
-        ASSERT_(m1);
-        ASSERT_(m2);
+        // Note: this condition could be refined to check for minimal sets of
+        // well-defined problems, like 2 points and one plane, etc.
 
-        auto& mp = s.mps.at(kv1.first);
-
-        mp.decimation_other_map_points = std::max(
-            1U, static_cast<unsigned>(m1->size() / (1.0 * p.maxPairsPerLayer)));
-
-        // Find closest pairings
-        mrpt::tfest::TMatchingPairList mpl;
-        m1->determineMatching3D(
-            m2.get(), s.current_solution, mpl, mp, s.mres[kv1.first]);
-
-        // merge lists:
-        pairings.insert(pairings.end(), mpl.begin(), mpl.end());
-
-    }  // end for each "layer"
-
-    if (pairings.empty())
-    {
         // Nothing we can do !!
         out.success = false;
-        // result.terminationReason = IterTermReason::NoPairings;
         return;
     }
 
-    MRPT_TODO("Port to the new optimal_tf function");
+    // Compute the optimal pose, using the OLAE method
+    // (Optimal linear attitude estimator)
+    // ------------------------------------------------
+    OptimalTF_Result res;
 
-    // Compute the estimated pose, using Horn's method:
-    mrpt::poses::CPose3DQuat estPoseQuat;
-    double                   transf_scale;
-    mrpt::tfest::se3_l2(
-        pairings, estPoseQuat, transf_scale,
-        true /* DO force rigid transformation (scale=1) */);
-    out.new_solution = mrpt::poses::CPose3D(estPoseQuat);
+    // Weights: translation => trust points; attitude => trust planes
+    pairings.attitude_weights.pl2pl = p.relative_weight_planes_attitude;
+    pairings.attitude_weights.pt2pt = 1.0;
+
+    pairings.use_scale_outlier_detector = p.use_scale_outlier_detector;
+    pairings.scale_outlier_threshold    = p.scale_outlier_threshold;
+    pairings.use_robust_kernel          = p.use_kernel;
+    MRPT_TODO("make param");
+    // pairings.robust_kernel_param = mrpt::DEG2RAD(0.05);
+    // pairings.robust_kernel_scale = 1500.0;
+
+    optimal_tf_horn(pairings, res);
+
     out.success      = true;
+    out.new_solution = mrpt::poses::CPose3D(res.optimal_pose);
 
     MRPT_END
 }

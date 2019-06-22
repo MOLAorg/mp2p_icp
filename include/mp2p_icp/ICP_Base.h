@@ -14,6 +14,7 @@
 #include <mp2p_icp/IterTermReason.h>
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/Results.h>
+#include <mp2p_icp/optimal_tf_common.h>
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/math/TPose3D.h>
 #include <mrpt/rtti/CObject.h>
@@ -71,6 +72,10 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         double               new_scale{1.0};
         // TODO: Outliers info
     };
+
+    /** Used internally by ICP implementations to find correspondences between
+     * two pointclouds. */
+    WeightedPairings commonFindPairings(ICP_State& s, const Parameters& p);
 
     /** Implemented by specific ICP algorithms, to be run at each ICP iteration.
      * It must search for matchings given the current pose estimate, and
