@@ -29,6 +29,7 @@
 static bool TEST_LARGE_ROTATIONS = nullptr != ::getenv("TEST_LARGE_ROTATIONS");
 static bool DO_SAVE_STAT_FILES   = nullptr != ::getenv("DO_SAVE_STAT_FILES");
 static bool DO_PRINT_ALL         = nullptr != ::getenv("DO_PRINT_ALL");
+static bool SKIP_OUTLIERS        = nullptr != ::getenv("SKIP_OUTLIERS");
 static const size_t num_reps =
     (nullptr != ::getenv("NUM_REPS") ? ::atoi(::getenv("NUM_REPS")) : 100);
 
@@ -196,10 +197,33 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
 
                 auto& coefs = plB[i].plane.coefs;
 
+                // Generate a random SO(3) rotation: angle \sim Gaussian(0,s_n)
+                if (std::abs(sigma_n) > 1e-9)
+                {
+                    // unit vector at an arbitrary direction:
+                    auto v = mrpt::math::TVector3D(
+                        rnd.drawUniform(-1.0, 1.0), rnd.drawUniform(-1.0, 1.0),
+                        rnd.drawUniform(-1.0, 1.0));
+                    v *= (1.0 / v.norm());
+
+                    const double rnd_ang = rnd.drawGaussian1D(0, sigma_n);
+                    v *= rnd_ang;
+
+                    mrpt::math::CVectorFixed<double, 3> vv;
+                    for (int k = 0; k < 3; k++) vv[k] = v[k];
+
+                    const auto R33 = mrpt::poses::Lie::SO<3>::exp(vv);
+                    const auto p   = mrpt::poses::CPose3D(
+                        R33, mrpt::math::CVectorFixed<double, 3>::Zero());
+
+                    // Noisy plane normal:
+                    ul = p.rotateVector(ul);
+                }
+
                 // Ax+By+Cz+D=0
-                coefs[0] = ul.x + rnd.drawGaussian1D(0, sigma_n);
-                coefs[1] = ul.y + rnd.drawGaussian1D(0, sigma_n);
-                coefs[2] = ul.z + rnd.drawGaussian1D(0, sigma_n);
+                coefs[0] = ul.x;
+                coefs[1] = ul.y;
+                coefs[2] = ul.z;
                 coefs[3] = 0;  // temporary.
                 plB[i].plane.unitarize();
 
@@ -212,7 +236,7 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
         else
         {
             // Outlier:
-            for (int k = 0; i < 4; k++)
+            for (int k = 0; k < 4; k++)
                 plB[i].plane.coefs[k] = rnd.drawUniform(-1.0, 1.0);
             plB[i].plane.unitarize();
         }
@@ -246,7 +270,7 @@ bool test_icp_algos(
 
     const std::string tstName = mrpt::format(
         "test_icp_algos_nPt=%06u_nLin=%06u_nPl=%06u_xyzStd=%.04f_nStd=%."
-        "04f_outliers=%6.03f_robust=%i",
+        "04f_outliers=%06.03f_robust=%i",
         static_cast<unsigned int>(numPts), static_cast<unsigned int>(numLines),
         static_cast<unsigned int>(numPlanes), xyz_noise_std, n_err_std,
         outliers_ratio, use_robust ? 1 : 0);
@@ -509,11 +533,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         ASSERT_(test_icp_algos(10 /*pt*/, 0 /*li*/, 10 /*pl*/, nXYZ, nN));
         ASSERT_(test_icp_algos(100 /*pt*/, 0 /*li*/, 100 /*pl*/, nXYZ, nN));
 
-        // Points only. Noisy w. outliers:
-        for (int robust = 0; robust <= 1; robust++)
-            for (double Or = .025; Or < 0.76; Or += 0.025)
-                ASSERT_(test_icp_algos(
-                    200 /*pt*/, 0, 0, nXYZ, .0, robust != 0, Or));
+        if (!SKIP_OUTLIERS)
+        {
+            // Points only. Noisy w. outliers:
+            for (int robust = 0; robust <= 1; robust++)
+                for (double Or = .025; Or < 0.76; Or += 0.025)
+                    ASSERT_(test_icp_algos(
+                        200 /*pt*/, 0, 0, nXYZ, .0, robust != 0, Or));
+        }
     }
     catch (std::exception& e)
     {
