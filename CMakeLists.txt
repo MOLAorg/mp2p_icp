@@ -19,7 +19,11 @@ find_package(mrpt-maps REQUIRED)
 find_package(mrpt-gui REQUIRED) # for tests/demos
 
 # MOLA CMake scripts: "mola_xxx()"
-find_package(mola-common REQUIRED)
+# to allow stand-along builds outside of MOLA, use local copy instead:
+find_package(mola-common QUIET)
+if (NOT mola-common_FOUND)
+	include(${mp2p_icp_SOURCE_DIR}/localcopy_mola_cmake_functions.cmake)
+endif()
 
 # -----------------------
 # define lib:
