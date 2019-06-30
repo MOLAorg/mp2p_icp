@@ -1,4 +1,5 @@
-[![CircleCI](https://circleci.com/gh/MOLAorg/mp2p_icp.svg?style=svg)](https://circleci.com/gh/MOLAorg/mp2p_icp)
+[![CircleCI](https://img.shields.io/circleci/build/gh/MOLAorg/mp2p_icp/master.svg)](https://circleci.com/gh/MOLAorg/mp2p_icp) [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://docs.mola-slam.org/latest/doxygen-index.html)
+
 
 # `mp2p_icp`
 A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++. 
