@@ -6,7 +6,7 @@ A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++.
 
 License: New BSD 3-Clause
 
-The OLAE-ICP method is described in:
+The OLAE-ICP method is described in [this technical report](https://arxiv.org/abs/1906.10783):
 
 ```
 Jose-Luis Blanco-Claraco. "OLAE-ICP: Robust and fast alignment of geometric
