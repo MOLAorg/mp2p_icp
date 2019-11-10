@@ -28,7 +28,7 @@ namespace mp2p_icp
  */
 class ICP_Horn_MultiCloud : public ICP_Base
 {
-    DEFINE_MRPT_OBJECT(ICP_Horn_MultiCloud)
+	DEFINE_MRPT_OBJECT(ICP_Horn_MultiCloud, mp2p_icp);
 
    protected:
     // See base class docs
@@ -36,4 +36,4 @@ class ICP_Horn_MultiCloud : public ICP_Base
         ICP_State& s, const Parameters& p, ICP_iteration_result& out) override;
 };
 
-}  // namespace mp2p_icp::ICP_Horn_MultiCloud
+}  // namespace mp2p_icp

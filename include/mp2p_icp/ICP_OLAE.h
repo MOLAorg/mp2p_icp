@@ -23,7 +23,7 @@ namespace mp2p_icp
  */
 class ICP_OLAE : public ICP_Base
 {
-    DEFINE_MRPT_OBJECT(ICP_OLAE)
+	DEFINE_MRPT_OBJECT(ICP_OLAE, mp2p_icp);
 
    protected:
     // See base class docs

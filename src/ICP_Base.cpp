@@ -15,7 +15,7 @@
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
 
-IMPLEMENTS_VIRTUAL_MRPT_OBJECT_NS_PREFIX(
+IMPLEMENTS_VIRTUAL_MRPT_OBJECT(
     ICP_Base, mrpt::rtti::CObject, mp2p_icp);
 
 using namespace mp2p_icp;

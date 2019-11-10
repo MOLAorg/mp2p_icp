@@ -16,7 +16,7 @@
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/stl_serialization.h>
 
-IMPLEMENTS_MRPT_OBJECT_NS_PREFIX(
+IMPLEMENTS_MRPT_OBJECT(
     pointcloud_t, mrpt::serialization::CSerializable, mp2p_icp)
 
 using namespace mp2p_icp;

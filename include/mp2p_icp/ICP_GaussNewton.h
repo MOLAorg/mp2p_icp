@@ -23,7 +23,7 @@ namespace mp2p_icp
  */
 class ICP_GaussNewton : public ICP_Base
 {
-    DEFINE_MRPT_OBJECT(ICP_GaussNewton)
+	DEFINE_MRPT_OBJECT(ICP_GaussNewton, mp2p_icp);
 
    protected:
     // See base class docs

@@ -18,7 +18,7 @@
 #include <mrpt/poses/Lie/SE.h>
 #include <Eigen/Dense>
 
-IMPLEMENTS_MRPT_OBJECT_NS_PREFIX(ICP_GaussNewton, mp2p_icp::ICP_Base, mp2p_icp);
+IMPLEMENTS_MRPT_OBJECT(ICP_GaussNewton, mp2p_icp::ICP_Base, mp2p_icp)
 
 using namespace mp2p_icp;
 

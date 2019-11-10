@@ -57,7 +57,7 @@ struct plane_patch_t
  */
 class pointcloud_t : public mrpt::serialization::CSerializable
 {
-    DEFINE_SERIALIZABLE(pointcloud_t)
+	DEFINE_SERIALIZABLE(pointcloud_t, mp2p_icp)
 
    public:
     /** @name Reserved point-cloud layer names (for use in `point_layers`)

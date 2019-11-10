@@ -13,7 +13,7 @@
 #include <mp2p_icp/ICP_OLAE.h>
 #include <mp2p_icp/optimal_tf_olae.h>
 
-IMPLEMENTS_MRPT_OBJECT_NS_PREFIX(ICP_OLAE, mp2p_icp::ICP_Base, mp2p_icp)
+IMPLEMENTS_MRPT_OBJECT(ICP_OLAE, mp2p_icp::ICP_Base, mp2p_icp)
 
 using namespace mp2p_icp;
 

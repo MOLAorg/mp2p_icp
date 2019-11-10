@@ -16,8 +16,7 @@
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
 
-IMPLEMENTS_MRPT_OBJECT_NS_PREFIX(
-    ICP_Horn_MultiCloud, mp2p_icp::ICP_Base, mp2p_icp);
+IMPLEMENTS_MRPT_OBJECT(ICP_Horn_MultiCloud, mp2p_icp::ICP_Base, mp2p_icp)
 
 using namespace mp2p_icp;
 
