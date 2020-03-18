@@ -227,7 +227,8 @@ static OLAE_LinearSystems olae_build_linear_system(
 }
 
 // See .h docs, and associated technical report.
-void mp2p_icp::optimal_tf_olae(const WeightedPairings& in, OptimalTF_Result& result)
+void mp2p_icp::optimal_tf_olae(
+    const WeightedPairings& in, OptimalTF_Result& result)
 {
     MRPT_START
 
@@ -256,8 +257,6 @@ void mp2p_icp::optimal_tf_olae(const WeightedPairings& in, OptimalTF_Result& res
     // Build the linear system: M g = v
     OLAE_LinearSystems linsys = olae_build_linear_system(
         in, ct_other, ct_this, result.outliers /* empty for now  */);
-
-    MRPT_TODO("Refactor to avoid duplicated code? Is it possible?");
 
     // Re-evaluate the centroids, now that we have a guess on outliers.
     if (!result.outliers.empty())
