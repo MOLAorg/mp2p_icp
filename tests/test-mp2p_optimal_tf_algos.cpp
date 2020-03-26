@@ -311,7 +311,7 @@ bool test_icp_algos(
             pA, pB, pointPairs, plA, plB, planePairs, pt2plPairs, xyz_noise_std,
             n_err_std, outliers_ratio);
 
-        MRPT_UNUSED_PARAM(this_outliers);
+        (void)this_outliers;  // unused var
 
         stats(rep, 0) = SO<3>::log(gt_pose.getRotationMatrix()).norm();
 
