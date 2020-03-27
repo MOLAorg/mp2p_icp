@@ -49,6 +49,20 @@ struct plane_patch_t
     }
 };
 
+struct line_patch_t
+{
+    mrpt::math::TLine3D line;
+    //No tengo claro si se usa el autovector o el centro como en el caso del plano.
+    mrpt::math::TLine3D autovector;
+
+    line_patch_t() = default;
+    line_patch_t(
+            const mrpt::math::TLine3D& ln, const mrpt::math::TLine3D& vector)
+            : line(ln), autovector(vector)
+    {
+    }
+};
+
 /**
  * @brief Generic container of pointcloud(s), and/or extracted features.
  *

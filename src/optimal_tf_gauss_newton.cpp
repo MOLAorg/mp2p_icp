@@ -29,16 +29,18 @@ void mp2p_icp::optimal_tf_gauss_newton(
     result.optimal_pose = in.initial_guess;
 
     const auto nPt2Pt = in.paired_points.size();
+    const auto nPt2Ln = in.paired_pt2ln.size();
     const auto nPt2Pl = in.paired_pt2pl.size();
     const auto nPl2Pl = in.paired_planes.size();
 
+    // ¿Cuántos términos añade punto-linea?
     const auto nErrorTerms = (nPt2Pt + nPl2Pl) * 3 + nPt2Pl;
 
     Eigen::VectorXd                          err(nErrorTerms);
     Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
 
     double       w_pt = in.weight_point2point;
-    const double w_pl = in.weight_point2plane, w_pl2pl = in.weight_plane2plane;
+    const double w_pl = in.weight_point2plane, w_pt2ln = in.weight_point2line, w_pl2pl = in.weight_plane2plane;
 
     const bool  has_per_pt_weight       = !in.point_weights.empty();
     auto        cur_point_block_weights = in.point_weights.begin();
@@ -90,6 +92,8 @@ void mp2p_icp::optimal_tf_gauss_newton(
             // Build Jacobian:
             J.block<3, 6>(idx_pt * 3, 0) = w_pt * J1 * dDexpe_de.asEigen();
         }
+
+        // Point-to-line
 
         // Point-to-plane:
         auto base_idx = nPt2Pt * 3;
