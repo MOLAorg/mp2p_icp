@@ -33,8 +33,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
     const auto nPt2Pl = in.paired_pt2pl.size();
     const auto nPl2Pl = in.paired_planes.size();
 
-    // ¿Cuántos términos añade punto-linea?
-    const auto nErrorTerms = (nPt2Pt + nPl2Pl) * 3 + nPt2Pl;
+    const auto nErrorTerms = (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln;
 
     Eigen::VectorXd                          err(nErrorTerms);
     Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
@@ -94,9 +93,36 @@ void mp2p_icp::optimal_tf_gauss_newton(
         }
 
         // Point-to-line
+        auto base_idx = nPt2Pt * 3;
+        for (size_t idx_pt = 0; idx_pt < nPt2Ln; idx_pt++)
+        {
+            // Error
+            const auto& p = in.paired_pt2ln[idx_pt];
+            const double lx = p.pt_other.x, ly = p.pt_other.y, lz = p.pt_other.z;
+            double       gx, gy, gz;
+            result.optimal_pose.composePoint(lx, ly, lz, gx, gy, gz);
+            const auto g = mrpt::math::TPoint3D(gx,gy,gz);
+            err(base_idx + idx_pt) = p.ln_this.autovector.distance(g);
+
+            // Eval Jacobian:
+            // clang-format off
+/*            const Eigen::Matrix<double, 3, 12> J1 =
+                (Eigen::Matrix<double, 3, 12>() <<
+                   lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
+                    0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
+                    0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
+                 ).finished();
+*/            // clang-format on
+
+            // Get weight
+            // ...
+
+            // Build Jacobian
+            // ...
+        }
 
         // Point-to-plane:
-        auto base_idx = nPt2Pt * 3;
+        base_idx = base_idx + nPt2Ln;
         for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
         {
             // Error:
