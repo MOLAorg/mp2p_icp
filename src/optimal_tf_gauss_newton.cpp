@@ -39,7 +39,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
     Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
 
     double       w_pt = in.weight_point2point;
-    const double w_pl = in.weight_point2plane, w_pt2ln = in.weight_point2line, w_pl2pl = in.weight_plane2plane;
+    const double w_pl = in.weight_point2plane, w_ln = in.weight_point2line, w_pl2pl = in.weight_plane2plane;
 
     const bool  has_per_pt_weight       = !in.point_weights.empty();
     auto        cur_point_block_weights = in.point_weights.begin();
@@ -105,14 +105,17 @@ void mp2p_icp::optimal_tf_gauss_newton(
             err(base_idx + idx_pt) = p.ln_this.autovector.distance(g);
 
             // Eval Jacobian:
+            // "A tutorial on SE(3) transformation parameterizations and
+            // on-manifold optimization"
+            // d(T_{A}·p)/dT_{A}. Ec.7.16
             // clang-format off
-/*            const Eigen::Matrix<double, 3, 12> J1 =
+            const Eigen::Matrix<double, 3, 12> J1 =
                 (Eigen::Matrix<double, 3, 12>() <<
                    lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
                     0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
                     0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
                  ).finished();
-*/            // clang-format on
+            // clang-format on
 
             // Get weight
             // ...
