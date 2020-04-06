@@ -38,12 +38,12 @@ struct point_line_pair_t
 {
     /// \note "this"=global, "other"=local, while finding the transformation
     /// local wrt global
-    line_patch_t            ln_this;
+    mrpt::math::TLine3D     ln_this;
     mrpt::math::TPoint3D    pt_other;
 
     point_line_pair_t() = default;
     point_line_pair_t(
-            const line_patch_t& l_this, const mrpt::math::TPoint3D& p_other)
+            const mrpt::math::TLine3D& l_this, const mrpt::math::TPoint3D& p_other)
             : ln_this(l_this),pt_other(p_other)
     {
     }

@@ -32,6 +32,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
     const auto nPt2Ln = in.paired_pt2ln.size();
     const auto nPt2Pl = in.paired_pt2pl.size();
     const auto nPl2Pl = in.paired_planes.size();
+    const auto nLn2Ln = in.paired_lines.size();
 
     const auto nErrorTerms = (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln;
 
@@ -102,7 +103,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             double       gx, gy, gz;
             result.optimal_pose.composePoint(lx, ly, lz, gx, gy, gz);
             const auto g = mrpt::math::TPoint3D(gx,gy,gz);
-            err(base_idx + idx_pt) = p.ln_this.autovector.distance(g);
+            err(base_idx + idx_pt) = p.ln_this.distance(g);
 
             // Eval Jacobian:
             // "A tutorial on SE(3) transformation parameterizations and
@@ -123,11 +124,11 @@ void mp2p_icp::optimal_tf_gauss_newton(
             // Build Jacobian
             // Section 4.1.2: p_r0 = (p-r_{0,r}). Ec.9
             const Eigen::Matrix<double, 1, 3> p_r0 =
-           (Eigen::Matrix<double, 1, 3>() << g.x-p.ln_this.centroide.x, g.y-p.ln_this.centroide.y, g.z-p.ln_this.centroide.z
+           (Eigen::Matrix<double, 1, 3>() << g.x-p.ln_this.pBase.x, g.y-p.ln_this.pBase.y, g.z-p.ln_this.pBase.z
             ).finished();
             // Module of vector director of line
             const Eigen::Matrix<double, 1, 3> ru =
-           (Eigen::Matrix<double, 1, 3>() << p.ln_this.autovector.director[0], p.ln_this.autovector.director[1], p.ln_this.autovector.director[2]
+           (Eigen::Matrix<double, 1, 3>() << p.ln_this.director[0], p.ln_this.director[1], p.ln_this.director[2]
             ).finished();
             double mod_ru = ru*ru.transpose();
             // Auxiliar variable to calculate diff(p)*ru^T
@@ -138,8 +139,13 @@ void mp2p_icp::optimal_tf_gauss_newton(
             J.block<1, 6>(base_idx + idx_pt, 0) = w_ln * J1 * dDexpe_de.asEigen();
         }
 
-        // Point-to-plane:
+        // Line-to-Line
         base_idx = base_idx + nPt2Ln;
+        for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++){
+
+        }
+        // Point-to-plane:
+        base_idx = base_idx + nLn2Ln;
         for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
         {
             // Error:

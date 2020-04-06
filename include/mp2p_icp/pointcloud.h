@@ -49,19 +49,6 @@ struct plane_patch_t
     }
 };
 
-struct line_patch_t
-{
-    mrpt::math::TLine3D autovector;
-    mrpt::math::TPoint3D centroide;
-
-    line_patch_t() = default;
-    line_patch_t(
-            const mrpt::math::TLine3D& ln, const mrpt::math::TPoint3D& center)
-            : autovector(ln), centroide(center)
-    {
-    }
-};
-
 /**
  * @brief Generic container of pointcloud(s), and/or extracted features.
  *
