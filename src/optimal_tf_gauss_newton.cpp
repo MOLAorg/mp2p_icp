@@ -142,6 +142,22 @@ void mp2p_icp::optimal_tf_gauss_newton(
         // Line-to-Line
         base_idx = base_idx + nPt2Ln;
         for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++){
+            const auto& p = in.paired_lines[idx_ln];
+            mrpt::math::TLine3D ln_aux;
+            double       gx, gy, gz;
+            result.optimal_pose.composePoint(p.l_other.pBase.x, p.l_other.pBase.y, p.l_other.pBase.z, gx, gy, gz);
+            const auto g = mrpt::math::TPoint3D(gx,gy,gz);
+            ln_aux.pBase = g;
+            mrpt::math::CMatrixDouble44 aux;
+            result.optimal_pose.getHomogeneousMatrix(aux);
+            const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
+            const Eigen::Matrix<double, 1, 4> U =
+                (Eigen::Matrix<double, 1, 4>() <<
+                   p.l_other.director[0], p.l_other.director[1], p.l_other.director[2], 1
+                 ).finished();
+            // Buscar la forma de parchear array<double,3> = array<double,3> * CMatrixDouble44;
+            const Eigen::Matrix<double, 1, 4> U_T = U * T;
+            ln_aux.director = {U_T(1,1), U_T(1,2), U_T(1,3)};
 
         }
         // Point-to-plane:
