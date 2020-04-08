@@ -146,8 +146,8 @@ void visit_correspondences(
 
             const auto idxLine = i - nPoints;
 
-            bi = in.paired_lines[idxLine].l_this.getDirectorVector();
-            ri = in.paired_lines[idxLine].l_other.getDirectorVector();
+            bi = in.paired_lines[idxLine].ln_this.getDirectorVector();
+            ri = in.paired_lines[idxLine].ln_other.getDirectorVector();
 
             ASSERTDEB_BELOW_(std::abs(bi.norm() - 1.0), 0.01);
             ASSERTDEB_BELOW_(std::abs(ri.norm() - 1.0), 0.01);

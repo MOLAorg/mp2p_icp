@@ -121,8 +121,9 @@ void mp2p_icp::optimal_tf_gauss_newton(
             ).finished();
             double mod_ru = ru*ru.transpose();
 
+            // J1
             Eigen::Matrix<double, 1, 3> J1 = 2*p_r0-(2/mod_ru)*(p_r0*ru.transpose())*ru;
-
+            // J2
             const Eigen::Matrix<double, 3, 12> J2 =
                 (Eigen::Matrix<double, 3, 12>() <<
                    lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
@@ -140,24 +141,105 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
         // Line-to-Line
         base_idx = base_idx + nPt2Ln;
+        // Minimum angle to approach zero
+        const double tolerance =0.01;
         for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++){
             const auto& p = in.paired_lines[idx_ln];
             mrpt::math::TLine3D ln_aux;
             double       gx, gy, gz;
-            result.optimal_pose.composePoint(p.l_other.pBase.x, p.l_other.pBase.y, p.l_other.pBase.z, gx, gy, gz);
-            const auto g = mrpt::math::TPoint3D(gx,gy,gz);
-            ln_aux.pBase = g;
+            result.optimal_pose.composePoint(p.ln_other.pBase.x, p.ln_other.pBase.y, p.ln_other.pBase.z, gx, gy, gz);
+            ln_aux.pBase = mrpt::math::TPoint3D(gx,gy,gz);
+            // Homogeneous matrix calculation
             mrpt::math::CMatrixDouble44 aux;
             result.optimal_pose.getHomogeneousMatrix(aux);
             const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
+            // Projection of the director vector for the new pose
             const Eigen::Matrix<double, 1, 4> U =
                 (Eigen::Matrix<double, 1, 4>() <<
-                   p.l_other.director[0], p.l_other.director[1], p.l_other.director[2], 1
+                   p.ln_other.director[0], p.ln_other.director[1], p.ln_other.director[2], 1
                  ).finished();
-            // Buscar la forma de parchear array<double,3> = array<double,3> * CMatrixDouble44;
             const Eigen::Matrix<double, 1, 4> U_T = U * T;
             ln_aux.director = {U_T(1,1), U_T(1,2), U_T(1,3)};
+            // Angle formed between the lines
+            double alfa = getAngle(p.ln_this,ln_aux);
+            // p_r0 = (p-r_{0,r}). Ec.20
+            const Eigen::Matrix<double, 1, 3> p_r2 =
+                (Eigen::Matrix<double, 1, 3>() << ln_aux.pBase.x-p.ln_this.pBase.x, ln_aux.pBase.y-p.ln_this.pBase.y, ln_aux.pBase.z-p.ln_this.pBase.z
+                ).finished();
+            const Eigen::Matrix<double, 1, 3> rv =
+                (Eigen::Matrix<double, 1, 3>() << p.ln_this.director[0], p.ln_this.director[1], p.ln_this.director[2]
+                ).finished();
 
+            // Relationship between lines
+            if(alfa<tolerance){ // Parallel
+                // Error: Ec.20
+                err(base_idx + idx_ln) = pow(p.ln_this.distance(ln_aux.pBase),2);
+
+                // Module of vector director of line
+                double mod_rv = rv*rv.transpose();
+
+                // J1: Ec.22
+                Eigen::Matrix<double, 1, 3> J1 = 2*p_r2-(2/mod_rv)*(p_r2*rv.transpose())*rv;
+                // J2: Ec.23
+                const Eigen::Matrix<double, 3, 12> J2 =
+                    (Eigen::Matrix<double, 3, 12>() <<
+                       p.ln_other.pBase.x,  0,  0,  p.ln_other.pBase.y,  0,  0, p.ln_other.pBase.z,  0,  0,  1,  0,  0,
+                        0, p.ln_other.pBase.x,  0,  0,  p.ln_other.pBase.y,  0,  0, p.ln_other.pBase.z,  0,  0,  1,  0,
+                        0,  0, p.ln_other.pBase.x,  0,  0,  p.ln_other.pBase.y,  0,  0, p.ln_other.pBase.z,  0,  0,  1
+                     ).finished();
+                // Build Jacobian
+                J.block<1, 6>(base_idx + idx_ln, 0) = w_ln * J1 * J2 * dDexpe_de.asEigen();
+            }else{ // Rest
+                // Error:
+                // Ec.26: Cross product (r_u x r_2,v)
+               const double rw_x =   U_T[1]*p.ln_this.director[2]-U_T[2]*p.ln_this.director[1];
+               const double rw_y = -(U_T[0]*p.ln_this.director[2]-U_T[2]*p.ln_this.director[0]);
+               const double rw_z =   U_T[0]*p.ln_this.director[1]-U_T[1]*p.ln_this.director[0];
+               const Eigen::Matrix<double, 1, 3> r_w =(Eigen::Matrix<double, 1, 3>() << rw_x, rw_y, rw_z).finished();
+                double aux_rw = r_w*r_w.transpose();
+                // Error 1. Ec.26
+                err(base_idx + idx_ln) = p_r2.dot(r_w)/sqrt(aux_rw);
+                // Error 2. Ec.27
+                err(base_idx + idx_ln + 1) = U_T[0] - p.ln_this.director[0];
+                err(base_idx + idx_ln + 2) = U_T[1] - p.ln_this.director[1];
+                err(base_idx + idx_ln + 3) = U_T[2] - p.ln_this.director[2];
+                // Desplazamiento del indicador del vector de error para los casos en el que hay 4 errores en lugar de 1.
+                // Espero que esto se pueda hacer.
+                base_idx = base_idx + 3;
+
+                // Ec.35
+                const Eigen::Matrix<double, 1, 3> I = (Eigen::Matrix<double, 1, 3>() << 1, 1, 1).finished();
+                Eigen::Matrix<double,1,3> C = I.cross(rv);
+                // J1.1: Ec.32
+                Eigen::Matrix<double, 1, 3> J1_1 = r_w/sqrt(aux_rw);
+                // J1.2: Ec.33
+                Eigen::Matrix<double, 1, 3> J1_2 = (p_r2*sqrt(aux_rw)-p_r2*r_w.transpose()*C)/(aux_rw);
+                // J1.3: Ec.36
+                //Eigen::Matrix<double, 3, 1> J1_3 = (Eigen::Matrix<double, 1, 3>() << 1, 1, 1).finished();
+
+                //Componer J1 como en Ec.29
+                MRPT_TODO("Esto aún no está bien hecho");
+/*                Eigen::Matrix<double, 4, 6> J1 =
+                        (Eigen::Matrix<double, 4, 6>() <<
+                         J1_1, J1_2,
+                         1, 0, 0, p.ln_other.director[0], 0, 0,
+                         0, 1, 0, 0, p.ln_other.director[1], 0,
+                         0, 0, 1, 0, 0, p.ln_other.director[1]
+                         ).finished();
+
+                // J2: Ec.37-39
+                const Eigen::Matrix<double, 6, 12> J2 =
+                    (Eigen::Matrix<double, 3, 12>() <<
+                       p.ln_other.pBase.x,  0,  0,      p.ln_other.pBase.y,  0,  0,     p.ln_other.pBase.z,  0, 0,      1,  0,  0,
+                        0, p.ln_other.pBase.x,  0,      0,  p.ln_other.pBase.y,  0,     0, p.ln_other.pBase.z,  0,      0,  1,  0,
+                        0,  0, p.ln_other.pBase.x,      0,  0,  p.ln_other.pBase.y,     0,  0, p.ln_other.pBase.z,      0,  0,  1,
+                       p.ln_other.director[0],  0,  0,  p.ln_other.director[1],  0,  0, p.ln_other.director[2], 0,  0,  1,  0,  0,
+                        0, p.ln_other.director[0],  0,  0,  p.ln_other.director[1],  0, 0, p.ln_other.director[2],  0,  0,  1,  0,
+                        0,  0, p.ln_other.director[0],  0,  0,  p.ln_other.director[1], 0,  0, p.ln_other.director[2],  0,  0,  1
+                    ).finished();
+                // Build Jacobian
+                J.block<1, 6>(base_idx + idx_ln, 0) = w_ln * J1 * J2 * dDexpe_de.asEigen();*/
+            }
         }
         // Point-to-plane:
         base_idx = base_idx + nLn2Ln;
