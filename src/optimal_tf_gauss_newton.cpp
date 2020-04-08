@@ -103,14 +103,27 @@ void mp2p_icp::optimal_tf_gauss_newton(
             double       gx, gy, gz;
             result.optimal_pose.composePoint(lx, ly, lz, gx, gy, gz);
             const auto g = mrpt::math::TPoint3D(gx,gy,gz);
-            err(base_idx + idx_pt) = p.ln_this.distance(g);
+            err(base_idx + idx_pt) = pow(p.ln_this.distance(g),2);
 
             // Eval Jacobian:
             // "A tutorial on SE(3) transformation parameterizations and
             // on-manifold optimization"
             // d(T_{A}·p)/dT_{A}. Ec.7.16
             // clang-format off
-            const Eigen::Matrix<double, 3, 12> diff_p =
+            // Doc auxiliar: Section 4.1.2.
+            // p_r0 = (p-r_{0,r}). Ec.9
+            const Eigen::Matrix<double, 1, 3> p_r0 =
+           (Eigen::Matrix<double, 1, 3>() << g.x-p.ln_this.pBase.x, g.y-p.ln_this.pBase.y, g.z-p.ln_this.pBase.z
+            ).finished();
+            // Module of vector director of line
+            const Eigen::Matrix<double, 1, 3> ru =
+           (Eigen::Matrix<double, 1, 3>() << p.ln_this.director[0], p.ln_this.director[1], p.ln_this.director[2]
+            ).finished();
+            double mod_ru = ru*ru.transpose();
+
+            Eigen::Matrix<double, 1, 3> J1 = 2*p_r0-(2/mod_ru)*(p_r0*ru.transpose())*ru;
+
+            const Eigen::Matrix<double, 3, 12> J2 =
                 (Eigen::Matrix<double, 3, 12>() <<
                    lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
                     0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
@@ -122,21 +135,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             // ...
 
             // Build Jacobian
-            // Section 4.1.2: p_r0 = (p-r_{0,r}). Ec.9
-            const Eigen::Matrix<double, 1, 3> p_r0 =
-           (Eigen::Matrix<double, 1, 3>() << g.x-p.ln_this.pBase.x, g.y-p.ln_this.pBase.y, g.z-p.ln_this.pBase.z
-            ).finished();
-            // Module of vector director of line
-            const Eigen::Matrix<double, 1, 3> ru =
-           (Eigen::Matrix<double, 1, 3>() << p.ln_this.director[0], p.ln_this.director[1], p.ln_this.director[2]
-            ).finished();
-            double mod_ru = ru*ru.transpose();
-            // Auxiliar variable to calculate diff(p)*ru^T
-            const Eigen::Matrix<double, 12, 1> aux = diff_p.transpose()*ru.transpose();
-
-            Eigen::Matrix<double, 1, 12> J1 = 4*err(base_idx + idx_pt)*(p_r0*diff_p-(1/mod_ru)*(p_r0*ru.transpose())*aux.transpose());
-
-            J.block<1, 6>(base_idx + idx_pt, 0) = w_ln * J1 * dDexpe_de.asEigen();
+            J.block<1, 6>(base_idx + idx_pt, 0) = w_ln * J1 * J2 * dDexpe_de.asEigen();
         }
 
         // Line-to-Line
