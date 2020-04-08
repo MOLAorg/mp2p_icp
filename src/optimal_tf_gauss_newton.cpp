@@ -191,7 +191,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
                 J.block<1, 6>(base_idx + idx_ln, 0) = w_ln * J1 * J2 * dDexpe_de.asEigen();
             }else{ // Rest
                 // Error:
-                // Ec.26: Cross product (r_u x r_2,v)
+                // Cross product (r_u x r_2,v)
                const double rw_x =   U_T[1]*p.ln_this.director[2]-U_T[2]*p.ln_this.director[1];
                const double rw_y = -(U_T[0]*p.ln_this.director[2]-U_T[2]*p.ln_this.director[0]);
                const double rw_z =   U_T[0]*p.ln_this.director[1]-U_T[1]*p.ln_this.director[0];
@@ -212,24 +212,24 @@ void mp2p_icp::optimal_tf_gauss_newton(
                 Eigen::Matrix<double,1,3> C = I.cross(rv);
                 // J1.1: Ec.32
                 Eigen::Matrix<double, 1, 3> J1_1 = r_w/sqrt(aux_rw);
-                // J1.2: Ec.33
-                Eigen::Matrix<double, 1, 3> J1_2 = (p_r2*sqrt(aux_rw)-p_r2*r_w.transpose()*C)/(aux_rw);
-                // J1.3: Ec.36
-                //Eigen::Matrix<double, 3, 1> J1_3 = (Eigen::Matrix<double, 1, 3>() << 1, 1, 1).finished();
-
-                //Componer J1 como en Ec.29
-                MRPT_TODO("Esto aún no está bien hecho");
-/*                Eigen::Matrix<double, 4, 6> J1 =
-                        (Eigen::Matrix<double, 4, 6>() <<
-                         J1_1, J1_2,
-                         1, 0, 0, p.ln_other.director[0], 0, 0,
-                         0, 1, 0, 0, p.ln_other.director[1], 0,
-                         0, 0, 1, 0, 0, p.ln_other.director[1]
+                // J1.2: Ec.36
+                Eigen::Matrix<double, 1, 3> J1_2 = (p_r2.cross(rv)*sqrt(aux_rw)-p_r2*r_w.transpose()*C)/aux_rw;
+                // J1.3: Ec.37-38
+                Eigen::Matrix<double, 3, 6> J1_3 =
+                        (Eigen::Matrix<double, 3, 6>() <<
+                         0, 0, 0, 1, 0, 0,
+                         0, 0, 0, 0, 1, 0,
+                         0, 0, 0, 0, 0, 1
                          ).finished();
+                // J1: Ec.29
+                Eigen::Matrix<double, 4, 6> J1;
+                J1.block<1,3>(0,0) = J1_1;
+                J1.block<1,3>(3,5) = J1_2;
+                J1.block<3,6>(0,1) = J1_3;
 
-                // J2: Ec.37-39
+                // J2: Ec.39-41
                 const Eigen::Matrix<double, 6, 12> J2 =
-                    (Eigen::Matrix<double, 3, 12>() <<
+                    (Eigen::Matrix<double, 6, 12>() <<
                        p.ln_other.pBase.x,  0,  0,      p.ln_other.pBase.y,  0,  0,     p.ln_other.pBase.z,  0, 0,      1,  0,  0,
                         0, p.ln_other.pBase.x,  0,      0,  p.ln_other.pBase.y,  0,     0, p.ln_other.pBase.z,  0,      0,  1,  0,
                         0,  0, p.ln_other.pBase.x,      0,  0,  p.ln_other.pBase.y,     0,  0, p.ln_other.pBase.z,      0,  0,  1,
@@ -238,7 +238,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
                         0,  0, p.ln_other.director[0],  0,  0,  p.ln_other.director[1], 0,  0, p.ln_other.director[2],  0,  0,  1
                     ).finished();
                 // Build Jacobian
-                J.block<1, 6>(base_idx + idx_ln, 0) = w_ln * J1 * J2 * dDexpe_de.asEigen();*/
+                J.block<4, 6>(base_idx + idx_ln, 0) = w_ln * J1 * J2 * dDexpe_de.asEigen();
             }
         }
         // Point-to-plane:
