@@ -26,3 +26,12 @@ add_test(MP2P_ICP_algorithms ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_icp_alg
 target_compile_definitions(test-mp2p_icp_algos
     PRIVATE
     MP2P_DATASET_DIR="${mp2p_icp_SOURCE_DIR}/test-datasets/")
+
+
+mola_add_executable(
+    TARGET  test-mp2p_jacobians
+    SOURCES test-mp2p_jacobians.cpp
+	LINK_LIBRARIES
+	    mp2p_icp
+)
+add_test(MP2P_jacobians ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_jacobians)
