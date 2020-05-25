@@ -123,8 +123,7 @@ void ICP_GaussNewton::impl_ICP_iteration(
         return;
     }
 
-    // Compute the optimal pose, using the OLAE method
-    // (Optimal linear attitude estimator)
+    // Compute the optimal pose, using the GN method
     // ------------------------------------------------
     OptimalTF_Result res;
 
