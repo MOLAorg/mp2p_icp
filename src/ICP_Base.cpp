@@ -15,8 +15,7 @@
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
 
-IMPLEMENTS_VIRTUAL_MRPT_OBJECT(
-    ICP_Base, mrpt::rtti::CObject, mp2p_icp);
+IMPLEMENTS_VIRTUAL_MRPT_OBJECT(ICP_Base, mrpt::rtti::CObject, mp2p_icp);
 
 using namespace mp2p_icp;
 
@@ -91,9 +90,9 @@ void ICP_Base::align(
         const double delta_rot = dSol.blockCopy<3, 1>(3, 0).norm();
 
 #if 0
-		std::cout << "Dxyz: " << std::abs(delta_xyz)
-			<< " Drot:" << std::abs(delta_rot)
-			<< " p: " << solution.asString() << "\n";
+        std::cout << "Dxyz: " << std::abs(delta_xyz)
+                  << " Drot:" << std::abs(delta_rot)
+                  << " p: " << state.current_solution.asString() << "\n";
 #endif
 
         if (std::abs(delta_xyz) < p.minAbsStep_trans &&
