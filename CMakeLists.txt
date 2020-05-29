@@ -12,6 +12,9 @@ cmake_minimum_required(VERSION 3.4)
 # Tell CMake we'll use C++ for use in its tests/flags
 project(mp2p_icp LANGUAGES CXX)
 
+# 3rd party:
+add_subdirectory(3rdparty)
+
 # find dependencies:
 find_package(mrpt-tfest REQUIRED)
 find_package(mrpt-containers REQUIRED)
