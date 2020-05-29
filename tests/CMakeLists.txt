@@ -1,9 +1,9 @@
 # ------------------------------------------------------------------------------
 #        Multi primitive-to-primitive (MP2) ICP C++ library
 #
-# Copyright (C) 2018-2019, Jose Luis Blanco-Claraco, contributors (AUTHORS.md)
+# Copyright (C) 2018-2020, Jose Luis Blanco-Claraco, contributors (AUTHORS.md)
 # All rights reserved.
-# Released under FreeBSD 3. See LICENSE file
+# Released under BSD 3-Clause License. See COPYING.
 # ------------------------------------------------------------------------------
 
 mola_add_executable(
