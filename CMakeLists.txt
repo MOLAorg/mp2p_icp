@@ -42,6 +42,12 @@ mola_add_library(
 		mrpt::maps
 )
 
+if (MP2PICP_BUILD_POINTMATCHER)
+	target_compile_definitions(${PROJECT_NAME} PUBLIC MP2P_HAS_LIBPOINTMATCHER)
+	target_link_libraries(${PROJECT_NAME} PRIVATE libpointmatcher::libpointmatcher)
+endif()
+
+
 # -----------------------
 # define tests:
 enable_testing()

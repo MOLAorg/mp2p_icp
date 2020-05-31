@@ -1,6 +1,6 @@
 [submodule "3rdparty/libpointmatcher"]
 	path = 3rdparty/libpointmatcher
-	url = https://github.com/molaorg/libpointmatcher.git
+	url = https://github.com/MOLAorg/libpointmatcher.git
 [submodule "3rdparty/libnabo"]
 	path = 3rdparty/libnabo
-	url = https://github.com/molaorg/libnabo.git
+	url = https://github.com/MOLAorg/libnabo.git
