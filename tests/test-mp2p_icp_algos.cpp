@@ -13,6 +13,7 @@
 
 #include <mp2p_icp/ICP_GaussNewton.h>
 #include <mp2p_icp/ICP_Horn_MultiCloud.h>
+#include <mp2p_icp/ICP_LibPointmatcher.h>
 #include <mp2p_icp/ICP_OLAE.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/get_env.h>
@@ -187,9 +188,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const std::vector<const char*> lst_files{
             {"bunny_decim.xyz.gz", "happy_buddha_decim.xyz.gz"}};
 
-        const std::vector<const char*> lst_algos{
-            {"mp2p_icp::ICP_Horn_MultiCloud", "mp2p_icp::ICP_OLAE",
-             "mp2p_icp::ICP_GaussNewton"}};
+        std::vector<const char*> lst_algos{{"mp2p_icp::ICP_Horn_MultiCloud",
+                                            "mp2p_icp::ICP_OLAE",
+                                            "mp2p_icp::ICP_GaussNewton"}};
+
+#if defined(MP2P_HAS_LIBPOINTMATCHER)
+        lst_algos.push_back("mp2p_icp::ICP_LibPointmatcher");
+#endif
 
         for (const auto& algo : lst_algos)
             for (const auto& fil : lst_files) test_icp(fil, algo);
