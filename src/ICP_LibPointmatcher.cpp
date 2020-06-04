@@ -39,12 +39,13 @@ static PointMatcher<float>::DataPoints pointsToPM(
     {
         const std::string&                 name = layerNameWeight.first;
         const mrpt::maps::CPointsMap::Ptr& pts  = pc.point_layers.at(name);
+        ASSERT_(pts);
 
         const auto xs = pts->getPointsBufferRef_x();
         const auto ys = pts->getPointsBufferRef_y();
         const auto zs = pts->getPointsBufferRef_z();
         for (size_t i = 0; i < xs.size(); i++)
-            ss << xs[i] << " " << ys[i] << " " << zs[i] << "\n";
+            ss << mrpt::format("%f %f %f\n", xs[i], ys[i], zs[i]);
     }
     ss.seekg(0);
     return PointMatcherIO<float>::loadCSV(ss);
