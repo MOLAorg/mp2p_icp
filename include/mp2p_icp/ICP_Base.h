@@ -84,7 +84,6 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     virtual void impl_ICP_iteration(
         ICP_State& state, const Parameters& p, ICP_iteration_result& out) = 0;
 
-   private:
     /** Populates state.mps according to pointcloud stats and to input
      * parameters */
     void prepareMatchingParams(ICP_State& state, const Parameters& p) const;

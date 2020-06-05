@@ -21,7 +21,9 @@
 
 #if defined(MP2P_HAS_LIBPOINTMATCHER)
 #include <pointmatcher/IO.h>
+#include <pointmatcher/LoggerImpl.h>
 #include <pointmatcher/PointMatcher.h>
+#include <pointmatcher/TransformationsImpl.h>
 #endif
 
 IMPLEMENTS_MRPT_OBJECT(ICP_LibPointmatcher, mp2p_icp::ICP_Base, mp2p_icp)
@@ -29,7 +31,7 @@ IMPLEMENTS_MRPT_OBJECT(ICP_LibPointmatcher, mp2p_icp::ICP_Base, mp2p_icp)
 using namespace mp2p_icp;
 
 #if defined(MP2P_HAS_LIBPOINTMATCHER)
-static PointMatcher<float>::DataPoints pointsToPM(
+static PointMatcher<double>::DataPoints pointsToPM(
     const pointcloud_t& pc, const std::map<std::string, double>& layerWeights)
 {
     // TODO: Convert pointclouds in a more efficient way (!)
@@ -48,7 +50,7 @@ static PointMatcher<float>::DataPoints pointsToPM(
             ss << mrpt::format("%f %f %f\n", xs[i], ys[i], zs[i]);
     }
     ss.seekg(0);
-    return PointMatcherIO<float>::loadCSV(ss);
+    return PointMatcherIO<double>::loadCSV(ss);
 }
 #endif
 
@@ -66,6 +68,28 @@ void ICP_LibPointmatcher::align(
     ASSERT_(
         !pcs1.point_layers.empty() ||
         (!pcs1.planes.empty() && !pcs2.planes.empty()));
+
+    ICP_State state(pcs1, pcs2);
+
+    state.current_solution = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
+    auto prev_solution     = state.current_solution;
+
+    // Prepare params for "find pairings" for each layer:
+    prepareMatchingParams(state, p);
+
+    // the global list of pairings:
+    WeightedPairings pairings = ICP_Base::commonFindPairings(state, p);
+
+    if (pairings.empty() || pairings.paired_points.size() < 3)
+    {
+        // Skip ill-defined problems if the no. of points is too small.
+
+        // Nothing we can do !!
+        result.quality         = 0;
+        result.goodness        = 0;
+        result.optimal_tf.mean = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
+        return;
+    }
 
     // Reset output:
     result = Results();
@@ -86,7 +110,7 @@ void ICP_LibPointmatcher::align(
     MRPT_TODO("Obviously, fix this!! :-)");
     std::string icpImplConfigFile = "/home/jlblanco/libpm-icp.yaml";
 
-    using PM = PointMatcher<float>;
+    using PM = PointMatcher<double>;
     using DP = PM::DataPoints;
 
     // Load point clouds
@@ -98,6 +122,7 @@ void ICP_LibPointmatcher::align(
 
     // Create the default ICP algorithm
     PM::ICP icp;
+
     {
         // load YAML config
         std::ifstream ifs(icpImplConfigFile);
@@ -114,12 +139,11 @@ void ICP_LibPointmatcher::align(
     ASSERT_EQUAL_(ptsFrom.getEuclideanDim(), ptsTo.getEuclideanDim());
 
     PM::TransformationParameters initTransfo =
-        init_guess_m2_wrt_m1.getHomogeneousMatrix().cast_float().asEigen();
+        init_guess_m2_wrt_m1.getHomogeneousMatrix().asEigen();
 
-    std::shared_ptr<PM::Transformation> rigidTrans;
-    rigidTrans = PM::get().REG(Transformation).create("RigidTransformation");
+    TransformationsImpl<double>::RigidTransformation rigidTrans;
 
-    if (!rigidTrans->checkParameters(initTransfo))
+    if (!rigidTrans.checkParameters(initTransfo))
     {
         MRPT_LOG_WARN(
             "Initial transformation is not rigid, identity will be used");
@@ -127,29 +151,51 @@ void ICP_LibPointmatcher::align(
             cloudDimension + 1, cloudDimension + 1);
     }
 
-    const DP initializedData = rigidTrans->compute(ptsTo, initTransfo);
+    const DP initializedData = rigidTrans.compute(ptsTo, initTransfo);
 
     // Compute the transformation to express data in ref
-    PM::TransformationParameters T = icp(initializedData, ptsFrom);
+    PM::TransformationParameters T;
+    try
+    {
+        T = icp(initializedData, ptsFrom);
 
-    MRPT_LOG_DEBUG_FMT(
-        "match ratio: %.02f%%",
-        icp.errorMinimizer->getWeightedPointUsedRatio() * 100.0);
+        // PM gives us the transformation wrt the initial transformation,
+        // since we already applied that transf. to the input point cloud!
+        state.current_solution =
+            mrpt::poses::CPose3D(init_guess_m2_wrt_m1) +
+            mrpt::poses::CPose3D(mrpt::math::CMatrixDouble44(T));
 
-    // Transform data to express it in ref
-    DP data_out(initializedData);
-    icp.transformations.apply(data_out, T);
+        // result.goodness = icp.errorMinimizer->getWeightedPointUsedRatio();
+    }
+    catch (const PM::ConvergenceError&)
+    {
+        // No good pairing candidates.
+        result.goodness = 0;
+    }
 
     // Output in MP2P_ICP format:
+    if (!icp.transformationCheckers.empty())
+        result.nIterations =
+            icp.transformationCheckers.at(0)->getConditionVariables()[0];
+    else
+        result.nIterations = 1;
+
+    // Determine matching ratio:
+    pairings = ICP_Base::commonFindPairings(state, p);
+
+    if (!state.layerOfLargestPc.empty())
+        result.goodness =
+            state.mres.at(state.layerOfLargestPc).correspondencesRatio;
+    else
+        result.goodness = icp.errorMinimizer->getWeightedPointUsedRatio();
+
     result.terminationReason = IterTermReason::Stalled;
-    result.goodness          = icp.errorMinimizer->getWeightedPointUsedRatio();
-    result.nIterations       = 10;  //!
     result.optimal_scale     = 1.0;
     result.quality           = 1.0;
-    result.optimal_tf.mean =
-        mrpt::poses::CPose3D(mrpt::math::CMatrixDouble44(T));
-    result.optimal_tf.cov = icp.errorMinimizer->getCovariance();
+    result.optimal_tf.mean   = state.current_solution;
+    // result.optimal_tf.cov    = icp.errorMinimizer->getCovariance();
 
+    MRPT_LOG_DEBUG_FMT("match ratio: %.02f%%", result.goodness * 100.0);
 #else
     THROW_EXCEPTION("This method requires MP2P built against libpointmatcher")
 #endif

@@ -33,7 +33,7 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
     // the global list of pairings:
     WeightedPairings pairings = ICP_Base::commonFindPairings(s, p);
 
-    if (pairings.empty() && pairings.paired_points.size() < 3)
+    if (pairings.empty() || pairings.paired_points.size() < 3)
     {
         // Skip ill-defined problems if the no. of points is too small.
         // There's no check for this inside olae_match() because it also
