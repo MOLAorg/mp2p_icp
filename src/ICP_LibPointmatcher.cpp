@@ -30,6 +30,15 @@ IMPLEMENTS_MRPT_OBJECT(ICP_LibPointmatcher, mp2p_icp::ICP_Base, mp2p_icp)
 
 using namespace mp2p_icp;
 
+bool ICP_LibPointmatcher::methodAvailable()
+{
+#if defined(MP2P_HAS_LIBPOINTMATCHER)
+    return true;
+#else
+    return false;
+#endif
+}
+
 #if defined(MP2P_HAS_LIBPOINTMATCHER)
 static PointMatcher<double>::DataPoints pointsToPM(
     const pointcloud_t& pc, const std::map<std::string, double>& layerWeights)
@@ -107,8 +116,40 @@ void ICP_LibPointmatcher::align(
     ASSERT_(pointcount1 > 0 || !pcs1.planes.empty());
     ASSERT_(pointcount2 > 0 || !pcs2.planes.empty());
 
-    MRPT_TODO("Obviously, fix this!! :-)");
-    std::string icpImplConfigFile = "/home/jlblanco/libpm-icp.yaml";
+    const char* icpConfigFmt = R"XXX(
+readingDataPointsFilters:
+  - RandomSamplingDataPointsFilter:
+      prob: %f
+
+referenceDataPointsFilters:
+  - SurfaceNormalDataPointsFilter:
+      knn: %u
+
+matcher:
+  KDTreeMatcher:
+    knn: %u
+
+outlierFilters:
+  - %s:
+%s
+
+errorMinimizer:
+  %s
+
+transformationCheckers:
+  - CounterTransformationChecker:
+      maxIterationCount: %u
+  - DifferentialTransformationChecker:
+      minDiffRotErr: 0.0001
+      minDiffTransErr: 0.001
+      smoothLength: 4
+
+inspector:
+  NullInspector
+
+logger:
+  NullLogger
+)XXX";
 
     using PM = PointMatcher<double>;
     using DP = PM::DataPoints;
@@ -124,14 +165,28 @@ void ICP_LibPointmatcher::align(
     PM::ICP icp;
 
     {
-        // load YAML config
-        std::ifstream ifs(icpImplConfigFile);
-        if (!ifs.good())
+        const auto& plm = parametersLibpointmatcher;
+
+        std::string outlierParams;
+        for (const auto& op : plm.outlierParams)
         {
-            THROW_EXCEPTION_FMT(
-                "Cannot open config file %s", icpImplConfigFile.c_str());
+            outlierParams += "      ";
+            outlierParams += op.first;
+            outlierParams += ": ";
+            outlierParams += std::to_string(op.second);
+            outlierParams += "\n";
         }
-        icp.loadFromYaml(ifs);
+
+        // load YAML config
+        std::stringstream ss;
+        ss << mrpt::format(
+            icpConfigFmt, plm.RandomSamplingDataPointsFilter_prob,
+            plm.SurfaceNormalDataPointsFilter_knn, plm.KDTreeMatcher_knn,
+            plm.outlierFilter.c_str(), outlierParams.c_str(),
+            plm.errorMinimizer.c_str(), p.maxIterations);
+
+        ss.seekg(0);
+        icp.loadFromYaml(ss);
     }
 
     int cloudDimension = ptsFrom.getEuclideanDim();
@@ -184,8 +239,9 @@ void ICP_LibPointmatcher::align(
     pairings = ICP_Base::commonFindPairings(state, p);
 
     if (!state.layerOfLargestPc.empty())
-        result.goodness =
-            state.mres.at(state.layerOfLargestPc).correspondencesRatio;
+        result.goodness = mrpt::saturate_val<double>(
+            state.mres.at(state.layerOfLargestPc).correspondencesRatio, 0.0,
+            1.0);
     else
         result.goodness = icp.errorMinimizer->getWeightedPointUsedRatio();
 

@@ -25,6 +25,7 @@
 #include <mrpt/random.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>
+
 #include <fstream>
 #include <iostream>
 
@@ -188,13 +189,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const std::vector<const char*> lst_files{
             {"bunny_decim.xyz.gz", "happy_buddha_decim.xyz.gz"}};
 
-        std::vector<const char*> lst_algos{{"mp2p_icp::ICP_Horn_MultiCloud",
-                                            "mp2p_icp::ICP_OLAE",
-                                            "mp2p_icp::ICP_GaussNewton"}};
+        std::vector<const char*> lst_algos{
+            {"mp2p_icp::ICP_Horn_MultiCloud", "mp2p_icp::ICP_OLAE",
+             "mp2p_icp::ICP_GaussNewton"}};
 
-#if defined(MP2P_HAS_LIBPOINTMATCHER)
-        lst_algos.push_back("mp2p_icp::ICP_LibPointmatcher");
-#endif
+        // Optional methods:
+        if (mp2p_icp::ICP_LibPointmatcher::methodAvailable())
+            lst_algos.push_back("mp2p_icp::ICP_LibPointmatcher");
 
         for (const auto& algo : lst_algos)
             for (const auto& fil : lst_files) test_icp(fil, algo);

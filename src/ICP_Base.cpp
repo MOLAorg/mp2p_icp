@@ -110,8 +110,9 @@ void ICP_Base::align(
 
     // Ratio of points with a valid pairing:
     if (!state.layerOfLargestPc.empty())
-        result.goodness =
-            state.mres.at(state.layerOfLargestPc).correspondencesRatio;
+        result.goodness = mrpt::saturate_val<double>(
+            state.mres.at(state.layerOfLargestPc).correspondencesRatio, 0.0,
+            1.0);
 
     // Store output:
     result.optimal_tf.mean = state.current_solution;

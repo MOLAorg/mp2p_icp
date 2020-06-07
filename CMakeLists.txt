@@ -43,7 +43,7 @@ mola_add_library(
 )
 
 if (MP2PICP_BUILD_POINTMATCHER)
-	target_compile_definitions(${PROJECT_NAME} PUBLIC MP2P_HAS_LIBPOINTMATCHER)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_LIBPOINTMATCHER)
 	target_link_libraries(${PROJECT_NAME} PRIVATE libpointmatcher::libpointmatcher)
 endif()
 
