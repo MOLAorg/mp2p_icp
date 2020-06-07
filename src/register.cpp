@@ -21,6 +21,7 @@ MRPT_INITIALIZER(register_mp2p_icp)
 {
     using mrpt::rtti::registerClass;
 
+    registerClass(CLASS_ID(mp2p_icp::ICP_Base));
     registerClass(CLASS_ID(mp2p_icp::ICP_OLAE));
     registerClass(CLASS_ID(mp2p_icp::ICP_GaussNewton));
     registerClass(CLASS_ID(mp2p_icp::ICP_Horn_MultiCloud));
