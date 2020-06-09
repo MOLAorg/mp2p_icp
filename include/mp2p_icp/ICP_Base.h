@@ -59,7 +59,8 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         const pointcloud_t&                                      pc2;
         std::map<std::string, mrpt::maps::TMatchingParams>       mps;
         std::map<std::string, mrpt::maps::TMatchingExtraResults> mres;
-        std::string layerOfLargestPc;
+        std::string      layerOfLargestPc;
+        WeightedPairings currentPairings;
         // Current best transform:
         mrpt::poses::CPose3D current_solution;
         double               current_scale{1.0};

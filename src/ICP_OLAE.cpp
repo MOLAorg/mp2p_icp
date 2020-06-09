@@ -23,7 +23,9 @@ void ICP_OLAE::impl_ICP_iteration(
     MRPT_START
 
     // the global list of pairings:
-    WeightedPairings pairings = ICP_Base::commonFindPairings(s, p);
+    s.currentPairings = ICP_Base::commonFindPairings(s, p);
+
+    WeightedPairings& pairings = s.currentPairings;
 
     if (pairings.empty() || pairings.paired_points.size() < 3)
     {

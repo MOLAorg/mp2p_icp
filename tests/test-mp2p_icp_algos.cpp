@@ -26,6 +26,7 @@
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>
 
+#include <Eigen/Dense>
 #include <fstream>
 #include <iostream>
 
@@ -162,8 +163,16 @@ static void test_icp(const std::string& inFile, const std::string& algoName)
         if (DO_PRINT_ALL)
         {
             std::cout << "GT pose       : " << gt_pose.asString() << "\n";
-            std::cout << "ICP pose       : "
+            std::cout << "ICP pose      : "
                       << icp_results.optimal_tf.mean.asString() << "\n";
+            std::cout << "ICP pose stddev: "
+                      << icp_results.optimal_tf.cov.asEigen()
+                             .diagonal()
+                             .array()
+                             .sqrt()
+                             .matrix()
+                             .transpose()
+                      << "\n";
             std::cout << "ICP goodness   : " << icp_results.goodness << "\n";
             std::cout << "ICP iterations : " << icp_results.nIterations << "\n";
         }
@@ -189,9 +198,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const std::vector<const char*> lst_files{
             {"bunny_decim.xyz.gz", "happy_buddha_decim.xyz.gz"}};
 
-        std::vector<const char*> lst_algos{
-            {"mp2p_icp::ICP_Horn_MultiCloud", "mp2p_icp::ICP_OLAE",
-             "mp2p_icp::ICP_GaussNewton"}};
+        std::vector<const char*> lst_algos{{"mp2p_icp::ICP_Horn_MultiCloud",
+                                            "mp2p_icp::ICP_OLAE",
+                                            "mp2p_icp::ICP_GaussNewton"}};
 
         // Optional methods:
         if (mp2p_icp::ICP_LibPointmatcher::methodAvailable())

@@ -5,6 +5,7 @@
  * ------------------------------------------------------------------------- */
 #pragma once
 
+#include <mp2p_icp/optimal_tf_common.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <cstdint>
 #include "IterTermReason.h"
@@ -36,6 +37,9 @@ struct Results
      * found by the method. Higher values are better. Low values will be
      * found in ill-conditioned situations (e.g. a corridor) */
     double quality{0};
+
+    /** A copy of the pairings found in the last ICP iteration. */
+    WeightedPairings finalPairings;
 };
 /** @} */
 

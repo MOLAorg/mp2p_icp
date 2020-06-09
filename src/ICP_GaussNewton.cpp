@@ -123,6 +123,9 @@ void ICP_GaussNewton::impl_ICP_iteration(
         return;
     }
 
+    // Assign:
+    s.currentPairings.PairingsCommon::operator=(pairings);
+
     // Compute the optimal pose, using the GN method
     // ------------------------------------------------
     OptimalTF_Result res;

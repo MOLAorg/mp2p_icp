@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp/ICP_LibPointmatcher.h>
+#include <mp2p_icp/covariance.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/poses/Lie/SE.h>
@@ -87,9 +88,10 @@ void ICP_LibPointmatcher::align(
     prepareMatchingParams(state, p);
 
     // the global list of pairings:
-    WeightedPairings pairings = ICP_Base::commonFindPairings(state, p);
+    const WeightedPairings initPairings =
+        ICP_Base::commonFindPairings(state, p);
 
-    if (pairings.empty() || pairings.paired_points.size() < 3)
+    if (initPairings.empty() || initPairings.paired_points.size() < 3)
     {
         // Skip ill-defined problems if the no. of points is too small.
 
@@ -236,7 +238,7 @@ logger:
         result.nIterations = 1;
 
     // Determine matching ratio:
-    pairings = ICP_Base::commonFindPairings(state, p);
+    result.finalPairings = ICP_Base::commonFindPairings(state, p);
 
     if (!state.layerOfLargestPc.empty())
         result.goodness = mrpt::saturate_val<double>(
@@ -249,7 +251,11 @@ logger:
     result.optimal_scale     = 1.0;
     result.quality           = 1.0;
     result.optimal_tf.mean   = state.current_solution;
-    // result.optimal_tf.cov    = icp.errorMinimizer->getCovariance();
+
+    mp2p_icp::CovarianceParameters covParams;
+
+    result.optimal_tf.cov = mp2p_icp::covariance(
+        result.finalPairings, result.optimal_tf.mean, covParams);
 
     MRPT_LOG_DEBUG_FMT("match ratio: %.02f%%", result.goodness * 100.0);
 #else

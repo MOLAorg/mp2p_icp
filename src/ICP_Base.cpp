@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp/ICP_Base.h>
+#include <mp2p_icp/covariance.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
@@ -117,8 +118,13 @@ void ICP_Base::align(
     // Store output:
     result.optimal_tf.mean = state.current_solution;
     result.optimal_scale   = state.current_scale;
-    MRPT_TODO("covariance of the estimation");
-    // See: http://censi.mit.edu/pub/research/2007-icra-icpcov-slides.pdf
+    result.finalPairings   = std::move(state.currentPairings);
+
+    // Covariance:
+    mp2p_icp::CovarianceParameters covParams;
+
+    result.optimal_tf.cov = mp2p_icp::covariance(
+        result.finalPairings, result.optimal_tf.mean, covParams);
 
     MRPT_END
 }

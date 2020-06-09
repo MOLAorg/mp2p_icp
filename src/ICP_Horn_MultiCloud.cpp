@@ -31,7 +31,9 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
     ASSERT_(nLayers >= 1);
 
     // the global list of pairings:
-    WeightedPairings pairings = ICP_Base::commonFindPairings(s, p);
+    s.currentPairings = ICP_Base::commonFindPairings(s, p);
+
+    auto& pairings = s.currentPairings;
 
     if (pairings.empty() || pairings.paired_points.size() < 3)
     {
