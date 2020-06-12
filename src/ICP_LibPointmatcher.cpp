@@ -259,7 +259,7 @@ logger:
 
     MRPT_LOG_DEBUG_FMT("match ratio: %.02f%%", result.goodness * 100.0);
 #else
-    THROW_EXCEPTION("This method requires MP2P built against libpointmatcher")
+    THROW_EXCEPTION("This method requires MP2P built against libpointmatcher");
 #endif
     MRPT_END
 }
