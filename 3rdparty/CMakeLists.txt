@@ -15,9 +15,11 @@ if (MP2PICP_BUILD_POINTMATCHER)
   option(LIBNABO_BUILD_EXAMPLES "Build libnabo examples" OFF)
   option(LIBNABO_BUILD_TESTS "Build libnabo tests" OFF)
   option(LIBNABO_BUILD_PYTHON "Build libnabo python" OFF)
+  option(LIBNABO_BUILD_DOXYGEN "Build libnabo doxygen documentation" OFF)
   mark_as_advanced(LIBNABO_BUILD_EXAMPLES)
   mark_as_advanced(LIBNABO_BUILD_TESTS)
   mark_as_advanced(LIBNABO_BUILD_PYTHON)
+  mark_as_advanced(LIBNABO_BUILD_DOXYGEN)
   
   add_subdirectory(libnabo)
   
