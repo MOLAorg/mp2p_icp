@@ -19,6 +19,7 @@
 #include <mrpt/opengl/opengl_frwds.h>
 #include <mrpt/serialization/CSerializable.h>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -57,7 +58,7 @@ struct plane_patch_t
  */
 class pointcloud_t : public mrpt::serialization::CSerializable
 {
-	DEFINE_SERIALIZABLE(pointcloud_t, mp2p_icp)
+    DEFINE_SERIALIZABLE(pointcloud_t, mp2p_icp)
 
    public:
     /** @name Reserved point-cloud layer names (for use in `point_layers`)
@@ -88,6 +89,19 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     void planesAsRenderizable(
         mrpt::opengl::CSetOfObjects& o,
         const render_params_t&       p = render_params_t());
+
+    /** Merges all geometric entities from another point cloud into this one,
+     * with an optional relative pose transformation.
+     *
+     * \note Point layers will be merged for coinciding names, or created if the
+     * layer did not exist in `this`.
+     * \note This method is virtual for user-extended point clouds can handle
+     * other geometric primitives as needed.
+     */
+    virtual void mergeWith(
+        const pointcloud_t&                       otherPc,
+        const std::optional<mrpt::math::TPose3D>& otherRelativePose =
+            std::nullopt);
 };
 
 /** @} */

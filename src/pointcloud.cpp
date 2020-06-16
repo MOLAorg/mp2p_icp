@@ -16,6 +16,9 @@
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/stl_serialization.h>
 
+#include <algorithm>
+#include <iterator>
+
 IMPLEMENTS_MRPT_OBJECT(
     pointcloud_t, mrpt::serialization::CSerializable, mp2p_icp)
 
@@ -96,3 +99,76 @@ bool pointcloud_t::empty() const
     return point_layers.empty() && lines.empty() && planes.empty();
 }
 void pointcloud_t::clear() { *this = pointcloud_t(); }
+
+MRPT_TODO("Write unit test for mergeWith()");
+void pointcloud_t::mergeWith(
+    const pointcloud_t&                       otherPc,
+    const std::optional<mrpt::math::TPose3D>& otherRelativePose)
+{
+    mrpt::poses::CPose3D pose;
+    if (otherRelativePose.has_value())
+        pose = mrpt::poses::CPose3D(otherRelativePose.value());
+
+    // Lines:
+    if (otherRelativePose.has_value())
+    {
+        std::transform(
+            otherPc.lines.begin(), otherPc.lines.end(),
+            std::back_inserter(lines), [&](const mrpt::math::TLine3D& l) {
+                return mrpt::math::TLine3D::FromPointAndDirector(
+                    pose.composePoint(l.pBase),
+                    pose.rotateVector(l.getDirectorVector()));
+            });
+    }
+    else
+    {
+        std::copy(
+            otherPc.lines.begin(), otherPc.lines.end(),
+            std::back_inserter(lines));
+    }
+
+    // Planes:
+    if (otherRelativePose.has_value())
+    {
+        std::transform(
+            otherPc.planes.begin(), otherPc.planes.end(),
+            std::back_inserter(planes), [&](const plane_patch_t& l) {
+                plane_patch_t g;
+                g.centroid = pose.composePoint(l.centroid);
+                MRPT_TODO("Finish rotating planes");
+                // ...
+                THROW_EXCEPTION("To-do");
+                return g;
+            });
+    }
+    else
+    {
+        std::copy(
+            otherPc.planes.begin(), otherPc.planes.end(),
+            std::back_inserter(planes));
+    }
+
+    // Points:
+    for (const auto& layer : otherPc.point_layers)
+    {
+        const auto& name     = layer.first;
+        const auto& otherPts = layer.second;
+
+        // New layer?
+        if (point_layers.count(name) == 0)
+        {
+            // Make a copy and transform (if applicable):
+            point_layers[name] =
+                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+                    otherPts->duplicateGetSmartPtr());
+
+            if (otherRelativePose.has_value())
+                point_layers[name]->changeCoordinatesReference(pose);
+        }
+        else
+        {
+            // merge with existing layer:
+            point_layers[name]->insertAnotherMap(otherPts.get(), pose);
+        }
+    }
+}
