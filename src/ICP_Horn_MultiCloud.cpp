@@ -31,7 +31,7 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
     ASSERT_(nLayers >= 1);
 
     // the global list of pairings:
-    s.currentPairings = ICP_Base::commonFindPairings(s, p);
+    s.currentPairings = ICP_Base::runMatchers(s, p);
 
     auto& pairings = s.currentPairings;
 
@@ -55,18 +55,7 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
     // ------------------------------------------------
     OptimalTF_Result res;
 
-    // Weights: translation => trust points; attitude => trust planes
-    pairings.attitude_weights.pl2pl = p.relative_weight_planes_attitude;
-    pairings.attitude_weights.pt2pt = 1.0;
-
-    pairings.use_scale_outlier_detector = p.use_scale_outlier_detector;
-    pairings.scale_outlier_threshold    = p.scale_outlier_threshold;
-    pairings.use_robust_kernel          = p.use_kernel;
-    MRPT_TODO("make param");
-    // pairings.robust_kernel_param = mrpt::DEG2RAD(0.05);
-    // pairings.robust_kernel_scale = 1500.0;
-
-    optimal_tf_horn(pairings, res);
+    optimal_tf_horn(pairings, p.pairingsWeightParameters, res);
 
     out.success      = true;
     out.new_solution = mrpt::poses::CPose3D(res.optimal_pose);

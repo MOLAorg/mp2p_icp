@@ -32,6 +32,10 @@ void ICP_GaussNewton::impl_ICP_iteration(
     // the global list of pairings:
     Pairings_GaussNewton pairings;
 
+    MRPT_TODO("Fix after refactor of Matchers");
+    THROW_EXCEPTION("Fix after refactor of Matchers");
+
+#if 0
     // Correspondences for each point layer:
     // ---------------------------------------
     // Find correspondences for each point cloud "layer":
@@ -124,14 +128,13 @@ void ICP_GaussNewton::impl_ICP_iteration(
     }
 
     // Assign:
-    s.currentPairings.PairingsCommon::operator=(pairings);
+    s.currentPairings.Pairings::operator=(pairings);
+#endif
 
     // Compute the optimal pose, using the GN method
     // ------------------------------------------------
     OptimalTF_Result res;
 
-    pairings.use_robust_kernel = p.use_kernel;
-    MRPT_TODO("make param");
     // pairings.robust_kernel_param = mrpt::DEG2RAD(0.05);
     // pairings.robust_kernel_scale = 1500.0;
 

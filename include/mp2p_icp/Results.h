@@ -39,7 +39,7 @@ struct Results
     double quality{0};
 
     /** A copy of the pairings found in the last ICP iteration. */
-    WeightedPairings finalPairings;
+    Pairings finalPairings;
 };
 /** @} */
 

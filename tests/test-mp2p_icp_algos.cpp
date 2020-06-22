@@ -15,6 +15,7 @@
 #include <mp2p_icp/ICP_Horn_MultiCloud.h>
 #include <mp2p_icp/ICP_LibPointmatcher.h>
 #include <mp2p_icp/ICP_OLAE.h>
+#include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/get_env.h>
 #include <mrpt/io/CFileGZInputStream.h>
@@ -141,10 +142,16 @@ static void test_icp(const std::string& inFile, const std::string& algoName)
         mp2p_icp::Results    icp_results;
 
         icp_params.maxIterations = 100;
-        icp_params.thresholdDist = 0.15 * max_dim;
 
-        // Important, only the layers in this list will be aligned for pt-to-pt:
-        icp_params.weight_pt2pt_layers["raw"] = 1.0;
+        {
+            auto m = mp2p_icp::Matcher_Points_DistanceThreshold::Create();
+
+            mrpt::containers::Parameters ps;
+            ps["threshold"] = 0.15 * max_dim;
+            m->initialize(ps);
+
+            icp->matchers().emplace_back(m);
+        }
 
         timer.Tic();
 

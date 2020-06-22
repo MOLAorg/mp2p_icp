@@ -42,7 +42,7 @@ struct matched_line_t
 using TMatchedLineList = std::vector<matched_line_t>;
 
 /** Vector of pairings that are considered outliers, from those in the
- * corresponding `PairingsCommon` structure.
+ * corresponding `Pairings` structure.
  *
  * \note Indices are always assumed to be sorted in these containers.
  */
@@ -76,7 +76,7 @@ struct OptimalTF_Result
 /** Common pairing input data for OLAE and Horn's solvers.
  * Planes and lines must have unit director and normal vectors, respectively.
  */
-struct PairingsCommon
+struct Pairings
 {
     /// We reuse MRPT struct to allow using their matching functions.
     /// \note on MRPT naming convention: "this"=global; "other"=local.
@@ -84,11 +84,26 @@ struct PairingsCommon
     TMatchedLineList               paired_lines;
     TMatchedPlaneList              paired_planes;
 
+    /** *Individual* weights for paired_points: each entry specifies how many
+     * points have the given (mapped second value) weight, in the same order as
+     * stored in paired_points. If empty, all points will have equal weights.
+     */
+    std::vector<std::pair<std::size_t, double>> point_weights;
+
     virtual bool empty() const
     {
         return paired_points.empty() && paired_planes.empty() &&
                paired_lines.empty();
     }
+
+    /** Overall number of element-to-element pairings (points, lines, planes) */
+    virtual size_t size() const;
+
+    /** Copy and append pairings from another container. */
+    virtual void push_back(const Pairings& o);
+
+    /** Move pairings from another container. */
+    virtual void push_back(Pairings&& o);
 };
 
 /** Common weight parameters for OLAE and Horn's solvers. */
@@ -107,12 +122,6 @@ struct WeightParameters
      * stricter. A much larger threshold (e.g. 5.0) would only reject the
      * most obvious outliers. Refer to the technical report. */
     double scale_outlier_threshold{1.20};
-
-    /** *Individual* weights for paired_points: each entry specifies how many
-     * points have the given (mapped second value) weight, in the same order as
-     * stored in paired_points. If empty, all points will have equal weights.
-     */
-    std::vector<std::pair<std::size_t, double>> point_weights;
 
     /** Relative weight of points, lines, and planes. They will be automatically
      * normalized to sum the unity, so feel free of setting weights at any
@@ -133,22 +142,23 @@ struct WeightParameters
     /// See docs for Weights
     AttitudeWeights attitude_weights;
 
+    /** @name An optional "a priori" term.
+     * @{ */
+    bool use_robust_kernel = false;
+
     /** The current guess for the sought transformation. Must be supplied if
      * use_robust_kernel==true. */
     mrpt::poses::CPose3D current_estimate_for_robust;
-    bool                 use_robust_kernel{false};
     double robust_kernel_param{mrpt::DEG2RAD(0.1)}, robust_kernel_scale{400.0};
-};
 
-struct WeightedPairings : public PairingsCommon, public WeightParameters
-{
+    /** @} */
 };
 
 /** Evaluates the centroids [ct_other, ct_this] for point-to-point
  * correspondences only, taking into account the current guess for outliers
  */
 std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D> eval_centroids_robust(
-    const PairingsCommon& in, const OutlierIndices& outliers);
+    const Pairings& in, const OutlierIndices& outliers);
 
 /** @} */
 

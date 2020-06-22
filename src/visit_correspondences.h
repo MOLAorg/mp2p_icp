@@ -21,10 +21,10 @@ namespace mp2p_icp
 /** Visit each correspondence */
 template <class LAMBDA, class LAMBDA2>
 void visit_correspondences(
-    const WeightedPairings& in, const mrpt::math::TPoint3D& ct_other,
-    const mrpt::math::TPoint3D& ct_this, OutlierIndices& in_out_outliers,
-    LAMBDA lambda_each_pair, LAMBDA2 lambda_final,
-    bool normalize_relative_point_vectors)
+    const Pairings& in, const WeightParameters& wp,
+    const mrpt::math::TPoint3D& ct_other, const mrpt::math::TPoint3D& ct_this,
+    OutlierIndices& in_out_outliers, LAMBDA lambda_each_pair,
+    LAMBDA2 lambda_final, bool normalize_relative_point_vectors)
 {
     using mrpt::math::TPoint3D;
     using mrpt::math::TVector3D;
@@ -48,9 +48,9 @@ void visit_correspondences(
     // Normalized weights for attitude "waXX":
     double waPoints, waLines, waPlanes;
     {
-        const auto wPt = in.attitude_weights.pt2pt,
-                   wLi = in.attitude_weights.l2l,
-                   wPl = in.attitude_weights.pl2pl;
+        const auto wPt = wp.attitude_weights.pt2pt,
+                   wLi = wp.attitude_weights.l2l,
+                   wPl = wp.attitude_weights.pl2pl;
 
         ASSERTMSG_(
             wPt + wLi + wPl > .0,
@@ -116,7 +116,7 @@ void visit_correspondences(
                 continue;
             }
 
-            // Horn requires normal relative vectors.
+            // Horn requires regular relative vectors.
             // OLAE requires unit vectors.
             if (normalize_relative_point_vectors)
             {
@@ -126,11 +126,11 @@ void visit_correspondences(
 
             // Note: ideally, both norms should be equal if noiseless and a
             // real pairing. Let's use this property to detect outliers:
-            if (in.use_scale_outlier_detector)
+            if (wp.use_scale_outlier_detector)
             {
                 const double scale_mismatch =
                     std::max(bi_n, ri_n) / std::min(bi_n, ri_n);
-                if (scale_mismatch > in.scale_outlier_threshold)
+                if (scale_mismatch > wp.scale_outlier_threshold)
                 {
                     // Discard this pairing:
                     new_outliers.point2point.push_back(i);
@@ -168,16 +168,16 @@ void visit_correspondences(
         // If we are about to apply a robust kernel, we need a reference
         // attitude wrt which apply such kernel, i.e. the "current SE(3)
         // estimation" inside a caller ICP loop.
-        if (in.use_robust_kernel)
+        if (wp.use_robust_kernel)
         {
             const TVector3D ri2 =
-                in.current_estimate_for_robust.composePoint(ri);
+                wp.current_estimate_for_robust.composePoint(ri);
 
             // mismatch angle between the two vectors:
             const double ang =
                 std::acos(ri2.x * bi.x + ri2.y * bi.y + ri2.z * bi.z);
-            const double A = in.robust_kernel_param;
-            const double B = in.robust_kernel_scale;
+            const double A = wp.robust_kernel_param;
+            const double B = wp.robust_kernel_scale;
             if (ang > A)
             {
                 const auto f = 1.0 / (1.0 + B * mrpt::square(ang - A));

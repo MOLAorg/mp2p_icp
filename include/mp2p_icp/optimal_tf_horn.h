@@ -22,7 +22,8 @@ namespace mp2p_icp
  * \note On MRPT naming convention: "this"=global; "other"=local.
  */
 void optimal_tf_horn(
-    const mp2p_icp::WeightedPairings& in, OptimalTF_Result& result);
+    const mp2p_icp::Pairings& in, const WeightParameters& wp,
+    OptimalTF_Result& result);
 
 /** @} */
 

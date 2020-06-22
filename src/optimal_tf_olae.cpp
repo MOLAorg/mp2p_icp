@@ -53,8 +53,9 @@ struct OLAE_LinearSystems
 
 /** Core of the OLAE algorithm  */
 static OLAE_LinearSystems olae_build_linear_system(
-    const WeightedPairings& in, const mrpt::math::TPoint3D& ct_other,
-    const mrpt::math::TPoint3D& ct_this, OutlierIndices& in_out_outliers)
+    const Pairings& in, const WeightParameters& wp,
+    const mrpt::math::TPoint3D& ct_other, const mrpt::math::TPoint3D& ct_this,
+    OutlierIndices& in_out_outliers)
 {
     MRPT_START
 
@@ -163,8 +164,8 @@ static OLAE_LinearSystems olae_build_linear_system(
     };
 
     visit_correspondences(
-        in, ct_other, ct_this, in_out_outliers, lambda_each_pair, lambda_final,
-        true /* DO make unit point vectors for OLAE */);
+        in, wp, ct_other, ct_this, in_out_outliers, lambda_each_pair,
+        lambda_final, true /* DO make unit point vectors for OLAE */);
 
     // Now, compute the other three sets of linear systems, corresponding
     // to the "sequential rotation method" [shuster1981attitude], so we can
@@ -228,7 +229,7 @@ static OLAE_LinearSystems olae_build_linear_system(
 
 // See .h docs, and associated technical report.
 void mp2p_icp::optimal_tf_olae(
-    const WeightedPairings& in, OptimalTF_Result& result)
+    const Pairings& in, const WeightParameters& wp, OptimalTF_Result& result)
 {
     MRPT_START
 
@@ -246,9 +247,9 @@ void mp2p_icp::optimal_tf_olae(
 
     // Normalize weights for each feature type and for each target (attitude
     // / translation):
-    ASSERT_(in.attitude_weights.pt2pt >= .0);
-    ASSERT_(in.attitude_weights.l2l >= .0);
-    ASSERT_(in.attitude_weights.pl2pl >= .0);
+    ASSERT_(wp.attitude_weights.pt2pt >= .0);
+    ASSERT_(wp.attitude_weights.l2l >= .0);
+    ASSERT_(wp.attitude_weights.pl2pl >= .0);
 
     // Compute the centroids:
     auto [ct_other, ct_this] =
@@ -256,7 +257,7 @@ void mp2p_icp::optimal_tf_olae(
 
     // Build the linear system: M g = v
     OLAE_LinearSystems linsys = olae_build_linear_system(
-        in, ct_other, ct_this, result.outliers /* empty for now  */);
+        in, wp, ct_other, ct_this, result.outliers /* empty for now  */);
 
     // Re-evaluate the centroids, now that we have a guess on outliers.
     if (!result.outliers.empty())
@@ -269,8 +270,8 @@ void mp2p_icp::optimal_tf_olae(
         ct_this  = new_ct_this;
 
         // And rebuild the linear system with the new values:
-        linsys =
-            olae_build_linear_system(in, ct_other, ct_this, result.outliers);
+        linsys = olae_build_linear_system(
+            in, wp, ct_other, ct_this, result.outliers);
     }
 
     // We are finding the optimal rotation "g", as a Gibbs vector.

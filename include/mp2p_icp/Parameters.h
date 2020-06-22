@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <mp2p_icp/optimal_tf_common.h>
 #include <mrpt/core/bits_math.h>  // DEG2RAD()
 #include <mrpt/serialization/CSerializable.h>
 #include <cstddef>
@@ -26,7 +27,7 @@ struct Parameters : public mrpt::serialization::CSerializable
    public:
     /** @name Termination criteria
         @{ */
-    /** Maximum number of iterations to run. */
+    /** Maximum number of ICP iterations to run. */
     uint32_t maxIterations{40};
 
     /** Max. number of pairings per layer (point-to-point, plane-to-plane...).
@@ -40,6 +41,7 @@ struct Parameters : public mrpt::serialization::CSerializable
      * this threshold (in meters), iterations are terminated (Default:1e-6)
      */
     double minAbsStep_trans{5e-4};
+
     /** If the correction in all rotation coordinates (yaw,pitch,roll) is
      * below this threshold (in radians), iterations are terminated
      * (Default:1e-6) */
@@ -47,39 +49,23 @@ struct Parameters : public mrpt::serialization::CSerializable
     /** @} */
 
     /** Treshold distance for pair two near points */
-    double thresholdDist{0.75}, thresholdAng{mrpt::DEG2RAD(0.15)};
+    // These ones belong now to Matcher instances
+    // double thresholdDist{0.75}, thresholdAng{mrpt::DEG2RAD(0.15)};
 
     /** Maximum angle (radians) between potential matching plane normals to be
      * accepted as a pairing. */
-    double thresholdPlane2PlaneNormalAng{mrpt::DEG2RAD(5.0)};
-
-    /** Whether to use kernel_rho to smooth distances, or use distances
-     * directly (default=true) */
-    bool use_kernel{false};
-
-    /** Enables the use of the scale-based outlier detector. Refer to the
-     * technical report.  This robustness feature is independent from
-     * use_robust_kernel.
-     */
-    bool use_scale_outlier_detector{true};
-
-    /** If use_scale_outlier_detector==true, discard a potential point-to-point
-     * pairing if the ratio between the norm of their final vectors is larger
-     * than this value. A value of "1.0" will only allow numerically perfect
-     * pairings, so a slightly larger value is required. The closer to 1, the
-     * stricter. A much larger threshold (e.g. 5.0) would only reject the
-     * most obvious outliers. Refer to the technical report. */
-    double scale_outlier_threshold{1.20};
-
-    double relative_weight_planes_attitude{1.0};
-
-    /** Weight for each layer. Those not present here  */
-    std::map<std::string, double> weight_pt2pt_layers;
+    // TODO: Move to a new plane-to-plane matcher
+    // double thresholdPlane2PlaneNormalAng{mrpt::DEG2RAD(5.0)};
 
     /** [Only used by ICP_GaussNewton] The name of a layer of points
      * to be paired individually to planes (pointcloud_t::planes).
      */
+    // TODO: Refactor and move somewhere else!
     std::string pt2pl_layer;
+
+    /** Weight and robust kernel parameters associated with the low-level
+     * optimal pose estimation algorithms */
+    WeightParameters pairingsWeightParameters;
 };
 
 }  // namespace mp2p_icp

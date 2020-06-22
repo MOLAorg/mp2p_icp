@@ -18,7 +18,7 @@
 using namespace mp2p_icp;
 
 mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
-    const WeightedPairings&     finalPairings,
+    const Pairings&     finalPairings,
     const mrpt::poses::CPose3D& finalAlignSolution,
     const CovarianceParameters& p)
 {

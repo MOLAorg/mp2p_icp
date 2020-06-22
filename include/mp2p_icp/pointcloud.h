@@ -16,9 +16,9 @@
 #include <mrpt/math/TLine3D.h>
 #include <mrpt/math/TPlane.h>
 #include <mrpt/math/TPoint3D.h>
+#include <mrpt/math/geometry.h>
 #include <mrpt/opengl/opengl_frwds.h>
 #include <mrpt/serialization/CSerializable.h>
-#include <mrpt/math/geometry.h>
 #include <map>
 #include <optional>
 #include <string>
@@ -81,9 +81,13 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     std::vector<plane_patch_t>                         planes;
 
     /** return true if all point cloud layers, feature lists, etc. are empty */
-    bool empty() const;
+    virtual bool empty() const;
+
+    /** Overall number of elements (points, lines, planes) */
+    virtual size_t size() const;
+
     /** clear all containers  */
-    void clear();
+    virtual void clear();
 
     /** Gets a renderizable view of all planes. The target container `o` is not
      * cleared(), clear() it manually if needed before calling. */

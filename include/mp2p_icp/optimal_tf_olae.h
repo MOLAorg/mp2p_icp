@@ -27,7 +27,8 @@ namespace mp2p_icp
  * alignment of geometric features with the optimal linear attitude estimator,
  * Arxiv 2019.
  */
-void optimal_tf_olae(const WeightedPairings& in, OptimalTF_Result& result);
+void optimal_tf_olae(
+    const Pairings& in, const WeightParameters& wp, OptimalTF_Result& result);
 
 /** @} */
 

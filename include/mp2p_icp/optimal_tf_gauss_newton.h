@@ -38,27 +38,27 @@ struct point_line_pair_t
 {
     /// \note "this"=global, "other"=local, while finding the transformation
     /// local wrt global
-    mrpt::math::TLine3D     ln_this;
-    mrpt::math::TPoint3D    pt_other;
+    mrpt::math::TLine3D  ln_this;
+    mrpt::math::TPoint3D pt_other;
 
     point_line_pair_t() = default;
     point_line_pair_t(
-            const mrpt::math::TLine3D& l_this, const mrpt::math::TPoint3D& p_other)
-            : ln_this(l_this),pt_other(p_other)
+        const mrpt::math::TLine3D& l_this, const mrpt::math::TPoint3D& p_other)
+        : ln_this(l_this), pt_other(p_other)
     {
     }
 };
 
 using TMatchedPointLineList = std::vector<point_line_pair_t>;
 
-struct Pairings_GaussNewton : public PairingsCommon
+struct Pairings_GaussNewton : public Pairings
 {
-    /** In addition to base members in PairingsCommon, the Gauss-Newton method
+    /** In addition to base members in Pairings, the Gauss-Newton method
      * supports point-to-line pairings:
      */
     TMatchedPointLineList paired_pt2ln;
 
-    /** In addition to base members in PairingsCommon, the Gauss-Newton method
+    /** In addition to base members in Pairings, the Gauss-Newton method
      * supports point-to-plane pairings:
      */
     TMatchedPointPlaneList paired_pt2pl;
@@ -76,12 +76,6 @@ struct Pairings_GaussNewton : public PairingsCommon
     /** Weight (i.e. scalar information matrix) of plane-to-plane pairings */
     double weight_plane2plane{1.0};
 
-    /** If non-empty, overrides weight_point2point.
-     * This contains weights for paired_points: each entry specifies how many
-     * points have the given (mapped second value) weight, in the same order as
-     * stored in paired_points. */
-    std::vector<std::pair<std::size_t, double>> point_weights;
-
     bool                 use_robust_kernel{true};
     double               robust_kernel_param{0.05};  /// [meters]
     std::size_t          max_iterations{20};
@@ -90,7 +84,11 @@ struct Pairings_GaussNewton : public PairingsCommon
 
     bool verbose{false};
 
-    bool empty() const { return paired_points.empty() && paired_pt2pl.empty() && paired_pt2ln.empty(); }
+    bool empty() const override
+    {
+        return paired_points.empty() && paired_pt2pl.empty() &&
+               paired_pt2ln.empty();
+    }
 };
 
 /** Gauss-Newton non-linear, iterative optimizer to find the SE(3) optimal

@@ -17,11 +17,9 @@ uint8_t Parameters::serializeGetVersion() const { return 0; }
 void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << maxIterations << maxPairsPerLayer << minAbsStep_trans
-        << minAbsStep_rot << thresholdDist << thresholdAng
-        << thresholdPlane2PlaneNormalAng << use_kernel
-        << use_scale_outlier_detector << scale_outlier_threshold
-        << relative_weight_planes_attitude << weight_pt2pt_layers
-        << pt2pl_layer;
+        << minAbsStep_rot << pt2pl_layer;
+
+    MRPT_TODO("serialize pairingsWeightParameters");
 }
 void Parameters::serializeFrom(
     mrpt::serialization::CArchive& in, uint8_t version)
@@ -31,11 +29,9 @@ void Parameters::serializeFrom(
         case 0:
         {
             in >> maxIterations >> maxPairsPerLayer >> minAbsStep_trans >>
-                minAbsStep_rot >> thresholdDist >> thresholdAng >>
-                thresholdPlane2PlaneNormalAng >> use_kernel >>
-                use_scale_outlier_detector >> scale_outlier_threshold >>
-                relative_weight_planes_attitude >> weight_pt2pt_layers >>
-                pt2pl_layer;
+                minAbsStep_rot >> pt2pl_layer;
+
+            MRPT_TODO("deserialize pairingsWeightParameters");
         }
         break;
         default:

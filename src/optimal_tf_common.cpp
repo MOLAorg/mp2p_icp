@@ -11,12 +11,13 @@
  */
 
 #include <mp2p_icp/optimal_tf_common.h>
+#include <iterator>  // std::make_move_iterator
 
 using namespace mp2p_icp;
 
 std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
     mp2p_icp::eval_centroids_robust(
-        const PairingsCommon& in, const OutlierIndices& outliers)
+        const Pairings& in, const OutlierIndices& outliers)
 {
     using mrpt::math::TPoint3D;
 
@@ -58,4 +59,37 @@ std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
     }
 
     return {ct_other, ct_this};
+}
+
+void Pairings::push_back(const Pairings& o)
+{
+    paired_points.insert(
+        paired_points.end(), o.paired_points.begin(), o.paired_points.end());
+    paired_lines.insert(
+        paired_lines.end(), o.paired_lines.begin(), o.paired_lines.end());
+    paired_planes.insert(
+        paired_planes.end(), o.paired_planes.begin(), o.paired_planes.end());
+    point_weights.insert(
+        point_weights.end(), o.point_weights.begin(), o.point_weights.end());
+}
+
+void Pairings::push_back(Pairings&& o)
+{
+    paired_points.insert(
+        paired_points.end(), std::make_move_iterator(o.paired_points.begin()),
+        std::make_move_iterator(o.paired_points.end()));
+    paired_lines.insert(
+        paired_lines.end(), std::make_move_iterator(o.paired_lines.begin()),
+        std::make_move_iterator(o.paired_lines.end()));
+    paired_planes.insert(
+        paired_planes.end(), std::make_move_iterator(o.paired_planes.begin()),
+        std::make_move_iterator(o.paired_planes.end()));
+    point_weights.insert(
+        point_weights.end(), std::make_move_iterator(o.point_weights.begin()),
+        std::make_move_iterator(o.point_weights.end()));
+}
+
+size_t Pairings::size() const
+{
+    return paired_points.size() + paired_lines.size() + paired_planes.size();
 }
