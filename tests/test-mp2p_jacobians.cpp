@@ -11,7 +11,10 @@
  * @date   Apr 10, 2020
  */
 
-//#include <mp2p_icp/xx.h>
+#include <mp2p_icp/optimal_tf_common.h>
+#include <mp2p_icp/optimal_tf_gauss_newton.h>
+#include <mp2p_icp/optimal_tf_horn.h>
+#include <mp2p_icp/optimal_tf_olae.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/math/num_jacobian.h>  // finite difference method
 #include <mrpt/poses/CPose3D.h>
