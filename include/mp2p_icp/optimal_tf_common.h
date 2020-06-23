@@ -37,7 +37,7 @@ struct matched_line_t
 {
     /// \note "this"=global, "other"=local, while finding the transformation
     /// local wrt global
-    mrpt::math::TLine3D l_this, l_other;
+    mrpt::math::TLine3D ln_this, ln_other;
 };
 using TMatchedLineList = std::vector<matched_line_t>;
 

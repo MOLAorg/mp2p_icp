@@ -34,8 +34,30 @@ struct point_plane_pair_t
 };
 using TMatchedPointPlaneList = std::vector<point_plane_pair_t>;
 
+struct point_line_pair_t
+{
+    /// \note "this"=global, "other"=local, while finding the transformation
+    /// local wrt global
+    mrpt::math::TLine3D     ln_this;
+    mrpt::math::TPoint3D    pt_other;
+
+    point_line_pair_t() = default;
+    point_line_pair_t(
+            const mrpt::math::TLine3D& l_this, const mrpt::math::TPoint3D& p_other)
+            : ln_this(l_this),pt_other(p_other)
+    {
+    }
+};
+
+using TMatchedPointLineList = std::vector<point_line_pair_t>;
+
 struct Pairings_GaussNewton : public PairingsCommon
 {
+    /** In addition to base members in PairingsCommon, the Gauss-Newton method
+     * supports point-to-line pairings:
+     */
+    TMatchedPointLineList paired_pt2ln;
+
     /** In addition to base members in PairingsCommon, the Gauss-Newton method
      * supports point-to-plane pairings:
      */
@@ -44,6 +66,9 @@ struct Pairings_GaussNewton : public PairingsCommon
     /** Default weight (i.e. scalar information matrix) of point-to-point
      * pairings. \sa point_weights */
     double weight_point2point{1.0};
+
+    /** Weight (i.e. scalar information matrix) of point-to-line pairings */
+    double weight_point2line{1.0};
 
     /** Weight (i.e. scalar information matrix) of point-to-plane pairings */
     double weight_point2plane{1.0};
@@ -65,7 +90,7 @@ struct Pairings_GaussNewton : public PairingsCommon
 
     bool verbose{false};
 
-    bool empty() const { return paired_points.empty() && paired_pt2pl.empty(); }
+    bool empty() const { return paired_points.empty() && paired_pt2pl.empty() && paired_pt2ln.empty(); }
 };
 
 /** Gauss-Newton non-linear, iterative optimizer to find the SE(3) optimal

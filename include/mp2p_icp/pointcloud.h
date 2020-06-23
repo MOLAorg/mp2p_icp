@@ -18,6 +18,7 @@
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/opengl/opengl_frwds.h>
 #include <mrpt/serialization/CSerializable.h>
+#include <mrpt/math/geometry.h>
 #include <map>
 #include <optional>
 #include <string>
