@@ -93,3 +93,44 @@ size_t Pairings::size() const
 {
     return paired_points.size() + paired_lines.size() + paired_planes.size();
 }
+
+void WeightParameters::loadFrom(const mrpt::containers::Parameters& p)
+{
+    MCP_LOAD_REQ(p, use_scale_outlier_detector);
+    MCP_LOAD_OPT(p, scale_outlier_threshold);
+
+    MCP_LOAD_REQ(p, use_robust_kernel);
+    MCP_LOAD_OPT_DEG(p, robust_kernel_param);
+    MCP_LOAD_OPT(p, robust_kernel_scale);
+
+    if (p.has("attitude_weights"))
+        attitude_weights.loadFrom(p["attitude_weights"]);
+}
+void WeightParameters::saveTo(mrpt::containers::Parameters& p) const
+{
+    MCP_SAVE(p, use_scale_outlier_detector);
+    MCP_SAVE(p, scale_outlier_threshold);
+
+    MCP_SAVE(p, use_robust_kernel);
+    MCP_SAVE(p, robust_kernel_param);
+    MCP_SAVE(p, robust_kernel_scale);
+
+    auto a = p["attitude_weights"];
+    attitude_weights.saveTo(a);
+}
+
+void WeightParameters::AttitudeWeights::loadFrom(
+    const mrpt::containers::Parameters& p)
+{
+    MCP_LOAD_REQ(p, pt2pt);
+    MCP_LOAD_REQ(p, l2l);
+    MCP_LOAD_REQ(p, pl2pl);
+}
+
+void WeightParameters::AttitudeWeights::saveTo(
+    mrpt::containers::Parameters& p) const
+{
+    MCP_SAVE(p, pt2pt);
+    MCP_SAVE(p, l2l);
+    MCP_SAVE(p, pl2pl);
+}

@@ -66,7 +66,7 @@ void Matcher_Points_Base::initializeLayerWeights(
     for (const auto& kv : p.asMap())
     {
         const std::string ly = kv.first;
-        const double      w  = std::get<double>(kv.second);
+        const double      w  = std::any_cast<double>(kv.second);
 
         weight_pt2pt_layers[ly] = w;
     }

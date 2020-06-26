@@ -12,6 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/pointcloud.h>
+#include <mrpt/containers/Parameters.h>
 
 namespace mp2p_icp
 {
@@ -137,6 +138,9 @@ struct WeightParameters
         double pt2pt{1.0};  //!< Weight of point-to-point pairs
         double l2l{1.0};  //!< Weight of line-to-line pairs
         double pl2pl{1.0};  //!< Weight of plane-to-plane pairs
+
+        void loadFrom(const mrpt::containers::Parameters& p);
+        void saveTo(mrpt::containers::Parameters& p) const;
     };
 
     /// See docs for Weights
@@ -152,6 +156,9 @@ struct WeightParameters
     double robust_kernel_param{mrpt::DEG2RAD(0.1)}, robust_kernel_scale{400.0};
 
     /** @} */
+
+    void loadFrom(const mrpt::containers::Parameters& p);
+    void saveTo(mrpt::containers::Parameters& p) const;
 };
 
 /** Evaluates the centroids [ct_other, ct_this] for point-to-point

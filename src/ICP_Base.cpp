@@ -143,7 +143,7 @@ void ICP_Base::initializeMatchers(const mrpt::containers::Parameters& params)
     ASSERT_(params.isSequence());
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = std::get<mrpt::containers::Parameters>(entry);
+        const auto& e = std::any_cast<mrpt::containers::Parameters>(entry);
 
         const auto sClass = e["class"].as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);

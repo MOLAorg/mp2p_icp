@@ -11,6 +11,13 @@
  */
 
 // TODO
+
+// Parameter:
+/** Maximum angle (radians) between potential matching plane normals to be
+ * accepted as a pairing. */
+// TODO: Move to a new plane-to-plane matcher
+// double thresholdPlane2PlaneNormalAng{mrpt::DEG2RAD(5.0)};
+
 #if 0
 
 #include <mp2p_icp/Matcher_Planes_Normals.h>
