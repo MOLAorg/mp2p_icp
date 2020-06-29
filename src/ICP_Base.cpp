@@ -100,7 +100,7 @@ void ICP_Base::align(
         result.terminationReason = IterTermReason::MaxIterations;
 
     // Ratio of entities with a valid pairing:
-    result.goodness = state.currentPairings.empty() /
+    result.goodness = state.currentPairings.size() /
                       double(std::min(pcs1.size(), pcs2.size()));
 
     // Store output:

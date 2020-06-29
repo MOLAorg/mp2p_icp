@@ -100,7 +100,7 @@ Matcher_Points_Base::TransformedLocalPointCloud
 
     const size_t nLocalPoints = pcLocal.size();
 
-    if (nLocalPoints <= maxLocalPoints)
+    if (maxLocalPoints == 0 || nLocalPoints <= maxLocalPoints)
     {
         // All points:
         r.x_locals.resize(nLocalPoints);
