@@ -7,6 +7,7 @@
 #pragma once
 
 #include <mp2p_icp/optimal_tf_common.h>
+#include <mrpt/containers/Parameters.h>
 #include <mrpt/core/bits_math.h>  // DEG2RAD()
 #include <mrpt/serialization/CSerializable.h>
 #include <cstddef>
@@ -57,6 +58,9 @@ struct Parameters : public mrpt::serialization::CSerializable
     /** Weight and robust kernel parameters associated with the low-level
      * optimal pose estimation algorithms */
     WeightParameters pairingsWeightParameters;
+
+    void loadFrom(const mrpt::containers::Parameters& p);
+    void saveTo(mrpt::containers::Parameters& p) const;
 };
 
 }  // namespace mp2p_icp

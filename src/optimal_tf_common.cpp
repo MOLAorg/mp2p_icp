@@ -11,9 +11,42 @@
  */
 
 #include <mp2p_icp/optimal_tf_common.h>
+#include <mrpt/serialization/CArchive.h>
 #include <iterator>  // std::make_move_iterator
 
+IMPLEMENTS_MRPT_OBJECT(
+    WeightParameters, mrpt::serialization::CSerializable, mp2p_icp)
+
 using namespace mp2p_icp;
+
+// Implementation of the CSerializable virtual interface:
+uint8_t WeightParameters::serializeGetVersion() const { return 0; }
+void    WeightParameters::serializeTo(mrpt::serialization::CArchive& out) const
+{
+    out << use_scale_outlier_detector << scale_outlier_threshold
+        << attitude_weights.pt2pt << attitude_weights.l2l
+        << attitude_weights.pl2pl << use_robust_kernel
+        << current_estimate_for_robust << robust_kernel_param
+        << robust_kernel_scale;
+}
+void WeightParameters::serializeFrom(
+    mrpt::serialization::CArchive& in, uint8_t version)
+{
+    switch (version)
+    {
+        case 0:
+        {
+            in >> use_scale_outlier_detector >> scale_outlier_threshold >>
+                attitude_weights.pt2pt >> attitude_weights.l2l >>
+                attitude_weights.pl2pl >> use_robust_kernel >>
+                current_estimate_for_robust >> robust_kernel_param >>
+                robust_kernel_scale;
+        }
+        break;
+        default:
+            MRPT_THROW_UNKNOWN_SERIALIZATION_VERSION(version);
+    };
+}
 
 std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
     mp2p_icp::eval_centroids_robust(
@@ -112,11 +145,12 @@ void WeightParameters::saveTo(mrpt::containers::Parameters& p) const
     MCP_SAVE(p, scale_outlier_threshold);
 
     MCP_SAVE(p, use_robust_kernel);
-    MCP_SAVE(p, robust_kernel_param);
+    MCP_SAVE_DEG(p, robust_kernel_param);
     MCP_SAVE(p, robust_kernel_scale);
 
-    auto a = p["attitude_weights"];
+    auto a = mrpt::containers::Parameters::Map();
     attitude_weights.saveTo(a);
+    p["attitude_weights"] = a;
 }
 
 void WeightParameters::AttitudeWeights::loadFrom(

@@ -13,6 +13,7 @@
 
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/containers/Parameters.h>
+#include <mrpt/serialization/CSerializable.h>
 
 namespace mp2p_icp
 {
@@ -108,8 +109,11 @@ struct Pairings
 };
 
 /** Common weight parameters for OLAE and Horn's solvers. */
-struct WeightParameters
+struct WeightParameters : public mrpt::serialization::CSerializable
 {
+    DEFINE_SERIALIZABLE(WeightParameters, mp2p_icp)
+
+   public:
     /** Enables the use of the scale-based outlier detector. Refer to the
      * technical report.  This robustness feature is independent from
      * use_robust_kernel.

@@ -38,3 +38,25 @@ void Parameters::serializeFrom(
             MRPT_THROW_UNKNOWN_SERIALIZATION_VERSION(version);
     };
 }
+
+void Parameters::loadFrom(const mrpt::containers::Parameters& p)
+{
+    MCP_LOAD_REQ(p, maxIterations);
+    MCP_LOAD_REQ(p, maxPairsPerLayer);
+    MCP_LOAD_OPT(p, minAbsStep_trans);
+    MCP_LOAD_OPT(p, minAbsStep_rot);
+
+    if (p.has("pairingsWeightParameters"))
+        pairingsWeightParameters.loadFrom(p["pairingsWeightParameters"]);
+}
+void Parameters::saveTo(mrpt::containers::Parameters& p) const
+{
+    MCP_SAVE(p, maxIterations);
+    MCP_SAVE(p, maxPairsPerLayer);
+    MCP_SAVE(p, minAbsStep_trans);
+    MCP_SAVE(p, minAbsStep_rot);
+
+    auto pp = mrpt::containers::Parameters::Map();
+    pairingsWeightParameters.saveTo(pp);
+    p["pairingsWeightParameters"] = std::move(pp);
+}
