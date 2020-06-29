@@ -48,8 +48,8 @@ static PointMatcher<double>::DataPoints pointsToPM(const pointcloud_t& pc)
 
     for (const auto& ly : pc.point_layers)
     {
-        const std::string&                 name = ly.first;
-        const mrpt::maps::CPointsMap::Ptr& pts  = ly.second;
+        // const std::string&                 name = ly.first;
+        const mrpt::maps::CPointsMap::Ptr& pts = ly.second;
         ASSERT_(pts);
 
         const auto xs = pts->getPointsBufferRef_x();
@@ -84,7 +84,7 @@ void ICP_LibPointmatcher::align(
     auto prev_solution     = state.current_solution;
 
     // the global list of pairings:
-    const Pairings initPairings = ICP_Base::runMatchers(state, p);
+    const Pairings initPairings = ICP_Base::runMatchers(state);
 
     if (initPairings.empty() || initPairings.paired_points.size() < 3)
     {
@@ -224,7 +224,7 @@ logger:
         result.nIterations = 1;
 
     // Determine matching ratio:
-    result.finalPairings = ICP_Base::runMatchers(state, p);
+    result.finalPairings = ICP_Base::runMatchers(state);
 
     // Ratio of entities with a valid pairing:
     result.goodness = state.currentPairings.empty() /

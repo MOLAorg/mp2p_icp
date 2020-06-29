@@ -117,7 +117,7 @@ void ICP_Base::align(
     MRPT_END
 }
 
-Pairings ICP_Base::runMatchers(ICP_State& s, const Parameters& p)
+Pairings ICP_Base::runMatchers(ICP_State& s)
 {
     Pairings pairings;
 

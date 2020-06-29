@@ -31,7 +31,7 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
     ASSERT_(nLayers >= 1);
 
     // the global list of pairings:
-    s.currentPairings = ICP_Base::runMatchers(s, p);
+    s.currentPairings = ICP_Base::runMatchers(s);
 
     auto& pairings = s.currentPairings;
 

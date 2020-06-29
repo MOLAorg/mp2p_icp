@@ -103,7 +103,7 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     /** Used internally by ICP implementations to find correspondences between
      * two pointclouds. */
-    Pairings runMatchers(ICP_State& s, const Parameters& p);
+    Pairings runMatchers(ICP_State& s);
 
     /** Implemented by specific ICP algorithms, to be run at each ICP iteration.
      * It must search for matchings given the current pose estimate, and

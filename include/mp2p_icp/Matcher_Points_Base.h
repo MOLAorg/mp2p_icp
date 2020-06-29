@@ -12,6 +12,11 @@
 #pragma once
 
 #include <mp2p_icp/Matcher.h>
+#include <mrpt/math/TPoint3D.h>
+#include <cstdlib>
+#include <limits>  // std::numeric_limits
+#include <optional>
+#include <vector>
 
 namespace mp2p_icp
 {
@@ -39,6 +44,29 @@ class Matcher_Points_Base : public Matcher
     /** Call with a dictionary element, with keys=layer names, values (double)
      * the weights. */
     void initializeLayerWeights(const mrpt::containers::Parameters& p);
+
+    /** the output of transform_local_to_global() */
+    struct TransformedLocalPointCloud
+    {
+       public:
+        mrpt::math::TPoint3Df localMin{fMax, fMax, fMax};
+        mrpt::math::TPoint3Df localMax{-fMax, -fMax, -fMax};
+
+        /** Reordering indexes, used only if we had to pick random indexes */
+        std::optional<std::vector<std::size_t>> idxs;
+
+        /** Transformed local points: all, or a random subset */
+        mrpt::aligned_std_vector<float> x_locals, y_locals, z_locals;
+
+       private:
+        static constexpr auto fMax = std::numeric_limits<float>::max();
+    };
+
+    static TransformedLocalPointCloud transform_local_to_global(
+        const mrpt::maps::CPointsMap& pcLocal,
+        const mrpt::poses::CPose3D&   localPose,
+        const std::size_t             maxLocalPoints        = 0,
+        const uint64_t                localPointsSampleSeed = 0);
 
    private:
     virtual void implMatchOneLayer(

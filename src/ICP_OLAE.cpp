@@ -23,7 +23,7 @@ void ICP_OLAE::impl_ICP_iteration(
     MRPT_START
 
     // the global list of pairings:
-    s.currentPairings = ICP_Base::runMatchers(s, p);
+    s.currentPairings = ICP_Base::runMatchers(s);
 
     Pairings& pairings = s.currentPairings;
 

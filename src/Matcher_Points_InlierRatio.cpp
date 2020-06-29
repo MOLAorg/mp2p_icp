@@ -37,4 +37,7 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
     const mrpt::poses::CPose3D& localPose, Pairings& out) const
 {
     //
+
+    MRPT_TODO("Write me");
+    THROW_EXCEPTION("Write me");
 }

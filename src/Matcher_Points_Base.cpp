@@ -11,6 +11,9 @@
  */
 
 #include <mp2p_icp/Matcher_Points_Base.h>
+#include <chrono>
+#include <numeric>  // iota
+#include <random>
 
 using namespace mp2p_icp;
 
@@ -70,4 +73,77 @@ void Matcher_Points_Base::initializeLayerWeights(
 
         weight_pt2pt_layers[ly] = w;
     }
+}
+
+Matcher_Points_Base::TransformedLocalPointCloud
+    Matcher_Points_Base::transform_local_to_global(
+        const mrpt::maps::CPointsMap& pcLocal,
+        const mrpt::poses::CPose3D& localPose, const std::size_t maxLocalPoints,
+        const uint64_t localPointsSampleSeed)
+{
+    MRPT_START
+    TransformedLocalPointCloud r;
+
+    const auto lambdaKeepBBox = [&](float x, float y, float z) {
+        mrpt::keep_max(r.localMax.x, x);
+        mrpt::keep_max(r.localMax.y, y);
+        mrpt::keep_max(r.localMax.z, z);
+
+        mrpt::keep_min(r.localMin.x, x);
+        mrpt::keep_min(r.localMin.y, y);
+        mrpt::keep_min(r.localMin.z, z);
+    };
+
+    const auto& lxs = pcLocal.getPointsBufferRef_x();
+    const auto& lys = pcLocal.getPointsBufferRef_y();
+    const auto& lzs = pcLocal.getPointsBufferRef_z();
+
+    const size_t nLocalPoints = pcLocal.size();
+
+    if (nLocalPoints <= maxLocalPoints)
+    {
+        // All points:
+        r.x_locals.resize(nLocalPoints);
+        r.y_locals.resize(nLocalPoints);
+        r.z_locals.resize(nLocalPoints);
+
+        for (size_t i = 0; i < nLocalPoints; i++)
+        {
+            localPose.composePoint(
+                lxs[i], lys[i], lzs[i], r.x_locals[i], r.y_locals[i],
+                r.z_locals[i]);
+            lambdaKeepBBox(r.x_locals[i], r.y_locals[i], r.z_locals[i]);
+        }
+    }
+    else
+    {
+        // random subset:
+        r.idxs.emplace(maxLocalPoints);
+        std::iota(r.idxs->begin(), r.idxs->end(), 0);
+
+        const unsigned int seed =
+            localPointsSampleSeed != 0
+                ? localPointsSampleSeed
+                : std::chrono::system_clock::now().time_since_epoch().count();
+
+        MRPT_TODO("Partial shuffle only?");
+        std::shuffle(
+            r.idxs->begin(), r.idxs->end(), std::default_random_engine(seed));
+
+        r.x_locals.resize(maxLocalPoints);
+        r.y_locals.resize(maxLocalPoints);
+        r.z_locals.resize(maxLocalPoints);
+
+        for (size_t ri = 0; ri < maxLocalPoints; ri++)
+        {
+            const auto i = (*r.idxs)[ri];
+            localPose.composePoint(
+                lxs[i], lys[i], lzs[i], r.x_locals[ri], r.y_locals[ri],
+                r.z_locals[ri]);
+            lambdaKeepBBox(r.x_locals[ri], r.y_locals[ri], r.z_locals[ri]);
+        }
+    }
+
+    return r;
+    MRPT_END
 }
