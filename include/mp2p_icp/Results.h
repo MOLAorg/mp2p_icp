@@ -29,13 +29,9 @@ struct Results
 
     IterTermReason terminationReason{IterTermReason::Undefined};
 
-    /** A goodness measure for the alignment, it is a [0,1] range indicator
-     * of percentage of correspondences. */
-    double goodness{0};
-
-    /** A measure of the 'quality' of the local minimum of the sqr. error
-     * found by the method. Higher values are better. Low values will be
-     * found in ill-conditioned situations (e.g. a corridor) */
+    /** A measure of the 'quality' of the matching.
+     * Different modules are available to evaluate the quality in ICP_Base.
+     */
     double quality{0};
 
     /** A copy of the pairings found in the last ICP iteration. */

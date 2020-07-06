@@ -180,7 +180,7 @@ static void test_icp(const std::string& inFile, const std::string& algoName)
                              .matrix()
                              .transpose()
                       << "\n";
-            std::cout << "ICP goodness   : " << icp_results.goodness << "\n";
+            std::cout << "ICP quality    : " << icp_results.quality << "\n";
             std::cout << "ICP iterations : " << icp_results.nIterations << "\n";
         }
 

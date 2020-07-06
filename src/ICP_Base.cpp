@@ -66,7 +66,7 @@ void ICP_Base::align(
         {
             // Nothing we can do !!
             result.terminationReason = IterTermReason::NoPairings;
-            result.goodness          = 0;
+            result.quality           = 0;
             break;
         }
 
@@ -100,8 +100,9 @@ void ICP_Base::align(
         result.terminationReason = IterTermReason::MaxIterations;
 
     // Ratio of entities with a valid pairing:
-    result.goodness = state.currentPairings.size() /
-                      double(std::min(pcs1.size(), pcs2.size()));
+    ASSERT_(qualityEvaluator_);
+    result.quality = qualityEvaluator_->evaluate(
+        pcs1, pcs2, state.current_solution, state.currentPairings);
 
     // Store output:
     result.optimal_tf.mean = state.current_solution;
@@ -155,4 +156,22 @@ void ICP_Base::initializeMatchers(const mrpt::containers::Parameters& params)
         m->initialize(e["params"]);
         matchers_.push_back(m);
     }
+}
+
+void ICP_Base::initializeQualityEvaluator(
+    const mrpt::containers::Parameters& params)
+{
+    qualityEvaluator_.reset();
+
+    ASSERT_(params.isMap());
+
+    const auto sClass = params["class"].as<std::string>();
+    auto       o      = mrpt::rtti::classFactory(sClass);
+    ASSERT_(o);
+
+    auto m = std::dynamic_pointer_cast<QualityEvaluator>(o);
+    ASSERTMSG_(m, "Class seems not to be derived from QualityEvaluator");
+    m->initialize(params["params"]);
+
+    qualityEvaluator_ = m;
 }

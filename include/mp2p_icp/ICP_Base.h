@@ -14,6 +14,8 @@
 #include <mp2p_icp/IterTermReason.h>
 #include <mp2p_icp/Matcher.h>
 #include <mp2p_icp/Parameters.h>
+#include <mp2p_icp/QualityEvaluator.h>
+#include <mp2p_icp/QualityEvaluator_PairedRatio.h>
 #include <mp2p_icp/Results.h>
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/containers/Parameters.h>
@@ -73,8 +75,33 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     matcher_list_t&       matchers() { return matchers_; }
     /** @} */
 
+    /** Create and configure a "QualityEvaluator" modules from YAML-like config
+     *block. Config must be a dictionary with a `class` and a `params`
+     *dictionary entries.
+     *
+     * Example:
+     *\code
+     *  class: mp2p_icp::QualityEvaluator_PairedRatio
+     *  params:
+     *   # Parameters depend on the particular class
+     *   # xxx: yyyy
+     *\endcode
+     *
+     * Alternatively, the objects can be directly created via matchers().
+     */
+    void initializeQualityEvaluator(const mrpt::containers::Parameters& params);
+
+    const QualityEvaluator::Ptr& qualityEvaluator() const
+    {
+        return qualityEvaluator_;
+    }
+    QualityEvaluator::Ptr& qualityEvaluator() { return qualityEvaluator_; }
+
    protected:
     matcher_list_t matchers_;
+
+    QualityEvaluator::Ptr qualityEvaluator_ =
+        QualityEvaluator_PairedRatio::Create();
 
     struct ICP_State
     {

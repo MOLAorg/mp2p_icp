@@ -92,7 +92,7 @@ void ICP_LibPointmatcher::align(
 
         // Nothing we can do !!
         result.quality         = 0;
-        result.goodness        = 0;
+        result.quality        = 0;
         result.optimal_tf.mean = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
         return;
     }
@@ -208,12 +208,12 @@ logger:
             mrpt::poses::CPose3D(init_guess_m2_wrt_m1) +
             mrpt::poses::CPose3D(mrpt::math::CMatrixDouble44(T));
 
-        // result.goodness = icp.errorMinimizer->getWeightedPointUsedRatio();
+        // result.quality = icp.errorMinimizer->getWeightedPointUsedRatio();
     }
     catch (const PM::ConvergenceError&)
     {
         // No good pairing candidates.
-        result.goodness = 0;
+        result.quality = 0;
     }
 
     // Output in MP2P_ICP format:
@@ -227,7 +227,7 @@ logger:
     result.finalPairings = ICP_Base::runMatchers(state);
 
     // Ratio of entities with a valid pairing:
-    result.goodness = state.currentPairings.empty() /
+    result.quality = state.currentPairings.empty() /
                       double(std::min(pcs1.size(), pcs2.size()));
 
     result.terminationReason = IterTermReason::Stalled;
@@ -240,7 +240,7 @@ logger:
     result.optimal_tf.cov = mp2p_icp::covariance(
         result.finalPairings, result.optimal_tf.mean, covParams);
 
-    MRPT_LOG_DEBUG_FMT("match ratio: %.02f%%", result.goodness * 100.0);
+    MRPT_LOG_DEBUG_FMT("match ratio: %.02f%%", result.quality * 100.0);
 #else
     THROW_EXCEPTION("This method requires MP2P built against libpointmatcher");
 #endif
