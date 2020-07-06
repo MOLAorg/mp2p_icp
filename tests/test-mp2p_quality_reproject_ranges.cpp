@@ -76,6 +76,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         params["cx"] = 50.0;
         params["cy"] = 30.0;
 
+        params["sigma"] = 0.1;
+
         mp2p_icp::QualityEvaluator_RangeImageSimilarity q;
         q.initialize(params);
 
