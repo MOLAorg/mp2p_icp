@@ -35,3 +35,15 @@ mola_add_executable(
 	    mp2p_icp
 )
 add_test(MP2P_jacobians ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_jacobians)
+
+
+mola_add_executable(
+    TARGET  test-mp2p_quality_reproject_ranges
+    SOURCES test-mp2p_quality_reproject_ranges.cpp
+	LINK_LIBRARIES
+	    mp2p_icp
+)
+add_test(MP2P_QualityReproject ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_quality_reproject_ranges)
+target_compile_definitions(test-mp2p_quality_reproject_ranges
+    PRIVATE
+    MP2P_DATASET_DIR="${mp2p_icp_SOURCE_DIR}/test-datasets/")
