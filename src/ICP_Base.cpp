@@ -11,6 +11,8 @@
  */
 
 #include <mp2p_icp/ICP_Base.h>
+#include <mp2p_icp/Matcher_Points_DistanceThreshold.h>  // TODO: remove
+#include <mp2p_icp/Matcher_Points_InlierRatio.h>  // TODO: remove
 #include <mp2p_icp/covariance.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/poses/Lie/SE.h>
@@ -41,17 +43,8 @@ void ICP_Base::align(
     result = Results();
 
     // Count of points:
-    size_t pointcount1 = 0, pointcount2 = 0;
-    for (const auto& kv1 : pcs1.point_layers)
-    {
-        // Ignore this layer?
-        if (p.weight_pt2pt_layers.count(kv1.first) == 0) continue;
-
-        pointcount1 += kv1.second->size();
-        pointcount2 += pcs2.point_layers.at(kv1.first)->size();
-    }
-    ASSERT_(pointcount1 > 0 || !pcs1.planes.empty());
-    ASSERT_(pointcount2 > 0 || !pcs2.planes.empty());
+    ASSERT_(pcs1.size() > 0);
+    ASSERT_(pcs2.size() > 0);
 
     // ------------------------------------------------------
     // Main ICP loop
@@ -60,9 +53,6 @@ void ICP_Base::align(
 
     state.current_solution = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
     auto prev_solution     = state.current_solution;
-
-    // Prepare params for "find pairings" for each layer:
-    prepareMatchingParams(state, p);
 
     for (result.nIterations = 0; result.nIterations < p.maxIterations;
          result.nIterations++)
@@ -109,11 +99,9 @@ void ICP_Base::align(
     if (result.nIterations >= p.maxIterations)
         result.terminationReason = IterTermReason::MaxIterations;
 
-    // Ratio of points with a valid pairing:
-    if (!state.layerOfLargestPc.empty())
-        result.goodness = mrpt::saturate_val<double>(
-            state.mres.at(state.layerOfLargestPc).correspondencesRatio, 0.0,
-            1.0);
+    // Ratio of entities with a valid pairing:
+    result.goodness = state.currentPairings.size() /
+                      double(std::min(pcs1.size(), pcs2.size()));
 
     // Store output:
     result.optimal_tf.mean = state.current_solution;
@@ -129,148 +117,42 @@ void ICP_Base::align(
     MRPT_END
 }
 
-void ICP_Base::prepareMatchingParams(
-    ICP_State& state, const Parameters& p) const
+Pairings ICP_Base::runMatchers(ICP_State& s)
 {
-    MRPT_START
+    Pairings pairings;
 
-    // Prepare params for "find pairings" for each layer & find largest point
-    // cloud:
-    std::size_t pointCountLargestPc = 0;
+    ASSERT_(!matchers_.empty());
 
-    for (const auto& kv1 : state.pc1.point_layers)
+    for (const auto& matcher : matchers_)
     {
-        const bool is_layer_of_planes =
-            (kv1.first == pointcloud_t::PT_LAYER_PLANE_CENTROIDS);
+        ASSERT_(matcher);
 
-        mrpt::maps::TMatchingParams& mp = state.mps[kv1.first];
+        Pairings pc;
+        matcher->match(s.pc1, s.pc2, s.current_solution, pc);
 
-        if (!is_layer_of_planes)
-        {
-            if (p.weight_pt2pt_layers.count(kv1.first) == 0) continue;
-
-            const auto& m1 = kv1.second;
-            ASSERT_(m1);
-
-            if (m1->size() > pointCountLargestPc)
-            {
-                pointCountLargestPc    = m1->size();
-                state.layerOfLargestPc = kv1.first;
-            }
-
-            // Matching params for point-to-point:
-            // Distance threshold
-            mp.maxDistForCorrespondence = p.thresholdDist;
-
-            // Angular threshold
-            mp.maxAngularDistForCorrespondence = p.thresholdAng;
-            mp.onlyKeepTheClosest              = true;
-            mp.onlyUniqueRobust                = false;
-            mp.decimation_other_map_points     = std::max(
-                1U,
-                static_cast<unsigned>(m1->size() / (1.0 * p.maxPairsPerLayer)));
-
-            // For decimation: cycle through all possible points, even if we
-            // decimate them, in such a way that different points are used
-            // in each iteration.
-            mp.offset_other_map_points = 0;
-        }
-        else
-        {
-            // Matching params for plane-to-plane (their centroids only at
-            // this point):
-            // Distance threshold: + extra since  plane centroids must not
-            // show up at the same location
-            mp.maxDistForCorrespondence = p.thresholdDist + 2.0;
-            // Angular threshold
-            mp.maxAngularDistForCorrespondence = 0.;
-            mp.onlyKeepTheClosest              = true;
-            mp.decimation_other_map_points     = 1;
-        }
-    }
-
-    MRPT_END
-}
-
-WeightedPairings ICP_Base::commonFindPairings(ICP_State& s, const Parameters& p)
-{
-    WeightedPairings pairings;
-
-    // Correspondences for each point layer:
-    // ---------------------------------------
-    // Find correspondences for each point cloud "layer":
-    for (const auto& kv1 : s.pc1.point_layers)
-    {
-        const auto &m1 = kv1.second, &m2 = s.pc2.point_layers.at(kv1.first);
-        ASSERT_(m1);
-        ASSERT_(m2);
-
-        const bool is_layer_of_planes =
-            (kv1.first == pointcloud_t::PT_LAYER_PLANE_CENTROIDS);
-
-        // Ignore this layer if it has no weight:
-        if (!is_layer_of_planes && p.weight_pt2pt_layers.count(kv1.first) == 0)
-            continue;
-
-        auto& mp = s.mps.at(kv1.first);
-        // Measure angle distances from the current estimate:
-        mp.angularDistPivotPoint =
-            mrpt::math::TPoint3D(s.current_solution.asTPose());
-
-        // Find closest pairings
-        mrpt::tfest::TMatchingPairList mpl;
-        m1->determineMatching3D(
-            m2.get(), s.current_solution, mpl, mp, s.mres[kv1.first]);
-
-        // Shuffle decimated points for next iter:
-        if (++mp.offset_other_map_points >= mp.decimation_other_map_points)
-            mp.offset_other_map_points = 0;
-
-        // merge lists:
-        // handle specially the plane-to-plane matching:
-        if (!is_layer_of_planes)
-        {
-            // layer weight:
-            const double lyWeight = p.weight_pt2pt_layers.at(kv1.first);
-
-            // A standard layer: point-to-point correspondences:
-            pairings.paired_points.insert(
-                pairings.paired_points.end(), mpl.begin(), mpl.end());
-
-            // and their weights:
-            pairings.point_weights.emplace_back(mpl.size(), lyWeight);
-        }
-        else
-        {
-            // Plane-to-plane correspondence:
-
-            // We have pairs of planes whose centroids are quite close.
-            // Check their normals too:
-            for (const auto& pair : mpl)
-            {
-                // 1) Check fo pairing sanity:
-                ASSERTDEB_(pair.this_idx < pcs1.planes.size());
-                ASSERTDEB_(pair.other_idx < pcs2.planes.size());
-
-                const auto& p1 = s.pc1.planes[pair.this_idx];
-                const auto& p2 = s.pc2.planes[pair.other_idx];
-
-                const mrpt::math::TVector3D n1 = p1.plane.getNormalVector();
-                const mrpt::math::TVector3D n2 = p2.plane.getNormalVector();
-
-                // dot product to find the angle between normals:
-                const double dp      = n1.x * n2.x + n1.y * n2.y + n1.z * n2.z;
-                const double n2n_ang = std::acos(dp);
-
-                // 2) append to list of plane pairs:
-                if (n2n_ang < p.thresholdPlane2PlaneNormalAng)
-                {
-                    // Accept pairing:
-                    pairings.paired_planes.emplace_back(p1, p2);
-                }
-            }
-        }
+        pairings.push_back(pc);
     }
 
     return pairings;
+}
+
+void ICP_Base::initializeMatchers(const mrpt::containers::Parameters& params)
+{
+    matchers_.clear();
+
+    ASSERT_(params.isSequence());
+    for (const auto& entry : params.asSequence())
+    {
+        const auto& e = std::any_cast<mrpt::containers::Parameters>(entry);
+
+        const auto sClass = e["class"].as<std::string>();
+        auto       o      = mrpt::rtti::classFactory(sClass);
+        ASSERT_(o);
+
+        auto m = std::dynamic_pointer_cast<Matcher>(o);
+        ASSERTMSG_(m, "Matcher class seems not to be derived from Matcher");
+
+        m->initialize(e["params"]);
+        matchers_.push_back(m);
+    }
 }

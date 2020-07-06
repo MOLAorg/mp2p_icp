@@ -172,3 +172,14 @@ void pointcloud_t::mergeWith(
         }
     }
 }
+
+size_t pointcloud_t::size() const
+{
+    size_t n = 0;
+
+    n += lines.size();
+    n += planes.size();
+    for (const auto& layer : point_layers) n += layer.second->size();
+
+    return n;
+}

@@ -16,8 +16,8 @@ project(mp2p_icp LANGUAGES CXX)
 add_subdirectory(3rdparty)
 
 # find dependencies:
+find_package(mrpt-containers 2.0.5 REQUIRED)
 find_package(mrpt-tfest REQUIRED)
-find_package(mrpt-containers REQUIRED)
 find_package(mrpt-maps REQUIRED)
 find_package(mrpt-gui REQUIRED) # for tests/demos
 

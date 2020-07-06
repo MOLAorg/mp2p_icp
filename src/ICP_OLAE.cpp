@@ -23,11 +23,11 @@ void ICP_OLAE::impl_ICP_iteration(
     MRPT_START
 
     // the global list of pairings:
-    s.currentPairings = ICP_Base::commonFindPairings(s, p);
+    s.currentPairings = ICP_Base::runMatchers(s);
 
-    WeightedPairings& pairings = s.currentPairings;
+    Pairings& pairings = s.currentPairings;
 
-    if (pairings.empty() || pairings.paired_points.size() < 3)
+    if (pairings.empty() || pairings.paired_pt2pt.size() < 3)
     {
         // Skip ill-defined problems if the no. of points is too small.
         // There's no check for this inside olae_match() because it also
@@ -46,19 +46,7 @@ void ICP_OLAE::impl_ICP_iteration(
     // (Optimal linear attitude estimator)
     // ------------------------------------------------
     OptimalTF_Result res;
-
-    // Weights: translation => trust points; attitude => trust planes
-    pairings.attitude_weights.pl2pl = p.relative_weight_planes_attitude;
-    pairings.attitude_weights.pt2pt = 1.0;
-
-    pairings.use_scale_outlier_detector = p.use_scale_outlier_detector;
-    pairings.scale_outlier_threshold    = p.scale_outlier_threshold;
-    pairings.use_robust_kernel          = p.use_kernel;
-    MRPT_TODO("make param");
-    // pairings.robust_kernel_param = mrpt::DEG2RAD(0.05);
-    // pairings.robust_kernel_scale = 1500.0;
-
-    optimal_tf_olae(pairings, res);
+    optimal_tf_olae(pairings, p.pairingsWeightParameters, res);
 
     out.success      = true;
     out.new_solution = mrpt::poses::CPose3D(res.optimal_pose);

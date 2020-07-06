@@ -18,7 +18,8 @@
 using namespace mp2p_icp;
 
 void mp2p_icp::optimal_tf_gauss_newton(
-    const Pairings_GaussNewton& in, OptimalTF_Result& result)
+    const Pairings& in, const WeightParameters& wp, OptimalTF_Result& result,
+    const OptimalTF_GN_Parameters& gnParams)
 {
     using std::size_t;
 
@@ -26,19 +27,24 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
     // Run Gauss-Newton steps, using SE(3) relinearization at the current
     // solution:
-    result.optimal_pose = in.initial_guess;
+    ASSERTMSG_(
+        gnParams.linearizationPoint.has_value(),
+        "This method requires a linearization point");
 
-    const auto nPt2Pt = in.paired_points.size();
+    result.optimal_pose = gnParams.linearizationPoint.value();
+
+    const auto nPt2Pt = in.paired_pt2pt.size();
+    const auto nPt2Ln = in.paired_pt2ln.size();
     const auto nPt2Pl = in.paired_pt2pl.size();
-    const auto nPl2Pl = in.paired_planes.size();
+    const auto nPl2Pl = in.paired_pl2pl.size();
+    const auto nLn2Ln = in.paired_ln2ln.size();
 
-    const auto nErrorTerms = (nPt2Pt + nPl2Pl) * 3 + nPt2Pl;
+    const auto nErrorTerms = (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln;
 
     Eigen::VectorXd                          err(nErrorTerms);
     Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
 
-    double       w_pt = in.weight_point2point;
-    const double w_pl = in.weight_point2plane, w_pl2pl = in.weight_plane2plane;
+    auto w = wp.pair_weights;
 
     const bool  has_per_pt_weight       = !in.point_weights.empty();
     auto        cur_point_block_weights = in.point_weights.begin();
@@ -46,7 +52,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
     MRPT_TODO("Implement robust Kernel in this solver");
 
-    for (size_t iter = 0; iter < in.max_iterations; iter++)
+    for (size_t iter = 0; iter < gnParams.maxInnerLoopIterations; iter++)
     {
         // (12x6 Jacobian)
         const auto dDexpe_de =
@@ -56,7 +62,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
         {
             // Error:
-            const auto&  p  = in.paired_points[idx_pt];
+            const auto&  p  = in.paired_pt2pt[idx_pt];
             const double lx = p.other_x, ly = p.other_y, lz = p.other_z;
             double       gx, gy, gz;
             result.optimal_pose.composePoint(lx, ly, lz, gx, gy, gz);
@@ -84,15 +90,194 @@ void mp2p_icp::optimal_tf_gauss_newton(
                     ++cur_point_block_weights;  // move to next block
                     cur_point_block_start = idx_pt;
                 }
-                w_pt = cur_point_block_weights->second;
+                w.pt2pt = cur_point_block_weights->second;
             }
 
             // Build Jacobian:
-            J.block<3, 6>(idx_pt * 3, 0) = w_pt * J1 * dDexpe_de.asEigen();
+            J.block<3, 6>(idx_pt * 3, 0) = w.pt2pt * J1 * dDexpe_de.asEigen();
         }
 
-        // Point-to-plane:
+        // Point-to-line
         auto base_idx = nPt2Pt * 3;
+        for (size_t idx_pt = 0; idx_pt < nPt2Ln; idx_pt++)
+        {
+            // Error
+            const auto&  p  = in.paired_pt2ln[idx_pt];
+            const double lx = p.pt_other.x, ly = p.pt_other.y,
+                         lz = p.pt_other.z;
+            double gx, gy, gz;
+            result.optimal_pose.composePoint(lx, ly, lz, gx, gy, gz);
+            const auto g           = mrpt::math::TPoint3D(gx, gy, gz);
+            err(base_idx + idx_pt) = pow(p.ln_this.distance(g), 2);
+
+            // Eval Jacobian:
+            // "A tutorial on SE(3) transformation parameterizations and
+            // on-manifold optimization"
+            // d(T_{A}·p)/dT_{A}. Ec.7.16
+            // clang-format off
+            // Doc auxiliar: Section 4.1.2.
+            // p_r0 = (p-r_{0,r}). Ec.9
+            const Eigen::Matrix<double, 1, 3> p_r0 =
+           (Eigen::Matrix<double, 1, 3>() << g.x-p.ln_this.pBase.x, g.y-p.ln_this.pBase.y, g.z-p.ln_this.pBase.z
+            ).finished();
+            // Module of vector director of line
+            const Eigen::Matrix<double, 1, 3> ru =
+           (Eigen::Matrix<double, 1, 3>() << p.ln_this.director[0], p.ln_this.director[1], p.ln_this.director[2]
+            ).finished();
+            double mod_ru = ru*ru.transpose();
+
+            // J1
+            Eigen::Matrix<double, 1, 3> J1 = 2*p_r0-(2/mod_ru)*(p_r0*ru.transpose())*ru;
+            // J2
+            const Eigen::Matrix<double, 3, 12> J2 =
+                (Eigen::Matrix<double, 3, 12>() <<
+                   lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
+                    0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
+                    0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
+                 ).finished();
+            // clang-format on
+
+            // Get weight
+            // ...
+
+            // Build Jacobian
+            J.block<1, 6>(base_idx + idx_pt, 0) =
+                w.pt2ln * J1 * J2 * dDexpe_de.asEigen();
+        }
+
+        // Line-to-Line
+        base_idx = base_idx + nPt2Ln;
+        // Minimum angle to approach zero
+        const double tolerance = 0.01;
+        for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++)
+        {
+            const auto&         p = in.paired_ln2ln[idx_ln];
+            mrpt::math::TLine3D ln_aux;
+            double              gx, gy, gz;
+            result.optimal_pose.composePoint(
+                p.ln_other.pBase.x, p.ln_other.pBase.y, p.ln_other.pBase.z, gx,
+                gy, gz);
+            ln_aux.pBase = mrpt::math::TPoint3D(gx, gy, gz);
+            // Homogeneous matrix calculation
+            mrpt::math::CMatrixDouble44 aux;
+            result.optimal_pose.getHomogeneousMatrix(aux);
+            const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
+            // Projection of the director vector for the new pose
+            const Eigen::Matrix<double, 1, 4> U =
+                (Eigen::Matrix<double, 1, 4>() << p.ln_other.director[0],
+                 p.ln_other.director[1], p.ln_other.director[2], 1)
+                    .finished();
+            const Eigen::Matrix<double, 1, 4> U_T = U * T;
+            ln_aux.director = {U_T(1, 1), U_T(1, 2), U_T(1, 3)};
+            // Angle formed between the lines
+            double alfa = getAngle(p.ln_this, ln_aux);
+            // p_r0 = (p-r_{0,r}). Ec.20
+            const Eigen::Matrix<double, 1, 3> p_r2 =
+                (Eigen::Matrix<double, 1, 3>()
+                     << ln_aux.pBase.x - p.ln_this.pBase.x,
+                 ln_aux.pBase.y - p.ln_this.pBase.y,
+                 ln_aux.pBase.z - p.ln_this.pBase.z)
+                    .finished();
+            const Eigen::Matrix<double, 1, 3> rv =
+                (Eigen::Matrix<double, 1, 3>() << p.ln_this.director[0],
+                 p.ln_this.director[1], p.ln_this.director[2])
+                    .finished();
+
+            // Relationship between lines
+            if (abs(alfa) < tolerance)
+            {  // Parallel
+                // Error: Ec.20
+                err(base_idx + idx_ln) =
+                    pow(p.ln_this.distance(ln_aux.pBase), 2);
+
+                // Module of vector director of line
+                double mod_rv = rv * rv.transpose();
+
+                // J1: Ec.22
+                Eigen::Matrix<double, 1, 3> J1 =
+                    2 * p_r2 - (2 / mod_rv) * (p_r2 * rv.transpose()) * rv;
+                // J2: Ec.23
+                const Eigen::Matrix<double, 3, 12> J2 =
+                    (Eigen::Matrix<double, 3, 12>() << p.ln_other.pBase.x, 0, 0,
+                     p.ln_other.pBase.y, 0, 0, p.ln_other.pBase.z, 0, 0, 1, 0,
+                     0, 0, p.ln_other.pBase.x, 0, 0, p.ln_other.pBase.y, 0, 0,
+                     p.ln_other.pBase.z, 0, 0, 1, 0, 0, 0, p.ln_other.pBase.x,
+                     0, 0, p.ln_other.pBase.y, 0, 0, p.ln_other.pBase.z, 0, 0,
+                     1)
+                        .finished();
+                // Build Jacobian
+                J.block<1, 6>(base_idx + idx_ln, 0) =
+                    w.ln2ln * J1 * J2 * dDexpe_de.asEigen();
+            }
+            else
+            {  // Rest
+                // Error:
+                // Cross product (r_u x r_2,v)
+                const double rw_x = U_T[1] * p.ln_this.director[2] -
+                                    U_T[2] * p.ln_this.director[1];
+                const double rw_y =
+                    -(U_T[0] * p.ln_this.director[2] -
+                      U_T[2] * p.ln_this.director[0]);
+                const double rw_z = U_T[0] * p.ln_this.director[1] -
+                                    U_T[1] * p.ln_this.director[0];
+                const Eigen::Matrix<double, 1, 3> r_w =
+                    (Eigen::Matrix<double, 1, 3>() << rw_x, rw_y, rw_z)
+                        .finished();
+                double aux_rw = r_w * r_w.transpose();
+                // Error 1. Ec.26
+                err(base_idx + idx_ln) = p_r2.dot(r_w) / sqrt(aux_rw);
+                // Error 2. Ec.27
+                err(base_idx + idx_ln + 1) = U_T[0] - p.ln_this.director[0];
+                err(base_idx + idx_ln + 2) = U_T[1] - p.ln_this.director[1];
+                err(base_idx + idx_ln + 3) = U_T[2] - p.ln_this.director[2];
+                // Desplazamiento del indicador del vector de error para los
+                // casos en el que hay 4 errores en lugar de 1. Espero que esto
+                // se pueda hacer.
+                base_idx = base_idx + 3;
+
+                // Ec.35
+                const Eigen::Matrix<double, 1, 3> I =
+                    (Eigen::Matrix<double, 1, 3>() << 1, 1, 1).finished();
+                Eigen::Matrix<double, 1, 3> C = I.cross(rv);
+                // J1.1: Ec.32
+                Eigen::Matrix<double, 1, 3> J1_1 = r_w / sqrt(aux_rw);
+                // J1.2: Ec.36
+                Eigen::Matrix<double, 1, 3> J1_2 =
+                    (p_r2.cross(rv) * sqrt(aux_rw) -
+                     p_r2 * r_w.transpose() * C) /
+                    aux_rw;
+                // J1.3: Ec.37-38
+                Eigen::Matrix<double, 3, 6> J1_3 =
+                    (Eigen::Matrix<double, 3, 6>() << 0, 0, 0, 1, 0, 0, 0, 0, 0,
+                     0, 1, 0, 0, 0, 0, 0, 0, 1)
+                        .finished();
+                // J1: Ec.29
+                Eigen::Matrix<double, 4, 6> J1;
+                J1.block<1, 3>(0, 0) = J1_1;
+                J1.block<1, 3>(3, 5) = J1_2;
+                J1.block<3, 6>(0, 1) = J1_3;
+
+                // J2: Ec.39-41
+                const Eigen::Matrix<double, 6, 12> J2 =
+                    (Eigen::Matrix<double, 6, 12>() << p.ln_other.pBase.x, 0, 0,
+                     p.ln_other.pBase.y, 0, 0, p.ln_other.pBase.z, 0, 0, 1, 0,
+                     0, 0, p.ln_other.pBase.x, 0, 0, p.ln_other.pBase.y, 0, 0,
+                     p.ln_other.pBase.z, 0, 0, 1, 0, 0, 0, p.ln_other.pBase.x,
+                     0, 0, p.ln_other.pBase.y, 0, 0, p.ln_other.pBase.z, 0, 0,
+                     1, p.ln_other.director[0], 0, 0, p.ln_other.director[1], 0,
+                     0, p.ln_other.director[2], 0, 0, 1, 0, 0, 0,
+                     p.ln_other.director[0], 0, 0, p.ln_other.director[1], 0, 0,
+                     p.ln_other.director[2], 0, 0, 1, 0, 0, 0,
+                     p.ln_other.director[0], 0, 0, p.ln_other.director[1], 0, 0,
+                     p.ln_other.director[2], 0, 0, 1)
+                        .finished();
+                // Build Jacobian
+                J.block<4, 6>(base_idx + idx_ln, 0) =
+                    w.ln2ln * J1 * J2 * dDexpe_de.asEigen();
+            }
+        }
+        // Point-to-plane:
+        base_idx = base_idx + nLn2Ln;
         for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
         {
             // Error:
@@ -123,7 +308,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             const Eigen::Matrix<double, 1, 6> Jb =
                 Jpl * J1 * dDexpe_de.asEigen();
 
-            J.block<1, 6>(idx_pl + base_idx, 0) = w_pl * Jb;
+            J.block<1, 6>(idx_pl + base_idx, 0) = w.pt2pl * Jb;
         }
 
         // Plane-to-plane (only direction of normal vectors):
@@ -131,7 +316,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
         {
             // Error term:
-            const auto& p = in.paired_planes[idx_pl];
+            const auto& p = in.paired_pl2pl[idx_pl];
 
             const auto nl = p.p_other.plane.getNormalVector();
             const auto ng = p.p_this.plane.getNormalVector();
@@ -159,7 +344,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             // clang-format on
 
             J.block<3, 6>(3 * idx_pl + base_idx, 0) =
-                w_pl2pl * J1 * dDexpe_de.asEigen();
+                w.pl2pl * J1 * dDexpe_de.asEigen();
         }
 
         // 3) Solve Gauss-Newton:
@@ -174,14 +359,14 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
         result.optimal_pose = result.optimal_pose + dE;
 
-        if (in.verbose)
+        if (gnParams.verbose)
         {
             std::cout << "[P2P GN] iter:" << iter << " err:" << err.norm()
                       << " delta:" << delta.transpose() << "\n";
         }
 
         // Simple convergence test:
-        if (delta.norm() < in.min_delta) break;
+        if (delta.norm() < gnParams.minDelta) break;
 
     }  // for each iteration
     MRPT_END

@@ -65,17 +65,17 @@ using namespace mp2p_icp;
 //		t = ct_this-sR(ct_others)
 
 static void se3_l2_internal(
-    const mp2p_icp::WeightedPairings& in, const mrpt::math::TPoint3D& ct_other,
-    const mrpt::math::TPoint3D&    ct_this,
+    const mp2p_icp::Pairings& in, const WeightParameters& wp,
+    const mrpt::math::TPoint3D& ct_other, const mrpt::math::TPoint3D& ct_this,
     mrpt::math::CQuaternionDouble& out_attitude,
     OutlierIndices&                in_out_outliers)
 {
     MRPT_START
 
     // Compute the centroids
-    const auto nPoints     = in.paired_points.size();
-    const auto nLines      = in.paired_lines.size();
-    const auto nPlanes     = in.paired_planes.size();
+    const auto nPoints     = in.paired_pt2pt.size();
+    const auto nLines      = in.paired_ln2ln.size();
+    const auto nPlanes     = in.paired_pl2pl.size();
     const auto nAllMatches = nPoints + nLines + nPlanes;
 
     ASSERTMSG_(nAllMatches >= 3, "Horn method needs at least 3 references!");
@@ -108,8 +108,10 @@ static void se3_l2_internal(
     };
 
     visit_correspondences(
-        in, ct_other, ct_this, in_out_outliers /*in/out*/, lambda_each_pair,
-        lambda_final, false /* do not make unit point vectors for Horn */);
+        in, wp, ct_other, ct_this, in_out_outliers /*in/out*/,
+        // Operations to run on pairs:
+        lambda_each_pair, lambda_final,
+        false /* do not make unit point vectors for Horn */);
 
     // Construct the N matrix
     auto N = mrpt::math::CMatrixDouble44::Zero();
@@ -184,7 +186,8 @@ static void se3_l2_internal(
 }
 
 void mp2p_icp::optimal_tf_horn(
-    const mp2p_icp::WeightedPairings& in, OptimalTF_Result& result)
+    const mp2p_icp::Pairings& in, const WeightParameters& wp,
+    OptimalTF_Result& result)
 {
     MRPT_START
 
@@ -192,9 +195,9 @@ void mp2p_icp::optimal_tf_horn(
 
     // Normalize weights for each feature type and for each target (attitude
     // / translation):
-    ASSERT_(in.attitude_weights.pt2pt >= .0);
-    ASSERT_(in.attitude_weights.l2l >= .0);
-    ASSERT_(in.attitude_weights.pl2pl >= .0);
+    ASSERT_(wp.pair_weights.pt2pt >= .0);
+    ASSERT_(wp.pair_weights.ln2ln >= .0);
+    ASSERT_(wp.pair_weights.pl2pl >= .0);
 
     // Compute the centroids:
     auto [ct_other, ct_this] =
@@ -204,7 +207,7 @@ void mp2p_icp::optimal_tf_horn(
 
     // Build the linear system & solves for optimal quaternion:
     se3_l2_internal(
-        in, ct_other, ct_this, optimal_q, result.outliers /* in/out */);
+        in, wp, ct_other, ct_this, optimal_q, result.outliers /* in/out */);
 
     MRPT_TODO("Refactor to avoid duplicated code? Is it possible?");
 
@@ -220,7 +223,7 @@ void mp2p_icp::optimal_tf_horn(
 
         // And rebuild the linear system with the new values:
         se3_l2_internal(
-            in, ct_other, ct_this, optimal_q, result.outliers /* in/out */);
+            in, wp, ct_other, ct_this, optimal_q, result.outliers /* in/out */);
     }
 
     // quaternion to rotation matrix:

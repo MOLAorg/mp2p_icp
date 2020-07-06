@@ -5,7 +5,7 @@
  * ------------------------------------------------------------------------- */
 #pragma once
 
-#include <mp2p_icp/optimal_tf_common.h>
+#include <mp2p_icp/Pairings.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <cstdint>
 #include "IterTermReason.h"
@@ -39,7 +39,7 @@ struct Results
     double quality{0};
 
     /** A copy of the pairings found in the last ICP iteration. */
-    WeightedPairings finalPairings;
+    Pairings finalPairings;
 };
 /** @} */
 

@@ -12,10 +12,11 @@
 #pragma once
 
 #include <mp2p_icp/IterTermReason.h>
+#include <mp2p_icp/Matcher.h>
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/Results.h>
-#include <mp2p_icp/optimal_tf_common.h>
 #include <mp2p_icp/pointcloud.h>
+#include <mrpt/containers/Parameters.h>
 #include <mrpt/math/TPose3D.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
@@ -47,7 +48,34 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
         Results& result);
 
+    /** @name Module: Matcher instances
+     * @{ */
+
+    /** Create and configure one or more "Match" modules from YAML-like config
+     *block. Config must be a sequence of one or more entries, each with a
+     *`class` and a `params` dictionary entries.
+     *
+     * Example:
+     *\code
+     *- class: mp2p_icp::Matcher_Points_DistanceThreshold
+     *  params:
+     *   # Parameters depend on the particular class
+     *   threshold: 1.0
+     *\endcode
+     *
+     * Alternatively, the objects can be directly created via matchers().
+     */
+    void initializeMatchers(const mrpt::containers::Parameters& params);
+
+    using matcher_list_t = std::vector<mp2p_icp::Matcher::Ptr>;
+
+    const matcher_list_t& matchers() const { return matchers_; }
+    matcher_list_t&       matchers() { return matchers_; }
+    /** @} */
+
    protected:
+    matcher_list_t matchers_;
+
     struct ICP_State
     {
         ICP_State(const pointcloud_t& pcs1, const pointcloud_t& pcs2)
@@ -55,12 +83,10 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         {
         }
 
-        const pointcloud_t&                                      pc1;
-        const pointcloud_t&                                      pc2;
-        std::map<std::string, mrpt::maps::TMatchingParams>       mps;
-        std::map<std::string, mrpt::maps::TMatchingExtraResults> mres;
-        std::string      layerOfLargestPc;
-        WeightedPairings currentPairings;
+        const pointcloud_t& pc1;
+        const pointcloud_t& pc2;
+        std::string         layerOfLargestPc;
+        Pairings            currentPairings;
         // Current best transform:
         mrpt::poses::CPose3D current_solution;
         double               current_scale{1.0};
@@ -76,7 +102,7 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     /** Used internally by ICP implementations to find correspondences between
      * two pointclouds. */
-    WeightedPairings commonFindPairings(ICP_State& s, const Parameters& p);
+    Pairings runMatchers(ICP_State& s);
 
     /** Implemented by specific ICP algorithms, to be run at each ICP iteration.
      * It must search for matchings given the current pose estimate, and
@@ -84,9 +110,5 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      */
     virtual void impl_ICP_iteration(
         ICP_State& state, const Parameters& p, ICP_iteration_result& out) = 0;
-
-    /** Populates state.mps according to pointcloud stats and to input
-     * parameters */
-    void prepareMatchingParams(ICP_State& state, const Parameters& p) const;
 };
 }  // namespace mp2p_icp

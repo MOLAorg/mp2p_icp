@@ -17,11 +17,7 @@ uint8_t Parameters::serializeGetVersion() const { return 0; }
 void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << maxIterations << maxPairsPerLayer << minAbsStep_trans
-        << minAbsStep_rot << thresholdDist << thresholdAng
-        << thresholdPlane2PlaneNormalAng << use_kernel
-        << use_scale_outlier_detector << scale_outlier_threshold
-        << relative_weight_planes_attitude << weight_pt2pt_layers
-        << pt2pl_layer;
+        << minAbsStep_rot << pairingsWeightParameters;
 }
 void Parameters::serializeFrom(
     mrpt::serialization::CArchive& in, uint8_t version)
@@ -31,14 +27,32 @@ void Parameters::serializeFrom(
         case 0:
         {
             in >> maxIterations >> maxPairsPerLayer >> minAbsStep_trans >>
-                minAbsStep_rot >> thresholdDist >> thresholdAng >>
-                thresholdPlane2PlaneNormalAng >> use_kernel >>
-                use_scale_outlier_detector >> scale_outlier_threshold >>
-                relative_weight_planes_attitude >> weight_pt2pt_layers >>
-                pt2pl_layer;
+                minAbsStep_rot >> pairingsWeightParameters;
         }
         break;
         default:
             MRPT_THROW_UNKNOWN_SERIALIZATION_VERSION(version);
     };
+}
+
+void Parameters::load_from(const mrpt::containers::Parameters& p)
+{
+    MCP_LOAD_REQ(p, maxIterations);
+    MCP_LOAD_REQ(p, maxPairsPerLayer);
+    MCP_LOAD_OPT(p, minAbsStep_trans);
+    MCP_LOAD_OPT(p, minAbsStep_rot);
+
+    if (p.has("pairingsWeightParameters"))
+        pairingsWeightParameters.load_from(p["pairingsWeightParameters"]);
+}
+void Parameters::save_to(mrpt::containers::Parameters& p) const
+{
+    MCP_SAVE(p, maxIterations);
+    MCP_SAVE(p, maxPairsPerLayer);
+    MCP_SAVE(p, minAbsStep_trans);
+    MCP_SAVE(p, minAbsStep_rot);
+
+    auto pp = mrpt::containers::Parameters::Map();
+    pairingsWeightParameters.save_to(pp);
+    p["pairingsWeightParameters"] = std::move(pp);
 }

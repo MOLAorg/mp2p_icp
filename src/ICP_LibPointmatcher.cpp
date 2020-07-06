@@ -41,16 +41,15 @@ bool ICP_LibPointmatcher::methodAvailable()
 }
 
 #if defined(MP2P_HAS_LIBPOINTMATCHER)
-static PointMatcher<double>::DataPoints pointsToPM(
-    const pointcloud_t& pc, const std::map<std::string, double>& layerWeights)
+static PointMatcher<double>::DataPoints pointsToPM(const pointcloud_t& pc)
 {
     // TODO: Convert pointclouds in a more efficient way (!)
     std::stringstream ss;
 
-    for (const auto& layerNameWeight : layerWeights)
+    for (const auto& ly : pc.point_layers)
     {
-        const std::string&                 name = layerNameWeight.first;
-        const mrpt::maps::CPointsMap::Ptr& pts  = pc.point_layers.at(name);
+        // const std::string&                 name = ly.first;
+        const mrpt::maps::CPointsMap::Ptr& pts = ly.second;
         ASSERT_(pts);
 
         const auto xs = pts->getPointsBufferRef_x();
@@ -84,14 +83,10 @@ void ICP_LibPointmatcher::align(
     state.current_solution = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
     auto prev_solution     = state.current_solution;
 
-    // Prepare params for "find pairings" for each layer:
-    prepareMatchingParams(state, p);
-
     // the global list of pairings:
-    const WeightedPairings initPairings =
-        ICP_Base::commonFindPairings(state, p);
+    const Pairings initPairings = ICP_Base::runMatchers(state);
 
-    if (initPairings.empty() || initPairings.paired_points.size() < 3)
+    if (initPairings.empty() || initPairings.paired_pt2pt.size() < 3)
     {
         // Skip ill-defined problems if the no. of points is too small.
 
@@ -106,17 +101,8 @@ void ICP_LibPointmatcher::align(
     result = Results();
 
     // Count of points:
-    size_t pointcount1 = 0, pointcount2 = 0;
-    for (const auto& kv1 : pcs1.point_layers)
-    {
-        // Ignore this layer?
-        if (p.weight_pt2pt_layers.count(kv1.first) == 0) continue;
-
-        pointcount1 += kv1.second->size();
-        pointcount2 += pcs2.point_layers.at(kv1.first)->size();
-    }
-    ASSERT_(pointcount1 > 0 || !pcs1.planes.empty());
-    ASSERT_(pointcount2 > 0 || !pcs2.planes.empty());
+    ASSERT_(pcs1.size() > 0);
+    ASSERT_(pcs2.size() > 0);
 
     const char* icpConfigFmt = R"XXX(
 readingDataPointsFilters:
@@ -157,8 +143,8 @@ logger:
     using DP = PM::DataPoints;
 
     // Load point clouds
-    const DP ptsFrom = pointsToPM(pcs1, p.weight_pt2pt_layers);
-    const DP ptsTo   = pointsToPM(pcs2, p.weight_pt2pt_layers);
+    const DP ptsFrom = pointsToPM(pcs1);
+    const DP ptsTo   = pointsToPM(pcs2);
 
     ASSERT_ABOVE_(ptsFrom.getNbPoints(), 0);
     ASSERT_ABOVE_(ptsTo.getNbPoints(), 0);
@@ -238,14 +224,11 @@ logger:
         result.nIterations = 1;
 
     // Determine matching ratio:
-    result.finalPairings = ICP_Base::commonFindPairings(state, p);
+    result.finalPairings = ICP_Base::runMatchers(state);
 
-    if (!state.layerOfLargestPc.empty())
-        result.goodness = mrpt::saturate_val<double>(
-            state.mres.at(state.layerOfLargestPc).correspondencesRatio, 0.0,
-            1.0);
-    else
-        result.goodness = icp.errorMinimizer->getWeightedPointUsedRatio();
+    // Ratio of entities with a valid pairing:
+    result.goodness = state.currentPairings.empty() /
+                      double(std::min(pcs1.size(), pcs2.size()));
 
     result.terminationReason = IterTermReason::Stalled;
     result.optimal_scale     = 1.0;

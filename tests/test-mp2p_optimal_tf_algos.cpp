@@ -328,30 +328,30 @@ bool test_icp_algos(
         // to show the result of the last iteration at end
         gt_pose = this_gt_pose;
 
-        mp2p_icp::WeightedPairings in_common;
-        in_common.paired_points              = pointPairs;
-        in_common.paired_planes              = planePairs;
-        in_common.use_scale_outlier_detector = use_robust;
+        mp2p_icp::WeightParameters wp;
+
+        mp2p_icp::Pairings in;
+        in.paired_pt2pt = pointPairs;
+        in.paired_pl2pl = planePairs;
+
+        wp.use_scale_outlier_detector = use_robust;
         if (auto sTh = ::getenv("SCALE_OUTLIER_THRESHOLD"); sTh != nullptr)
-            in_common.scale_outlier_threshold = ::atof(sTh);
+            wp.scale_outlier_threshold = ::atof(sTh);
 
         // Only for tests with outliers, and if we are using small rotations,
         // use the robust kernel, using the identity SE(3) transform as
         // gross initial guess for the pose:
         if (!TEST_LARGE_ROTATIONS && outliers_ratio > 0)
         {
-            in_common.use_robust_kernel = true;
-            in_common.current_estimate_for_robust =
-                mrpt::poses::CPose3D::Identity();
+            wp.use_robust_kernel        = true;
+            wp.currentEstimateForRobust = mrpt::poses::CPose3D::Identity();
         }
 
         // ========  TEST: olae_match ========
         {
             profiler.enter("olea_match");
 
-            mp2p_icp::WeightedPairings in = in_common;
-
-            mp2p_icp::optimal_tf_olae(in, res_olae);
+            mp2p_icp::optimal_tf_olae(in, wp, res_olae);
 
             // const double dt_last =
             const auto dt_olea = profiler.leave("olea_match");
@@ -387,7 +387,7 @@ bool test_icp_algos(
         {
             profiler.enter("se3_l2");
 
-            mp2p_icp::optimal_tf_horn(in_common, res_horn);
+            mp2p_icp::optimal_tf_horn(in, wp, res_horn);
 
             const auto dt_horn = profiler.leave("se3_l2");
 
@@ -420,15 +420,16 @@ bool test_icp_algos(
         {
             profiler.enter("optimal_tf_gauss_newton");
 
-            mp2p_icp::Pairings_GaussNewton in;
+            mp2p_icp::OptimalTF_GN_Parameters gnParams;
+            gnParams.verbose = false;
+            // Linearization point: Identity
+            gnParams.linearizationPoint = mrpt::poses::CPose3D();
 
-            // Copy common parts:
-            in.PairingsCommon::operator=(in_common);
-
-            in.use_robust_kernel = use_robust;
-            // in.verbose           = true;
-
-            mp2p_icp::optimal_tf_gauss_newton(in, res_gn);
+            // NOTE: this is an "unfair" comparison, since we only run ONE
+            // iteration of the GN while the other methods are one-shot
+            // solutions. But GN is good enough even so for small rotations to
+            // solve it in just one iteration.
+            mp2p_icp::optimal_tf_gauss_newton(in, wp, res_gn, gnParams);
 
             const auto dt_gn = profiler.leave("optimal_tf_gauss_newton");
 
