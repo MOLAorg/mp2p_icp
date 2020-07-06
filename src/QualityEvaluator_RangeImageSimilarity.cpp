@@ -50,10 +50,16 @@ double QualityEvaluator_RangeImageSimilarity::evaluate(
     const auto I21 = projectPoints(p2, -localPose);
 
 #if 0
-    I11.saveToTextFile("I11.txt");
-    I22.saveToTextFile("I22.txt");
-    I12.saveToTextFile("I12.txt");
-    I21.saveToTextFile("I21.txt");
+    {
+        static std::atomic<int> iv = 0;
+
+        const int i = iv++;
+
+        I11.saveToTextFile(mrpt::format("I11_%05i.txt", i));
+        I22.saveToTextFile(mrpt::format("I22_%05i.txt", i));
+        I12.saveToTextFile(mrpt::format("I12_%05i.txt", i));
+        I21.saveToTextFile(mrpt::format("I21_%05i.txt", i));
+    }
 #endif
 
     auto s1 = scores(I11, I21);
@@ -97,7 +103,7 @@ mrpt::math::CMatrixDouble QualityEvaluator_RangeImageSimilarity::projectPoints(
 
     const auto nPoints      = xs.size();
     size_t     nValidPoints = 0;
-    for (size_t i = 0; i < xs.size(); i++)
+    for (size_t i = 0; i < nPoints; i++)
     {
         mrpt::math::TPoint3D p(xs[i], ys[i], zs[i]);
         if (relativePose) p = relativePose->composePoint(p);
