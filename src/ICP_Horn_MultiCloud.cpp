@@ -25,37 +25,23 @@ void ICP_Horn_MultiCloud::impl_ICP_iteration(
 {
     MRPT_START
 
-    ASSERT_EQUAL_(s.pc1.point_layers.size(), s.pc2.point_layers.size());
-    ASSERT_(!s.pc1.point_layers.empty());
-    const auto nLayers = s.pc1.point_layers.size();
-    ASSERT_(nLayers >= 1);
-
     // the global list of pairings:
     s.currentPairings = ICP_Base::runMatchers(s);
 
-    auto& pairings = s.currentPairings;
+    // Compute the optimal pose:
+    OptimalTF_Result res;
 
-    if (pairings.empty() || pairings.paired_points.size() < 3)
+    try
+    {
+        optimal_tf_horn(s.currentPairings, p.pairingsWeightParameters, res);
+    }
+    catch (const std::exception& e)
     {
         // Skip ill-defined problems if the no. of points is too small.
-        // There's no check for this inside olae_match() because it also
-        // handled lines, planes, etc. but we don't want to rely on that for
-        // this application.
-
-        // Note: this condition could be refined to check for minimal sets of
-        // well-defined problems, like 2 points and one plane, etc.
-
-        // Nothing we can do !!
+        // Nothing we can do:
         out.success = false;
         return;
     }
-
-    // Compute the optimal pose, using the OLAE method
-    // (Optimal linear attitude estimator)
-    // ------------------------------------------------
-    OptimalTF_Result res;
-
-    optimal_tf_horn(pairings, p.pairingsWeightParameters, res);
 
     out.success      = true;
     out.new_solution = mrpt::poses::CPose3D(res.optimal_pose);

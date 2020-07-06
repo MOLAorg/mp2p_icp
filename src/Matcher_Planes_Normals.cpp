@@ -52,7 +52,47 @@ void f()
         if (n2n_ang < p.thresholdPlane2PlaneNormalAng)
         {
             // Accept pairing:
-            pairings.paired_planes.emplace_back(p1, p2);
+            pairings.paired_pl2pl.emplace_back(p1, p2);
+        }
+    }
+}
+
+void f2()
+{
+    // point-to-planes
+    if (!p.pt2pl_layer.empty())
+    {
+        const auto &m1 = s.pc1.point_layers.at("plane_centroids"),
+                   &m2 = s.pc2.point_layers.at(p.pt2pl_layer);
+        ASSERT_(m1);
+        ASSERT_(m2);
+
+        auto& mp = s.mps.at(p.pt2pl_layer);
+        // Measure angle distances from the current estimate:
+        mp.angularDistPivotPoint =
+            mrpt::math::TPoint3D(s.current_solution.asTPose());
+
+        // Find closest pairings
+        mrpt::tfest::TMatchingPairList mpl;
+        m1->determineMatching3D(
+            m2.get(), s.current_solution, mpl, mp, s.mres[p.pt2pl_layer]);
+        // Plane-to-plane correspondence:
+
+        // We have pairs of planes whose centroids are quite close.
+        // Check their normals too:
+        for (const auto& pair : mpl)
+        {
+            // 1) Check fo pairing sanity:
+            ASSERTDEB_(pair.this_idx < pcs1.planes.size());
+            ASSERTDEB_(pair.other_idx < m2->size());
+
+            const auto&           pl_this = s.pc1.planes[pair.this_idx];
+            mrpt::math::TPoint3Df pt_other;
+            m2->getPoint(pair.other_idx, pt_other.x, pt_other.y, pt_other.z);
+
+            // 2) append to list of plane pairs:
+            // Accept pairing:
+            pairings.paired_pt2pl.emplace_back(pl_this, pt_other);
         }
     }
 }

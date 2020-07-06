@@ -63,7 +63,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         return;
 
     // Prepare output: no correspondences initially:
-    out.paired_points.reserve(out.paired_points.size() + pcLocal.size());
+    out.paired_pt2pt.reserve(out.paired_pt2pt.size() + pcLocal.size());
 
     // Loop for each point in local map:
     // --------------------------------------------------
@@ -100,7 +100,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
             if (tentativeErrSqr < maxDistForCorrespondenceSquared)
             {
                 // Save new correspondence:
-                auto& p = out.paired_points.emplace_back();
+                auto& p = out.paired_pt2pt.emplace_back();
 
                 p.this_idx = tentativeGlobalIdx;
                 p.this_x   = gxs[tentativeGlobalIdx];

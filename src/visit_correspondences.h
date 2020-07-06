@@ -11,7 +11,9 @@
  */
 #pragma once
 
-#include <mp2p_icp/optimal_tf_common.h>
+#include <mp2p_icp/Pairings.h>
+#include <mp2p_icp/WeightParameters.h>
+#include <mrpt/math/TPoint3D.h>
 
 namespace mp2p_icp
 {
@@ -29,9 +31,9 @@ void visit_correspondences(
     using mrpt::math::TPoint3D;
     using mrpt::math::TVector3D;
 
-    const auto nPoints     = in.paired_points.size();
-    const auto nLines      = in.paired_lines.size();
-    const auto nPlanes     = in.paired_planes.size();
+    const auto nPoints     = in.paired_pt2pt.size();
+    const auto nLines      = in.paired_ln2ln.size();
+    const auto nPlanes     = in.paired_pl2pl.size();
     const auto nAllMatches = nPoints + nLines + nPlanes;
 
     // weight of points, block by block:
@@ -48,9 +50,8 @@ void visit_correspondences(
     // Normalized weights for attitude "waXX":
     double waPoints, waLines, waPlanes;
     {
-        const auto wPt = wp.attitude_weights.pt2pt,
-                   wLi = wp.attitude_weights.l2l,
-                   wPl = wp.attitude_weights.pl2pl;
+        const auto wPt = wp.pair_weights.pt2pt, wLi = wp.pair_weights.ln2ln,
+                   wPl = wp.pair_weights.pl2pl;
 
         ASSERTMSG_(
             wPt + wLi + wPl > .0,
@@ -93,7 +94,7 @@ void visit_correspondences(
         if (i < nPoints)
         {
             // point-to-point pairing:  normalize(point-centroid)
-            const auto& p = in.paired_points[i];
+            const auto& p = in.paired_pt2pt[i];
             wi            = waPoints;
 
             if (i >= cur_point_block_start + cur_point_block_weights->first)
@@ -146,8 +147,8 @@ void visit_correspondences(
 
             const auto idxLine = i - nPoints;
 
-            bi = in.paired_lines[idxLine].ln_this.getDirectorVector();
-            ri = in.paired_lines[idxLine].ln_other.getDirectorVector();
+            bi = in.paired_ln2ln[idxLine].ln_this.getDirectorVector();
+            ri = in.paired_ln2ln[idxLine].ln_other.getDirectorVector();
 
             ASSERTDEB_BELOW_(std::abs(bi.norm() - 1.0), 0.01);
             ASSERTDEB_BELOW_(std::abs(ri.norm() - 1.0), 0.01);
@@ -158,8 +159,8 @@ void visit_correspondences(
             wi = waPlanes;
 
             const auto idxPlane = i - (nPoints + nLines);
-            bi = in.paired_planes[idxPlane].p_this.plane.getNormalVector();
-            ri = in.paired_planes[idxPlane].p_other.plane.getNormalVector();
+            bi = in.paired_pl2pl[idxPlane].p_this.plane.getNormalVector();
+            ri = in.paired_pl2pl[idxPlane].p_other.plane.getNormalVector();
 
             ASSERTDEB_BELOW_(std::abs(bi.norm() - 1.0), 0.01);
             ASSERTDEB_BELOW_(std::abs(ri.norm() - 1.0), 0.01);
@@ -170,8 +171,8 @@ void visit_correspondences(
         // estimation" inside a caller ICP loop.
         if (wp.use_robust_kernel)
         {
-            const TVector3D ri2 =
-                wp.current_estimate_for_robust.composePoint(ri);
+            ASSERT_(wp.currentEstimateForRobust.has_value());
+            const TVector3D ri2 = wp.currentEstimateForRobust->composePoint(ri);
 
             // mismatch angle between the two vectors:
             const double ang =

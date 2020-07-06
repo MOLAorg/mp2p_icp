@@ -1,5 +1,9 @@
 
-set(MP2PICP_BUILD_POINTMATCHER ON CACHE BOOL "Build libpointmatcher modules")
+set(MP2PICP_BUILD_POINTMATCHER OFF CACHE BOOL "Build libpointmatcher modules")
+
+if (NOT MP2PICP_BUILD_POINTMATCHER)
+  return()
+endif()
 
 # Check if we have the dependencies of pointmatcher, and silently skip it if we don't have:
 find_package(Boost COMPONENTS thread filesystem system program_options date_time QUIET)

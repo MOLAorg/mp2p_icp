@@ -11,7 +11,7 @@
  */
 #pragma once
 
-#include <mp2p_icp/optimal_tf_common.h>
+#include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/containers/Parameters.h>
 #include <mrpt/rtti/CObject.h>

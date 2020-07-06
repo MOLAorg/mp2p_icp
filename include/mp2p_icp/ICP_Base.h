@@ -15,7 +15,6 @@
 #include <mp2p_icp/Matcher.h>
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/Results.h>
-#include <mp2p_icp/optimal_tf_common.h>
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/containers/Parameters.h>
 #include <mrpt/math/TPose3D.h>

@@ -27,7 +27,7 @@ void ICP_OLAE::impl_ICP_iteration(
 
     Pairings& pairings = s.currentPairings;
 
-    if (pairings.empty() || pairings.paired_points.size() < 3)
+    if (pairings.empty() || pairings.paired_pt2pt.size() < 3)
     {
         // Skip ill-defined problems if the no. of points is too small.
         // There's no check for this inside olae_match() because it also

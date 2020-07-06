@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <mp2p_icp/optimal_tf_common.h>
+#include <mp2p_icp/WeightParameters.h>
 #include <mrpt/containers/Parameters.h>
 #include <mrpt/core/bits_math.h>  // DEG2RAD()
 #include <mrpt/serialization/CSerializable.h>
@@ -49,18 +49,17 @@ struct Parameters : public mrpt::serialization::CSerializable
     double minAbsStep_rot{1e-4};
     /** @} */
 
-    /** [Only used by ICP_GaussNewton] The name of a layer of points
-     * to be paired individually to planes (pointcloud_t::planes).
+    /** [Only for ICP_GaussNewton] Maximum number of iterations trying to solve
+     * for the optimal pose, within each ICP iteration.
      */
-    // TODO: Refactor and move somewhere else!
-    std::string pt2pl_layer;
+    uint32_t maxInnerLoopIterations{6};
 
     /** Weight and robust kernel parameters associated with the low-level
      * optimal pose estimation algorithms */
     WeightParameters pairingsWeightParameters;
 
-    void loadFrom(const mrpt::containers::Parameters& p);
-    void saveTo(mrpt::containers::Parameters& p) const;
+    void load_from(const mrpt::containers::Parameters& p);
+    void save_to(mrpt::containers::Parameters& p) const;
 };
 
 }  // namespace mp2p_icp

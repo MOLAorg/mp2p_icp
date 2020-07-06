@@ -73,9 +73,9 @@ static void se3_l2_internal(
     MRPT_START
 
     // Compute the centroids
-    const auto nPoints     = in.paired_points.size();
-    const auto nLines      = in.paired_lines.size();
-    const auto nPlanes     = in.paired_planes.size();
+    const auto nPoints     = in.paired_pt2pt.size();
+    const auto nLines      = in.paired_ln2ln.size();
+    const auto nPlanes     = in.paired_pl2pl.size();
     const auto nAllMatches = nPoints + nLines + nPlanes;
 
     ASSERTMSG_(nAllMatches >= 3, "Horn method needs at least 3 references!");
@@ -195,9 +195,9 @@ void mp2p_icp::optimal_tf_horn(
 
     // Normalize weights for each feature type and for each target (attitude
     // / translation):
-    ASSERT_(wp.attitude_weights.pt2pt >= .0);
-    ASSERT_(wp.attitude_weights.l2l >= .0);
-    ASSERT_(wp.attitude_weights.pl2pl >= .0);
+    ASSERT_(wp.pair_weights.pt2pt >= .0);
+    ASSERT_(wp.pair_weights.ln2ln >= .0);
+    ASSERT_(wp.pair_weights.pl2pl >= .0);
 
     // Compute the centroids:
     auto [ct_other, ct_this] =

@@ -11,10 +11,9 @@
  */
 #pragma once
 
-#include <mp2p_icp/optimal_tf_common.h>
-#include <cstdlib>
-#include <map>
-#include <string>
+#include <mp2p_icp/OptimalTF_Result.h>
+#include <mp2p_icp/Pairings.h>
+#include <mp2p_icp/WeightParameters.h>
 
 namespace mp2p_icp
 {

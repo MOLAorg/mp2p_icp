@@ -11,7 +11,9 @@
  */
 #pragma once
 
-#include <mp2p_icp/optimal_tf_common.h>
+#include <mp2p_icp/OptimalTF_Result.h>
+#include <mp2p_icp/Pairings.h>
+#include <mp2p_icp/WeightParameters.h>
 
 namespace mp2p_icp
 {
@@ -20,6 +22,8 @@ namespace mp2p_icp
  *
  *
  * \note On MRPT naming convention: "this"=global; "other"=local.
+ * \except std::logic_error If the number of pairings is too small for a unique
+ * solution.
  */
 void optimal_tf_horn(
     const mp2p_icp::Pairings& in, const WeightParameters& wp,

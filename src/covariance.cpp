@@ -23,7 +23,7 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
     const CovarianceParameters& p)
 {
     // If we don't have pairings, we can't provide an estimation:
-    if (finalPairings.paired_points.empty())
+    if (finalPairings.paired_pt2pt.empty())
     {
         mrpt::math::CMatrixDouble66 cov;
         cov.setDiagonal(1e6);
@@ -56,13 +56,13 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         mrpt::poses::CPose3D p;
         p.setFromValues(x[0], x[1], x[2], x[3], x[4], x[5]);
 
-        const size_t nErrors = 3 * finalPairings.paired_points.size();
+        const size_t nErrors = 3 * finalPairings.paired_pt2pt.size();
         ASSERT_(nErrors > 0);
         errors.resize(nErrors);
 
         size_t errorIdx = 0;
 
-        for (const auto& pt2pt : finalPairings.paired_points)
+        for (const auto& pt2pt : finalPairings.paired_pt2pt)
         {
             double gx, gy, gz;
             p.composePoint(

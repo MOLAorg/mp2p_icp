@@ -11,7 +11,7 @@
  */
 #pragma once
 
-#include <mp2p_icp/optimal_tf_common.h>
+#include <mp2p_icp/Pairings.h>
 
 namespace mp2p_icp
 {
@@ -27,7 +27,7 @@ struct CovarianceParameters
  * \ingroup mp2p_icp_grp
  */
 mrpt::math::CMatrixDouble66 covariance(
-    const Pairings&     finalPairings,
+    const Pairings&             finalPairings,
     const mrpt::poses::CPose3D& finalAlignSolution,
     const CovarianceParameters& p);
 

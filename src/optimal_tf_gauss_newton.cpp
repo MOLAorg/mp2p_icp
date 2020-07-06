@@ -18,7 +18,8 @@
 using namespace mp2p_icp;
 
 void mp2p_icp::optimal_tf_gauss_newton(
-    const Pairings_GaussNewton& in, OptimalTF_Result& result)
+    const Pairings& in, const WeightParameters& wp, OptimalTF_Result& result,
+    const OptimalTF_GN_Parameters& gnParams)
 {
     using std::size_t;
 
@@ -26,22 +27,24 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
     // Run Gauss-Newton steps, using SE(3) relinearization at the current
     // solution:
-    result.optimal_pose = in.initial_guess;
+    ASSERTMSG_(
+        gnParams.linearizationPoint.has_value(),
+        "This method requires a linearization point");
 
-    const auto nPt2Pt = in.paired_points.size();
+    result.optimal_pose = gnParams.linearizationPoint.value();
+
+    const auto nPt2Pt = in.paired_pt2pt.size();
     const auto nPt2Ln = in.paired_pt2ln.size();
     const auto nPt2Pl = in.paired_pt2pl.size();
-    const auto nPl2Pl = in.paired_planes.size();
-    const auto nLn2Ln = in.paired_lines.size();
+    const auto nPl2Pl = in.paired_pl2pl.size();
+    const auto nLn2Ln = in.paired_ln2ln.size();
 
     const auto nErrorTerms = (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln;
 
     Eigen::VectorXd                          err(nErrorTerms);
     Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
 
-    double       w_pt = in.weight_point2point;
-    const double w_pl = in.weight_point2plane, w_ln = in.weight_point2line,
-                 w_pl2pl = in.weight_plane2plane;
+    auto w = wp.pair_weights;
 
     const bool  has_per_pt_weight       = !in.point_weights.empty();
     auto        cur_point_block_weights = in.point_weights.begin();
@@ -49,7 +52,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
     MRPT_TODO("Implement robust Kernel in this solver");
 
-    for (size_t iter = 0; iter < in.max_iterations; iter++)
+    for (size_t iter = 0; iter < gnParams.maxInnerLoopIterations; iter++)
     {
         // (12x6 Jacobian)
         const auto dDexpe_de =
@@ -59,7 +62,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
         {
             // Error:
-            const auto&  p  = in.paired_points[idx_pt];
+            const auto&  p  = in.paired_pt2pt[idx_pt];
             const double lx = p.other_x, ly = p.other_y, lz = p.other_z;
             double       gx, gy, gz;
             result.optimal_pose.composePoint(lx, ly, lz, gx, gy, gz);
@@ -87,11 +90,11 @@ void mp2p_icp::optimal_tf_gauss_newton(
                     ++cur_point_block_weights;  // move to next block
                     cur_point_block_start = idx_pt;
                 }
-                w_pt = cur_point_block_weights->second;
+                w.pt2pt = cur_point_block_weights->second;
             }
 
             // Build Jacobian:
-            J.block<3, 6>(idx_pt * 3, 0) = w_pt * J1 * dDexpe_de.asEigen();
+            J.block<3, 6>(idx_pt * 3, 0) = w.pt2pt * J1 * dDexpe_de.asEigen();
         }
 
         // Point-to-line
@@ -139,7 +142,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
             // Build Jacobian
             J.block<1, 6>(base_idx + idx_pt, 0) =
-                w_ln * J1 * J2 * dDexpe_de.asEigen();
+                w.pt2ln * J1 * J2 * dDexpe_de.asEigen();
         }
 
         // Line-to-Line
@@ -148,7 +151,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
         const double tolerance = 0.01;
         for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++)
         {
-            const auto&         p = in.paired_lines[idx_ln];
+            const auto&         p = in.paired_ln2ln[idx_ln];
             mrpt::math::TLine3D ln_aux;
             double              gx, gy, gz;
             result.optimal_pose.composePoint(
@@ -204,7 +207,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
                         .finished();
                 // Build Jacobian
                 J.block<1, 6>(base_idx + idx_ln, 0) =
-                    w_ln * J1 * J2 * dDexpe_de.asEigen();
+                    w.ln2ln * J1 * J2 * dDexpe_de.asEigen();
             }
             else
             {  // Rest
@@ -270,7 +273,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
                         .finished();
                 // Build Jacobian
                 J.block<4, 6>(base_idx + idx_ln, 0) =
-                    w_ln * J1 * J2 * dDexpe_de.asEigen();
+                    w.ln2ln * J1 * J2 * dDexpe_de.asEigen();
             }
         }
         // Point-to-plane:
@@ -305,7 +308,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             const Eigen::Matrix<double, 1, 6> Jb =
                 Jpl * J1 * dDexpe_de.asEigen();
 
-            J.block<1, 6>(idx_pl + base_idx, 0) = w_pl * Jb;
+            J.block<1, 6>(idx_pl + base_idx, 0) = w.pt2pl * Jb;
         }
 
         // Plane-to-plane (only direction of normal vectors):
@@ -313,7 +316,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
         {
             // Error term:
-            const auto& p = in.paired_planes[idx_pl];
+            const auto& p = in.paired_pl2pl[idx_pl];
 
             const auto nl = p.p_other.plane.getNormalVector();
             const auto ng = p.p_this.plane.getNormalVector();
@@ -341,7 +344,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             // clang-format on
 
             J.block<3, 6>(3 * idx_pl + base_idx, 0) =
-                w_pl2pl * J1 * dDexpe_de.asEigen();
+                w.pl2pl * J1 * dDexpe_de.asEigen();
         }
 
         // 3) Solve Gauss-Newton:
@@ -356,14 +359,14 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
         result.optimal_pose = result.optimal_pose + dE;
 
-        if (in.verbose)
+        if (gnParams.verbose)
         {
             std::cout << "[P2P GN] iter:" << iter << " err:" << err.norm()
                       << " delta:" << delta.transpose() << "\n";
         }
 
         // Simple convergence test:
-        if (delta.norm() < in.min_delta) break;
+        if (delta.norm() < gnParams.minDelta) break;
 
     }  // for each iteration
     MRPT_END

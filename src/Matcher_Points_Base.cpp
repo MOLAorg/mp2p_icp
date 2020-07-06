@@ -45,11 +45,11 @@ void Matcher_Points_Base::match(
         ASSERT_(glLayer);
         ASSERT_(lcLayer);
 
-        const size_t nBefore = out.paired_points.size();
+        const size_t nBefore = out.paired_pt2pt.size();
 
         implMatchOneLayer(*glLayer, *lcLayer, localPose, out);
 
-        const size_t nAfter = out.paired_points.size();
+        const size_t nAfter = out.paired_pt2pt.size();
 
         if (!weight_pt2pt_layers.empty() && nAfter != nBefore)
         {

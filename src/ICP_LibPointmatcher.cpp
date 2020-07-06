@@ -86,7 +86,7 @@ void ICP_LibPointmatcher::align(
     // the global list of pairings:
     const Pairings initPairings = ICP_Base::runMatchers(state);
 
-    if (initPairings.empty() || initPairings.paired_points.size() < 3)
+    if (initPairings.empty() || initPairings.paired_pt2pt.size() < 3)
     {
         // Skip ill-defined problems if the no. of points is too small.
 

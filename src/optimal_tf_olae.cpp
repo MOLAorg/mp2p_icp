@@ -247,9 +247,9 @@ void mp2p_icp::optimal_tf_olae(
 
     // Normalize weights for each feature type and for each target (attitude
     // / translation):
-    ASSERT_(wp.attitude_weights.pt2pt >= .0);
-    ASSERT_(wp.attitude_weights.l2l >= .0);
-    ASSERT_(wp.attitude_weights.pl2pl >= .0);
+    ASSERT_(wp.pair_weights.pt2pt >= .0);
+    ASSERT_(wp.pair_weights.ln2ln >= .0);
+    ASSERT_(wp.pair_weights.pl2pl >= .0);
 
     // Compute the centroids:
     auto [ct_other, ct_this] =

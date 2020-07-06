@@ -11,7 +11,6 @@
  * @date   Apr 10, 2020
  */
 
-#include <mp2p_icp/optimal_tf_common.h>
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
 #include <mp2p_icp/optimal_tf_horn.h>
 #include <mp2p_icp/optimal_tf_olae.h>
