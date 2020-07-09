@@ -27,15 +27,9 @@ Matcher_Points_DistanceThreshold::Matcher_Points_DistanceThreshold()
 void Matcher_Points_DistanceThreshold::initialize(
     const mrpt::containers::Parameters& params)
 {
+    Matcher_Points_Base::initialize(params);
+
     threshold_ = params["threshold"];
-
-    if (params.has("pointLayerWeights"))
-        initializeLayerWeights(params["pointLayerWeights"]);
-
-    maxLocalPointsPerLayer_ =
-        params.getOrDefault("maxLocalPointsPerLayer", maxLocalPointsPerLayer_);
-    localPointsSampleSeed_ =
-        params.getOrDefault("localPointsSampleSeed", localPointsSampleSeed_);
 }
 
 void Matcher_Points_DistanceThreshold::implMatchOneLayer(

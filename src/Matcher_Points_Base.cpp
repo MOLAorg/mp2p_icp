@@ -11,15 +11,17 @@
  */
 
 #include <mp2p_icp/Matcher_Points_Base.h>
+
 #include <chrono>
 #include <numeric>  // iota
 #include <random>
 
 using namespace mp2p_icp;
 
-void Matcher_Points_Base::match(
+void Matcher_Points_Base::impl_match(
     const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
-    const mrpt::poses::CPose3D& localPose, Pairings& out) const
+    const mrpt::poses::CPose3D&          localPose,
+    [[maybe_unused]] const MatchContext& mc, Pairings& out) const
 {
     MRPT_START
 
@@ -60,19 +62,30 @@ void Matcher_Points_Base::match(
     MRPT_END
 }
 
-void Matcher_Points_Base::initializeLayerWeights(
-    const mrpt::containers::Parameters& p)
+void Matcher_Points_Base::initialize(const mrpt::containers::Parameters& params)
 {
-    weight_pt2pt_layers.clear();
-    ASSERT_(p.isMap());
+    Matcher::initialize(params);
 
-    for (const auto& kv : p.asMap())
+    if (params.has("pointLayerWeights"))
     {
-        const std::string ly = kv.first;
-        const double      w  = std::any_cast<double>(kv.second);
+        auto& p = params["pointLayerWeights"];
 
-        weight_pt2pt_layers[ly] = w;
+        weight_pt2pt_layers.clear();
+        ASSERT_(p.isMap());
+
+        for (const auto& kv : p.asMap())
+        {
+            const std::string ly = kv.first;
+            const double      w  = std::any_cast<double>(kv.second);
+
+            weight_pt2pt_layers[ly] = w;
+        }
     }
+
+    maxLocalPointsPerLayer_ =
+        params.getOrDefault("maxLocalPointsPerLayer", maxLocalPointsPerLayer_);
+    localPointsSampleSeed_ =
+        params.getOrDefault("localPointsSampleSeed", localPointsSampleSeed_);
 }
 
 Matcher_Points_Base::TransformedLocalPointCloud

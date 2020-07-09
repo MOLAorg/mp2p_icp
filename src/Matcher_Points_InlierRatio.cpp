@@ -12,6 +12,7 @@
 
 #include <mp2p_icp/Matcher_Points_InlierRatio.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/core/round.h>
 
 IMPLEMENTS_MRPT_OBJECT(Matcher_Points_InlierRatio, Matcher, mp2p_icp);
 
@@ -25,10 +26,9 @@ Matcher_Points_InlierRatio::Matcher_Points_InlierRatio()
 void Matcher_Points_InlierRatio::initialize(
     const mrpt::containers::Parameters& params)
 {
-    inliersRatio_ = params["inliersRatio"];
+    Matcher_Points_Base::initialize(params);
 
-    if (params.has("pointLayerWeights"))
-        initializeLayerWeights(params["pointLayerWeights"]);
+    inliersRatio_ = params["inliersRatio"];
 }
 
 void Matcher_Points_InlierRatio::implMatchOneLayer(
@@ -36,8 +36,92 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
     const mrpt::maps::CPointsMap& pcLocal,
     const mrpt::poses::CPose3D& localPose, Pairings& out) const
 {
-    //
+    MRPT_START
 
-    MRPT_TODO("Write me");
-    THROW_EXCEPTION("Write me");
+    ASSERT_ABOVE_(inliersRatio_, 0.0);
+    ASSERT_BELOW_(inliersRatio_, 1.0);
+
+    // Empty maps?  Nothing to do
+    if (pcGlobal.empty() || pcLocal.empty()) return;
+
+    // Try to do matching only if the bounding boxes have some overlap:
+    mrpt::math::TPoint3Df globalMin, globalMax;
+    pcGlobal.boundingBox(
+        globalMin.x, globalMax.x, globalMin.y, globalMax.y, globalMin.z,
+        globalMax.z);
+
+    const TransformedLocalPointCloud tl = transform_local_to_global(
+        pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
+
+    // No need to compute: Is matching = null?
+    if (tl.localMin.x > globalMax.x || tl.localMax.x < globalMin.x ||
+        tl.localMin.y > globalMax.y || tl.localMax.y < globalMin.y)
+        return;
+
+    // Loop for each point in local map:
+    // --------------------------------------------------
+    const auto& gxs = pcGlobal.getPointsBufferRef_x();
+    const auto& gys = pcGlobal.getPointsBufferRef_y();
+    const auto& gzs = pcGlobal.getPointsBufferRef_z();
+
+    const auto& lxs = pcLocal.getPointsBufferRef_x();
+    const auto& lys = pcLocal.getPointsBufferRef_y();
+    const auto& lzs = pcLocal.getPointsBufferRef_z();
+
+    std::multimap<double, mrpt::tfest::TMatchingPair> sortedPairings;
+
+    for (size_t i = 0; i < tl.x_locals.size(); i++)
+    {
+        size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
+
+        // For speed-up:
+        const float lx = tl.x_locals[i], ly = tl.y_locals[i],
+                    lz = tl.z_locals[i];
+
+        {
+            // Use a KD-tree to look for the nearnest neighbor of:
+            //   (x_local, y_local, z_local)
+            // In "this" (global/reference) points map.
+
+            float        tentativeErrSqr;
+            const size_t tentativeGlobalIdx = pcGlobal.kdTreeClosestPoint3D(
+                lx, ly, lz,  // Look closest to this guy
+                tentativeErrSqr  // save here the min. distance squared
+            );
+
+            mrpt::tfest::TMatchingPair p;
+            p.this_idx = tentativeGlobalIdx;
+            p.this_x   = gxs[tentativeGlobalIdx];
+            p.this_y   = gys[tentativeGlobalIdx];
+            p.this_z   = gzs[tentativeGlobalIdx];
+
+            p.other_idx = localIdx;
+            p.other_x   = lxs[localIdx];
+            p.other_y   = lys[localIdx];
+            p.other_z   = lzs[localIdx];
+
+            p.errorSquareAfterTransformation = tentativeErrSqr;
+
+            // Sort by distance:
+            sortedPairings.emplace_hint(
+                sortedPairings.begin(), tentativeErrSqr, p);
+
+        }  // End of test_match
+    }  // For each local point
+
+    // Now, keep the fraction of potential pairings according to the parameter
+    // "ratio":
+    const size_t nTotal = sortedPairings.size();
+    ASSERT_(nTotal > 0);
+
+    const auto nKeep = mrpt::round(double(nTotal) * inliersRatio_);
+
+    // Prepare output: no correspondences initially:
+    auto itEnd = sortedPairings.begin();
+    std::advance(itEnd, nKeep);
+
+    for (auto it = sortedPairings.begin(); it != itEnd; ++it)
+        out.paired_pt2pt.push_back(it->second);
+
+    MRPT_END
 }

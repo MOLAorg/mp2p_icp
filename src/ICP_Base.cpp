@@ -58,6 +58,7 @@ void ICP_Base::align(
          result.nIterations++)
     {
         ICP_iteration_result iter_result;
+        state.currentIteration = result.nIterations;
 
         // Call to algorithm-specific implementation of one ICP iteration:
         impl_ICP_iteration(state, p, iter_result);
@@ -128,8 +129,10 @@ Pairings ICP_Base::runMatchers(ICP_State& s)
     {
         ASSERT_(matcher);
 
-        Pairings pc;
-        matcher->match(s.pc1, s.pc2, s.current_solution, pc);
+        MatchContext mc;
+        Pairings     pc;
+        mc.icpIteration = s.currentIteration;
+        matcher->match(s.pc1, s.pc2, s.current_solution, mc, pc);
 
         pairings.push_back(pc);
     }

@@ -19,6 +19,17 @@
 
 namespace mp2p_icp
 {
+/** Defines the context of a match operation.
+ *
+ * \ingroup mp2p_icp_grp
+ */
+struct MatchContext
+{
+    MatchContext() = default;
+
+    uint32_t icpIteration = 0;
+};
+
 /** Pointcloud matching generic base class.
  * Each "matcher" implementation takes a global ("reference") `pointcloud_t` and
  * another local ("mobile") `pointcloud_t` which is assumed to be placed in a
@@ -33,12 +44,24 @@ class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
    public:
     /** Check each derived class to see required and optional parameters. */
-    virtual void initialize(const mrpt::containers::Parameters& params) = 0;
+    virtual void initialize(const mrpt::containers::Parameters& params);
 
-    /** Finds correspondences between the two point clouds. */
+    /** Finds correspondences between the two point clouds.
+     * "out" is not cleared, but new pairings added to it.
+     */
     virtual void match(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
-        const mrpt::poses::CPose3D& localPose, Pairings& out) const = 0;
+        const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
+        Pairings& out) const;
+
+    uint32_t runFromIteration = 0;
+    uint32_t runUpToIteration = 0;  //!< 0: no limit
+
+   protected:
+    virtual void impl_match(
+        const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+        const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
+        Pairings& out) const = 0;
 };
 
 }  // namespace mp2p_icp

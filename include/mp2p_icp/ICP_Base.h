@@ -22,6 +22,7 @@
 #include <mrpt/math/TPose3D.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
+
 #include <cstdint>
 #include <functional>  //reference_wrapper
 #include <memory>
@@ -117,6 +118,7 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         // Current best transform:
         mrpt::poses::CPose3D current_solution;
         double               current_scale{1.0};
+        uint32_t             currentIteration = 0;
     };
 
     struct ICP_iteration_result

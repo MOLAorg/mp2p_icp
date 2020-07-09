@@ -29,23 +29,12 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
     /*** Parameters:
      * - `threshold`: Inliers distance threshold [meters][mandatory]
      *
-     * - `maxLocalPointsPerLayer`: Maximum number of local points to consider
-     * for the "local" point cloud, per point layer. "0" means "all" (no
-     * decimation) [Default=0].
-     *
-     * - `localPointsSampleSeed`: Only if `maxLocalPointsPerLayer`!=0, and the
-     * number of points in the local map is larger than that number, a seed for
-     * the RNG used to pick random point indices. `0` (default) means to use a
-     * time-based seed.
-     *
-     * - `pointLayerWeights`: Optional map of layer names to relative weights.
+     * Plus: the parameters of Matcher_Points_Base::initialize()
      */
     void initialize(const mrpt::containers::Parameters& params) override;
 
    private:
-    double   threshold_              = 0.50;
-    uint64_t maxLocalPointsPerLayer_ = 0;
-    uint64_t localPointsSampleSeed_  = 0;
+    double threshold_ = 0.50;
 
     void implMatchOneLayer(
         const mrpt::maps::CPointsMap& pcGlobal,
