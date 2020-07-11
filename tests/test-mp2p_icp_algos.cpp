@@ -5,8 +5,8 @@
  * ------------------------------------------------------------------------- */
 
 /**
- * @file   test-mp2p_icp-olae.cpp
- * @brief  Unit tests for the mp2p_icp OLAE solver
+ * @file   test-mp2p_icp-algos.cpp
+ * @brief  Unit tests for mp2p_icp solvers
  * @author Jose Luis Blanco Claraco
  * @date   May 12, 2019
  */
@@ -18,7 +18,6 @@
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/get_env.h>
-#include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPose3DQuat.h>
@@ -28,8 +27,9 @@
 #include <mrpt/system/filesystem.h>
 
 #include <Eigen/Dense>
-#include <fstream>
 #include <iostream>
+
+#include "test-common.h"  // load_xyz_file()
 
 // Used to validate OLAE. However, it may make the Gauss-Newton solver, or the
 // robust kernel with outliers to fail.
@@ -40,38 +40,6 @@ static bool   DO_SAVE_STAT_FILES =
 static bool DO_PRINT_ALL = mrpt::get_env<bool>("DO_PRINT_ALL", false);
 
 const std::string datasetDir = MP2P_DATASET_DIR;
-
-// Loads from XYZ file, possibly gz-compressed:
-static mrpt::maps::CSimplePointsMap::Ptr load_xyz_file(const std::string& fil)
-{
-    ASSERT_FILE_EXISTS_(fil);
-
-    mrpt::io::CFileGZInputStream f(fil);
-    std::string                  buf;
-    while (!f.checkEOF())
-    {
-        const size_t N = 10000;
-        std::string  tmp;
-        tmp.resize(N);
-        const auto n = f.Read(&tmp[0], N);
-        tmp.resize(n);
-        buf += tmp;
-    }
-
-    const auto tmpFil = mrpt::system::getTempFileName();
-    {
-        std::ofstream fo;
-        fo.open(tmpFil.c_str());
-        ASSERT_(fo.is_open());
-        fo << buf;
-    }
-
-    auto m = mrpt::maps::CSimplePointsMap::Create();
-    m->load3D_from_text_file(tmpFil);
-    ASSERT_ABOVE_(m->size(), 100U);
-
-    return m;
-}
 
 static void test_icp(const std::string& inFile, const std::string& algoName)
 {

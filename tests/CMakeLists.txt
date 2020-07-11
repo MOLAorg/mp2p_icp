@@ -6,6 +6,8 @@
 # Released under BSD 3-Clause License. See COPYING.
 # ------------------------------------------------------------------------------
 
+include_directories(".") # for "test-common.h"
+
 mola_add_executable(
     TARGET  test-mp2p_optimal_tf_algos
     SOURCES test-mp2p_optimal_tf_algos.cpp
@@ -17,7 +19,7 @@ add_test(MP2P_optimal_tf_algorithms ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_
 
 mola_add_executable(
     TARGET  test-mp2p_icp_algos
-    SOURCES test-mp2p_icp_algos.cpp
+    SOURCES test-mp2p_icp_algos.cpp test-common.cpp
     LINK_LIBRARIES
         mp2p_icp
 )
@@ -39,7 +41,7 @@ add_test(MP2P_jacobians ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_jacobians)
 
 mola_add_executable(
     TARGET  test-mp2p_quality_reproject_ranges
-    SOURCES test-mp2p_quality_reproject_ranges.cpp
+    SOURCES test-mp2p_quality_reproject_ranges.cpp test-common.cpp
 	LINK_LIBRARIES
 	    mp2p_icp
 )

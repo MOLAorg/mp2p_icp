@@ -14,48 +14,13 @@
 #include <mp2p_icp/QualityEvaluator_RangeImageSimilarity.h>
 #include <mrpt/containers/Parameters.h>
 #include <mrpt/core/exceptions.h>
-#include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/maps/CSimplePointsMap.h>
-#include <mrpt/system/filesystem.h>  // fileNameStripInvalidChars()
 #include <cstdlib>
-#include <fstream>
 #include <sstream>
 
+#include "test-common.h"  // load_xyz_file()
+
 const std::string datasetDir = MP2P_DATASET_DIR;
-
-MRPT_TODO("load_xyz_file is duplicated. refactor.");
-
-// Loads from XYZ file, possibly gz-compressed:
-static mrpt::maps::CSimplePointsMap::Ptr load_xyz_file(const std::string& fil)
-{
-    ASSERT_FILE_EXISTS_(fil);
-
-    mrpt::io::CFileGZInputStream f(fil);
-    std::string                  buf;
-    while (!f.checkEOF())
-    {
-        const size_t N = 10000;
-        std::string  tmp;
-        tmp.resize(N);
-        const auto n = f.Read(&tmp[0], N);
-        tmp.resize(n);
-        buf += tmp;
-    }
-
-    const auto tmpFil = mrpt::system::getTempFileName();
-    {
-        std::ofstream fo;
-        fo.open(tmpFil.c_str());
-        ASSERT_(fo.is_open());
-        fo << buf;
-    }
-
-    auto m = mrpt::maps::CSimplePointsMap::Create();
-    m->load3D_from_text_file(tmpFil);
-    ASSERT_ABOVE_(m->size(), 100U);
-
-    return m;
-}
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
