@@ -47,6 +47,7 @@ class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
      * fx: 50
      * fy: 50
      * sigma: 0.1
+     * #debug_show_all_in_window: false
      * \endcode
      */
     void initialize(const mrpt::containers::Parameters& params) override;
@@ -62,7 +63,13 @@ class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
     /** Parameters for the simulated camera */
     mrpt::img::TCamera rangeCamera;
 
-    double sigma = 0.1;
+    double sigma = 0.1;  ///!< Uncertainty of depth ranges [meters]
+
+    /** Penalty for pixels only visible from one view point [in "sigmas"] */
+    double penalty_not_visible = 2.0;
+
+    bool debug_show_all_in_window = false;
+    bool debug_save_all_matrices  = true;
 
     mrpt::math::CMatrixDouble projectPoints(
         const mrpt::maps::CPointsMap&              pts,

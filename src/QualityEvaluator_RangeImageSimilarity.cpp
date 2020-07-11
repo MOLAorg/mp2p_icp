@@ -11,7 +11,9 @@
  */
 
 #include <mp2p_icp/QualityEvaluator_RangeImageSimilarity.h>
+#include <mrpt/gui/CDisplayWindow.h>
 #include <mrpt/img/TPixelCoord.h>
+#include <mrpt/io/vector_loadsave.h>
 
 IMPLEMENTS_MRPT_OBJECT(
     QualityEvaluator_RangeImageSimilarity, QualityEvaluator, mp2p_icp);
@@ -29,7 +31,11 @@ void QualityEvaluator_RangeImageSimilarity::initialize(
     rangeCamera.fx(params["fx"].as<double>());
     rangeCamera.fy(params["fy"].as<double>());
 
-    sigma = params["sigma"].as<double>();
+    MCP_LOAD_OPT(params, sigma);
+    MCP_LOAD_OPT(params, penalty_not_visible);
+
+    MCP_LOAD_OPT(params, debug_show_all_in_window);
+    MCP_LOAD_OPT(params, debug_save_all_matrices);
 }
 
 double QualityEvaluator_RangeImageSimilarity::evaluate(
@@ -45,22 +51,9 @@ double QualityEvaluator_RangeImageSimilarity::evaluate(
     const auto& p2 = *pcLocal.point_layers.at(pointcloud_t::PT_LAYER_RAW);
 
     const auto I11 = projectPoints(p1);
-    const auto I12 = projectPoints(p1, localPose);
+    const auto I12 = projectPoints(p1, -localPose);
     const auto I22 = projectPoints(p2);
-    const auto I21 = projectPoints(p2, -localPose);
-
-#if 0
-    {
-        static std::atomic<int> iv = 0;
-
-        const int i = iv++;
-
-        I11.saveToTextFile(mrpt::format("I11_%05i.txt", i));
-        I22.saveToTextFile(mrpt::format("I22_%05i.txt", i));
-        I12.saveToTextFile(mrpt::format("I12_%05i.txt", i));
-        I21.saveToTextFile(mrpt::format("I21_%05i.txt", i));
-    }
-#endif
+    const auto I21 = projectPoints(p2, localPose);
 
     auto s1 = scores(I11, I21);
     auto s2 = scores(I12, I22);
@@ -71,7 +64,44 @@ double QualityEvaluator_RangeImageSimilarity::evaluate(
     for (double v : s1) sum += v;
     for (double v : s2) sum += v;
 
-    return nScores > 0 ? sum / nScores : .0;
+    const double finalScore = nScores > 0 ? sum / nScores : .0;
+
+    // ----- Debug ----------
+    if (debug_show_all_in_window)
+    {
+        mrpt::gui::CDisplayWindow win_11("I11", 400, 300);
+        mrpt::gui::CDisplayWindow win_12("I12", 400, 300);
+        mrpt::gui::CDisplayWindow win_21("I21", 400, 300);
+        mrpt::gui::CDisplayWindow win_22("I22", 400, 300);
+        win_11.setPos(5, 5);
+        win_12.setPos(410 + 5, 5);
+        win_21.setPos(5, 310 + 5);
+        win_22.setPos(410 + 5, 310 + 5);
+        mrpt::img::CImage im11, im12, im21, im22;
+        im11.setFromMatrix(I11, false);
+        win_11.showImage(im11);
+        im12.setFromMatrix(I12, false);
+        win_12.showImage(im12);
+        im21.setFromMatrix(I21, false);
+        win_21.showImage(im21);
+        im22.setFromMatrix(I22, false);
+        win_22.showImage(im22);
+        win_11.waitForKey();
+    }
+    if (debug_save_all_matrices)
+    {
+        static std::atomic_int iv = 0;
+        const int              i  = iv++;
+        I11.saveToTextFile(mrpt::format("I11_%05i.txt", i));
+        I22.saveToTextFile(mrpt::format("I22_%05i.txt", i));
+        I12.saveToTextFile(mrpt::format("I12_%05i.txt", i));
+        I21.saveToTextFile(mrpt::format("I21_%05i.txt", i));
+
+        mrpt::io::vectorToTextFile(s1, mrpt::format("I1_scores_%05i.txt", i));
+        mrpt::io::vectorToTextFile(s2, mrpt::format("I2_scores_%05i.txt", i));
+    }
+
+    return finalScore;
 }
 
 // Adapted from mrpt::vision::pinhole::projectPoint_with_distortion()
@@ -80,9 +110,22 @@ static void projectPoint(
     const mrpt::math::TPoint3D& P, const mrpt::img::TCamera& params,
     double& pixel_x, double& pixel_y)
 {
-    // Pinhole model:
+    /* Pinhole model.
+     *
+     * Point reference            Pixel/camera reference
+     *
+     *     +Z ^                           / +Z
+     *        |  /                       /
+     *        | /  +X                   /
+     *  +Y    |/                       /
+     *  <-----+                       +-----------> +X
+     *                                |
+     *                                |
+     *                                V +Y
+     *
+     */
     const double x = -P.y / P.x;
-    const double y = P.z / P.x;
+    const double y = -P.z / P.x;
 
     pixel_x = params.cx() + params.fx() * x;
     pixel_y = params.cy() + params.fy() * y;
@@ -131,11 +174,8 @@ mrpt::math::CMatrixDouble QualityEvaluator_RangeImageSimilarity::projectPoints(
     return I;
 }
 
-static double phi(double x1, double x2)
-{
-    return (std::erf(x2 / std::sqrt(2)) - std::erf(x1 / std::sqrt(2))) / 2;
-}
-static double errorForMismatch(const double x) { return 1.0 - phi(-x, x); }
+static double phi(double x) { return std::erf(x / std::sqrt(2)); }
+static double errorForMismatch(const double x) { return 1.0 - phi(x); }
 static double errorForMismatch(const double DeltaRange, const double sigma)
 {
     const double x = std::abs(DeltaRange / sigma);
@@ -164,7 +204,7 @@ std::vector<double> QualityEvaluator_RangeImageSimilarity::scores(
         if (r1 == 0 || r2 == 0)
         {
             // Maximum error:
-            val = errorForMismatch(2.0);
+            val = errorForMismatch(penalty_not_visible);
         }
         else
         {

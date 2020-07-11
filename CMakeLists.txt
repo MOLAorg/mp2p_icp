@@ -40,6 +40,7 @@ mola_add_library(
 		mrpt::containers
 		mrpt::tfest
 		mrpt::maps
+		mrpt::gui
 )
 
 if (MP2PICP_BUILD_POINTMATCHER)
