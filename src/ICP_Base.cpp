@@ -20,6 +20,8 @@
 
 IMPLEMENTS_VIRTUAL_MRPT_OBJECT(ICP_Base, mrpt::rtti::CObject, mp2p_icp);
 
+MRPT_TODO("Refactor: ICP_base -> ICP. OLAE/Horn/... => `optimizer`");
+
 using namespace mp2p_icp;
 
 void ICP_Base::align(
@@ -67,7 +69,6 @@ void ICP_Base::align(
         {
             // Nothing we can do !!
             result.terminationReason = IterTermReason::NoPairings;
-            result.quality           = 0;
             break;
         }
 

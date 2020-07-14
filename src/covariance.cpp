@@ -18,9 +18,9 @@
 using namespace mp2p_icp;
 
 mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
-    const Pairings&     finalPairings,
+    const Pairings&             finalPairings,
     const mrpt::poses::CPose3D& finalAlignSolution,
-    const CovarianceParameters& p)
+    const CovarianceParameters& param)
 {
     // If we don't have pairings, we can't provide an estimation:
     if (finalPairings.paired_pt2pt.empty())
@@ -39,8 +39,8 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
     xInitial[5] = finalAlignSolution.roll();
 
     mrpt::math::CMatrixDouble61 xIncrs;
-    for (int i = 0; i < 3; i++) xIncrs[i] = p.finDif_xyz;
-    for (int i = 0; i < 3; i++) xIncrs[3 + i] = p.finDif_angles;
+    for (int i = 0; i < 3; i++) xIncrs[i] = param.finDif_xyz;
+    for (int i = 0; i < 3; i++) xIncrs[3 + i] = param.finDif_angles;
 
     struct LambdaParams
     {
