@@ -154,9 +154,11 @@ double QualityEvaluator_Voxels::evaluate(
         dist /= dist_cells;
         quality = 1.0 / (1.0 + std::exp(-dist2quality_scale * dist));
     }
+#if 0
     MRPT_LOG_WARN_STREAM(
         "dist: " << dist << " dist_cells: " << dist_cells
                  << " quality: " << quality);
+#endif
 
     return quality;
 }
