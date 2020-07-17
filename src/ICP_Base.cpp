@@ -101,10 +101,10 @@ void ICP_Base::align(
     if (result.nIterations >= p.maxIterations)
         result.terminationReason = IterTermReason::MaxIterations;
 
-    // Ratio of entities with a valid pairing:
-    ASSERT_(qualityEvaluator_);
-    result.quality = qualityEvaluator_->evaluate(
-        pcs1, pcs2, state.current_solution, state.currentPairings);
+    // Quality:
+    result.quality = evaluateQuality(
+        qualityEvaluators_, pcs1, pcs2, state.current_solution,
+        state.currentPairings);
 
     // Store output:
     result.optimal_tf.mean = state.current_solution;
@@ -162,20 +162,56 @@ void ICP_Base::initializeMatchers(const mrpt::containers::Parameters& params)
     }
 }
 
-void ICP_Base::initializeQualityEvaluator(
+void ICP_Base::initializeQualityEvaluators(
+    const mrpt::containers::Parameters& params,
+    ICP_Base::quality_eval_list_t&      lst)
+{
+    lst.clear();
+
+    ASSERT_(params.isSequence());
+    const auto numEntries = params.asSequence().size();
+
+    for (const auto& entry : params.asSequence())
+    {
+        const auto& e = std::any_cast<mrpt::containers::Parameters>(entry);
+
+        const auto sClass = e["class"].as<std::string>();
+        auto       o      = mrpt::rtti::classFactory(sClass);
+        ASSERT_(o);
+
+        auto m = std::dynamic_pointer_cast<QualityEvaluator>(o);
+        ASSERTMSG_(m, "Class seems not to be derived from QualityEvaluator");
+        m->initialize(e["params"]);
+
+        double weight = 1.0;
+        if (numEntries > 0) weight = e.getOrDefault<double>("weight", weight);
+        lst.emplace_back(m, weight);
+    }
+}
+
+void ICP_Base::initializeQualityEvaluators(
     const mrpt::containers::Parameters& params)
 {
-    qualityEvaluator_.reset();
+    initializeQualityEvaluators(params, qualityEvaluators_);
+}
 
-    ASSERT_(params.isMap());
+double ICP_Base::evaluateQuality(
+    const quality_eval_list_t& evaluators, const pointcloud_t& pcGlobal,
+    const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& localPose,
+    const Pairings& finalPairings)
+{
+    ASSERT_(!evaluators.empty());
 
-    const auto sClass = params["class"].as<std::string>();
-    auto       o      = mrpt::rtti::classFactory(sClass);
-    ASSERT_(o);
+    double sumW = .0, sumEvals = .0;
+    for (const auto& e : evaluators)
+    {
+        const double w = e.relativeWeight;
+        ASSERT_(w > 0);
+        sumEvals +=
+            w * e.obj->evaluate(pcGlobal, pcLocal, localPose, finalPairings);
+        sumW += w;
+    }
+    ASSERT_(sumW > 0);
 
-    auto m = std::dynamic_pointer_cast<QualityEvaluator>(o);
-    ASSERTMSG_(m, "Class seems not to be derived from QualityEvaluator");
-    m->initialize(params["params"]);
-
-    qualityEvaluator_ = m;
+    return sumEvals / sumW;
 }

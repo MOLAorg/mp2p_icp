@@ -55,7 +55,7 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      * @{ */
 
     /** Create and configure one or more "Match" modules from YAML-like config
-     *block. Config must be a sequence of one or more entries, each with a
+     *block. Config must be a *sequence* of one or more entries, each with a
      *`class` and a `params` dictionary entries.
      *
      * Example:
@@ -76,13 +76,29 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     matcher_list_t&       matchers() { return matchers_; }
     /** @} */
 
-    /** Create and configure a "QualityEvaluator" modules from YAML-like config
-     *block. Config must be a dictionary with a `class` and a `params`
-     *dictionary entries.
+    /** @name Module: QualityEvaluator instances
+     * @{ */
+
+    struct QualityEvaluatorEntry
+    {
+        QualityEvaluatorEntry(mp2p_icp::QualityEvaluator::Ptr o, double w)
+            : obj(o), relativeWeight(w)
+        {
+        }
+
+        mp2p_icp::QualityEvaluator::Ptr obj;
+        double                          relativeWeight = 1.0;
+    };
+    using quality_eval_list_t = std::vector<QualityEvaluatorEntry>;
+
+    /** Create and configure one or more  "QualityEvaluator" modules from
+     *YAML-like config block. Config must be a *sequence* of one or more
+     *entries, each with a `class` and a `params` dictionary entries.
      *
      * Example:
      *\code
-     *  class: mp2p_icp::QualityEvaluator_PairedRatio
+     *- class: mp2p_icp::QualityEvaluator_PairedRatio
+     *  weight: 1.0  # (Optional if only one quality evaluator is defined)
      *  params:
      *   # Parameters depend on the particular class
      *   # xxx: yyyy
@@ -90,19 +106,30 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      *
      * Alternatively, the objects can be directly created via matchers().
      */
-    void initializeQualityEvaluator(const mrpt::containers::Parameters& params);
+    void initializeQualityEvaluators(
+        const mrpt::containers::Parameters& params);
 
-    const QualityEvaluator::Ptr& qualityEvaluator() const
+    static void initializeQualityEvaluators(
+        const mrpt::containers::Parameters& params, quality_eval_list_t& lst);
+
+    const quality_eval_list_t& qualityEvaluators() const
     {
-        return qualityEvaluator_;
+        return qualityEvaluators_;
     }
-    QualityEvaluator::Ptr& qualityEvaluator() { return qualityEvaluator_; }
+    quality_eval_list_t& qualityEvaluators() { return qualityEvaluators_; }
+
+    static double evaluateQuality(
+        const quality_eval_list_t& evaluators, const pointcloud_t& pcGlobal,
+        const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& localPose,
+        const Pairings& finalPairings);
+
+    /** @} */
 
    protected:
     matcher_list_t matchers_;
 
-    QualityEvaluator::Ptr qualityEvaluator_ =
-        QualityEvaluator_PairedRatio::Create();
+    quality_eval_list_t qualityEvaluators_ = {
+        {QualityEvaluator_PairedRatio::Create(), 1.0}};
 
     struct ICP_State
     {
