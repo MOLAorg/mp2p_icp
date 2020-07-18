@@ -53,6 +53,7 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     /** @name Module: Matcher instances
      * @{ */
+    using matcher_list_t = std::vector<mp2p_icp::Matcher::Ptr>;
 
     /** Create and configure one or more "Match" modules from YAML-like config
      *block. Config must be a *sequence* of one or more entries, each with a
@@ -70,10 +71,19 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      */
     void initializeMatchers(const mrpt::containers::Parameters& params);
 
-    using matcher_list_t = std::vector<mp2p_icp::Matcher::Ptr>;
+    static void initializeMatchers(
+        const mrpt::containers::Parameters& params,
+        ICP_Base::matcher_list_t&           lst);
 
     const matcher_list_t& matchers() const { return matchers_; }
     matcher_list_t&       matchers() { return matchers_; }
+
+    /** Runs a set of matchers. */
+    static Pairings runMatchers(
+        const matcher_list_t& matchers, const pointcloud_t& pc1,
+        const pointcloud_t& pc2, const mrpt::poses::CPose3D& pc2_wrt_pc1,
+        const MatchContext& mc = {});
+
     /** @} */
 
     /** @name Module: QualityEvaluator instances

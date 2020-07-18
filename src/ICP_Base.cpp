@@ -122,28 +122,39 @@ void ICP_Base::align(
 
 Pairings ICP_Base::runMatchers(ICP_State& s)
 {
-    Pairings pairings;
-
     ASSERT_(!matchers_.empty());
 
-    for (const auto& matcher : matchers_)
+    MatchContext mc;
+    mc.icpIteration = s.currentIteration;
+
+    return runMatchers(matchers_, s.pc1, s.pc2, s.current_solution, mc);
+}
+
+Pairings ICP_Base::runMatchers(
+    const matcher_list_t& matchers, const pointcloud_t& pc1,
+    const pointcloud_t& pc2, const mrpt::poses::CPose3D& pc2_wrt_pc1,
+    const MatchContext& mc)
+{
+    Pairings pairings;
+    for (const auto& matcher : matchers)
     {
         ASSERT_(matcher);
-
-        MatchContext mc;
-        Pairings     pc;
-        mc.icpIteration = s.currentIteration;
-        matcher->match(s.pc1, s.pc2, s.current_solution, mc, pc);
-
+        Pairings pc;
+        matcher->match(pc1, pc2, pc2_wrt_pc1, mc, pc);
         pairings.push_back(pc);
     }
-
     return pairings;
 }
 
 void ICP_Base::initializeMatchers(const mrpt::containers::Parameters& params)
 {
-    matchers_.clear();
+    initializeMatchers(params, matchers_);
+}
+
+void ICP_Base::initializeMatchers(
+    const mrpt::containers::Parameters& params, ICP_Base::matcher_list_t& lst)
+{
+    lst.clear();
 
     ASSERT_(params.isSequence());
     for (const auto& entry : params.asSequence())
@@ -158,7 +169,7 @@ void ICP_Base::initializeMatchers(const mrpt::containers::Parameters& params)
         ASSERTMSG_(m, "Matcher class seems not to be derived from Matcher");
 
         m->initialize(e["params"]);
-        matchers_.push_back(m);
+        lst.push_back(m);
     }
 }
 
@@ -207,8 +218,9 @@ double ICP_Base::evaluateQuality(
     {
         const double w = e.relativeWeight;
         ASSERT_(w > 0);
-        sumEvals +=
-            w * e.obj->evaluate(pcGlobal, pcLocal, localPose, finalPairings);
+        const double eval =
+            e.obj->evaluate(pcGlobal, pcLocal, localPose, finalPairings);
+        sumEvals += w * eval;
         sumW += w;
     }
     ASSERT_(sumW > 0);
