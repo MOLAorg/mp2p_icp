@@ -28,7 +28,7 @@ void Matcher_Points_InlierRatio::initialize(
 {
     Matcher_Points_Base::initialize(params);
 
-    inliersRatio_ = params["inliersRatio"];
+    MCP_LOAD_REQ(params, inliersRatio);
 }
 
 void Matcher_Points_InlierRatio::implMatchOneLayer(
@@ -38,8 +38,8 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
 {
     MRPT_START
 
-    ASSERT_ABOVE_(inliersRatio_, 0.0);
-    ASSERT_BELOW_(inliersRatio_, 1.0);
+    ASSERT_ABOVE_(inliersRatio, 0.0);
+    ASSERT_BELOW_(inliersRatio, 1.0);
 
     // Empty maps?  Nothing to do
     if (pcGlobal.empty() || pcLocal.empty()) return;
@@ -114,7 +114,7 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
     const size_t nTotal = sortedPairings.size();
     ASSERT_(nTotal > 0);
 
-    const auto nKeep = mrpt::round(double(nTotal) * inliersRatio_);
+    const auto nKeep = mrpt::round(double(nTotal) * inliersRatio);
 
     // Prepare output: no correspondences initially:
     auto itEnd = sortedPairings.begin();

@@ -24,7 +24,8 @@ namespace mp2p_icp
 /**
  * @brief Output of estimate_points_eigen()
  *
- * Eigen vectors and eigen values are sorted from largest to smallest.
+ * Eigen vectors and eigen values are sorted from smallest to largest
+ * eigenvalue.
  */
 struct PointCloudEigen
 {

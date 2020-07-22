@@ -29,7 +29,7 @@ void Matcher_Points_DistanceThreshold::initialize(
 {
     Matcher_Points_Base::initialize(params);
 
-    threshold_ = params["threshold"];
+    MCP_LOAD_REQ(params, threshold);
 }
 
 void Matcher_Points_DistanceThreshold::implMatchOneLayer(
@@ -61,7 +61,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 
     // Loop for each point in local map:
     // --------------------------------------------------
-    const float maxDistForCorrespondenceSquared = mrpt::square(threshold_);
+    const float maxDistForCorrespondenceSquared = mrpt::square(threshold);
 
     const auto& gxs = pcGlobal.getPointsBufferRef_x();
     const auto& gys = pcGlobal.getPointsBufferRef_y();

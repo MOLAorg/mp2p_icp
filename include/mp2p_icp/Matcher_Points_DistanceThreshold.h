@@ -34,7 +34,7 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
     void initialize(const mrpt::containers::Parameters& params) override;
 
    private:
-    double threshold_ = 0.50;
+    double threshold = 0.50;
 
     void implMatchOneLayer(
         const mrpt::maps::CPointsMap& pcGlobal,

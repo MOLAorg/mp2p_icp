@@ -28,7 +28,7 @@ class Matcher_Points_InlierRatio : public Matcher_Points_Base
     Matcher_Points_InlierRatio(const double ratio)
         : Matcher_Points_InlierRatio()
     {
-        inliersRatio_ = ratio;
+        inliersRatio = ratio;
     }
 
     /*** Parameters:
@@ -38,7 +38,7 @@ class Matcher_Points_InlierRatio : public Matcher_Points_Base
 
    private:
     /** Inliers distance ratio threshold [0-1] */
-    double inliersRatio_ = 0.80;
+    double inliersRatio = 0.80;
 
     void implMatchOneLayer(
         const mrpt::maps::CPointsMap& pcGlobal,

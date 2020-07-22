@@ -28,9 +28,9 @@ void Matcher_Point2Plane::initialize(const mrpt::containers::Parameters& params)
 {
     Matcher_Points_Base::initialize(params);
 
-    MCP_LOAD_OPT(params, distanceThreshold);
-    MCP_LOAD_OPT(params, knn);
-    MCP_LOAD_OPT(params, planeEigenThreshold);
+    MCP_LOAD_REQ(params, distanceThreshold);
+    MCP_LOAD_REQ(params, knn);
+    MCP_LOAD_REQ(params, planeEigenThreshold);
 }
 
 void Matcher_Point2Plane::implMatchOneLayer(
@@ -114,8 +114,13 @@ void Matcher_Point2Plane::implMatchOneLayer(
 #if 0
         std::cout << "eig values: " << eig.eigVals[0] << " " << eig.eigVals[1]
                   << " " << eig.eigVals[2]
-                  << " eigvec0: " << eig.eigVectors[0].asString() << "\n";
+                  << " eigvec0: " << eig.eigVectors[0].asString() << "\n"
+                  << " eigvec1: " << eig.eigVectors[1].asString() << "\n"
+                  << " eigvec2: " << eig.eigVectors[2].asString() << "\n";
 #endif
+
+        // e0/e2 must be < planeEigenThreshold:
+        if (eig.eigVals[0] > planeEigenThreshold * eig.eigVals[2]) continue;
 
         auto& p            = out.paired_pt2pl.emplace_back();
         p.pt_other         = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
