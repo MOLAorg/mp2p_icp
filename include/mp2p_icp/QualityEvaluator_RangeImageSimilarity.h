@@ -69,7 +69,7 @@ class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
     double penalty_not_visible = 2.0;
 
     bool debug_show_all_in_window = false;
-    bool debug_save_all_matrices  = true;
+    bool debug_save_all_matrices  = false;
 
     mrpt::math::CMatrixDouble projectPoints(
         const mrpt::maps::CPointsMap&              pts,
