@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------
- *  A repertory of multi primitive-to-primitive (MP2) ICP algorithms in C++
+ *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
  * Copyright (C) 2018-2020 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
@@ -51,9 +51,9 @@ double QualityEvaluator_RangeImageSimilarity::evaluate(
     const auto& p2 = *pcLocal.point_layers.at(pointcloud_t::PT_LAYER_RAW);
 
     const auto I11 = projectPoints(p1);
-    const auto I12 = projectPoints(p1, -localPose);
+    const auto I12 = projectPoints(p1, localPose);
     const auto I22 = projectPoints(p2);
-    const auto I21 = projectPoints(p2, localPose);
+    const auto I21 = projectPoints(p2, -localPose);
 
     auto s1 = scores(I11, I21);
     auto s2 = scores(I12, I22);

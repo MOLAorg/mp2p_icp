@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-#        Multi primitive-to-primitive (MP2) ICP C++ library
+#        Multi primitive-to-primitive (MP2P) ICP C++ library
 #
 # Copyright (C) 2018-2020, Jose Luis Blanco-Claraco, contributors (AUTHORS.md)
 # All rights reserved.
@@ -8,44 +8,25 @@
 
 include_directories(".") # for "test-common.h"
 
-mola_add_executable(
-    TARGET  test-mp2p_optimal_tf_algos
-    SOURCES test-mp2p_optimal_tf_algos.cpp
-	LINK_LIBRARIES
-	    mp2p_icp
-)
-add_test(MP2P_optimal_tf_algorithms ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_optimal_tf_algos)
+# ---------------------------------------------------------------------------
+# Usage: mp2p_add_test(foo) to define a test named "test_mp2p_icp_foo" 
+#   from "test-foo.cpp". Additional extra .cpp files can be added as argv
+# ---------------------------------------------------------------------------
+function(mp2p_add_test NAME)
+  mola_add_executable(
+	  TARGET  test-${NAME}
+	  SOURCES test-${NAME}.cpp ${ARGN}
+	  LINK_LIBRARIES
+		  mp2p_icp
+  )
+  add_test(mp2p_icp_${NAME} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-${NAME})
+  target_compile_definitions(test-${NAME}
+	  PRIVATE
+	  MP2P_DATASET_DIR="${mp2p_icp_SOURCE_DIR}/test-datasets/")
+endfunction()
 
+mp2p_add_test(mp2p_optimal_tf_algos)
+mp2p_add_test(mp2p_icp_algos test-common.cpp)
+mp2p_add_test(mp2p_jacobians)
+mp2p_add_test(mp2p_quality_reproject_ranges test-common.cpp)
 
-mola_add_executable(
-    TARGET  test-mp2p_icp_algos
-    SOURCES test-mp2p_icp_algos.cpp test-common.cpp
-    LINK_LIBRARIES
-        mp2p_icp
-)
-add_test(MP2P_ICP_algorithms ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_icp_algos)
-
-target_compile_definitions(test-mp2p_icp_algos
-    PRIVATE
-    MP2P_DATASET_DIR="${mp2p_icp_SOURCE_DIR}/test-datasets/")
-
-
-mola_add_executable(
-    TARGET  test-mp2p_jacobians
-    SOURCES test-mp2p_jacobians.cpp
-	LINK_LIBRARIES
-	    mp2p_icp
-)
-add_test(MP2P_jacobians ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_jacobians)
-
-
-mola_add_executable(
-    TARGET  test-mp2p_quality_reproject_ranges
-    SOURCES test-mp2p_quality_reproject_ranges.cpp test-common.cpp
-	LINK_LIBRARIES
-	    mp2p_icp
-)
-add_test(MP2P_QualityReproject ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test-mp2p_quality_reproject_ranges)
-target_compile_definitions(test-mp2p_quality_reproject_ranges
-    PRIVATE
-    MP2P_DATASET_DIR="${mp2p_icp_SOURCE_DIR}/test-datasets/")

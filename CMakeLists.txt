@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-#        Multi primitive-to-primitive (MP2) ICP C++ library
+#        Multi primitive-to-primitive (MP2P) ICP C++ library
 #
 # Copyright (C) 2018-2020, Jose Luis Blanco-Claraco, contributors (AUTHORS.md)
 # All rights reserved.

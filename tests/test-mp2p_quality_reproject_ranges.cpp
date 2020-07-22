@@ -43,6 +43,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         params["sigma"] = 0.1;
 
+        // params["debug_save_all_matrices"] = true;
+
         mp2p_icp::QualityEvaluator_RangeImageSimilarity q;
         q.initialize(params);
 
@@ -84,7 +86,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
             const double quality = q.evaluate(pcG, pcL, relPoseTest, {});
 
-            ASSERT_BELOW_(std::abs(quality - expectedVal), 0.1);
+            if (std::abs(quality - expectedVal) > 0.1)
+            {
+                std::cerr << "Failed for test case:\n"
+                          << " relPoseGT   : " << relPoseGT << "\n"
+                          << " relPoseTest : " << relPoseTest << "\n"
+                          << " expectedVal : " << expectedVal << "\n"
+                          << " quality     : " << quality << "\n";
+
+                throw std::runtime_error("test failed (see cerr above)");
+            }
         }
     }
     catch (std::exception& e)
