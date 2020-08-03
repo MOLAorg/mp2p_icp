@@ -64,9 +64,10 @@ static PointMatcher<double>::DataPoints pointsToPM(const pointcloud_t& pc)
 #endif
 
 void ICP_LibPointmatcher::align(
-    const pointcloud_t& pcs1, const pointcloud_t& pcs2,
-    const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
-    Results& result)
+    [[maybe_unused]] const pointcloud_t&        pcs1,
+    [[maybe_unused]] const pointcloud_t&        pcs2,
+    [[maybe_unused]] const mrpt::math::TPose3D& init_guess_m2_wrt_m1,
+    [[maybe_unused]] const Parameters& p, [[maybe_unused]] Results& result)
 {
     using namespace std::string_literals;
 
@@ -92,7 +93,7 @@ void ICP_LibPointmatcher::align(
 
         // Nothing we can do !!
         result.quality         = 0;
-        result.quality        = 0;
+        result.quality         = 0;
         result.optimal_tf.mean = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
         return;
     }
@@ -228,7 +229,7 @@ logger:
 
     // Ratio of entities with a valid pairing:
     result.quality = state.currentPairings.empty() /
-                      double(std::min(pcs1.size(), pcs2.size()));
+                     double(std::min(pcs1.size(), pcs2.size()));
 
     result.terminationReason = IterTermReason::Stalled;
     result.optimal_scale     = 1.0;

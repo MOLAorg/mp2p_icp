@@ -34,7 +34,7 @@
 // Used to validate OLAE. However, it may make the Gauss-Newton solver, or the
 // robust kernel with outliers to fail.
 static double XYZ_RANGE = mrpt::get_env<double>("XYZ_RANGE", 5.0);
-static int    NUM_REPS  = mrpt::get_env<int>("NUM_REPS", 10);
+static int    NUM_REPS  = mrpt::get_env<int>("NUM_REPS", 3);
 static bool   DO_SAVE_STAT_FILES =
     mrpt::get_env<bool>("DO_SAVE_STAT_FILES", false);
 static bool DO_PRINT_ALL = mrpt::get_env<bool>("DO_PRINT_ALL", false);
@@ -173,9 +173,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const std::vector<const char*> lst_files{
             {"bunny_decim.xyz.gz", "happy_buddha_decim.xyz.gz"}};
 
-        std::vector<const char*> lst_algos{{"mp2p_icp::ICP_Horn_MultiCloud",
-                                            "mp2p_icp::ICP_OLAE",
-                                            "mp2p_icp::ICP_GaussNewton"}};
+        std::vector<const char*> lst_algos{
+            {"mp2p_icp::ICP_Horn_MultiCloud", "mp2p_icp::ICP_OLAE",
+             "mp2p_icp::ICP_GaussNewton"}};
 
         // Optional methods:
         if (mp2p_icp::ICP_LibPointmatcher::methodAvailable())

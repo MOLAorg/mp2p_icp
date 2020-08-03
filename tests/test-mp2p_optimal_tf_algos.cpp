@@ -15,12 +15,14 @@
 #include <mp2p_icp/optimal_tf_horn.h>
 #include <mp2p_icp/optimal_tf_olae.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/core/get_env.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPose3DQuat.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/random.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>  // fileNameStripInvalidChars()
+
 #include <cstdlib>
 #include <sstream>
 
@@ -30,8 +32,7 @@ static bool TEST_LARGE_ROTATIONS = nullptr != ::getenv("TEST_LARGE_ROTATIONS");
 static bool DO_SAVE_STAT_FILES   = nullptr != ::getenv("DO_SAVE_STAT_FILES");
 static bool DO_PRINT_ALL         = nullptr != ::getenv("DO_PRINT_ALL");
 static bool SKIP_OUTLIERS        = nullptr != ::getenv("SKIP_OUTLIERS");
-static const size_t num_reps =
-    (nullptr != ::getenv("NUM_REPS") ? ::atoi(::getenv("NUM_REPS")) : 100);
+static const size_t num_reps     = mrpt::get_env<int>("NUM_REPS", 25);
 
 using TPoints = std::vector<mrpt::math::TPoint3D>;
 using TPlanes = std::vector<mp2p_icp::plane_patch_t>;
