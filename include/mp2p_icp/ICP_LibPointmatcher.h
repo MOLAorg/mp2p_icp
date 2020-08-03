@@ -11,7 +11,7 @@
  */
 #pragma once
 
-#include <mp2p_icp/ICP_Base.h>
+#include <mp2p_icp/ICP.h>
 #include <mp2p_icp/IterTermReason.h>
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/Results.h>
@@ -22,18 +22,18 @@
 
 namespace mp2p_icp
 {
-/** ICP registration for pointclouds split in different "layers"
+/** ICP wrapper on libpointmatcher
  *
  * \ingroup mp2p_icp_grp
  */
-class ICP_LibPointmatcher : public ICP_Base
+class ICP_LibPointmatcher : public ICP
 {
     DEFINE_MRPT_OBJECT(ICP_LibPointmatcher, mp2p_icp);
 
    public:
     void align(
         const pointcloud_t& pc1, const pointcloud_t& pc2,
-        const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
+        const mrpt::math::TPose3D& initialGuessM2wrtM1, const Parameters& p,
         Results& result) override;
 
     struct ParametersLibpointmatcher
@@ -54,15 +54,6 @@ class ICP_LibPointmatcher : public ICP_Base
 
     /** Returns true if mp2p_icp was built with libpointmatcher support. */
     static bool methodAvailable();
-
-   protected:
-    // See base class docs
-    void impl_ICP_iteration(
-        [[maybe_unused]] ICP_State& s, [[maybe_unused]] const Parameters& p,
-        [[maybe_unused]] ICP_iteration_result& out) override
-    {
-        // Not used in this class
-    }
 
    private:
 #if defined(MP2P_HAS_LIBPOINTMATCHER)

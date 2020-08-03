@@ -4,8 +4,8 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   ICP_Base.h
- * @brief  Virtual interface for ICP algorithms. Useful for RTTI class searches.
+ * @file   ICP.h
+ * @brief  Generic ICP algorithm container.
  * @author Jose Luis Blanco Claraco
  * @date   Jun 10, 2019
  */
@@ -17,6 +17,7 @@
 #include <mp2p_icp/QualityEvaluator.h>
 #include <mp2p_icp/QualityEvaluator_PairedRatio.h>
 #include <mp2p_icp/Results.h>
+#include <mp2p_icp/Solver.h>
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/containers/Parameters.h>
 #include <mrpt/math/TPose3D.h>
@@ -29,27 +30,66 @@
 
 namespace mp2p_icp
 {
-/** Common interface for ICP algorithms.
+/** Generic ICP algorithm container: builds a custom ICP pipeline by selecting
+ * algorithm and parameter for each stage.
+ *
  * The main API entry point is align().
  *
- * \sa This class can be used as parent class in RTTI queries to find available
- * ICP algorithms.
+ * \todo Add pipeline picture.
+ *
+ * Several solvers may exists, but the output from the first one returning
+ * "true" will be used. This is by design, to enable different solver algorithms
+ * depending on the ICP iteration.
  *
  * \ingroup mp2p_icp_grp
  */
-class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
+class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 {
-    DEFINE_VIRTUAL_MRPT_OBJECT(ICP_Base)
+    DEFINE_MRPT_OBJECT(ICP, mp2p_icp);
 
    public:
-    /** Register two point clouds (possibly after having been preprocessed to
-     * extract features, etc.) and returns the relative pose of pc2 with respect
-     * to pc1.
+    /** Register (align) two point clouds (possibly after having been
+     * preprocessed to extract features, etc.) and returns the relative pose of
+     * pc2 with respect to pc1.
      */
     virtual void align(
         const pointcloud_t& pc1, const pointcloud_t& pc2,
-        const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
+        const mrpt::math::TPose3D& initialGuessM2wrtM1, const Parameters& p,
         Results& result);
+
+    /** @name Module: Solver instances
+     * @{ */
+    using solver_list_t = std::vector<mp2p_icp::Solver::Ptr>;
+
+    /** Create and configure one or more "Solver" modules from YAML-like config
+     *block. Config must be a *sequence* of one or more entries, each with a
+     *`class` and a `params` dictionary entries.
+     *
+     * Example:
+     *\code
+     *- class: mp2p_icp::Solver_Horn
+     *  params:
+     *   # Parameters depend on the particular class
+     *   # none
+     *\endcode
+     *
+     * Alternatively, the objects can be directly created via solvers().
+     */
+    void initialize_solvers(const mrpt::containers::Parameters& params);
+
+    static void initialize_solvers(
+        const mrpt::containers::Parameters& params, ICP::solver_list_t& lst);
+
+    const solver_list_t& solvers() const { return solvers_; }
+    solver_list_t&       solvers() { return solvers_; }
+
+    /** Runs a set of solvers. */
+    static bool run_solvers(
+        const solver_list_t& solvers, const Pairings& pairings,
+        OptimalTF_Result& out, const WeightParameters& wp,
+        const SolverContext& sc = {});
+
+    /** @} */
 
     /** @name Module: Matcher instances
      * @{ */
@@ -69,17 +109,16 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      *
      * Alternatively, the objects can be directly created via matchers().
      */
-    void initializeMatchers(const mrpt::containers::Parameters& params);
+    void initialize_matchers(const mrpt::containers::Parameters& params);
 
-    static void initializeMatchers(
-        const mrpt::containers::Parameters& params,
-        ICP_Base::matcher_list_t&           lst);
+    static void initialize_matchers(
+        const mrpt::containers::Parameters& params, ICP::matcher_list_t& lst);
 
     const matcher_list_t& matchers() const { return matchers_; }
     matcher_list_t&       matchers() { return matchers_; }
 
     /** Runs a set of matchers. */
-    static Pairings runMatchers(
+    static Pairings run_matchers(
         const matcher_list_t& matchers, const pointcloud_t& pc1,
         const pointcloud_t& pc2, const mrpt::poses::CPose3D& pc2_wrt_pc1,
         const MatchContext& mc = {});
@@ -116,19 +155,19 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      *
      * Alternatively, the objects can be directly created via matchers().
      */
-    void initializeQualityEvaluators(
+    void initialize_quality_evaluators(
         const mrpt::containers::Parameters& params);
 
-    static void initializeQualityEvaluators(
+    static void initialize_quality_evaluators(
         const mrpt::containers::Parameters& params, quality_eval_list_t& lst);
 
-    const quality_eval_list_t& qualityEvaluators() const
+    const quality_eval_list_t& quality_evaluators() const
     {
-        return qualityEvaluators_;
+        return quality_evaluators_;
     }
-    quality_eval_list_t& qualityEvaluators() { return qualityEvaluators_; }
+    quality_eval_list_t& quality_evaluators() { return quality_evaluators_; }
 
-    static double evaluateQuality(
+    static double evaluate_quality(
         const quality_eval_list_t& evaluators, const pointcloud_t& pcGlobal,
         const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& localPose,
         const Pairings& finalPairings);
@@ -136,9 +175,9 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     /** @} */
 
    protected:
-    matcher_list_t matchers_;
-
-    quality_eval_list_t qualityEvaluators_ = {
+    solver_list_t       solvers_;
+    matcher_list_t      matchers_;
+    quality_eval_list_t quality_evaluators_ = {
         {QualityEvaluator_PairedRatio::Create(), 1.0}};
 
     struct ICP_State
@@ -152,29 +191,8 @@ class ICP_Base : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         const pointcloud_t& pc2;
         std::string         layerOfLargestPc;
         Pairings            currentPairings;
-        // Current best transform:
-        mrpt::poses::CPose3D current_solution;
-        double               current_scale{1.0};
-        uint32_t             currentIteration = 0;
+        OptimalTF_Result    currentSolution;
+        uint32_t            currentIteration = 0;
     };
-
-    struct ICP_iteration_result
-    {
-        bool                 success{false};
-        mrpt::poses::CPose3D new_solution;
-        double               new_scale{1.0};
-        // TODO: Outliers info
-    };
-
-    /** Used internally by ICP implementations to find correspondences between
-     * two pointclouds. */
-    Pairings runMatchers(ICP_State& s);
-
-    /** Implemented by specific ICP algorithms, to be run at each ICP iteration.
-     * It must search for matchings given the current pose estimate, and
-     * evaluate the next new pose, if enough data is available possible.
-     */
-    virtual void impl_ICP_iteration(
-        ICP_State& state, const Parameters& p, ICP_iteration_result& out) = 0;
 };
 }  // namespace mp2p_icp

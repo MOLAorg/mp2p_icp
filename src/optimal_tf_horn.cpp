@@ -14,6 +14,7 @@
 #include <mrpt/math/CMatrixFixed.h>
 #include <mrpt/math/CQuaternion.h>
 #include <mrpt/math/CVectorFixed.h>
+
 #include "visit_correspondences.h"
 
 using namespace mp2p_icp;
@@ -227,17 +228,17 @@ void mp2p_icp::optimal_tf_horn(
     }
 
     // quaternion to rotation matrix:
-    result.optimal_pose = mrpt::poses::CPose3D(optimal_q, 0, 0, 0);
+    result.optimalPose = mrpt::poses::CPose3D(optimal_q, 0, 0, 0);
 
     // Use centroids to solve for optimal translation:
     mrpt::math::TPoint3D pp;
-    result.optimal_pose.composePoint(
+    result.optimalPose.composePoint(
         ct_other.x, ct_other.y, ct_other.z, pp.x, pp.y, pp.z);
     // Scale, if used, was: pp *= s;
 
-    result.optimal_pose.x(ct_this.x - pp.x);
-    result.optimal_pose.y(ct_this.y - pp.y);
-    result.optimal_pose.z(ct_this.z - pp.z);
+    result.optimalPose.x(ct_this.x - pp.x);
+    result.optimalPose.y(ct_this.y - pp.y);
+    result.optimalPose.z(ct_this.z - pp.z);
 
     MRPT_END
 }

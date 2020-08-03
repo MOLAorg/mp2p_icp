@@ -23,8 +23,8 @@ namespace mp2p_icp
  */
 struct OptimalTF_Result
 {
-    mrpt::poses::CPose3D optimal_pose;
-    double               optimal_scale{1.0};
+    mrpt::poses::CPose3D optimalPose;
+    double               optimalScale = {1.0};
 
     /** Correspondence that were detected as outliers. */
     OutlierIndices outliers;

@@ -70,12 +70,12 @@ void f2()
         auto& mp = s.mps.at(p.pt2pl_layer);
         // Measure angle distances from the current estimate:
         mp.angularDistPivotPoint =
-            mrpt::math::TPoint3D(s.current_solution.asTPose());
+            mrpt::math::TPoint3D(s.currentSolutionasTPose());
 
         // Find closest pairings
         mrpt::tfest::TMatchingPairList mpl;
         m1->determineMatching3D(
-            m2.get(), s.current_solution, mpl, mp, s.mres[p.pt2pl_layer]);
+            m2.get(), s.currentSolution mpl, mp, s.mres[p.pt2pl_layer]);
         // Plane-to-plane correspondence:
 
         // We have pairs of planes whose centroids are quite close.

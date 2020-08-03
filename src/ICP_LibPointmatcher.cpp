@@ -27,7 +27,7 @@
 #include <pointmatcher/TransformationsImpl.h>
 #endif
 
-IMPLEMENTS_MRPT_OBJECT(ICP_LibPointmatcher, mp2p_icp::ICP_Base, mp2p_icp)
+IMPLEMENTS_MRPT_OBJECT(ICP_LibPointmatcher, mp2p_icp::ICP, mp2p_icp)
 
 using namespace mp2p_icp;
 
@@ -66,7 +66,7 @@ static PointMatcher<double>::DataPoints pointsToPM(const pointcloud_t& pc)
 void ICP_LibPointmatcher::align(
     [[maybe_unused]] const pointcloud_t&        pcs1,
     [[maybe_unused]] const pointcloud_t&        pcs2,
-    [[maybe_unused]] const mrpt::math::TPose3D& init_guess_m2_wrt_m1,
+    [[maybe_unused]] const mrpt::math::TPose3D& initialGuessM2wrtM1,
     [[maybe_unused]] const Parameters& p, [[maybe_unused]] Results& result)
 {
     using namespace std::string_literals;
@@ -81,11 +81,11 @@ void ICP_LibPointmatcher::align(
 
     ICP_State state(pcs1, pcs2);
 
-    state.current_solution = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
-    auto prev_solution     = state.current_solution;
+    state.currentSolution= mrpt::poses::CPose3D(initialGuessM2wrtM1;
+    auto prev_solution     = state.currentSolution
 
     // the global list of pairings:
-    const Pairings initPairings = ICP_Base::runMatchers(state);
+    const Pairings initPairings = ICP_Base::run_matcherss(state);
 
     if (initPairings.empty() || initPairings.paired_pt2pt.size() < 3)
     {
@@ -94,7 +94,7 @@ void ICP_LibPointmatcher::align(
         // Nothing we can do !!
         result.quality         = 0;
         result.quality         = 0;
-        result.optimal_tf.mean = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
+        result.optimal_tf.mean = mrpt::poses::CPose3D(initialGuessM2wrtM1;
         return;
     }
 
@@ -183,7 +183,7 @@ logger:
     ASSERT_EQUAL_(ptsFrom.getEuclideanDim(), ptsTo.getEuclideanDim());
 
     PM::TransformationParameters initTransfo =
-        init_guess_m2_wrt_m1.getHomogeneousMatrix().asEigen();
+        initialGuessM2wrtM1getHomogeneousMatrix().asEigen();
 
     TransformationsImpl<double>::RigidTransformation rigidTrans;
 
@@ -205,8 +205,8 @@ logger:
 
         // PM gives us the transformation wrt the initial transformation,
         // since we already applied that transf. to the input point cloud!
-        state.current_solution =
-            mrpt::poses::CPose3D(init_guess_m2_wrt_m1) +
+        state.currentSolution=
+            mrpt::poses::CPose3D(initialGuessM2wrtM1 +
             mrpt::poses::CPose3D(mrpt::math::CMatrixDouble44(T));
 
         // result.quality = icp.errorMinimizer->getWeightedPointUsedRatio();
@@ -225,16 +225,16 @@ logger:
         result.nIterations = 1;
 
     // Determine matching ratio:
-    result.finalPairings = ICP_Base::runMatchers(state);
+    result.finalPairings = ICP_Base::run_matcherss(state);
 
     // Ratio of entities with a valid pairing:
     result.quality = state.currentPairings.empty() /
                      double(std::min(pcs1.size(), pcs2.size()));
 
     result.terminationReason = IterTermReason::Stalled;
-    result.optimal_scale     = 1.0;
+    result.optimalScale    = 1.0;
     result.quality           = 1.0;
-    result.optimal_tf.mean   = state.current_solution;
+    result.optimal_tf.mean   = state.currentSolution
 
     mp2p_icp::CovarianceParameters covParams;
 

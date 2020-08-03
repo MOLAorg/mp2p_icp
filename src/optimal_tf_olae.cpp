@@ -14,7 +14,9 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
+
 #include <Eigen/Dense>
+
 #include "visit_correspondences.h"
 
 using namespace mp2p_icp;
@@ -296,7 +298,7 @@ void mp2p_icp::optimal_tf_olae(
         // original rotation is the best numerically-determined problem:
         const auto sol0 =
             gibbs2pose(linsys.M.colPivHouseholderQr().solve(linsys.v));
-        result.optimal_pose = sol0;
+        result.optimalPose = sol0;
 #if 0
         std::cout << "M   : |M|="
                   << mrpt::format("%16.07f", linsys.M.determinant())
@@ -308,8 +310,8 @@ void mp2p_icp::optimal_tf_olae(
         // rotation wrt X is the best choice:
         auto sol1 =
             gibbs2pose(linsys.Mx.colPivHouseholderQr().solve(linsys.vx));
-        sol1                = mrpt::poses::CPose3D(0, 0, 0, 0, 0, M_PI) + sol1;
-        result.optimal_pose = sol1;
+        sol1               = mrpt::poses::CPose3D(0, 0, 0, 0, 0, M_PI) + sol1;
+        result.optimalPose = sol1;
 #if 0
         std::cout << "M_x : |M|="
                   << mrpt::format("%16.07f", linsys.Mx.determinant())
@@ -321,8 +323,8 @@ void mp2p_icp::optimal_tf_olae(
         // rotation wrt Y is the best choice:
         auto sol2 =
             gibbs2pose(linsys.My.colPivHouseholderQr().solve(linsys.vy));
-        sol2                = mrpt::poses::CPose3D(0, 0, 0, 0, M_PI, 0) + sol2;
-        result.optimal_pose = sol2;
+        sol2               = mrpt::poses::CPose3D(0, 0, 0, 0, M_PI, 0) + sol2;
+        result.optimalPose = sol2;
 #if 0
         std::cout << "M_y : |M|="
                   << mrpt::format("%16.07f", linsys.My.determinant())
@@ -334,8 +336,8 @@ void mp2p_icp::optimal_tf_olae(
         // rotation wrt Z is the best choice:
         auto sol3 =
             gibbs2pose(linsys.Mz.colPivHouseholderQr().solve(linsys.vz));
-        sol3                = mrpt::poses::CPose3D(0, 0, 0, M_PI, 0, 0) + sol3;
-        result.optimal_pose = sol3;
+        sol3               = mrpt::poses::CPose3D(0, 0, 0, M_PI, 0, 0) + sol3;
+        result.optimalPose = sol3;
 #if 0
         std::cout << "M_z : |M|="
                   << mrpt::format("%16.07f", linsys.Mz.determinant())
@@ -345,13 +347,13 @@ void mp2p_icp::optimal_tf_olae(
 
     // Use centroids to solve for optimal translation:
     mrpt::math::TPoint3D pp;
-    result.optimal_pose.composePoint(
+    result.optimalPose.composePoint(
         ct_other.x, ct_other.y, ct_other.z, pp.x, pp.y, pp.z);
     // Scale, if used, was: pp *= s;
 
-    result.optimal_pose.x(ct_this.x - pp.x);
-    result.optimal_pose.y(ct_this.y - pp.y);
-    result.optimal_pose.z(ct_this.z - pp.z);
+    result.optimalPose.x(ct_this.x - pp.x);
+    result.optimalPose.y(ct_this.y - pp.y);
+    result.optimalPose.z(ct_this.z - pp.z);
 
     MRPT_END
 }

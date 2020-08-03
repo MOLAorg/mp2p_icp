@@ -361,7 +361,7 @@ bool test_icp_algos(
 
             // Measure errors in SE(3) if we have many points, in SO(3)
             // otherwise:
-            const auto pos_error = gt_pose - res_olae.optimal_pose;
+            const auto pos_error = gt_pose - res_olae.optimalPose;
             const auto err_log_n =
                 SO<3>::log(pos_error.getRotationMatrix()).norm();
             const auto err_xyz = pos_error.norm();
@@ -371,9 +371,9 @@ bool test_icp_algos(
             {
                 std::cout << " -Ground_truth : " << gt_pose.asString() << "\n"
                           << " -OLAE_output  : "
-                          << res_olae.optimal_pose.asString() << "\n -GT_rot:\n"
+                          << res_olae.optimalPose.asString() << "\n -GT_rot:\n"
                           << gt_pose.getRotationMatrix() << "\n -OLAE_rot:\n"
-                          << res_olae.optimal_pose.getRotationMatrix() << "\n";
+                          << res_olae.optimalPose.getRotationMatrix() << "\n";
                 ASSERT_BELOW_(err_log_n, max_allowed_error);
             }
 
@@ -392,7 +392,7 @@ bool test_icp_algos(
 
             const auto dt_horn = profiler.leave("se3_l2");
 
-            const auto pos_error = gt_pose - res_horn.optimal_pose;
+            const auto pos_error = gt_pose - res_horn.optimalPose;
             const auto err_log_n =
                 SO<3>::log(pos_error.getRotationMatrix()).norm();
             const auto err_xyz = pos_error.norm();
@@ -404,7 +404,7 @@ bool test_icp_algos(
             {
                 std::cout << " -Ground_truth : " << gt_pose.asString() << "\n"
                           << " -Horn_output  : "
-                          << res_horn.optimal_pose.asString() << "\n -GT_rot:\n"
+                          << res_horn.optimalPose.asString() << "\n -GT_rot:\n"
                           << gt_pose.getRotationMatrix() << "\n";
                 ASSERT_BELOW_(err_log_n, max_allowed_error);
             }
@@ -434,7 +434,7 @@ bool test_icp_algos(
 
             const auto dt_gn = profiler.leave("optimal_tf_gauss_newton");
 
-            const auto pos_error = gt_pose - res_gn.optimal_pose;
+            const auto pos_error = gt_pose - res_gn.optimalPose;
             const auto err_log_n =
                 SO<3>::log(pos_error.getRotationMatrix()).norm();
             const auto err_xyz = pos_error.norm();
@@ -453,7 +453,7 @@ bool test_icp_algos(
                 std::cout << " -Ground truth        : " << gt_pose.asString()
                           << "\n"
                           << " -GaussNewton output  : "
-                          << res_gn.optimal_pose.asString() << "\n -GT_rot:\n"
+                          << res_gn.optimalPose.asString() << "\n -GT_rot:\n"
                           << gt_pose.getRotationMatrix() << "\n";
                 ASSERT_BELOW_(err_log_n, max_allowed_error);
             }
@@ -480,10 +480,10 @@ bool test_icp_algos(
     const double dt_gn   = profiler.getMeanTime("optimal_tf_gauss_newton");
 
     std::cout << " -Ground_truth: " << gt_pose.asString() << "\n"
-              << " -OLAE output : " << res_olae.optimal_pose.asString() << " ("
+              << " -OLAE output : " << res_olae.optimalPose.asString() << " ("
               << res_olae.outliers.size() << " outliers detected)\n"
-              << " -Horn output : " << res_horn.optimal_pose.asString() << "\n"
-              << " -GN output   : " << res_gn.optimal_pose.asString()
+              << " -Horn output : " << res_horn.optimalPose.asString() << "\n"
+              << " -GN output   : " << res_gn.optimalPose.asString()
               << "\n"
               // clang-format off
               << " -OLAE        : " << mrpt::format("SO3 rmse=%e XYZ rmse=%e time=%7.03f us\n",rmse_olea, rmse_xyz_olea, dt_olea * 1e6)

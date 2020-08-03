@@ -10,16 +10,17 @@
  * @date   Jun 10, 2019
  */
 
-#include <mp2p_icp/ICP_GaussNewton.h>
-#include <mp2p_icp/ICP_Horn_MultiCloud.h>
+#include <mp2p_icp/ICP.h>
 #include <mp2p_icp/ICP_LibPointmatcher.h>
-#include <mp2p_icp/ICP_OLAE.h>
 #include <mp2p_icp/Matcher_Point2Plane.h>
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/Matcher_Points_InlierRatio.h>
 #include <mp2p_icp/QualityEvaluator_PairedRatio.h>
 #include <mp2p_icp/QualityEvaluator_RangeImageSimilarity.h>
 #include <mp2p_icp/QualityEvaluator_Voxels.h>
+#include <mp2p_icp/Solver_GaussNewton.h>
+#include <mp2p_icp/Solver_Horn.h>
+#include <mp2p_icp/Solver_OLAE.h>
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/core/initializer.h>
 
@@ -29,11 +30,13 @@ MRPT_INITIALIZER(register_mp2p_icp)
 
     registerClass(CLASS_ID(mp2p_icp::pointcloud_t));
 
-    registerClass(CLASS_ID(mp2p_icp::ICP_Base));
-    registerClass(CLASS_ID(mp2p_icp::ICP_OLAE));
-    registerClass(CLASS_ID(mp2p_icp::ICP_GaussNewton));
-    registerClass(CLASS_ID(mp2p_icp::ICP_Horn_MultiCloud));
+    // registerClass(CLASS_ID(mp2p_icp::ICP));
     registerClass(CLASS_ID(mp2p_icp::ICP_LibPointmatcher));
+
+    registerClass(CLASS_ID(mp2p_icp::Solver));
+    registerClass(CLASS_ID(mp2p_icp::Solver_OLAE));
+    registerClass(CLASS_ID(mp2p_icp::Solver_GaussNewton));
+    registerClass(CLASS_ID(mp2p_icp::Solver_Horn));
 
     registerClass(CLASS_ID(mp2p_icp::Matcher));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Points_DistanceThreshold));

@@ -17,6 +17,7 @@ enum class IterTermReason
 {
     Undefined = 0,
     NoPairings,
+    SolverError,
     MaxIterations,
     Stalled
 };
@@ -26,6 +27,7 @@ enum class IterTermReason
 MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp, mp2p_icp::IterTermReason)
 MRPT_FILL_ENUM(IterTermReason::Undefined);
 MRPT_FILL_ENUM(IterTermReason::NoPairings);
+MRPT_FILL_ENUM(IterTermReason::SolverError);
 MRPT_FILL_ENUM(IterTermReason::MaxIterations);
 MRPT_FILL_ENUM(IterTermReason::Stalled);
 MRPT_ENUM_TYPE_END()

@@ -11,11 +11,11 @@
  * @date   May 12, 2019
  */
 
-#include <mp2p_icp/ICP_GaussNewton.h>
-#include <mp2p_icp/ICP_Horn_MultiCloud.h>
 #include <mp2p_icp/ICP_LibPointmatcher.h>
-#include <mp2p_icp/ICP_OLAE.h>
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
+#include <mp2p_icp/Solver_GaussNewton.h>
+#include <mp2p_icp/Solver_Horn.h>
+#include <mp2p_icp/Solver_OLAE.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/get_env.h>
 #include <mrpt/maps/CSimplePointsMap.h>
@@ -97,9 +97,8 @@ static void test_icp(const std::string& inFile, const std::string& algoName)
 
         const auto init_guess = mrpt::math::TPose3D::Identity();
 
-        mp2p_icp::ICP_Base::Ptr icp =
-            std::dynamic_pointer_cast<mp2p_icp::ICP_Base>(
-                mrpt::rtti::classFactory(algoName));
+        mp2p_icp::ICP::Ptr icp = std::dynamic_pointer_cast<mp2p_icp::ICP>(
+            mrpt::rtti::classFactory(algoName));
 
         if (!icp)
             THROW_EXCEPTION_FMT(
@@ -174,8 +173,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             {"bunny_decim.xyz.gz", "happy_buddha_decim.xyz.gz"}};
 
         std::vector<const char*> lst_algos{
-            {"mp2p_icp::ICP_Horn_MultiCloud", "mp2p_icp::ICP_OLAE",
-             "mp2p_icp::ICP_GaussNewton"}};
+            {"mp2p_icp::Solver_Horn", "mp2p_icp::Solver_OLAE",
+             "mp2p_icp::Solver_GaussNewton"}};
 
         // Optional methods:
         if (mp2p_icp::ICP_LibPointmatcher::methodAvailable())

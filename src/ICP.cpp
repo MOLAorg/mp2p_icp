@@ -4,79 +4,92 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   ICP_Base.cpp
- * @brief  Virtual interface for ICP algorithms. Useful for RTTI class searches.
+ * @file   ICP.h
+ * @brief  Generic ICP algorithm container.
  * @author Jose Luis Blanco Claraco
  * @date   Jun 10, 2019
  */
 
-#include <mp2p_icp/ICP_Base.h>
-#include <mp2p_icp/Matcher_Points_DistanceThreshold.h>  // TODO: remove
-#include <mp2p_icp/Matcher_Points_InlierRatio.h>  // TODO: remove
+#include <mp2p_icp/ICP.h>
 #include <mp2p_icp/covariance.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
 
-IMPLEMENTS_VIRTUAL_MRPT_OBJECT(ICP_Base, mrpt::rtti::CObject, mp2p_icp);
-
-MRPT_TODO("Refactor: ICP_base -> ICP. OLAE/Horn/... => `optimizer`");
+IMPLEMENTS_MRPT_OBJECT(ICP, mrpt::rtti::CObject, mp2p_icp)
 
 using namespace mp2p_icp;
 
-void ICP_Base::align(
+void ICP::align(
     const pointcloud_t& pcs1, const pointcloud_t& pcs2,
-    const mrpt::math::TPose3D& init_guess_m2_wrt_m1, const Parameters& p,
+    const mrpt::math::TPose3D& initialGuessM2wrtM1, const Parameters& p,
     Results& result)
 {
     using namespace std::string_literals;
 
     MRPT_START
-    // ICP uses KD-trees.
-    // kd-trees have each own mutexes to ensure well-defined behavior in
-    // multi-threading apps.
 
-    ASSERT_EQUAL_(pcs1.point_layers.size(), pcs2.point_layers.size());
-    ASSERT_(
-        !pcs1.point_layers.empty() ||
-        (!pcs1.planes.empty() && !pcs2.planes.empty()));
+    ASSERT_(!matchers_.empty());
+    ASSERT_(!solvers_.empty());
+    ASSERT_(!quality_evaluators_.empty());
+
+    ASSERT_(!pcs1.empty());
+    ASSERT_(!pcs2.empty());
 
     // Reset output:
     result = Results();
-
-    // Count of points:
-    ASSERT_(pcs1.size() > 0);
-    ASSERT_(pcs2.size() > 0);
 
     // ------------------------------------------------------
     // Main ICP loop
     // ------------------------------------------------------
     ICP_State state(pcs1, pcs2);
 
-    state.current_solution = mrpt::poses::CPose3D(init_guess_m2_wrt_m1);
-    auto prev_solution     = state.current_solution;
+    state.currentSolution.optimalPose =
+        mrpt::poses::CPose3D(initialGuessM2wrtM1);
+    auto prev_solution = state.currentSolution.optimalPose;
 
     for (result.nIterations = 0; result.nIterations < p.maxIterations;
          result.nIterations++)
     {
-        ICP_iteration_result iter_result;
         state.currentIteration = result.nIterations;
 
-        // Call to algorithm-specific implementation of one ICP iteration:
-        impl_ICP_iteration(state, p, iter_result);
+        // Matchings
+        // ---------------------------------------
+        MatchContext mc;
+        mc.icpIteration = state.currentIteration;
 
-        if (!iter_result.success)
+        state.currentPairings = run_matchers(
+            matchers_, state.pc1, state.pc2, state.currentSolution.optimalPose,
+            mc);
+
+        if (state.currentPairings.empty())
         {
-            // Nothing we can do !!
             result.terminationReason = IterTermReason::NoPairings;
             break;
         }
 
-        // Update to new solution:
-        state.current_solution = iter_result.new_solution;
+        // Optimal relative pose:
+        // ---------------------------------------
+        SolverContext sc;
+        sc.icpIteration                   = state.currentIteration;
+        sc.guessRelativePose.value()      = state.currentSolution.optimalPose;
+        sc.maxInnerLoopIterations.value() = p.maxInnerLoopIterations;
 
-        // If matching has not changed, we are done:
-        const auto deltaSol = state.current_solution - prev_solution;
+        // Compute the optimal pose:
+        const bool solvedOk = run_solvers(
+            solvers_, state.currentPairings, state.currentSolution,
+            p.pairingsWeightParameters, sc);
+
+        if (!solvedOk)
+        {
+            result.terminationReason = IterTermReason::SolverError;
+            break;
+        }
+
+        // Updated solution is already in "state.currentSolution".
+
+        // Termination criterion: small delta:
+        const auto deltaSol = state.currentSolution.optimalPose - prev_solution;
         const mrpt::math::CVectorFixed<double, 6> dSol =
             mrpt::poses::Lie::SE<3>::log(deltaSol);
         const double delta_xyz = dSol.blockCopy<3, 1>(0, 0).norm();
@@ -85,7 +98,7 @@ void ICP_Base::align(
 #if 0
         std::cout << "Dxyz: " << std::abs(delta_xyz)
                   << " Drot:" << std::abs(delta_rot)
-                  << " p: " << state.current_solution.asString() << "\n";
+                  << " p: " << state.currentSolution.asString() << "\n";
 #endif
 
         if (std::abs(delta_xyz) < p.minAbsStep_trans &&
@@ -95,20 +108,20 @@ void ICP_Base::align(
             break;
         }
 
-        prev_solution = state.current_solution;
+        prev_solution = state.currentSolution.optimalPose;
     }
 
     if (result.nIterations >= p.maxIterations)
         result.terminationReason = IterTermReason::MaxIterations;
 
     // Quality:
-    result.quality = evaluateQuality(
-        qualityEvaluators_, pcs1, pcs2, state.current_solution,
+    result.quality = evaluate_quality(
+        quality_evaluators_, pcs1, pcs2, state.currentSolution.optimalPose,
         state.currentPairings);
 
     // Store output:
-    result.optimal_tf.mean = state.current_solution;
-    result.optimal_scale   = state.current_scale;
+    result.optimal_tf.mean = state.currentSolution.optimalPose;
+    result.optimalScale    = state.currentSolution.optimalScale;
     result.finalPairings   = std::move(state.currentPairings);
 
     // Covariance:
@@ -120,17 +133,7 @@ void ICP_Base::align(
     MRPT_END
 }
 
-Pairings ICP_Base::runMatchers(ICP_State& s)
-{
-    ASSERT_(!matchers_.empty());
-
-    MatchContext mc;
-    mc.icpIteration = s.currentIteration;
-
-    return runMatchers(matchers_, s.pc1, s.pc2, s.current_solution, mc);
-}
-
-Pairings ICP_Base::runMatchers(
+Pairings ICP::run_matchers(
     const matcher_list_t& matchers, const pointcloud_t& pc1,
     const pointcloud_t& pc2, const mrpt::poses::CPose3D& pc2_wrt_pc1,
     const MatchContext& mc)
@@ -146,13 +149,25 @@ Pairings ICP_Base::runMatchers(
     return pairings;
 }
 
-void ICP_Base::initializeMatchers(const mrpt::containers::Parameters& params)
+bool ICP::run_solvers(
+    const solver_list_t& solvers, const Pairings& pairings,
+    OptimalTF_Result& out, const WeightParameters& wp, const SolverContext& sc)
 {
-    initializeMatchers(params, matchers_);
+    for (const auto& solver : solvers)
+    {
+        ASSERT_(solver);
+        if (solver->optimal_pose(pairings, out, wp, sc)) return true;
+    }
+    return false;
 }
 
-void ICP_Base::initializeMatchers(
-    const mrpt::containers::Parameters& params, ICP_Base::matcher_list_t& lst)
+void ICP::initialize_matchers(const mrpt::containers::Parameters& params)
+{
+    initialize_matchers(params, matchers_);
+}
+
+void ICP::initialize_matchers(
+    const mrpt::containers::Parameters& params, ICP::matcher_list_t& lst)
 {
     lst.clear();
 
@@ -173,9 +188,8 @@ void ICP_Base::initializeMatchers(
     }
 }
 
-void ICP_Base::initializeQualityEvaluators(
-    const mrpt::containers::Parameters& params,
-    ICP_Base::quality_eval_list_t&      lst)
+void ICP::initialize_quality_evaluators(
+    const mrpt::containers::Parameters& params, ICP::quality_eval_list_t& lst)
 {
     lst.clear();
 
@@ -200,13 +214,13 @@ void ICP_Base::initializeQualityEvaluators(
     }
 }
 
-void ICP_Base::initializeQualityEvaluators(
+void ICP::initialize_quality_evaluators(
     const mrpt::containers::Parameters& params)
 {
-    initializeQualityEvaluators(params, qualityEvaluators_);
+    initialize_quality_evaluators(params, quality_evaluators_);
 }
 
-double ICP_Base::evaluateQuality(
+double ICP::evaluate_quality(
     const quality_eval_list_t& evaluators, const pointcloud_t& pcGlobal,
     const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& localPose,
     const Pairings& finalPairings)

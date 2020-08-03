@@ -49,7 +49,7 @@ struct Parameters : public mrpt::serialization::CSerializable
     double minAbsStep_rot{1e-4};
     /** @} */
 
-    /** [Only for ICP_GaussNewton] Maximum number of iterations trying to solve
+    /** [Only for Solver_GaussNewton] Maximum number of iterations trying to solve
      * for the optimal pose, within each ICP iteration.
      */
     uint32_t maxInnerLoopIterations{6};

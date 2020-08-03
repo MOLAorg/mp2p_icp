@@ -4,21 +4,14 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   ICP_Horn_MultiCloud.h
- * @brief  ICP registration for pointclouds split in different "layers"
+ * @file   Solver_Horn.h
+ * @brief  ICP solver for pointclouds split in different "layers"
  * @author Jose Luis Blanco Claraco
  * @date   Jan 20, 2019
  */
 #pragma once
 
-#include <mp2p_icp/ICP_Base.h>
-#include <mp2p_icp/IterTermReason.h>
-#include <mp2p_icp/Parameters.h>
-#include <mp2p_icp/Results.h>
-#include <mp2p_icp/pointcloud.h>
-#include <mrpt/maps/CPointsMap.h>
-#include <mrpt/rtti/CObject.h>
-#include <vector>
+#include <mp2p_icp/Solver.h>
 
 namespace mp2p_icp
 {
@@ -26,14 +19,15 @@ namespace mp2p_icp
  *
  * \ingroup mp2p_icp_grp
  */
-class ICP_Horn_MultiCloud : public ICP_Base
+class Solver_Horn : public Solver
 {
-	DEFINE_MRPT_OBJECT(ICP_Horn_MultiCloud, mp2p_icp);
+    DEFINE_MRPT_OBJECT(Solver_Horn, mp2p_icp);
 
    protected:
     // See base class docs
-    void impl_ICP_iteration(
-        ICP_State& s, const Parameters& p, ICP_iteration_result& out) override;
+    bool impl_optimal_pose(
+        const Pairings& pairings, OptimalTF_Result& out,
+        const WeightParameters& wp, const SolverContext& sc) const override;
 };
 
 }  // namespace mp2p_icp

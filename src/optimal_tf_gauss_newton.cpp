@@ -12,6 +12,7 @@
 
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
 #include <mrpt/poses/Lie/SE.h>
+
 #include <Eigen/Dense>
 #include <iostream>
 
@@ -31,7 +32,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
         gnParams.linearizationPoint.has_value(),
         "This method requires a linearization point");
 
-    result.optimal_pose = gnParams.linearizationPoint.value();
+    result.optimalPose = gnParams.linearizationPoint.value();
 
     const auto nPt2Pt = in.paired_pt2pt.size();
     const auto nPt2Ln = in.paired_pt2ln.size();
@@ -56,7 +57,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
     {
         // (12x6 Jacobian)
         const auto dDexpe_de =
-            mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(result.optimal_pose);
+            mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(result.optimalPose);
 
         // Point-to-point:
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
@@ -65,7 +66,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             const auto&  p  = in.paired_pt2pt[idx_pt];
             const double lx = p.other_x, ly = p.other_y, lz = p.other_z;
             double       gx, gy, gz;
-            result.optimal_pose.composePoint(lx, ly, lz, gx, gy, gz);
+            result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
             err[idx_pt * 3 + 0] = gx - p.this_x;
             err[idx_pt * 3 + 1] = gy - p.this_y;
             err[idx_pt * 3 + 2] = gz - p.this_z;
@@ -106,7 +107,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             const double lx = p.pt_other.x, ly = p.pt_other.y,
                          lz = p.pt_other.z;
             double gx, gy, gz;
-            result.optimal_pose.composePoint(lx, ly, lz, gx, gy, gz);
+            result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
             const auto g           = mrpt::math::TPoint3D(gx, gy, gz);
             err(base_idx + idx_pt) = pow(p.ln_this.distance(g), 2);
 
@@ -154,13 +155,13 @@ void mp2p_icp::optimal_tf_gauss_newton(
             const auto&         p = in.paired_ln2ln[idx_ln];
             mrpt::math::TLine3D ln_aux;
             double              gx, gy, gz;
-            result.optimal_pose.composePoint(
+            result.optimalPose.composePoint(
                 p.ln_other.pBase.x, p.ln_other.pBase.y, p.ln_other.pBase.z, gx,
                 gy, gz);
             ln_aux.pBase = mrpt::math::TPoint3D(gx, gy, gz);
             // Homogeneous matrix calculation
             mrpt::math::CMatrixDouble44 aux;
-            result.optimal_pose.getHomogeneousMatrix(aux);
+            result.optimalPose.getHomogeneousMatrix(aux);
             const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
             // Projection of the director vector for the new pose
             const Eigen::Matrix<double, 1, 4> U =
@@ -286,7 +287,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             const double lx = p.pt_other.x, ly = p.pt_other.y,
                          lz = p.pt_other.z;
             mrpt::math::TPoint3D g;
-            result.optimal_pose.composePoint(lx, ly, lz, g.x, g.y, g.z);
+            result.optimalPose.composePoint(lx, ly, lz, g.x, g.y, g.z);
 
             err(idx_pl + base_idx) = p.pl_this.plane.evaluatePoint(g);
 
@@ -321,7 +322,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             const auto nl = p.p_other.plane.getNormalVector();
             const auto ng = p.p_this.plane.getNormalVector();
 
-            const auto p_oplus_nl = result.optimal_pose.rotateVector(nl);
+            const auto p_oplus_nl = result.optimalPose.rotateVector(nl);
 
             for (int i = 0; i < 3; i++)
                 err(i + idx_pl * 3 + base_idx) = ng[i] - p_oplus_nl[i];
@@ -357,7 +358,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
         const auto dE = mrpt::poses::Lie::SE<3>::exp(
             mrpt::math::CVectorFixed<double, 6>(delta));
 
-        result.optimal_pose = result.optimal_pose + dE;
+        result.optimalPose = result.optimalPose + dE;
 
         if (gnParams.verbose)
         {
