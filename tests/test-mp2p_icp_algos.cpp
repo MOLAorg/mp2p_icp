@@ -12,6 +12,7 @@
  */
 
 #include <mp2p_icp/ICP_LibPointmatcher.h>
+#include <mp2p_icp/Matcher_Point2Plane.h>
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/Solver_GaussNewton.h>
 #include <mp2p_icp/Solver_Horn.h>
@@ -43,7 +44,7 @@ const std::string datasetDir = MP2P_DATASET_DIR;
 
 static void test_icp(
     const std::string& inFile, const std::string& icpClassName,
-    const std::string& solverName)
+    const std::string& solverName, const std::string& matcherName)
 {
     using namespace mrpt::poses::Lie;
 
@@ -51,17 +52,17 @@ static void test_icp(
 
     const mrpt::maps::CSimplePointsMap::Ptr pts = load_xyz_file(fileFullPath);
 
-    std::cout << "\nRunning " << icpClassName << "|" << solverName
-              << " test on: " << inFile << " with " << pts->size()
-              << " points\n";
+    std::cout << "\nRunning " << icpClassName << "|" << solverName << "|"
+              << matcherName << " test on: " << inFile << " with "
+              << pts->size() << " points\n";
 
     double outliers_ratio = 0;
     bool   use_robust     = true;
 
     const std::string tstName = mrpt::format(
-        "test_icp_Model=%s_Algo=%s_%s_outliers=%06.03f_robust=%i",
+        "test_icp_Model=%s_Algo=%s_%s_%s_outliers=%06.03f_robust=%i",
         inFile.c_str(), icpClassName.c_str(), solverName.c_str(),
-        outliers_ratio, use_robust ? 1 : 0);
+        matcherName.c_str(), outliers_ratio, use_robust ? 1 : 0);
 
     mrpt::math::TPoint3D bbox_min, bbox_max;
     pts->boundingBox(bbox_min, bbox_max);
@@ -118,27 +119,56 @@ static void test_icp(
 
             if (!solver)
                 THROW_EXCEPTION_FMT(
-                    "Could not create object of type `%s`, is it registered?",
+                    "Could not create Solver of type `%s`, is it registered?",
                     solverName.c_str());
 
             icp->solvers().clear();
             icp->solvers().push_back(solver);
         }
 
+        // Initialize matchers:
+        if (!matcherName.empty())
+        {
+            mp2p_icp::Matcher::Ptr matcher =
+                std::dynamic_pointer_cast<mp2p_icp::Matcher>(
+                    mrpt::rtti::classFactory(matcherName));
+
+            if (!matcher)
+                THROW_EXCEPTION_FMT(
+                    "Could not create Matcher of type `%s`, is it registered?",
+                    matcherName.c_str());
+
+            icp->matchers().push_back(matcher);
+        }
+
+        // Special parameters:
+        if (auto m = std::dynamic_pointer_cast<
+                mp2p_icp::Matcher_Points_DistanceThreshold>(
+                icp->matchers().at(0));
+            m)
+        {
+            mrpt::containers::Parameters ps;
+            ps["threshold"] = 0.15 * max_dim;
+            m->initialize(ps);
+        }
+
+        if (auto m = std::dynamic_pointer_cast<mp2p_icp::Matcher_Point2Plane>(
+                icp->matchers().at(0));
+            m)
+        {
+            mrpt::containers::Parameters ps;
+            ps["distanceThreshold"]     = 0.15 * max_dim;
+            ps["planeEigenThreshold"]   = 10.0;
+            ps["knn"].asRef<uint64_t>() = 5;
+
+            m->initialize(ps);
+        }
+
+        // ICP test itself:
         mp2p_icp::Parameters icp_params;
         mp2p_icp::Results    icp_results;
 
         icp_params.maxIterations = 100;
-
-        {
-            auto m = mp2p_icp::Matcher_Points_DistanceThreshold::Create();
-
-            mrpt::containers::Parameters ps;
-            ps["threshold"] = 0.15 * max_dim;
-            m->initialize(ps);
-
-            icp->matchers().emplace_back(m);
-        }
 
         timer.Tic();
 
@@ -192,18 +222,35 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const std::vector<const char*> lst_files{
             {"bunny_decim.xyz.gz", "happy_buddha_decim.xyz.gz"}};
 
-        std::vector<std::pair<const char*, const char*>> lst_algos{
-            {{"mp2p_icp::ICP", "mp2p_icp::Solver_Horn"},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE"},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton"}}};
+        using lst_algos_t =
+            std::vector<std::tuple<const char*, const char*, const char*>>;
+        // clang-format off
+        lst_algos_t lst_algos = {
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_DistanceThreshold"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_InlierRatio"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Point2Plane"},
+             
+             
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_DistanceThreshold"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_InlierRatio"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Point2Plane"},
+             
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_DistanceThreshold"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_InlierRatio"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Point2Plane"},
+             
+             };
+        // clang-format on
 
         // Optional methods:
         if (mp2p_icp::ICP_LibPointmatcher::methodAvailable())
-            lst_algos.push_back({"mp2p_icp::ICP_LibPointmatcher", ""});
+            lst_algos.push_back({"mp2p_icp::ICP_LibPointmatcher", "", ""});
 
         for (const auto& algo : lst_algos)
             for (const auto& fil : lst_files)
-                test_icp(fil, algo.first, algo.second);
+                test_icp(
+                    fil, std::get<0>(algo), std::get<1>(algo),
+                    std::get<2>(algo));
     }
     catch (std::exception& e)
     {

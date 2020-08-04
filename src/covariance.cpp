@@ -79,7 +79,9 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         ASSERT_EQUAL_(errorIdx, nErrors);
     };
 
-    Eigen::MatrixXd jacob;
+    // Do NOT use "Eigen::MatrixXd", it may have different alignment
+    // requirements than MRPT matrices:
+    mrpt::math::CMatrixDouble jacob;
     mrpt::math::estimateJacobian(
         xInitial,
         std::function<void(
@@ -87,10 +89,12 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
             mrpt::math::CVectorDouble&)>(errorLambda),
         xIncrs, lmbParams, jacob);
 
-    mrpt::math::CMatrixDouble66 hessian;
-    hessian = jacob.transpose() * jacob;
+    const mrpt::math::CMatrixDouble66 hessian(
+        jacob.asEigen().transpose() * jacob.asEigen());
 
-    return hessian.inverse_LLt();
+    const mrpt::math::CMatrixDouble66 cov = hessian.inverse_LLt();
+
+    return cov;
 }
 
 // other ideas?
