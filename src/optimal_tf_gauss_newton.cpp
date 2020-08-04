@@ -10,9 +10,9 @@
  * @date   Jun 16, 2019
  */
 
+#include <mp2p_icp/errorTerms.h>
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
 #include <mrpt/poses/Lie/SE.h>
-
 #include <Eigen/Dense>
 #include <iostream>
 
@@ -63,7 +63,14 @@ void mp2p_icp::optimal_tf_gauss_newton(
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
         {
             // Error:
-            const auto&  p  = in.paired_pt2pt[idx_pt];
+            const auto& p = in.paired_pt2pt[idx_pt];
+            /*
+            mp2p_icp::error_point2point(
+                p, err.segment(idx_pt * 3, idx_pt * 3 + 2),
+                result, Eigen::Matrix<double, 3, 12> J1);
+
+            */
+            //-----------------------------------------------------------------------------
             const double lx = p.other_x, ly = p.other_y, lz = p.other_z;
             double       gx, gy, gz;
             result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
@@ -80,7 +87,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
                     0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
                  ).finished();
             // clang-format on
-
+            //-----------------------------------------------------------------------------
             // Get weight:
             if (has_per_pt_weight)
             {
@@ -103,7 +110,13 @@ void mp2p_icp::optimal_tf_gauss_newton(
         for (size_t idx_pt = 0; idx_pt < nPt2Ln; idx_pt++)
         {
             // Error
-            const auto&  p  = in.paired_pt2ln[idx_pt];
+            const auto& p = in.paired_pt2ln[idx_pt];
+            /*
+            mp2p_icp::error_point2line(
+                p, result, err[base_idx + idx_pt],
+                mrpt::optional_ref<Eigen::Matrix<double, 1, 12>> jacobian);
+             */
+            //-----------------------------------------------------------------------------
             const double lx = p.pt_other.x, ly = p.pt_other.y,
                          lz = p.pt_other.z;
             double gx, gy, gz;
@@ -137,6 +150,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
                     0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
                  ).finished();
             // clang-format on
+            //-----------------------------------------------------------------------------
 
             // Get weight
             // ...
@@ -144,6 +158,8 @@ void mp2p_icp::optimal_tf_gauss_newton(
             // Build Jacobian
             J.block<1, 6>(base_idx + idx_pt, 0) =
                 w.pt2ln * J1 * J2 * dDexpe_de.asEigen();
+            // J.block<1, 6>(base_idx + idx_pt, 0) = w.pt2ln * jacobian *
+            // dDexpe_de.asEigen();
         }
 
         // Line-to-Line
@@ -152,7 +168,12 @@ void mp2p_icp::optimal_tf_gauss_newton(
         const double tolerance = 0.01;
         for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++)
         {
-            const auto&         p = in.paired_ln2ln[idx_ln];
+            const auto& p = in.paired_ln2ln[idx_ln];
+            /*
+            error_line2line(p, result, error(...), jacobian , bool jump =
+            false);
+            */
+            //-----------------------------------------------------------------------------
             mrpt::math::TLine3D ln_aux;
             double              gx, gy, gz;
             result.optimalPose.composePoint(
@@ -231,10 +252,6 @@ void mp2p_icp::optimal_tf_gauss_newton(
                 err(base_idx + idx_ln + 1) = U_T[0] - p.ln_this.director[0];
                 err(base_idx + idx_ln + 2) = U_T[1] - p.ln_this.director[1];
                 err(base_idx + idx_ln + 3) = U_T[2] - p.ln_this.director[2];
-                // Desplazamiento del indicador del vector de error para los
-                // casos en el que hay 4 errores en lugar de 1. Espero que esto
-                // se pueda hacer.
-                base_idx = base_idx + 3;
 
                 // Ec.35
                 const Eigen::Matrix<double, 1, 3> I =
@@ -275,7 +292,20 @@ void mp2p_icp::optimal_tf_gauss_newton(
                 // Build Jacobian
                 J.block<4, 6>(base_idx + idx_ln, 0) =
                     w.ln2ln * J1 * J2 * dDexpe_de.asEigen();
+
+                // Desplazamiento del indicador del vector de error para los
+                // casos en el que hay 4 errores en lugar de 1. Espero que esto
+                // se pueda hacer.
+                base_idx = base_idx + 3;
             }
+            //-----------------------------------------------------------------------------
+            /*
+             if(jump){
+                J.block<4, 6>(base_idx + idx_ln, 0) = w.ln2ln * jacobian *
+             dDexpe_de.asEigen(); base_idx = base_idx + 3; }else{ J.block<1,
+             6>(base_idx + idx_ln, 0) = w.ln2ln * jacobian *
+             dDexpe_de.asEigen();
+             * */
         }
         // Point-to-plane:
         base_idx = base_idx + nLn2Ln;
@@ -283,7 +313,11 @@ void mp2p_icp::optimal_tf_gauss_newton(
         {
             // Error:
             const auto& p = in.paired_pt2pl[idx_pl];
-
+            /*
+            error_point2plane(p, result, error(...), Eigen::Matrix<double, 1,
+            12> jacobian)
+             * */
+            //-----------------------------------------------------------------------------
             const double lx = p.pt_other.x, ly = p.pt_other.y,
                          lz = p.pt_other.z;
             mrpt::math::TPoint3D g;
@@ -306,10 +340,11 @@ void mp2p_icp::optimal_tf_gauss_newton(
                  p.pl_this.plane.coefs[1], p.pl_this.plane.coefs[2])
                     .finished();
 
-            const Eigen::Matrix<double, 1, 6> Jb =
-                Jpl * J1 * dDexpe_de.asEigen();
+            const Eigen::Matrix<double, 1, 12> jacobian = Jpl * J1;
 
-            J.block<1, 6>(idx_pl + base_idx, 0) = w.pt2pl * Jb;
+            //-----------------------------------------------------------------------------
+            J.block<1, 6>(idx_pl + base_idx, 0) =
+                w.pt2pl * jacobian * dDexpe_de.asEigen();
         }
 
         // Plane-to-plane (only direction of normal vectors):
@@ -318,6 +353,11 @@ void mp2p_icp::optimal_tf_gauss_newton(
         {
             // Error term:
             const auto& p = in.paired_pl2pl[idx_pl];
+            /*
+            error_plane2plane(p, result, error(...), Eigen::Matrix<double, 3,
+            12> J1)
+             * */
+            //-----------------------------------------------------------------------------
 
             const auto nl = p.p_other.plane.getNormalVector();
             const auto ng = p.p_this.plane.getNormalVector();
@@ -343,6 +383,8 @@ void mp2p_icp::optimal_tf_gauss_newton(
                     0,  0, nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0
                  ).finished();
             // clang-format on
+
+            //-----------------------------------------------------------------------------
 
             J.block<3, 6>(3 * idx_pl + base_idx, 0) =
                 w.pl2pl * J1 * dDexpe_de.asEigen();
