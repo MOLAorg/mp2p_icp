@@ -71,9 +71,8 @@ void ICP::align(
         // Optimal relative pose:
         // ---------------------------------------
         SolverContext sc;
-        sc.icpIteration                   = state.currentIteration;
-        sc.guessRelativePose.value()      = state.currentSolution.optimalPose;
-        sc.maxInnerLoopIterations.value() = p.maxInnerLoopIterations;
+        sc.icpIteration = state.currentIteration;
+        sc.guessRelativePose.emplace(state.currentSolution.optimalPose);
 
         // Compute the optimal pose:
         const bool solvedOk = run_solvers(
@@ -161,6 +160,36 @@ bool ICP::run_solvers(
     return false;
 }
 
+void ICP::initialize_solvers(const mrpt::containers::Parameters& params)
+{
+    initialize_solvers(params, solvers_);
+}
+
+void ICP::initialize_solvers(
+    const mrpt::containers::Parameters& params, ICP::solver_list_t& lst)
+{
+    lst.clear();
+
+    ASSERT_(params.isSequence());
+    for (const auto& entry : params.asSequence())
+    {
+        const auto& e = std::any_cast<mrpt::containers::Parameters>(entry);
+
+        const auto sClass = e["class"].as<std::string>();
+        auto       o      = mrpt::rtti::classFactory(sClass);
+        ASSERT_(o);
+
+        auto m = std::dynamic_pointer_cast<Solver>(o);
+        ASSERTMSG_(
+            m, mrpt::format(
+                   "`%s` class seems not to be derived from Solver",
+                   sClass.c_str()));
+
+        m->initialize(e["params"]);
+        lst.push_back(m);
+    }
+}
+
 void ICP::initialize_matchers(const mrpt::containers::Parameters& params)
 {
     initialize_matchers(params, matchers_);
@@ -181,7 +210,10 @@ void ICP::initialize_matchers(
         ASSERT_(o);
 
         auto m = std::dynamic_pointer_cast<Matcher>(o);
-        ASSERTMSG_(m, "Matcher class seems not to be derived from Matcher");
+        ASSERTMSG_(
+            m, mrpt::format(
+                   "`%s` class seems not to be derived from Matcher",
+                   sClass.c_str()));
 
         m->initialize(e["params"]);
         lst.push_back(m);
@@ -205,7 +237,11 @@ void ICP::initialize_quality_evaluators(
         ASSERT_(o);
 
         auto m = std::dynamic_pointer_cast<QualityEvaluator>(o);
-        ASSERTMSG_(m, "Class seems not to be derived from QualityEvaluator");
+        ASSERTMSG_(
+            m, mrpt::format(
+                   "`%s` class seems not to be derived from QualityEvaluator",
+                   sClass.c_str()));
+
         m->initialize(e["params"]);
 
         double weight = 1.0;

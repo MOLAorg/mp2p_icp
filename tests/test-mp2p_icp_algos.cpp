@@ -41,7 +41,9 @@ static bool DO_PRINT_ALL = mrpt::get_env<bool>("DO_PRINT_ALL", false);
 
 const std::string datasetDir = MP2P_DATASET_DIR;
 
-static void test_icp(const std::string& inFile, const std::string& algoName)
+static void test_icp(
+    const std::string& inFile, const std::string& icpClassName,
+    const std::string& solverName)
 {
     using namespace mrpt::poses::Lie;
 
@@ -49,15 +51,17 @@ static void test_icp(const std::string& inFile, const std::string& algoName)
 
     const mrpt::maps::CSimplePointsMap::Ptr pts = load_xyz_file(fileFullPath);
 
-    std::cout << "Running " << algoName << " test on: " << inFile << " with "
-              << pts->size() << " points\n";
+    std::cout << "\nRunning " << icpClassName << "|" << solverName
+              << " test on: " << inFile << " with " << pts->size()
+              << " points\n";
 
     double outliers_ratio = 0;
     bool   use_robust     = true;
 
     const std::string tstName = mrpt::format(
-        "test_icp_Model=%s_Algo=%s_outliers=%6.03f_robust=%i", inFile.c_str(),
-        algoName.c_str(), outliers_ratio, use_robust ? 1 : 0);
+        "test_icp_Model=%s_Algo=%s_%s_outliers=%06.03f_robust=%i",
+        inFile.c_str(), icpClassName.c_str(), solverName.c_str(),
+        outliers_ratio, use_robust ? 1 : 0);
 
     mrpt::math::TPoint3D bbox_min, bbox_max;
     pts->boundingBox(bbox_min, bbox_max);
@@ -98,12 +102,28 @@ static void test_icp(const std::string& inFile, const std::string& algoName)
         const auto init_guess = mrpt::math::TPose3D::Identity();
 
         mp2p_icp::ICP::Ptr icp = std::dynamic_pointer_cast<mp2p_icp::ICP>(
-            mrpt::rtti::classFactory(algoName));
+            mrpt::rtti::classFactory(icpClassName));
 
         if (!icp)
             THROW_EXCEPTION_FMT(
                 "Could not create object of type `%s`, is it registered?",
-                algoName.c_str());
+                icpClassName.c_str());
+
+        // Initialize solvers:
+        if (!solverName.empty())
+        {
+            mp2p_icp::Solver::Ptr solver =
+                std::dynamic_pointer_cast<mp2p_icp::Solver>(
+                    mrpt::rtti::classFactory(solverName));
+
+            if (!solver)
+                THROW_EXCEPTION_FMT(
+                    "Could not create object of type `%s`, is it registered?",
+                    solverName.c_str());
+
+            icp->solvers().clear();
+            icp->solvers().push_back(solver);
+        }
 
         mp2p_icp::Parameters icp_params;
         mp2p_icp::Results    icp_results;
@@ -172,16 +192,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const std::vector<const char*> lst_files{
             {"bunny_decim.xyz.gz", "happy_buddha_decim.xyz.gz"}};
 
-        std::vector<const char*> lst_algos{
-            {"mp2p_icp::Solver_Horn", "mp2p_icp::Solver_OLAE",
-             "mp2p_icp::Solver_GaussNewton"}};
+        std::vector<std::pair<const char*, const char*>> lst_algos{
+            {{"mp2p_icp::ICP", "mp2p_icp::Solver_Horn"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton"}}};
 
         // Optional methods:
         if (mp2p_icp::ICP_LibPointmatcher::methodAvailable())
-            lst_algos.push_back("mp2p_icp::ICP_LibPointmatcher");
+            lst_algos.push_back({"mp2p_icp::ICP_LibPointmatcher", ""});
 
         for (const auto& algo : lst_algos)
-            for (const auto& fil : lst_files) test_icp(fil, algo);
+            for (const auto& fil : lst_files)
+                test_icp(fil, algo.first, algo.second);
     }
     catch (std::exception& e)
     {

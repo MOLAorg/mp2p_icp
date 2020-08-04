@@ -24,6 +24,11 @@ class Solver_GaussNewton : public Solver
 {
     DEFINE_MRPT_OBJECT(Solver_GaussNewton, mp2p_icp);
 
+   public:
+    uint32_t maxIterations = 5;
+
+    void initialize(const mrpt::containers::Parameters& params) override;
+
    protected:
     // See base class docs
     bool impl_optimal_pose(

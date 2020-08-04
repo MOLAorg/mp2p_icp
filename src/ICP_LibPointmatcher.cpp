@@ -81,11 +81,14 @@ void ICP_LibPointmatcher::align(
 
     ICP_State state(pcs1, pcs2);
 
-    state.currentSolution= mrpt::poses::CPose3D(initialGuessM2wrtM1;
-    auto prev_solution     = state.currentSolution
+    state.currentSolution = OptimalTF_Result();
+    state.currentSolution.optimalPose =
+        mrpt::poses::CPose3D(initialGuessM2wrtM1);
+    auto prev_solution = state.currentSolution.optimalPose;
 
     // the global list of pairings:
-    const Pairings initPairings = ICP_Base::run_matcherss(state);
+    const Pairings initPairings = ICP::run_matchers(
+        matchers_, state.pc1, state.pc2, state.currentSolution.optimalPose, {});
 
     if (initPairings.empty() || initPairings.paired_pt2pt.size() < 3)
     {
@@ -93,8 +96,7 @@ void ICP_LibPointmatcher::align(
 
         // Nothing we can do !!
         result.quality         = 0;
-        result.quality         = 0;
-        result.optimal_tf.mean = mrpt::poses::CPose3D(initialGuessM2wrtM1;
+        result.optimal_tf.mean = mrpt::poses::CPose3D(initialGuessM2wrtM1);
         return;
     }
 
@@ -183,7 +185,7 @@ logger:
     ASSERT_EQUAL_(ptsFrom.getEuclideanDim(), ptsTo.getEuclideanDim());
 
     PM::TransformationParameters initTransfo =
-        initialGuessM2wrtM1getHomogeneousMatrix().asEigen();
+        initialGuessM2wrtM1.getHomogeneousMatrix().asEigen();
 
     TransformationsImpl<double>::RigidTransformation rigidTrans;
 
@@ -205,8 +207,8 @@ logger:
 
         // PM gives us the transformation wrt the initial transformation,
         // since we already applied that transf. to the input point cloud!
-        state.currentSolution=
-            mrpt::poses::CPose3D(initialGuessM2wrtM1 +
+        state.currentSolution.optimalPose =
+            mrpt::poses::CPose3D(initialGuessM2wrtM1) +
             mrpt::poses::CPose3D(mrpt::math::CMatrixDouble44(T));
 
         // result.quality = icp.errorMinimizer->getWeightedPointUsedRatio();
@@ -224,17 +226,14 @@ logger:
     else
         result.nIterations = 1;
 
-    // Determine matching ratio:
-    result.finalPairings = ICP_Base::run_matcherss(state);
-
-    // Ratio of entities with a valid pairing:
-    result.quality = state.currentPairings.empty() /
-                     double(std::min(pcs1.size(), pcs2.size()));
+    // Quality:
+    result.quality = evaluate_quality(
+        quality_evaluators_, pcs1, pcs2, state.currentSolution.optimalPose,
+        state.currentPairings);
 
     result.terminationReason = IterTermReason::Stalled;
-    result.optimalScale    = 1.0;
-    result.quality           = 1.0;
-    result.optimal_tf.mean   = state.currentSolution
+    result.optimalScale      = 1.0;
+    result.optimal_tf.mean   = state.currentSolution.optimalPose;
 
     mp2p_icp::CovarianceParameters covParams;
 

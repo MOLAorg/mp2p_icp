@@ -31,7 +31,6 @@ struct SolverContext
 {
     SolverContext() = default;
 
-    std::optional<uint32_t>             maxInnerLoopIterations;
     std::optional<uint32_t>             icpIteration;
     std::optional<mrpt::poses::CPose3D> guessRelativePose;
 };

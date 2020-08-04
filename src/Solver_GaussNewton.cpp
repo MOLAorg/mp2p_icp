@@ -18,6 +18,13 @@ IMPLEMENTS_MRPT_OBJECT(Solver_GaussNewton, mp2p_icp::Solver, mp2p_icp)
 
 using namespace mp2p_icp;
 
+void Solver_GaussNewton::initialize(const mrpt::containers::Parameters& params)
+{
+    Solver::initialize(params);
+
+    MCP_LOAD_REQ(params, maxIterations);
+}
+
 bool Solver_GaussNewton::impl_optimal_pose(
     const Pairings& pairings, OptimalTF_Result& out, const WeightParameters& wp,
     [[maybe_unused]] const SolverContext& sc) const
@@ -27,8 +34,7 @@ bool Solver_GaussNewton::impl_optimal_pose(
     out = OptimalTF_Result();
 
     OptimalTF_GN_Parameters gnParams;
-    ASSERT_(sc.maxInnerLoopIterations.has_value());
-    gnParams.maxInnerLoopIterations = sc.maxInnerLoopIterations.value();
+    gnParams.maxInnerLoopIterations = maxIterations;
 
     ASSERT_(sc.guessRelativePose.has_value());
     gnParams.linearizationPoint =

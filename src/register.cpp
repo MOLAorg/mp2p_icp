@@ -30,7 +30,7 @@ MRPT_INITIALIZER(register_mp2p_icp)
 
     registerClass(CLASS_ID(mp2p_icp::pointcloud_t));
 
-    // registerClass(CLASS_ID(mp2p_icp::ICP));
+    registerClass(CLASS_ID(mp2p_icp::ICP));
     registerClass(CLASS_ID(mp2p_icp::ICP_LibPointmatcher));
 
     registerClass(CLASS_ID(mp2p_icp::Solver));
