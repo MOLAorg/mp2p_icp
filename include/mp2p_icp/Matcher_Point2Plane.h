@@ -41,7 +41,7 @@ class Matcher_Point2Plane : public Matcher_Points_Base
    private:
     double   distanceThreshold   = 0.50;
     uint32_t knn                 = 5;
-    double   planeEigenThreshold = 10.0;
+    double   planeEigenThreshold = 0.01;
 
     void implMatchOneLayer(
         const mrpt::maps::CPointsMap& pcGlobal,

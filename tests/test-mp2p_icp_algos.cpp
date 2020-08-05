@@ -157,9 +157,9 @@ static void test_icp(
             m)
         {
             mrpt::containers::Parameters ps;
-            ps["distanceThreshold"]     = 0.15 * max_dim;
-            ps["planeEigenThreshold"]   = 10.0;
-            ps["knn"].asRef<uint64_t>() = 5;
+            ps["distanceThreshold"]   = 0.15 * max_dim;
+            ps["planeEigenThreshold"] = 10.0;
+            ps["knn"]                 = 5;
 
             m->initialize(ps);
         }

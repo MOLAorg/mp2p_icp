@@ -33,8 +33,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         mrpt::containers::Parameters params;
 
-        params["ncols"].asRef<uint32_t>() = 100;
-        params["nrows"].asRef<uint32_t>() = 60;
+        params["ncols"] = 100;
+        params["nrows"] = 60;
 
         params["fx"] = 20.0;
         params["fy"] = 20.0;

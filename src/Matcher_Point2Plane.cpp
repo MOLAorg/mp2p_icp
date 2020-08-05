@@ -58,7 +58,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
         return;
 
     // Prepare output: no correspondences initially:
-    out.paired_pt2pt.reserve(out.paired_pt2pt.size() + pcLocal.size());
+    out.paired_pt2pl.reserve(out.paired_pt2pl.size() + pcLocal.size() / 2);
 
     // Loop for each point in local map:
     // --------------------------------------------------
@@ -94,13 +94,23 @@ void Matcher_Point2Plane::implMatchOneLayer(
             kddIdxs, kddSqrDist);
 
         // Filter the list of neighbors by maximum distance threshold:
-        for (size_t j = 0; j < kddSqrDist.size(); j++)
+
+        // Faster common case: all points are valid:
+        if (!kddSqrDist.empty() &&
+            kddSqrDist.back() < maxDistForCorrespondenceSquared)
         {
-            if (kddSqrDist[j] > maxDistForCorrespondenceSquared)
+            // Nothing to do: all knn points are within the range.
+        }
+        else
+        {
+            for (size_t j = 0; j < kddSqrDist.size(); j++)
             {
-                kddIdxs.resize(j);
-                kddSqrDist.resize(j);
-                break;
+                if (kddSqrDist[j] > maxDistForCorrespondenceSquared)
+                {
+                    kddIdxs.resize(j);
+                    kddSqrDist.resize(j);
+                    break;
+                }
             }
         }
 

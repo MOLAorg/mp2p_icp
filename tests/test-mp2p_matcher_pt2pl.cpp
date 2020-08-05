@@ -64,9 +64,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             mp2p_icp::Matcher_Point2Plane m;
 
             mrpt::containers::Parameters p;
-            p["distanceThreshold"]     = 0.1;
-            p["knn"].asRef<uint32_t>() = 5;
-            p["planeEigenThreshold"]   = 0.1;
+            p["distanceThreshold"]   = 0.1;
+            p["knn"]                 = 5;
+            p["planeEigenThreshold"] = 0.1;
 
             m.initialize(p);
 
