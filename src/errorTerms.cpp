@@ -7,7 +7,7 @@
  * @file   errorTerms.cpp
  * @brief
  * @author Francisco José Mañas Álvarez, Jose Luis Blanco Claraco
- * @date   Jul 4, 2020
+ * @date   Aug 4, 2020
  */
 
 #include <mp2p_icp/errorTerms.h>
@@ -19,39 +19,55 @@
 
 using namespace mp2p_icp;
 
-void error_point2point(
+mrpt::math::CVectorFixedDouble<3> error_point2point(
     mrpt::tfest::TMatchingPair& pairing, OptimalTF_Result& result,
-    mrpt::math::CVectorFixedDouble<3>&               error,
-    mrpt::optional_ref<Eigen::Matrix<double, 3, 12>> jacobian)
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian =
+        std::nullopt)
 {
+    mrpt::math::CVectorFixedDouble<3> error;
     const double lx = pairing.other_x, ly = pairing.other_y,
                  lz = pairing.other_z;
     double gx, gy, gz;
+
     result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
     error[0] = gx - pairing.this_x;
     error[1] = gy - pairing.this_y;
     error[2] = gz - pairing.this_z;
 
     // Eval Jacobian:
-    // clang-format off
-    jacobian = (Eigen::Matrix<double, 3, 12>() << lx, 0, 0, ly, 0, 0, lz, 0, 0,
-                1, 0, 0, 0, lx, 0, 0, ly, 0, 0, lz, 0, 0, 1, 0, 0, 0, lx, 0, 0,
-                ly, 0, 0, lz, 0, 0, 1)
-                   .finished();
-    // clang-format on
+    if (jacobian)
+    {
+        mrpt::math::CMatrixFixed<double, 3, 12>& J_aux = jacobian.value().get();
+
+        J_aux(0, 0)  = lx;
+        J_aux(0, 3)  = ly;
+        J_aux(0, 6)  = lz;
+        J_aux(0, 9)  = 1;
+        J_aux(1, 1)  = lx;
+        J_aux(1, 4)  = ly;
+        J_aux(1, 7)  = lz;
+        J_aux(1, 10) = 1;
+        J_aux(2, 2)  = lx;
+        J_aux(2, 5)  = ly;
+        J_aux(2, 8)  = lz;
+        J_aux(2, 11) = 1;
+    }
+
+    return error;
 }
 
-void error_point2line(
+mrpt::math::CVectorFixedDouble<1> error_point2line(
     const mp2p_icp::point_line_pair_t& pairing, OptimalTF_Result& result,
-    mrpt::math::CVectorFixedDouble<1>& error,
-    Eigen::Matrix<double, 1, 12>       jacobian)
+    Eigen::Matrix<double, 1, 12> jacobian)
 {
+    mrpt::math::CVectorFixedDouble<1> error;
     const double lx = pairing.pt_other.x, ly = pairing.pt_other.y,
                  lz = pairing.pt_other.z;
     double gx, gy, gz;
     result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
     const auto g = mrpt::math::TPoint3D(gx, gy, gz);
-    error[1]     = pow(pairing.ln_this.distance(g), 2);
+
+    error[1] = pow(pairing.ln_this.distance(g), 2);
 
     // Eval Jacobian:
     // "A tutorial on SE(3) transformation parameterizations and
@@ -83,13 +99,15 @@ void error_point2line(
          ).finished();
     // clang-format on
     jacobian = J1 * J2;
+
+    return error;
 }
 
-void error_point2plane(
+mrpt::math::CVectorFixedDouble<1> error_point2plane(
     const mp2p_icp::point_plane_pair_t& pairing, OptimalTF_Result& result,
-    mrpt::math::CVectorFixedDouble<1>& error,
-    Eigen::Matrix<double, 1, 12>       jacobian)
+    Eigen::Matrix<double, 1, 12> jacobian)
 {
+    mrpt::math::CVectorFixedDouble<1> error;
     const double lx = pairing.pt_other.x, ly = pairing.pt_other.y,
                  lz = pairing.pt_other.z;
     mrpt::math::TPoint3D g;
@@ -113,15 +131,17 @@ void error_point2plane(
             .finished();
 
     jacobian = Jpl * J1;
+
+    return error;
 }
 
-void error_line2line(
+mrpt::math::CVectorFixedDouble<4> error_line2line(
     const mp2p_icp::matched_line_t& pairing, OptimalTF_Result& result,
-    mrpt::math::CVectorFixedDouble<4>&         error,
     Eigen::Matrix<double, Eigen::Dynamic, 12>& jacobian, bool jump = false)
 {
-    mrpt::math::TLine3D ln_aux;
-    double              gx, gy, gz;
+    mrpt::math::CVectorFixedDouble<4> error;
+    mrpt::math::TLine3D               ln_aux;
+    double                            gx, gy, gz;
     result.optimalPose.composePoint(
         pairing.ln_other.pBase.x, pairing.ln_other.pBase.y,
         pairing.ln_other.pBase.z, gx, gy, gz);
@@ -240,13 +260,15 @@ void error_line2line(
         // Build Jacobian
         jacobian = J1 * J2;
     }
+    return error;
 }
 
-void error_plane2plane(
+mrpt::math::CVectorFixedDouble<3> error_plane2plane(
     const mp2p_icp::matched_plane_t& pairing, OptimalTF_Result& result,
-    mrpt::math::CVectorFixedDouble<3>& error,
-    Eigen::Matrix<double, 3, 12>       jacobian)
+    Eigen::Matrix<double, 3, 12> jacobian)
 {
+    mrpt::math::CVectorFixedDouble<3> error;
+
     const auto nl = pairing.p_other.plane.getNormalVector();
     const auto ng = pairing.p_this.plane.getNormalVector();
 
@@ -270,4 +292,6 @@ void error_plane2plane(
             0,  0, nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0
          ).finished();
     // clang-format on
+
+    return error;
 }
