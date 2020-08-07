@@ -20,13 +20,14 @@
 #include <iostream>
 
 using namespace mp2p_icp;
+using namespace mrpt::math;
 
 mrpt::math::CVectorFixedDouble<3> error_point2point(
     mrpt::tfest::TMatchingPair& pairing, const mrpt::poses::CPose3D &relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     mrpt::math::CVectorFixedDouble<3> error;
-    const mrpt::math::TPoint3D l = TPoint3D_(pairing.other_x,pairing.other_y,pairing.other_z);
+    const mrpt::math::TPoint3D l = TPoint3D(pairing.other_x,pairing.other_y,pairing.other_z);
     mrpt::math::TPoint3D g;
 
     relativePose.composePoint(l,g);
@@ -42,9 +43,9 @@ mrpt::math::CVectorFixedDouble<3> error_point2point(
         mrpt::math::CMatrixFixed<double, 3, 12>& J_aux = jacobian.value().get();
         // clang-format off
         J_aux = (Eigen::Matrix<double, 3, 12>() <<
-                 lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
-                  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
-                  0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
+                 l.x,   0,   0, l.y,   0,    0, l.z,   0,   0,  1,  0,  0,
+                   0, l.x,   0,   0, l.y,    0,   0, l.z,   0,  0,  1,  0,
+                   0,   0, l.x,   0,   0,  l.y,   0,   0, l.z,  0,  0,  1
                  ).finished();
         // clang-format on
     }
@@ -57,7 +58,7 @@ mrpt::math::CVectorFixedDouble<1> error_point2line(
     Eigen::Matrix<double, 1, 12> jacobian)
 {
     mrpt::math::CVectorFixedDouble<1> error;
-    const mrpt::math::TPoint3D l = TPoint3D_(pairing.other_x,pairing.other_y,pairing.other_z);
+    const mrpt::math::TPoint3D l = TPoint3D(pairing.pt_other.x,pairing.pt_other.y,pairing.pt_other.z);
     mrpt::math::TPoint3D g;
     relativePose.composePoint(l,g);
 
@@ -87,9 +88,9 @@ mrpt::math::CVectorFixedDouble<1> error_point2line(
     // clang-format off
     Eigen::Matrix<double, 3, 12> J2 =
         (Eigen::Matrix<double, 3, 12>() <<
-         lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
-          0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
-          0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
+         l.x,   0,   0, l.y,   0,    0, l.z,   0,   0,  1,  0,  0,
+           0, l.x,   0,   0, l.y,    0,   0, l.z,   0,  0,  1,  0,
+           0,   0, l.x,   0,   0,  l.y,   0,   0, l.z,  0,  0,  1
          ).finished();
     // clang-format on
     jacobian = J1 * J2;
@@ -102,7 +103,7 @@ mrpt::math::CVectorFixedDouble<1> error_point2plane(
     Eigen::Matrix<double, 1, 12> jacobian)
 {
     mrpt::math::CVectorFixedDouble<1> error;
-    const mrpt::math::TPoint3D l = TPoint3D_(pairing.other_x,pairing.other_y,pairing.other_z);
+    const mrpt::math::TPoint3D l = TPoint3D(pairing.pt_other.x,pairing.pt_other.y,pairing.pt_other.z);
     mrpt::math::TPoint3D g;
     relativePose.composePoint(l,g);
 
@@ -112,9 +113,9 @@ mrpt::math::CVectorFixedDouble<1> error_point2plane(
     // clang-format off
     const Eigen::Matrix<double, 3, 12> J1 =
         (Eigen::Matrix<double, 3, 12>() <<
-           lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
-            0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
-            0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
+         l.x,   0,   0, l.y,   0,    0, l.z,   0,   0,  1,  0,  0,
+           0, l.x,   0,   0, l.y,    0,   0, l.z,   0,  0,  1,  0,
+           0,   0, l.x,   0,   0,  l.y,   0,   0, l.z,  0,  0,  1
          ).finished();
     // clang-format on
 

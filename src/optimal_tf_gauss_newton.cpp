@@ -64,12 +64,11 @@ void mp2p_icp::optimal_tf_gauss_newton(
         {
             // Error:
             const auto& p = in.paired_pt2pt[idx_pt];
-            // mrpt::math::CMatrixFixed<double, 3, 12> J1;
-            // auto auxiliar = mp2p_icp::error_point2point(p, result, J1);
-            // err.block<3, 1>(idx_pt * 3, 0) = mp2p_icp::error_point2point(p,
-            // result, J1);
+            mrpt::math::CMatrixFixed<double, 3, 12> J1;
+            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_point2point(p, result.optimalPose, J1);
+            err.block<3, 1>(idx_pt * 3, 0) = ret.asEigen();
             //-----------------------------------------------------------------------------
-
+            /*
             const double lx = p.other_x, ly = p.other_y, lz = p.other_z;
             double       gx, gy, gz;
             result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
@@ -86,6 +85,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
                     0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
                  ).finished();
             // clang-format on
+            */
             //-----------------------------------------------------------------------------
             // Get weight:
             if (has_per_pt_weight)
@@ -101,9 +101,8 @@ void mp2p_icp::optimal_tf_gauss_newton(
             }
 
             // Build Jacobian:
-            // J1 *= w.pt2pt;
-
-            J.block<3, 6>(idx_pt * 3, 0) = w.pt2pt * J1 * dDexpe_de.asEigen();
+            J1 *= w.pt2pt;
+            J.block<3, 6>(idx_pt * 3, 0) = J1 * dDexpe_de;
         }
 
         // Point-to-line
