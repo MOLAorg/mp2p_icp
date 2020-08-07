@@ -27,6 +27,5 @@ double QualityEvaluator_PairedRatio::evaluate(
     [[maybe_unused]] const mrpt::poses::CPose3D& localPose,
     const Pairings&                              finalPairings) const
 {
-    return finalPairings.size() /
-           double(std::min(pcGlobal.size(), pcLocal.size()));
+    return finalPairings.size() / (0.5 * (pcGlobal.size() + pcLocal.size()));
 }
