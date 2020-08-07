@@ -40,7 +40,7 @@ struct render_params_t
 
 struct plane_patch_t
 {
-    mrpt::math::TPlane3D plane;
+    mrpt::math::TPlane   plane;
     mrpt::math::TPoint3D centroid;
 
     plane_patch_t() = default;

@@ -38,8 +38,8 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
 {
     MRPT_START
 
-    ASSERT_ABOVE_(inliersRatio, 0.0);
-    ASSERT_BELOW_(inliersRatio, 1.0);
+    ASSERT_GT_(inliersRatio, 0.0);
+    ASSERT_LT_(inliersRatio, 1.0);
 
     // Empty maps?  Nothing to do
     if (pcGlobal.empty() || pcLocal.empty()) return;

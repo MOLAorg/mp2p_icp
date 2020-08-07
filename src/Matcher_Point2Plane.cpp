@@ -137,6 +137,9 @@ void Matcher_Point2Plane::implMatchOneLayer(
         p.pl_this.centroid = {eig.meanCov.mean.x(), eig.meanCov.mean.y(),
                               eig.meanCov.mean.z()};
 
+        const auto& normal = eig.eigVectors[0];
+        p.pl_this.plane    = mrpt::math::TPlane(p.pl_this.centroid, normal);
+
     }  // For each local point
 
     MRPT_END

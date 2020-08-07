@@ -150,8 +150,8 @@ void visit_correspondences(
             bi = in.paired_ln2ln[idxLine].ln_this.getDirectorVector();
             ri = in.paired_ln2ln[idxLine].ln_other.getDirectorVector();
 
-            ASSERTDEB_BELOW_(std::abs(bi.norm() - 1.0), 0.01);
-            ASSERTDEB_BELOW_(std::abs(ri.norm() - 1.0), 0.01);
+            ASSERTDEB_LT_(std::abs(bi.norm() - 1.0), 0.01);
+            ASSERTDEB_LT_(std::abs(ri.norm() - 1.0), 0.01);
         }
         else
         {
@@ -162,8 +162,8 @@ void visit_correspondences(
             bi = in.paired_pl2pl[idxPlane].p_this.plane.getNormalVector();
             ri = in.paired_pl2pl[idxPlane].p_other.plane.getNormalVector();
 
-            ASSERTDEB_BELOW_(std::abs(bi.norm() - 1.0), 0.01);
-            ASSERTDEB_BELOW_(std::abs(ri.norm() - 1.0), 0.01);
+            ASSERTDEB_LT_(std::abs(bi.norm() - 1.0), 0.01);
+            ASSERTDEB_LT_(std::abs(ri.norm() - 1.0), 0.01);
         }
 
         // If we are about to apply a robust kernel, we need a reference

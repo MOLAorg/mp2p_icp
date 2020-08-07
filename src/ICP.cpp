@@ -267,7 +267,7 @@ double ICP::evaluate_quality(
     for (const auto& e : evaluators)
     {
         const double w = e.relativeWeight;
-        ASSERT_ABOVE_(w, 0);
+        ASSERT_GT_(w, 0);
         const double eval =
             e.obj->evaluate(pcGlobal, pcLocal, localPose, finalPairings);
         sumEvals += w * eval;

@@ -24,7 +24,7 @@ std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
     const auto nPoints = in.paired_pt2pt.size();
 
     // We need more points than outliers (!)
-    ASSERT_ABOVE_(nPoints, outliers.point2point.size());
+    ASSERT_GT_(nPoints, outliers.point2point.size());
 
     // Normalized weights for centroids.
     // Discount outliers.

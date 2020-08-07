@@ -149,8 +149,8 @@ logger:
     const DP ptsFrom = pointsToPM(pcs1);
     const DP ptsTo   = pointsToPM(pcs2);
 
-    ASSERT_ABOVE_(ptsFrom.getNbPoints(), 0);
-    ASSERT_ABOVE_(ptsTo.getNbPoints(), 0);
+    ASSERT_GT_(ptsFrom.getNbPoints(), 0);
+    ASSERT_GT_(ptsTo.getNbPoints(), 0);
 
     // Create the default ICP algorithm
     PM::ICP icp;

@@ -374,7 +374,7 @@ bool test_icp_algos(
                           << res_olae.optimalPose.asString() << "\n -GT_rot:\n"
                           << gt_pose.getRotationMatrix() << "\n -OLAE_rot:\n"
                           << res_olae.optimalPose.getRotationMatrix() << "\n";
-                ASSERT_BELOW_(err_log_n, max_allowed_error);
+                ASSERT_LT_(err_log_n, max_allowed_error);
             }
 
             stats(rep, 1 + 3 * 0 + 0) = err_log_n;
@@ -406,7 +406,7 @@ bool test_icp_algos(
                           << " -Horn_output  : "
                           << res_horn.optimalPose.asString() << "\n -GT_rot:\n"
                           << gt_pose.getRotationMatrix() << "\n";
-                ASSERT_BELOW_(err_log_n, max_allowed_error);
+                ASSERT_LT_(err_log_n, max_allowed_error);
             }
 
             stats(rep, 1 + 3 * 0 + 1) = err_log_n;
@@ -455,7 +455,7 @@ bool test_icp_algos(
                           << " -GaussNewton output  : "
                           << res_gn.optimalPose.asString() << "\n -GT_rot:\n"
                           << gt_pose.getRotationMatrix() << "\n";
-                ASSERT_BELOW_(err_log_n, max_allowed_error);
+                ASSERT_LT_(err_log_n, max_allowed_error);
             }
 
             stats(rep, 1 + 3 * 0 + 2) = err_log_n;

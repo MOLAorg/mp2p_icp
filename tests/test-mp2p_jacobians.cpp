@@ -58,7 +58,7 @@ void test_Jacob_dDexpe_de()
             x_incrs, p, numJacobs);
     }
 
-    ASSERT_BELOW_(
+    ASSERT_LT_(
         (numJacobs.asEigen() - theor_jacob.asEigen()).array().abs().maxCoeff(),
         1e-3);
 }

@@ -44,7 +44,7 @@ mrpt::maps::CSimplePointsMap::Ptr load_xyz_file(const std::string& fil)
 
     auto m = mrpt::maps::CSimplePointsMap::Create();
     m->load3D_from_text_file(tmpFil);
-    ASSERT_ABOVE_(m->size(), 100U);
+    ASSERT_GT_(m->size(), 100U);
 
     return m;
 }
