@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp/ICP_LibPointmatcher.h>
+#include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/covariance.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CPointsMap.h>
@@ -212,10 +213,16 @@ logger:
     else
         result.nIterations = 1;
 
+    // Generate some pairings for the quality evaluation:
+    mp2p_icp::Matcher_Points_DistanceThreshold pm(0.1);
+    pm.match(
+        pcs1, pcs2, state.currentSolution.optimalPose, {},
+        result.finalPairings);
+
     // Quality:
     result.quality = evaluate_quality(
         quality_evaluators_, pcs1, pcs2, state.currentSolution.optimalPose,
-        state.currentPairings);
+        result.finalPairings);
 
     result.terminationReason = IterTermReason::Stalled;
     result.optimalScale      = 1.0;
@@ -225,8 +232,6 @@ logger:
 
     result.optimal_tf.cov = mp2p_icp::covariance(
         result.finalPairings, result.optimal_tf.mean, covParams);
-
-    MRPT_LOG_DEBUG_FMT("match ratio: %.02f%%", result.quality * 100.0);
 #else
     THROW_EXCEPTION("This method requires MP2P built against libpointmatcher");
 #endif

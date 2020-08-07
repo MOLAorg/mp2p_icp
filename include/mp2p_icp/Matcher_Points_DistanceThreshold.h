@@ -26,6 +26,12 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
    public:
     Matcher_Points_DistanceThreshold();
 
+    Matcher_Points_DistanceThreshold(double distThreshold)
+        : Matcher_Points_DistanceThreshold()
+    {
+        threshold = distThreshold;
+    }
+
     /*** Parameters:
      * - `threshold`: Inliers distance threshold [meters][mandatory]
      *
