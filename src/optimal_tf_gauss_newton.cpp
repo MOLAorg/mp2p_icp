@@ -254,38 +254,12 @@ void mp2p_icp::optimal_tf_gauss_newton(
         {
             // Error:
             const auto& p = in.paired_pt2pl[idx_pl];
-            /*
-            error_point2plane(p, result, error(...), Eigen::Matrix<double, 1,
-            12> jacobian)
-             * */
-            //-----------------------------------------------------------------------------
-            const double lx = p.pt_other.x, ly = p.pt_other.y,
-                         lz = p.pt_other.z;
-            mrpt::math::TPoint3D g;
-            result.optimalPose.composePoint(lx, ly, lz, g.x, g.y, g.z);
+            mrpt::math::CMatrixFixed<double, 1, 12> J1;
+            mrpt::math::CVectorFixedDouble<1> ret = mp2p_icp::error_point2plane(p,result.optimalPose,J1);
+            err.block<1, 1>(idx_pl + base_idx, 0) = ret.asEigen();
 
-            err(idx_pl + base_idx) = p.pl_this.plane.evaluatePoint(g);
-
-            // Eval Jacobian:
-            // clang-format off
-            const Eigen::Matrix<double, 3, 12> J1 =
-                (Eigen::Matrix<double, 3, 12>() <<
-                   lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
-                    0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
-                    0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
-                 ).finished();
-            // clang-format on
-
-            const Eigen::Matrix<double, 1, 3> Jpl =
-                (Eigen::Matrix<double, 1, 3>() << p.pl_this.plane.coefs[0],
-                 p.pl_this.plane.coefs[1], p.pl_this.plane.coefs[2])
-                    .finished();
-
-            const Eigen::Matrix<double, 1, 12> jacobian = Jpl * J1;
-
-            //-----------------------------------------------------------------------------
             J.block<1, 6>(idx_pl + base_idx, 0) =
-                w.pt2pl * jacobian * dDexpe_de.asEigen();
+                w.pt2pl * J1.asEigen() * dDexpe_de.asEigen();
         }
 
         // Plane-to-plane (only direction of normal vectors):

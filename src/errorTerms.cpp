@@ -101,7 +101,7 @@ mrpt::math::CVectorFixedDouble<1> error_point2line(
 
 mrpt::math::CVectorFixedDouble<1> error_point2plane(
     const mp2p_icp::point_plane_pair_t& pairing, const mrpt::poses::CPose3D &relativePose,
-    Eigen::Matrix<double, 1, 12> jacobian)
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 1, 12>> jacobian)
 {
     mrpt::math::CVectorFixedDouble<1> error;
     const mrpt::math::TPoint3D l = TPoint3D(pairing.pt_other.x,pairing.pt_other.y,pairing.pt_other.z);
@@ -125,7 +125,8 @@ mrpt::math::CVectorFixedDouble<1> error_point2plane(
          pairing.pl_this.plane.coefs[1], pairing.pl_this.plane.coefs[2])
             .finished();
 
-    jacobian = Jpl * J1;
+    mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
+    J_aux = Jpl * J1;
 
     return error;
 }
