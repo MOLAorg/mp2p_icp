@@ -67,26 +67,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
             mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_point2point(p, result.optimalPose, J1);
             err.block<3, 1>(idx_pt * 3, 0) = ret.asEigen();
-            //-----------------------------------------------------------------------------
-            /*
-            const double lx = p.other_x, ly = p.other_y, lz = p.other_z;
-            double       gx, gy, gz;
-            result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
-            err[idx_pt * 3 + 0] = gx - p.this_x;
-            err[idx_pt * 3 + 1] = gy - p.this_y;
-            err[idx_pt * 3 + 2] = gz - p.this_z;
 
-            // Eval Jacobian:
-            // clang-format off
-            const Eigen::Matrix<double, 3, 12> J1 =
-                (Eigen::Matrix<double, 3, 12>() <<
-                   lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
-                    0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
-                    0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
-                 ).finished();
-            // clang-format on
-            */
-            //-----------------------------------------------------------------------------
             // Get weight:
             if (has_per_pt_weight)
             {
@@ -101,8 +82,7 @@ void mp2p_icp::optimal_tf_gauss_newton(
             }
 
             // Build Jacobian:
-            J1 *= w.pt2pt;
-            J.block<3, 6>(idx_pt * 3, 0) = J1 * dDexpe_de;
+            J.block<3, 6>(idx_pt * 3, 0) = w.pt2pt * J1.asEigen() * dDexpe_de.asEigen();
         }
 
         // Point-to-line
@@ -111,55 +91,16 @@ void mp2p_icp::optimal_tf_gauss_newton(
         {
             // Error
             const auto& p = in.paired_pt2ln[idx_pt];
-            /*
-            mp2p_icp::error_point2line(
-                p, result, err[base_idx + idx_pt],
-                mrpt::optional_ref<Eigen::Matrix<double, 1, 12>> jacobian);
-             */
-            //-----------------------------------------------------------------------------
-            const double lx = p.pt_other.x, ly = p.pt_other.y,
-                         lz = p.pt_other.z;
-            double gx, gy, gz;
-            result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
-            const auto g           = mrpt::math::TPoint3D(gx, gy, gz);
-            err(base_idx + idx_pt) = pow(p.ln_this.distance(g), 2);
-
-            // Eval Jacobian:
-            // "A tutorial on SE(3) transformation parameterizations and
-            // on-manifold optimization"
-            // d(T_{A}·p)/dT_{A}. Ec.7.16
-            // clang-format off
-            // Doc auxiliar: Section 4.1.2.
-            // p_r0 = (p-r_{0,r}). Ec.9
-            const Eigen::Matrix<double, 1, 3> p_r0 =
-           (Eigen::Matrix<double, 1, 3>() << g.x-p.ln_this.pBase.x, g.y-p.ln_this.pBase.y, g.z-p.ln_this.pBase.z
-            ).finished();
-            // Module of vector director of line
-            const Eigen::Matrix<double, 1, 3> ru =
-           (Eigen::Matrix<double, 1, 3>() << p.ln_this.director[0], p.ln_this.director[1], p.ln_this.director[2]
-            ).finished();
-            double mod_ru = ru*ru.transpose();
-
-            // J1
-            Eigen::Matrix<double, 1, 3> J1 = 2*p_r0-(2/mod_ru)*(p_r0*ru.transpose())*ru;
-            // J2
-            const Eigen::Matrix<double, 3, 12> J2 =
-                (Eigen::Matrix<double, 3, 12>() <<
-                   lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,  0,
-                    0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1,  0,
-                    0,  0, lx,  0,  0,  ly,  0,  0, lz,  0,  0,  1
-                 ).finished();
-            // clang-format on
-            //-----------------------------------------------------------------------------
+            mrpt::math::CMatrixFixed<double, 1, 12> J1;
+            mrpt::math::CVectorFixedDouble<1> ret = mp2p_icp::error_point2line(p, result.optimalPose, J1);
+            err.block<1, 1>(base_idx + idx_pt, 0) = ret.asEigen();
 
             // Get weight
             // ...
 
             // Build Jacobian
             J.block<1, 6>(base_idx + idx_pt, 0) =
-                w.pt2ln * J1 * J2 * dDexpe_de.asEigen();
-            // J.block<1, 6>(base_idx + idx_pt, 0) = w.pt2ln * jacobian *
-            // dDexpe_de.asEigen();
+                w.pt2ln * J1.asEigen() * dDexpe_de.asEigen();
         }
 
         // Line-to-Line
