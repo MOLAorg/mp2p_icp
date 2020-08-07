@@ -14,13 +14,14 @@
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
 #include <mrpt/math/CVectorFixed.h>
 #include <mrpt/poses/Lie/SE.h>
+#include <mrpt/poses/CPose3D.h>
 #include <Eigen/Dense>
 #include <iostream>
 
 using namespace mp2p_icp;
 
 mrpt::math::CVectorFixedDouble<3> error_point2point(
-    mrpt::tfest::TMatchingPair& pairing, OptimalTF_Result& result,
+    mrpt::tfest::TMatchingPair& pairing, const mrpt::poses::CPose3D &relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian =
         std::nullopt)
 {
@@ -29,7 +30,8 @@ mrpt::math::CVectorFixedDouble<3> error_point2point(
                  lz = pairing.other_z;
     double gx, gy, gz;
 
-    result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
+    relativePose.composePoint(lx, ly, lz, gx, gy, gz);
+
     error[0] = gx - pairing.this_x;
     error[1] = gy - pairing.this_y;
     error[2] = gz - pairing.this_z;
@@ -57,14 +59,14 @@ mrpt::math::CVectorFixedDouble<3> error_point2point(
 }
 
 mrpt::math::CVectorFixedDouble<1> error_point2line(
-    const mp2p_icp::point_line_pair_t& pairing, OptimalTF_Result& result,
+    const mp2p_icp::point_line_pair_t& pairing, const mrpt::poses::CPose3D &relativePose,
     Eigen::Matrix<double, 1, 12> jacobian)
 {
     mrpt::math::CVectorFixedDouble<1> error;
     const double lx = pairing.pt_other.x, ly = pairing.pt_other.y,
                  lz = pairing.pt_other.z;
     double gx, gy, gz;
-    result.optimalPose.composePoint(lx, ly, lz, gx, gy, gz);
+    relativePose.composePoint(lx, ly, lz, gx, gy, gz);
     const auto g = mrpt::math::TPoint3D(gx, gy, gz);
 
     error[1] = pow(pairing.ln_this.distance(g), 2);
@@ -104,14 +106,14 @@ mrpt::math::CVectorFixedDouble<1> error_point2line(
 }
 
 mrpt::math::CVectorFixedDouble<1> error_point2plane(
-    const mp2p_icp::point_plane_pair_t& pairing, OptimalTF_Result& result,
+    const mp2p_icp::point_plane_pair_t& pairing, const mrpt::poses::CPose3D &relativePose,
     Eigen::Matrix<double, 1, 12> jacobian)
 {
     mrpt::math::CVectorFixedDouble<1> error;
     const double lx = pairing.pt_other.x, ly = pairing.pt_other.y,
                  lz = pairing.pt_other.z;
     mrpt::math::TPoint3D g;
-    result.optimalPose.composePoint(lx, ly, lz, g.x, g.y, g.z);
+    relativePose.composePoint(lx, ly, lz, g.x, g.y, g.z);
 
     error[0] = pairing.pl_this.plane.evaluatePoint(g);
 
@@ -136,19 +138,19 @@ mrpt::math::CVectorFixedDouble<1> error_point2plane(
 }
 
 mrpt::math::CVectorFixedDouble<4> error_line2line(
-    const mp2p_icp::matched_line_t& pairing, OptimalTF_Result& result,
+    const mp2p_icp::matched_line_t& pairing, const mrpt::poses::CPose3D &relativePose,
     Eigen::Matrix<double, Eigen::Dynamic, 12>& jacobian, bool jump = false)
 {
     mrpt::math::CVectorFixedDouble<4> error;
     mrpt::math::TLine3D               ln_aux;
     double                            gx, gy, gz;
-    result.optimalPose.composePoint(
+    relativePose.composePoint(
         pairing.ln_other.pBase.x, pairing.ln_other.pBase.y,
         pairing.ln_other.pBase.z, gx, gy, gz);
     ln_aux.pBase = mrpt::math::TPoint3D(gx, gy, gz);
     // Homogeneous matrix calculation
     mrpt::math::CMatrixDouble44 aux;
-    result.optimalPose.getHomogeneousMatrix(aux);
+    relativePose.getHomogeneousMatrix(aux);
     const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
     // Projection of the director vector for the new pose
     const Eigen::Matrix<double, 1, 4> U =
@@ -264,7 +266,7 @@ mrpt::math::CVectorFixedDouble<4> error_line2line(
 }
 
 mrpt::math::CVectorFixedDouble<3> error_plane2plane(
-    const mp2p_icp::matched_plane_t& pairing, OptimalTF_Result& result,
+    const mp2p_icp::matched_plane_t& pairing, const mrpt::poses::CPose3D &relativePose,
     Eigen::Matrix<double, 3, 12> jacobian)
 {
     mrpt::math::CVectorFixedDouble<3> error;
@@ -272,7 +274,7 @@ mrpt::math::CVectorFixedDouble<3> error_plane2plane(
     const auto nl = pairing.p_other.plane.getNormalVector();
     const auto ng = pairing.p_this.plane.getNormalVector();
 
-    const auto p_oplus_nl = result.optimalPose.rotateVector(nl);
+    const auto p_oplus_nl = relativePose.rotateVector(nl);
 
     for (int i = 0; i < 3; i++) error[i] = ng[i] - p_oplus_nl[i];
 
