@@ -142,26 +142,30 @@ static void test_icp(
         }
 
         // Special parameters:
-        if (auto m = std::dynamic_pointer_cast<
-                mp2p_icp::Matcher_Points_DistanceThreshold>(
-                icp->matchers().at(0));
-            m)
+        if (!icp->matchers().empty())
         {
-            mrpt::containers::Parameters ps;
-            ps["threshold"] = 0.15 * max_dim;
-            m->initialize(ps);
-        }
+            if (auto m = std::dynamic_pointer_cast<
+                    mp2p_icp::Matcher_Points_DistanceThreshold>(
+                    icp->matchers().at(0));
+                m)
+            {
+                mrpt::containers::Parameters ps;
+                ps["threshold"] = 0.15 * max_dim;
+                m->initialize(ps);
+            }
 
-        if (auto m = std::dynamic_pointer_cast<mp2p_icp::Matcher_Point2Plane>(
-                icp->matchers().at(0));
-            m)
-        {
-            mrpt::containers::Parameters ps;
-            ps["distanceThreshold"]   = 0.15 * max_dim;
-            ps["planeEigenThreshold"] = 10.0;
-            ps["knn"]                 = 5;
+            if (auto m =
+                    std::dynamic_pointer_cast<mp2p_icp::Matcher_Point2Plane>(
+                        icp->matchers().at(0));
+                m)
+            {
+                mrpt::containers::Parameters ps;
+                ps["distanceThreshold"]   = 0.15 * max_dim;
+                ps["planeEigenThreshold"] = 10.0;
+                ps["knn"]                 = 5;
 
-            m->initialize(ps);
+                m->initialize(ps);
+            }
         }
 
         // ICP test itself:
@@ -226,6 +230,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             std::vector<std::tuple<const char*, const char*, const char*>>;
         // clang-format off
         lst_algos_t lst_algos = {
+#if 0
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_DistanceThreshold"},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_InlierRatio"},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Point2Plane"},
@@ -238,7 +243,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_DistanceThreshold"},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_InlierRatio"},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Point2Plane"},
-             
+#endif             
              };
         // clang-format on
 

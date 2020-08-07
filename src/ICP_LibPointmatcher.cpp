@@ -86,20 +86,6 @@ void ICP_LibPointmatcher::align(
         mrpt::poses::CPose3D(initialGuessM2wrtM1);
     auto prev_solution = state.currentSolution.optimalPose;
 
-    // the global list of pairings:
-    const Pairings initPairings = ICP::run_matchers(
-        matchers_, state.pc1, state.pc2, state.currentSolution.optimalPose, {});
-
-    if (initPairings.empty() || initPairings.paired_pt2pt.size() < 3)
-    {
-        // Skip ill-defined problems if the no. of points is too small.
-
-        // Nothing we can do !!
-        result.quality         = 0;
-        result.optimal_tf.mean = mrpt::poses::CPose3D(initialGuessM2wrtM1);
-        return;
-    }
-
     // Reset output:
     result = Results();
 
