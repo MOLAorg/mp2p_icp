@@ -147,35 +147,36 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     mrpt::math::CVectorFixedDouble<4> error;
      mrpt::math::CMatrixFixed<double, 4, 12>& J_aux = jacobian.value().get();
     mrpt::math::TLine3D               ln_aux;
-    double                            gx, gy, gz;
+    mrpt::math::TPoint3D g;
+    const auto &p0 = pairing.ln_other.pBase;
+    const auto &u0 = pairing.ln_other.director;
+    const auto &p1 = pairing.ln_this.pBase;
+    const auto &u1 = pairing.ln_this.director;
 
-    relativePose.composePoint(
-        pairing.ln_other.pBase.x, pairing.ln_other.pBase.y,
-        pairing.ln_other.pBase.z, gx, gy, gz);
-    ln_aux.pBase = mrpt::math::TPoint3D(gx, gy, gz);
+    relativePose.composePoint(p0,g);
+    ln_aux.pBase = mrpt::math::TPoint3D(g);
+
     // Homogeneous matrix calculation
     mrpt::math::CMatrixDouble44 aux;
     relativePose.getHomogeneousMatrix(aux);
     const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
     // Projection of the director vector for the new pose
     const Eigen::Matrix<double, 1, 4> U =
-        (Eigen::Matrix<double, 1, 4>() << pairing.ln_other.director[0],
-         pairing.ln_other.director[1], pairing.ln_other.director[2], 1)
+        (Eigen::Matrix<double, 1, 4>() << u0[0], u0[1], u0[2], 1)
             .finished();
     const Eigen::Matrix<double, 1, 4> U_T = U * T;
-    ln_aux.director                       = {U_T(1, 1), U_T(1, 2), U_T(1, 3)};
+    ln_aux.director = {U_T(1, 1), U_T(1, 2), U_T(1, 3)};
     // Angle formed between the lines
     double alfa = getAngle(pairing.ln_this, ln_aux);
     // p_r0 = (p-r_{0,r}). Ec.20
     const Eigen::Matrix<double, 1, 3> p_r2 =
         (Eigen::Matrix<double, 1, 3>()
-             << ln_aux.pBase.x - pairing.ln_this.pBase.x,
-         ln_aux.pBase.y - pairing.ln_this.pBase.y,
-         ln_aux.pBase.z - pairing.ln_this.pBase.z)
-            .finished();
+             << ln_aux.pBase.x -p1.x,
+                ln_aux.pBase.y - p1.y,
+                ln_aux.pBase.z - p1.z)
+        .finished();
     const Eigen::Matrix<double, 1, 3> rv =
-        (Eigen::Matrix<double, 1, 3>() << pairing.ln_this.director[0],
-         pairing.ln_this.director[1], pairing.ln_this.director[2])
+        (Eigen::Matrix<double, 1, 3>() << u1[0], u1[1], u1[2])
             .finished();
 
     // Relationship between lines
@@ -192,37 +193,35 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
         Eigen::Matrix<double, 1, 3> J1 =
             2 * p_r2 - (2 / mod_rv) * (p_r2 * rv.transpose()) * rv;
         // J2: Ec.23
+        // clang-format off
         const Eigen::Matrix<double, 3, 12> J2 =
-            (Eigen::Matrix<double, 3, 12>() << pairing.ln_other.pBase.x, 0, 0,
-             pairing.ln_other.pBase.y, 0, 0, pairing.ln_other.pBase.z, 0, 0, 1,
-             0, 0, 0, pairing.ln_other.pBase.x, 0, 0, pairing.ln_other.pBase.y,
-             0, 0, pairing.ln_other.pBase.z, 0, 0, 1, 0, 0, 0,
-             pairing.ln_other.pBase.x, 0, 0, pairing.ln_other.pBase.y, 0, 0,
-             pairing.ln_other.pBase.z, 0, 0, 1)
-                .finished();
+            (Eigen::Matrix<double, 3, 12>() <<
+             p0.x,    0,    0, p0.y,    0,    0, p0.z,    0,    0, 1, 0, 0,
+                0, p0.x,    0,    0, p0.y,    0,    0, p0.z,    0, 0, 1, 0,
+                0,    0, p0.x,    0,    0, p0.y,    0,    0, p0.z, 0, 0, 1
+             ).finished();
+        // clang-format on
         // Build Jacobian
-        J_aux = J1 * J2;
+        J_aux.block<1, 12>(0, 0) = J1 * J2;
     }
     else
     {  // Rest
         // Error:
         // Cross product (r_u x r_2,v)
-        const double rw_x = U_T[1] * pairing.ln_this.director[2] -
-                            U_T[2] * pairing.ln_this.director[1];
-        const double rw_y =
-            -(U_T[0] * pairing.ln_this.director[2] -
-              U_T[2] * pairing.ln_this.director[0]);
-        const double rw_z = U_T[0] * pairing.ln_this.director[1] -
-                            U_T[1] * pairing.ln_this.director[0];
+        const double rw_x = U_T[1] * u1[2] - U_T[2] * u1[1];
+        const double rw_y = -(U_T[0] * u1[2] - U_T[2] * u1[0]);
+        const double rw_z = U_T[0] * u1[1] - U_T[1] * u1[0];
+
         const Eigen::Matrix<double, 1, 3> r_w =
             (Eigen::Matrix<double, 1, 3>() << rw_x, rw_y, rw_z).finished();
         double aux_rw = r_w * r_w.transpose();
+
         // Error 1. Ec.26
         error[0] = p_r2.dot(r_w) / sqrt(aux_rw);
         // Error 2. Ec.27
-        error[1] = U_T[0] - pairing.ln_this.director[0];
-        error[2] = U_T[1] - pairing.ln_this.director[1];
-        error[3] = U_T[2] - pairing.ln_this.director[2];
+        error[1] = U_T[0] - u1[0];
+        error[2] = U_T[1] - u1[1];
+        error[3] = U_T[2] - u1[2];
 
         // Ec.35
         const Eigen::Matrix<double, 1, 3> I =
@@ -246,22 +245,19 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
         J1.block<3, 6>(0, 1) = J1_3;
 
         // J2: Ec.39-41
+        // clang-format off
         const Eigen::Matrix<double, 6, 12> J2 =
-            (Eigen::Matrix<double, 6, 12>() << pairing.ln_other.pBase.x, 0, 0,
-             pairing.ln_other.pBase.y, 0, 0, pairing.ln_other.pBase.z, 0, 0, 1,
-             0, 0, 0, pairing.ln_other.pBase.x, 0, 0, pairing.ln_other.pBase.y,
-             0, 0, pairing.ln_other.pBase.z, 0, 0, 1, 0, 0, 0,
-             pairing.ln_other.pBase.x, 0, 0, pairing.ln_other.pBase.y, 0, 0,
-             pairing.ln_other.pBase.z, 0, 0, 1, pairing.ln_other.director[0], 0,
-             0, pairing.ln_other.director[1], 0, 0,
-             pairing.ln_other.director[2], 0, 0, 1, 0, 0, 0,
-             pairing.ln_other.director[0], 0, 0, pairing.ln_other.director[1],
-             0, 0, pairing.ln_other.director[2], 0, 0, 1, 0, 0, 0,
-             pairing.ln_other.director[0], 0, 0, pairing.ln_other.director[1],
-             0, 0, pairing.ln_other.director[2], 0, 0, 1)
-                .finished();
+            (Eigen::Matrix<double, 6, 12>() <<
+             p0.x,     0,     0,  p0.y,     0,     0,  p0.z,     0,     0, 1, 0, 0,
+                0,  p0.x,     0,     0,  p0.y,     0,     0,  p0.z,     0, 0, 1, 0,
+                0,     0,  p0.x,     0,     0,  p0.y,     0,     0,  p0.z, 0, 0, 1,
+            u0[0],     0,     0, u0[1],     0,     0, u0[2],     0,     0, 1, 0, 0,
+                0, u0[0],     0,     0, u0[1],     0,     0, u0[2],     0, 0, 1, 0,
+                0,     0, u0[0],     0,     0, u0[1],     0,     0, u0[2], 0, 0, 1
+            ).finished();
+        // clang-format on
         // Build Jacobian
-        J_aux = J1 * J2;
+        J_aux.block<4, 12>(0, 0) = J1 * J2;
     }
     return error;
 }
