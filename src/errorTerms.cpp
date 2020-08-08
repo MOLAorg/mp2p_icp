@@ -13,31 +13,34 @@
 #include <mp2p_icp/errorTerms.h>
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
 #include <mrpt/math/CVectorFixed.h>
-#include <mrpt/poses/Lie/SE.h>
-#include <mrpt/poses/CPose3D.h>
 #include <mrpt/math/TPoint3D.h>
+#include <mrpt/poses/CPose3D.h>
+#include <mrpt/poses/Lie/SE.h>
+
 #include <Eigen/Dense>
 #include <iostream>
 
 using namespace mp2p_icp;
 using namespace mrpt::math;
 
-mrpt::math::CVectorFixedDouble<3> error_point2point(
-    mrpt::tfest::TMatchingPair& pairing, const mrpt::poses::CPose3D &relativePose,
+mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2point(
+    const mrpt::tfest::TMatchingPair&                           pairing,
+    const mrpt::poses::CPose3D&                                 relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     mrpt::math::CVectorFixedDouble<3> error;
-    const mrpt::math::TPoint3D l = TPoint3D(pairing.other_x,pairing.other_y,pairing.other_z);
+    const mrpt::math::TPoint3D        l =
+        TPoint3D(pairing.other_x, pairing.other_y, pairing.other_z);
     mrpt::math::TPoint3D g;
 
-    relativePose.composePoint(l,g);
+    relativePose.composePoint(l, g);
 
     error[0] = g.x - pairing.this_x;
     error[1] = g.y - pairing.this_y;
     error[2] = g.z - pairing.this_z;
 
-    // It's possible change the error to scalar with the function g.DistanceTo(l)
-    // Eval Jacobian:
+    // It's possible change the error to scalar with the function
+    // g.DistanceTo(l) Eval Jacobian:
     if (jacobian)
     {
         mrpt::math::CMatrixFixed<double, 3, 12>& J_aux = jacobian.value().get();
@@ -53,14 +56,16 @@ mrpt::math::CVectorFixedDouble<3> error_point2point(
     return error;
 }
 
-mrpt::math::CVectorFixedDouble<1> error_point2line(
-    const mp2p_icp::point_line_pair_t& pairing, const mrpt::poses::CPose3D &relativePose,
+mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
+    const mp2p_icp::point_line_pair_t&                          pairing,
+    const mrpt::poses::CPose3D&                                 relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 1, 12>> jacobian)
 {
     mrpt::math::CVectorFixedDouble<1> error;
-    const mrpt::math::TPoint3D l = TPoint3D(pairing.pt_other.x,pairing.pt_other.y,pairing.pt_other.z);
+    const mrpt::math::TPoint3D        l =
+        TPoint3D(pairing.pt_other.x, pairing.pt_other.y, pairing.pt_other.z);
     mrpt::math::TPoint3D g;
-    relativePose.composePoint(l,g);
+    relativePose.composePoint(l, g);
 
     error[1] = pow(pairing.ln_this.distance(g), 2);
 
@@ -94,19 +99,21 @@ mrpt::math::CVectorFixedDouble<1> error_point2line(
          ).finished();
     // clang-format on
     mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
-    J_aux = J1 * J2;
+    J_aux                                          = J1 * J2;
 
     return error;
 }
 
-mrpt::math::CVectorFixedDouble<1> error_point2plane(
-    const mp2p_icp::point_plane_pair_t& pairing, const mrpt::poses::CPose3D &relativePose,
+mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
+    const mp2p_icp::point_plane_pair_t&                         pairing,
+    const mrpt::poses::CPose3D&                                 relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 1, 12>> jacobian)
 {
     mrpt::math::CVectorFixedDouble<1> error;
-    const mrpt::math::TPoint3D l = TPoint3D(pairing.pt_other.x,pairing.pt_other.y,pairing.pt_other.z);
+    const mrpt::math::TPoint3D        l =
+        TPoint3D(pairing.pt_other.x, pairing.pt_other.y, pairing.pt_other.z);
     mrpt::math::TPoint3D g;
-    relativePose.composePoint(l,g);
+    relativePose.composePoint(l, g);
 
     error[0] = pairing.pl_this.plane.evaluatePoint(g);
 
@@ -126,13 +133,14 @@ mrpt::math::CVectorFixedDouble<1> error_point2plane(
             .finished();
 
     mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
-    J_aux = Jpl * J1;
+    J_aux                                          = Jpl * J1;
 
     return error;
 }
 
-mrpt::math::CVectorFixedDouble<4> error_line2line(
-    const mp2p_icp::matched_line_t& pairing, const mrpt::poses::CPose3D &relativePose,
+mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
+    const mp2p_icp::matched_line_t&            pairing,
+    const mrpt::poses::CPose3D&                relativePose,
     Eigen::Matrix<double, Eigen::Dynamic, 12>& jacobian, bool jump = false)
 {
     mrpt::math::CVectorFixedDouble<4> error;
@@ -259,9 +267,10 @@ mrpt::math::CVectorFixedDouble<4> error_line2line(
     return error;
 }
 
-mrpt::math::CVectorFixedDouble<3> error_plane2plane(
-    const mp2p_icp::matched_plane_t& pairing, const mrpt::poses::CPose3D &relativePose,
-    Eigen::Matrix<double, 3, 12> jacobian)
+mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_plane2plane(
+    const mp2p_icp::matched_plane_t& pairing,
+    const mrpt::poses::CPose3D&      relativePose,
+    Eigen::Matrix<double, 3, 12>     jacobian)
 {
     mrpt::math::CVectorFixedDouble<3> error;
 
