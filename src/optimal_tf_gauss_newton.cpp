@@ -268,41 +268,12 @@ void mp2p_icp::optimal_tf_gauss_newton(
         {
             // Error term:
             const auto& p = in.paired_pl2pl[idx_pl];
-            /*
-            error_plane2plane(p, result, error(...), Eigen::Matrix<double, 3,
-            12> J1)
-             * */
-            //-----------------------------------------------------------------------------
-
-            const auto nl = p.p_other.plane.getNormalVector();
-            const auto ng = p.p_this.plane.getNormalVector();
-
-            const auto p_oplus_nl = result.optimalPose.rotateVector(nl);
-
-            for (int i = 0; i < 3; i++)
-                err(i + idx_pl * 3 + base_idx) = ng[i] - p_oplus_nl[i];
-
-            // Eval Jacobian:
-
-            // df_oplus(A,p)/d_A. Section 7.3.2 tech. report:
-            // "A tutorial on SE(3) transformation parameterizations and
-            // on-manifold optimization"
-            // Modified, to discard the last I_3 block, since this particular
-            // cost function is insensible to translations.
-
-            // clang-format off
-            const Eigen::Matrix<double, 3, 12> J1 =
-                (Eigen::Matrix<double, 3, 12>() <<
-                   nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0,  0,  0,
-                    0, nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0,  0,
-                    0,  0, nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0
-                 ).finished();
-            // clang-format on
-
-            //-----------------------------------------------------------------------------
+            mrpt::math::CMatrixFixed<double, 3, 12> J1;
+            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_plane2plane(p, result.optimalPose,J1);
+            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
 
             J.block<3, 6>(3 * idx_pl + base_idx, 0) =
-                w.pl2pl * J1 * dDexpe_de.asEigen();
+                w.pl2pl * J1.asEigen() * dDexpe_de.asEigen();
         }
 
         // 3) Solve Gauss-Newton:

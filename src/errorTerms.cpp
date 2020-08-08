@@ -62,8 +62,9 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 1, 12>> jacobian)
 {
     mrpt::math::CVectorFixedDouble<1> error;
-    const mrpt::math::TPoint3D        l =
-        TPoint3D(pairing.pt_other.x, pairing.pt_other.y, pairing.pt_other.z);
+    const auto &p = pairing.pt_other;
+    const auto &ln_aux = pairing.ln_this;
+    const mrpt::math::TPoint3D l = TPoint3D(p.x, p.y, p.z);
     mrpt::math::TPoint3D g;
     relativePose.composePoint(l, g);
 
@@ -76,13 +77,13 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
     // Doc auxiliar: Section 4.1.2.
     // p_r0 = (p-r_{0,r}). Ec.9
     const Eigen::Matrix<double, 1, 3> p_r0 =
-        (Eigen::Matrix<double, 1, 3>() << g.x - pairing.ln_this.pBase.x,
-         g.y - pairing.ln_this.pBase.y, g.z - pairing.ln_this.pBase.z)
+        (Eigen::Matrix<double, 1, 3>() << g.x - ln_aux.pBase.x,
+         g.y - ln_aux.pBase.y, g.z - ln_aux.pBase.z)
             .finished();
     // Module of vector director of line
     const Eigen::Matrix<double, 1, 3> ru =
-        (Eigen::Matrix<double, 1, 3>() << pairing.ln_this.director[0],
-         pairing.ln_this.director[1], pairing.ln_this.director[2])
+        (Eigen::Matrix<double, 1, 3>() << ln_aux.director[0],
+         ln_aux.director[1], ln_aux.director[2])
             .finished();
     double mod_ru = ru * ru.transpose();
 
@@ -110,12 +111,13 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 1, 12>> jacobian)
 {
     mrpt::math::CVectorFixedDouble<1> error;
-    const mrpt::math::TPoint3D        l =
-        TPoint3D(pairing.pt_other.x, pairing.pt_other.y, pairing.pt_other.z);
+    const auto &p = pairing.pt_other;
+    const auto &pl_aux = pairing.pl_this.plane;
+    const mrpt::math::TPoint3D l = TPoint3D(p.x, p.y, p.z);
     mrpt::math::TPoint3D g;
     relativePose.composePoint(l, g);
 
-    error[0] = pairing.pl_this.plane.evaluatePoint(g);
+    error[0] = pl_aux.evaluatePoint(g);
 
     // Eval Jacobian:
     // clang-format off
@@ -128,9 +130,8 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
     // clang-format on
 
     const Eigen::Matrix<double, 1, 3> Jpl =
-        (Eigen::Matrix<double, 1, 3>() << pairing.pl_this.plane.coefs[0],
-         pairing.pl_this.plane.coefs[1], pairing.pl_this.plane.coefs[2])
-            .finished();
+        (Eigen::Matrix<double, 1, 3>() << pl_aux.coefs[0],
+         pl_aux.coefs[1], pl_aux.coefs[2]).finished();
 
     mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
     J_aux                                          = Jpl * J1;
@@ -141,11 +142,13 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
 mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     const mp2p_icp::matched_line_t&            pairing,
     const mrpt::poses::CPose3D&                relativePose,
-    Eigen::Matrix<double, Eigen::Dynamic, 12>& jacobian, bool jump = false)
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 4, 12>> jacobian)
 {
     mrpt::math::CVectorFixedDouble<4> error;
+     mrpt::math::CMatrixFixed<double, 4, 12>& J_aux = jacobian.value().get();
     mrpt::math::TLine3D               ln_aux;
     double                            gx, gy, gz;
+
     relativePose.composePoint(
         pairing.ln_other.pBase.x, pairing.ln_other.pBase.y,
         pairing.ln_other.pBase.z, gx, gy, gz);
@@ -198,7 +201,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
              pairing.ln_other.pBase.z, 0, 0, 1)
                 .finished();
         // Build Jacobian
-        jacobian = J1 * J2;
+        J_aux = J1 * J2;
     }
     else
     {  // Rest
@@ -220,10 +223,6 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
         error[1] = U_T[0] - pairing.ln_this.director[0];
         error[2] = U_T[1] - pairing.ln_this.director[1];
         error[3] = U_T[2] - pairing.ln_this.director[2];
-        // Desplazamiento del indicador del vector de error para los
-        // casos en el que hay 4 errores en lugar de 1. Espero que esto
-        // se pueda hacer.
-        jump = true;
 
         // Ec.35
         const Eigen::Matrix<double, 1, 3> I =
@@ -262,7 +261,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
              0, 0, pairing.ln_other.director[2], 0, 0, 1)
                 .finished();
         // Build Jacobian
-        jacobian = J1 * J2;
+        J_aux = J1 * J2;
     }
     return error;
 }
@@ -270,7 +269,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
 mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_plane2plane(
     const mp2p_icp::matched_plane_t& pairing,
     const mrpt::poses::CPose3D&      relativePose,
-    Eigen::Matrix<double, 3, 12>     jacobian)
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     mrpt::math::CVectorFixedDouble<3> error;
 
@@ -290,12 +289,12 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_plane2plane(
     // cost function is insensible to translations.
 
     // clang-format off
-    jacobian =
-        (Eigen::Matrix<double, 3, 12>() <<
-           nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0,  0,  0,
-            0, nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0,  0,
-            0,  0, nl.x,  0,  0,  nl.y,  0,  0, nl.z,  0,  0,  0
-         ).finished();
+    mrpt::math::CMatrixFixed<double, 3, 12>& J_aux = jacobian.value().get();
+    J_aux = (Eigen::Matrix<double, 3, 12>() <<
+             nl.x,    0,    0, nl.y,    0,    0, nl.z,    0,    0,  1,  0,  0,
+                0, nl.x,    0,    0, nl.y,    0,    0, nl.z,    0,  0,  1,  0,
+                0,    0, nl.x,    0,    0, nl.y,    0,    0, nl.z,  0,  0,  1
+            ).finished();
     // clang-format on
 
     return error;
