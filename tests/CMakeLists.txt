@@ -27,7 +27,7 @@ endfunction()
 
 mp2p_add_test(mp2p_optimal_tf_algos)
 mp2p_add_test(mp2p_icp_algos test-common.cpp)
-mp2p_add_test(mp2p_jacobians)
+mp2p_add_test(mp2p_error_terms_jacobians)
 mp2p_add_test(mp2p_quality_reproject_ranges test-common.cpp)
 mp2p_add_test(mp2p_matcher_pt2pt)
 mp2p_add_test(mp2p_matcher_pt2pl)
