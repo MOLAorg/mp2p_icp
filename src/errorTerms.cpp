@@ -71,7 +71,7 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
     mrpt::math::TPoint3D g;
     relativePose.composePoint(l, g);
 
-    error[1] = pow(pairing.ln_this.distance(g), 2);
+    error[0] = pow(pairing.ln_this.distance(g), 2);
     if (jacobian)
     {
         // Eval Jacobian:

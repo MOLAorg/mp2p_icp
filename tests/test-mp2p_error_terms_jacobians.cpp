@@ -123,9 +123,9 @@ void test_Jacob_error_point2line()
     pair.ln_this.pBase.x = normalf(20);
     pair.ln_this.pBase.y = normalf(20);
     pair.ln_this.pBase.z = normalf(20);
-    pair.ln_this.director[0] = normalf(20);
-    pair.ln_this.director[1] = normalf(20);
-    pair.ln_this.director[2] = normalf(20);
+    pair.ln_this.director[0] = normald(20);
+    pair.ln_this.director[1] = normald(20);
+    pair.ln_this.director[2] = normald(20);
 
     pair.pt_other.x = normalf(10);
     pair.pt_other.y = normalf(10);
