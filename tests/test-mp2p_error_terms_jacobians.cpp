@@ -59,10 +59,14 @@ void test_Jacob_error_point2point()
     pair.other_z = normalf(10);
 
     // Implemented values:
-    MRPT_TODO("*Change all Jacobians to <N,6>*");
-    mrpt::math::CMatrixFixed<double, 3, 12> jacob;
+    mrpt::math::CMatrixFixed<double, 3, 12> J1;
     // const mrpt::math::CVectorFixed<double, 3> error = // (Ignored here)
-    mp2p_icp::error_point2point(pair, p, jacob);
+    mp2p_icp::error_point2point(pair, p, J1);
+
+    // (12x6 Jacobian)
+    const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);
+
+    const mrpt::math::CMatrixFixed<double, 3, 6> jacob(J1 * dDexpe_de);
 
     // Numerical Jacobian:
     CMatrixDouble numJacob;
@@ -90,12 +94,13 @@ void test_Jacob_error_point2point()
             x_incrs, p, numJacob);
     }
 
-    if ((numJacob.asEigen() - jacob.asEigen()).array().abs().maxCoeff() > 1e-3)
+    if ((numJacob.asEigen() - jacob.asEigen()).array().abs().maxCoeff() > 1e-5)
     {
         std::cerr << "numJacob:\n"
                   << numJacob.asEigen() << "\njacob:\n"
                   << jacob.asEigen() << "\nDiff:\n"
-                  << (numJacob - jacob) << "\n";
+                  << (numJacob - jacob) << "\nJ1:\n"
+                  << J1.asEigen() << "\n";
         THROW_EXCEPTION("Jacobian mismatch, see above.");
     }
 }
