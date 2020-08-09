@@ -178,6 +178,79 @@ void test_Jacob_error_point2line()
     }
 }
 
+// ===========================================================================
+//  Test: error_point2plane
+// ===========================================================================
+
+void test_Jacob_error_point2plane()
+{
+    const CPose3D p = CPose3D(
+        // x y z
+        normald(10), normald(10), normald(10),
+        // Yaw pitch roll
+        rnd.drawUniform(-M_PI, M_PI), rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5),
+        rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5));
+
+    mp2p_icp::point_plane_pair_t pair;
+
+    pair.pl_this.centroid.x = normalf(20);
+    pair.pl_this.centroid.y = normalf(20);
+    pair.pl_this.centroid.z = normalf(20);
+    pair.pl_this.plane.coefs[0] = normald(20);
+    pair.pl_this.plane.coefs[1] = normald(20);
+    pair.pl_this.plane.coefs[2] = normald(20);
+
+    pair.pt_other.x = normalf(10);
+    pair.pt_other.y = normalf(10);
+    pair.pt_other.z = normalf(10);
+
+    // Implemented values:
+    mrpt::math::CMatrixFixed<double, 1, 12> J1;
+
+    mp2p_icp::error_point2plane(pair, p, J1);
+
+    // (12x6 Jacobian)
+    const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);
+
+    const mrpt::math::CMatrixFixed<double, 1, 6> jacob(J1 * dDexpe_de);
+
+    // Numerical Jacobian:
+    CMatrixDouble numJacob;
+    {
+        CVectorFixedDouble<6> x_mean;
+        x_mean.setZero();
+
+        CVectorFixedDouble<6> x_incrs;
+        x_incrs.fill(1e-6);
+        mrpt::math::estimateJacobian(
+            x_mean,
+            /* Error function to evaluate */
+            std::function<void(
+                const CVectorFixedDouble<6>& eps, const CPose3D& D,
+                CVectorFixedDouble<1>& err)>(
+                /* Lambda, capturing the pair data */
+                [pair](
+                    const CVectorFixedDouble<6>& eps, const CPose3D& D,
+                    CVectorFixedDouble<1>& err) {
+                    // SE(3) pose increment on the manifold:
+                    const CPose3D incr         = Lie::SE<3>::exp(eps);
+                    const CPose3D D_expEpsilon = D + incr;
+                    err = mp2p_icp::error_point2plane(pair, D_expEpsilon);
+                }),
+            x_incrs, p, numJacob);
+    }
+
+    if ((numJacob.asEigen() - jacob.asEigen()).array().abs().maxCoeff() > 1e-5)
+    {
+        std::cerr << "numJacob:\n"
+                  << numJacob.asEigen() << "\njacob:\n"
+                  << jacob.asEigen() << "\nDiff:\n"
+                  << (numJacob - jacob) << "\nJ1:\n"
+                  << J1.asEigen() << "\n";
+        THROW_EXCEPTION("Jacobian mismatch, see above.");
+    }
+}
+
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
@@ -186,6 +259,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_Jacob_error_point2point();
         test_Jacob_error_point2line();
+        test_Jacob_error_point2plane();
     }
     catch (std::exception& e)
     {
