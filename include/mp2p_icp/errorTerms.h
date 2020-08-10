@@ -46,11 +46,13 @@ mrpt::math::CVectorFixedDouble<1> error_point2plane(
 mrpt::math::CVectorFixedDouble<4> error_line2line(
     const mp2p_icp::matched_line_t&            pairing,
     const mrpt::poses::CPose3D&                relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 4, 12>> jacobian);
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 4, 12>> jacobian =
+        std::nullopt);
 
 mrpt::math::CVectorFixedDouble<3> error_plane2plane(
     const mp2p_icp::matched_plane_t& pairing,
     const mrpt::poses::CPose3D&      relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian);
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian =
+        std::nullopt);
 
 }  // namespace mp2p_icp

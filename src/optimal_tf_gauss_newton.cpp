@@ -105,7 +105,6 @@ void mp2p_icp::optimal_tf_gauss_newton(
 
         // Line-to-Line
         // Minimum angle to approach zero
-        const double tolerance = 0.01;
         for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++)
         {
             const auto& p = in.paired_ln2ln[idx_ln];

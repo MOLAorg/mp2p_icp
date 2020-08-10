@@ -71,7 +71,8 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
     mrpt::math::TPoint3D g;
     relativePose.composePoint(l, g);
 
-    error[0] = pow(pairing.ln_this.distance(g), 2);
+    error[0] = mrpt::square(pairing.ln_this.distance(g));
+
     if (jacobian)
     {
         // Eval Jacobian:
@@ -193,7 +194,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     if (abs(alfa) < tolerance)
     {  // Parallel
         // Error: Ec.20
-        error[0] = pow(pairing.ln_this.distance(ln_aux.pBase), 2);
+        error[0] = mrpt::square(pairing.ln_this.distance(ln_aux.pBase));
         if (jacobian)
         {
             // Module of vector director of line
@@ -289,7 +290,9 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_plane2plane(
 
     const auto p_oplus_nl = relativePose.rotateVector(nl);
 
-    for (int i = 0; i < 3; i++) error[i] = ng[i] - p_oplus_nl[i];
+    for (int i = 0; i < 3; i++) error[i] = p_oplus_nl[i] - ng[i];
+
+    std::cout << "\nError:\n"<<error.asEigen();
 
     if (jacobian)
     {
