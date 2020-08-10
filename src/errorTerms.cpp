@@ -153,9 +153,9 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
 {
     MRPT_START
     mrpt::math::CVectorFixedDouble<4> error;
-     mrpt::math::CMatrixFixed<double, 4, 12>& J_aux = jacobian.value().get();
     mrpt::math::TLine3D               ln_aux;
     mrpt::math::TPoint3D g;
+
     const auto &p0 = pairing.ln_other.pBase;
     const auto &u0 = pairing.ln_other.director;
     const auto &p1 = pairing.ln_this.pBase;
@@ -214,7 +214,8 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
                  ).finished();
             // clang-format on
             // Build Jacobian
-            J_aux.block<1, 12>(0, 0) = J1 * J2;
+            mrpt::math::CMatrixFixed<double, 4, 12>& J_auxp = jacobian.value().get();
+            J_auxp.block<1, 12>(0, 0) = J1 * J2;
         }
     }
     else
@@ -279,6 +280,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
                 ).finished();
             // clang-format on
             // Build Jacobian
+            mrpt::math::CMatrixFixed<double, 4, 12>& J_aux = jacobian.value().get();
             J_aux.block<4, 12>(0, 0) = J1 * J2;
         }
     }

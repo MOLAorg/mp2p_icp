@@ -289,9 +289,6 @@ void test_Jacob_error_line2line()
 
     const mrpt::math::CMatrixFixed<double, 4, 6> jacob(J1 * dDexpe_de);
 
-    std::cout<<"\nJ1:\n"<<J1.asEigen();
-    std::cout<<"\njacob:\n"<<jacob.asEigen()<<"\n";
-
     // Numerical Jacobian:
     CMatrixDouble numJacob;
     {
