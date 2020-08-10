@@ -173,7 +173,8 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
         (Eigen::Matrix<double, 1, 4>() << u0[0], u0[1], u0[2], 1)
             .finished();
     const Eigen::Matrix<double, 1, 4> U_T = U * T;
-    ln_aux.director = {U_T(1, 1), U_T(1, 2), U_T(1, 3)};
+    ln_aux.director = {U_T[0], U_T[1], U_T[2]};
+
     // Angle formed between the lines
     double alfa = getAngle(pairing.ln_this, ln_aux);
     // p_r0 = (p-r_{0,r}). Ec.20
@@ -183,9 +184,11 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
                 ln_aux.pBase.y - p1.y,
                 ln_aux.pBase.z - p1.z)
         .finished();
+
     const Eigen::Matrix<double, 1, 3> rv =
         (Eigen::Matrix<double, 1, 3>() << u1[0], u1[1], u1[2])
             .finished();
+
 
     // Relationship between lines
     const double tolerance = 0.01;
@@ -225,7 +228,6 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
         const Eigen::Matrix<double, 1, 3> r_w =
             (Eigen::Matrix<double, 1, 3>() << rw_x, rw_y, rw_z).finished();
         double aux_rw = r_w * r_w.transpose();
-
         // Error 1. Ec.26
         error[0] = p_r2.dot(r_w) / sqrt(aux_rw);
         // Error 2. Ec.27
@@ -238,22 +240,31 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
             const Eigen::Matrix<double, 1, 3> I =
                 (Eigen::Matrix<double, 1, 3>() << 1, 1, 1).finished();
             Eigen::Matrix<double, 1, 3> C = I.cross(rv);
+
             // J1.1: Ec.32
             Eigen::Matrix<double, 1, 3> J1_1 = r_w / sqrt(aux_rw);
+
             // J1.2: Ec.36
             Eigen::Matrix<double, 1, 3> J1_2 =
                 (p_r2.cross(rv) * sqrt(aux_rw) - p_r2 * r_w.transpose() * C) /
                 aux_rw;
+
             // J1.3: Ec.37-38
+            // clang-format off
             Eigen::Matrix<double, 3, 6> J1_3 =
-                (Eigen::Matrix<double, 3, 6>() << 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1,
-                 0, 0, 0, 0, 0, 0, 1)
-                    .finished();
+                (Eigen::Matrix<double, 3, 6>() <<
+                 0, 0, 0, 1, 0, 0,
+                 0, 0, 0, 0, 1, 0,
+                 0, 0, 0, 0, 0, 1
+                 ).finished();
+            // clang-format on
+
             // J1: Ec.29
             Eigen::Matrix<double, 4, 6> J1;
             J1.block<1, 3>(0, 0) = J1_1;
-            J1.block<1, 3>(3, 5) = J1_2;
-            J1.block<3, 6>(0, 1) = J1_3;
+            J1.block<1, 3>(0, 3) = J1_2;
+            J1.block<3, 6>(1, 0) = J1_3;
+
 
             // J2: Ec.39-41
             // clang-format off

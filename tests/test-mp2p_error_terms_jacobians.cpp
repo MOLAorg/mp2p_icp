@@ -289,6 +289,9 @@ void test_Jacob_error_line2line()
 
     const mrpt::math::CMatrixFixed<double, 4, 6> jacob(J1 * dDexpe_de);
 
+    std::cout<<"\nJ1:\n"<<J1.asEigen();
+    std::cout<<"\njacob:\n"<<jacob.asEigen()<<"\n";
+
     // Numerical Jacobian:
     CMatrixDouble numJacob;
     {
@@ -411,7 +414,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_Jacob_error_point2point();
         test_Jacob_error_point2line();
         test_Jacob_error_point2plane();
-    //    test_Jacob_error_line2line();
+        test_Jacob_error_line2line();
         test_Jacob_error_plane2plane();
     }
     catch (std::exception& e)
