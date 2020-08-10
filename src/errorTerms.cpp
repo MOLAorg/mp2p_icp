@@ -16,9 +16,7 @@
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/Lie/SE.h>
-
 #include <Eigen/Dense>
-#include <iostream>
 
 using namespace mp2p_icp;
 using namespace mrpt::math;
@@ -292,8 +290,6 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_plane2plane(
 
     for (int i = 0; i < 3; i++) error[i] = p_oplus_nl[i] - ng[i];
 
-    std::cout << "\nError:\n"<<error.asEigen();
-
     if (jacobian)
     {
         // Eval Jacobian:
@@ -307,9 +303,9 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_plane2plane(
         // clang-format off
         mrpt::math::CMatrixFixed<double, 3, 12>& J_aux = jacobian.value().get();
         J_aux = (Eigen::Matrix<double, 3, 12>() <<
-                 nl.x,    0,    0, nl.y,    0,    0, nl.z,    0,    0,  1,  0,  0,
-                    0, nl.x,    0,    0, nl.y,    0,    0, nl.z,    0,  0,  1,  0,
-                    0,    0, nl.x,    0,    0, nl.y,    0,    0, nl.z,  0,  0,  1
+                 nl.x,    0,    0, nl.y,    0,    0, nl.z,    0,    0,  0,  0,  0,
+                    0, nl.x,    0,    0, nl.y,    0,    0, nl.z,    0,  0,  0,  0,
+                    0,    0, nl.x,    0,    0, nl.y,    0,    0, nl.z,  0,  0,  0
                 ).finished();
         // clang-format on
     }

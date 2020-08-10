@@ -17,7 +17,6 @@
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/random.h>
-
 #include <Eigen/Dense>
 #include <iostream>  // cerr
 
@@ -365,7 +364,6 @@ void test_Jacob_error_plane2plane()
     const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);
 
     const mrpt::math::CMatrixFixed<double, 3, 6> jacob(J1 * dDexpe_de);
-    std::cout << "\nnumJacobian:\n";
 
     // Numerical Jacobian:
     CMatrixDouble numJacob;
