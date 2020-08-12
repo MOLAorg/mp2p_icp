@@ -30,12 +30,16 @@ class Matcher_Points_Base : public Matcher
    public:
     Matcher_Points_Base() = default;
 
-    /** Weights for each layer. If empty, the output Pairings::point_weights
+    /** Weights for each potential Local->Global point layer matching.
+     * If empty, the output Pairings::point_weights
      * will left empty (=all points have equal weight).
      * \note Note: this field can be loaded from a configuration file via
      * initializeLayerWeights().
+     *
+     * \note Map is: w["globalLayer"]["localLayer"]=weight;
+     *
      */
-    std::map<std::string, double> weight_pt2pt_layers;
+    std::map<std::string, std::map<std::string, double>> weight_pt2pt_layers;
 
     uint64_t maxLocalPointsPerLayer_ = 0;
     uint64_t localPointsSampleSeed_  = 0;

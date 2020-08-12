@@ -10,6 +10,7 @@
  * @date   July 6, 2020
  */
 
+#include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/QualityEvaluator_PairedRatio.h>
 
 IMPLEMENTS_MRPT_OBJECT(
@@ -18,14 +19,20 @@ IMPLEMENTS_MRPT_OBJECT(
 using namespace mp2p_icp;
 
 void QualityEvaluator_PairedRatio::initialize(  //
-    [[maybe_unused]] const mrpt::containers::Parameters& params)
+    const mrpt::containers::Parameters& params)
 {
-    // None.
+    MCP_LOAD_REQ(params, thresholdDistance);
 }
+
 double QualityEvaluator_PairedRatio::evaluate(
     const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
-    [[maybe_unused]] const mrpt::poses::CPose3D& localPose,
-    const Pairings&                              finalPairings) const
+    const mrpt::poses::CPose3D&      localPose,
+    [[maybe_unused]] const Pairings& finalPairings) const
 {
-    return finalPairings.size() / (0.5 * (pcGlobal.size() + pcLocal.size()));
+    mp2p_icp::Pairings                         pairings;
+    mp2p_icp::Matcher_Points_DistanceThreshold matcher(thresholdDistance);
+
+    matcher.match(pcGlobal, pcLocal, localPose, {}, pairings);
+
+    return pairings.size() / (0.5 * (pcGlobal.size() + pcLocal.size()));
 }

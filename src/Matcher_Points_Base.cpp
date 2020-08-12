@@ -30,33 +30,62 @@ void Matcher_Points_Base::impl_match(
     // Analyze point cloud layers, one by one:
     for (const auto& glLayerKV : pcGlobal.point_layers)
     {
-        const auto& name = glLayerKV.first;
+        const auto& glLayerName = glLayerKV.first;
 
-        if (!weight_pt2pt_layers.empty() &&
-            weight_pt2pt_layers.count(name) == 0)
-            // If we have weights and this layer is not listed, Skip it:
-            continue;
+        // List of local layers to match against (and optional weights)
+        std::map<std::string, std::optional<double>> localLayers;
 
-        // Look for a matching layer in "local":
-        auto itLocal = pcLocal.point_layers.find(name);
-        if (itLocal == pcLocal.point_layers.end()) continue;
-
-        const mrpt::maps::CPointsMap::Ptr& glLayer = glLayerKV.second;
-        const mrpt::maps::CPointsMap::Ptr& lcLayer = itLocal->second;
-
-        ASSERT_(glLayer);
-        ASSERT_(lcLayer);
-
-        const size_t nBefore = out.paired_pt2pt.size();
-
-        implMatchOneLayer(*glLayer, *lcLayer, localPose, out);
-
-        const size_t nAfter = out.paired_pt2pt.size();
-
-        if (!weight_pt2pt_layers.empty() && nAfter != nBefore)
+        if (!weight_pt2pt_layers.empty())
         {
-            const double w = weight_pt2pt_layers.at(name);
-            out.point_weights.emplace_back(nAfter - nBefore, w);
+            const auto itGlob = weight_pt2pt_layers.find(glLayerName);
+            // If we have weights and this layer is not listed, Skip it:
+            if (itGlob == weight_pt2pt_layers.end()) continue;
+
+            for (const auto& kv : itGlob->second)
+                localLayers[kv.first] = kv.second;
+        }
+        else
+        {
+            // Default: match by identical layer names:
+            localLayers[glLayerName] = {};
+        }
+
+        for (const auto& localWeight : localLayers)
+        {
+            const auto& localLayerName = localWeight.first;
+            const bool  hasWeight      = localWeight.second.has_value();
+
+            // Look for a matching layer in "local":
+            auto itLocal = pcLocal.point_layers.find(localLayerName);
+            if (itLocal == pcLocal.point_layers.end())
+            {
+                // Silently ignore it:
+                if (!hasWeight)
+                    continue;
+                else
+                    THROW_EXCEPTION_FMT(
+                        "Local pointcloud layer '%s' not found matching global "
+                        "layer '%s'",
+                        localLayerName.c_str(), glLayerName.c_str());
+            }
+
+            const mrpt::maps::CPointsMap::Ptr& glLayer = glLayerKV.second;
+            const mrpt::maps::CPointsMap::Ptr& lcLayer = itLocal->second;
+
+            ASSERT_(glLayer);
+            ASSERT_(lcLayer);
+
+            const size_t nBefore = out.paired_pt2pt.size();
+
+            implMatchOneLayer(*glLayer, *lcLayer, localPose, out);
+
+            const size_t nAfter = out.paired_pt2pt.size();
+
+            if (hasWeight && nAfter != nBefore)
+            {
+                const double w = localWeight.second.value();
+                out.point_weights.emplace_back(nAfter - nBefore, w);
+            }
         }
     }
     MRPT_END
@@ -73,13 +102,25 @@ void Matcher_Points_Base::initialize(const mrpt::containers::Parameters& params)
         weight_pt2pt_layers.clear();
         ASSERT_(p.isMap());
 
+        MRPT_TODO("Fix parse after MRPT refactor!");
+        weight_pt2pt_layers[pointcloud_t::PT_LAYER_RAW]["decimated"] = 1.0;
+
+#if 0
         for (const auto& kv : p.asMap())
         {
-            const std::string ly = kv.first;
-            const double      w  = std::any_cast<double>(kv.second);
+            const std::string                             ly = kv.first;
+            const mrpt::containers::Parameters::scalar_t& localAndWs =
+                kv.second;
+
+            const auto& pp = std::get<mrpt::containers::Parameters>(localAndWs);
+
+            ASSERT_(localAndWs.isMap());
+
+            const double w = std::any_cast<double>(kv.second);
 
             weight_pt2pt_layers[ly] = w;
         }
+#endif
     }
 
     maxLocalPointsPerLayer_ =
