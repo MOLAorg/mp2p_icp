@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp/covariance.h>
+#include <mp2p_icp/errorTerms.h>
 #include <mrpt/math/num_jacobian.h>
 
 #include <Eigen/Dense>
@@ -18,12 +19,11 @@
 using namespace mp2p_icp;
 
 mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
-    const Pairings&             finalPairings,
-    const mrpt::poses::CPose3D& finalAlignSolution,
+    const Pairings& in, const mrpt::poses::CPose3D& finalAlignSolution,
     const CovarianceParameters& param)
 {
     // If we don't have pairings, we can't provide an estimation:
-    if (finalPairings.paired_pt2pt.empty())
+    if (in.empty())
     {
         mrpt::math::CMatrixDouble66 cov;
         cov.setDiagonal(1e6);
@@ -48,35 +48,76 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
 
     LambdaParams lmbParams;
 
-    MRPT_TODO("Refactor this to reuse code in the optimal_tf files?");
-
     auto errorLambda = [&](const mrpt::math::CMatrixDouble61& x,
                            const LambdaParams&,
-                           mrpt::math::CVectorDouble& errors) {
-        mrpt::poses::CPose3D p;
-        p.setFromValues(x[0], x[1], x[2], x[3], x[4], x[5]);
+                           mrpt::math::CVectorDouble& err) {
+        mrpt::poses::CPose3D pose;
+        pose.setFromValues(x[0], x[1], x[2], x[3], x[4], x[5]);
 
-        const size_t nErrors = 3 * finalPairings.paired_pt2pt.size();
-        ASSERT_(nErrors > 0);
-        errors.resize(nErrors);
+        const auto nPt2Pt = in.paired_pt2pt.size();
+        const auto nPt2Ln = in.paired_pt2ln.size();
+        const auto nPt2Pl = in.paired_pt2pl.size();
+        const auto nPl2Pl = in.paired_pl2pl.size();
+        const auto nLn2Ln = in.paired_ln2ln.size();
 
-        size_t errorIdx = 0;
+        const auto nErrorTerms =
+            (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln + nLn2Ln * 4;
+        ASSERT_(nErrorTerms > 0);
+        err.resize(nErrorTerms);
 
-        for (const auto& pt2pt : finalPairings.paired_pt2pt)
+        // Point-to-point:
+        for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
         {
-            double gx, gy, gz;
-            p.composePoint(
-                pt2pt.other_x, pt2pt.other_y, pt2pt.other_z, gx, gy, gz);
-
-            errors[errorIdx++] = pt2pt.this_x - gx;
-            errors[errorIdx++] = pt2pt.this_y - gy;
-            errors[errorIdx++] = pt2pt.this_z - gz;
+            // Error:
+            const auto&                       p = in.paired_pt2pt[idx_pt];
+            mrpt::math::CVectorFixedDouble<3> ret =
+                mp2p_icp::error_point2point(p, pose);
+            err.block<3, 1>(idx_pt * 3, 0) = ret.asEigen();
         }
+        auto base_idx = nPt2Pt * 3;
 
-        MRPT_TODO("Take into account lines and planes for the covariance too");
+        // Point-to-line
+        for (size_t idx_pt = 0; idx_pt < nPt2Ln; idx_pt++)
+        {
+            // Error
+            const auto&                       p = in.paired_pt2ln[idx_pt];
+            mrpt::math::CVectorFixedDouble<1> ret =
+                mp2p_icp::error_point2line(p, pose);
+            err.block<1, 1>(base_idx + idx_pt, 0) = ret.asEigen();
+        }
+        base_idx += nPt2Ln;
 
-        // make sure all error values have been filled up:
-        ASSERT_EQUAL_(errorIdx, nErrors);
+        // Line-to-Line
+        // Minimum angle to approach zero
+        for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++)
+        {
+            const auto&                       p = in.paired_ln2ln[idx_ln];
+            mrpt::math::CVectorFixedDouble<4> ret =
+                mp2p_icp::error_line2line(p, pose);
+            err.block<4, 1>(base_idx + idx_ln * 4, 0) = ret.asEigen();
+        }
+        base_idx += nLn2Ln;
+
+        // Point-to-plane:
+        for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
+        {
+            // Error:
+            const auto&                       p = in.paired_pt2pl[idx_pl];
+            mrpt::math::CVectorFixedDouble<1> ret =
+                mp2p_icp::error_point2plane(p, pose);
+            err.block<1, 1>(idx_pl + base_idx, 0) = ret.asEigen();
+        }
+        base_idx += nPt2Pl * 1;
+
+        // Plane-to-plane (only direction of normal vectors):
+        for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
+        {
+            // Error term:
+            const auto&                       p = in.paired_pl2pl[idx_pl];
+            mrpt::math::CVectorFixedDouble<3> ret =
+                mp2p_icp::error_plane2plane(p, pose);
+            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
+        }
     };
 
     // Do NOT use "Eigen::MatrixXd", it may have different alignment

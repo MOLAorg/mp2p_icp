@@ -22,6 +22,7 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPose3DQuat.h>
+#include <mrpt/poses/Lie/SE.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/random.h>
 #include <mrpt/system/CTimeLogger.h>
@@ -183,6 +184,7 @@ static void test_icp(
         const auto pos_error = gt_pose - icp_results.optimal_tf.mean;
         const auto err_log_n = SO<3>::log(pos_error.getRotationMatrix()).norm();
         const auto err_xyz   = pos_error.norm();
+        const auto err_se3   = SE<3>::log(pos_error).norm();
 
         stats(rep, 2 + 0) = err_log_n;
         stats(rep, 2 + 1) = err_xyz;
@@ -193,6 +195,7 @@ static void test_icp(
             std::cout << "GT pose       : " << gt_pose.asString() << "\n";
             std::cout << "ICP pose      : "
                       << icp_results.optimal_tf.mean.asString() << "\n";
+            std::cout << "Error SE(3)   : " << err_se3 << "\n";
             std::cout << "ICP pose stddev: "
                       << icp_results.optimal_tf.cov.asEigen()
                              .diagonal()
@@ -230,7 +233,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             std::vector<std::tuple<const char*, const char*, const char*>>;
         // clang-format off
         lst_algos_t lst_algos = {
-#if 0
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_DistanceThreshold"},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_InlierRatio"},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Point2Plane"},
@@ -243,7 +245,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_DistanceThreshold"},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_InlierRatio"},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Point2Plane"},
-#endif             
              };
         // clang-format on
 
