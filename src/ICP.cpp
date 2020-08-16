@@ -173,9 +173,9 @@ void ICP::initialize_solvers(
     ASSERT_(params.isSequence());
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = std::any_cast<mrpt::containers::yaml>(entry);
+        const auto& e = entry.asMap();
 
-        const auto sClass = e["class"].as<std::string>();
+        const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
         ASSERT_(o);
 
@@ -185,7 +185,7 @@ void ICP::initialize_solvers(
                    "`%s` class seems not to be derived from Solver",
                    sClass.c_str()));
 
-        m->initialize(e["params"]);
+        m->initialize(e.at("params"));
         lst.push_back(m);
     }
 }
@@ -203,9 +203,9 @@ void ICP::initialize_matchers(
     ASSERT_(params.isSequence());
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = std::any_cast<mrpt::containers::yaml>(entry);
+        const auto& e = entry.asMap();
 
-        const auto sClass = e["class"].as<std::string>();
+        const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
         ASSERT_(o);
 
@@ -215,7 +215,7 @@ void ICP::initialize_matchers(
                    "`%s` class seems not to be derived from Matcher",
                    sClass.c_str()));
 
-        m->initialize(e["params"]);
+        m->initialize(e.at("params"));
         lst.push_back(m);
     }
 }
@@ -230,9 +230,9 @@ void ICP::initialize_quality_evaluators(
 
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = std::any_cast<mrpt::containers::yaml>(entry);
+        const auto& e = entry.asMap();
 
-        const auto sClass = e["class"].as<std::string>();
+        const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
         ASSERT_(o);
 
@@ -242,16 +242,16 @@ void ICP::initialize_quality_evaluators(
                    "`%s` class seems not to be derived from QualityEvaluator",
                    sClass.c_str()));
 
-        m->initialize(e["params"]);
+        m->initialize(e.at("params"));
 
         double weight = 1.0;
-        if (numEntries > 0) weight = e.getOrDefault<double>("weight", weight);
+        if (numEntries > 0 && e.count("weight") > 0)
+            weight = e.at("weight").as<double>();
         lst.emplace_back(m, weight);
     }
 }
 
-void ICP::initialize_quality_evaluators(
-    const mrpt::containers::yaml& params)
+void ICP::initialize_quality_evaluators(const mrpt::containers::yaml& params)
 {
     initialize_quality_evaluators(params, quality_evaluators_);
 }
