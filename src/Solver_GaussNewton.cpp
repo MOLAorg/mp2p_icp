@@ -18,7 +18,7 @@ IMPLEMENTS_MRPT_OBJECT(Solver_GaussNewton, mp2p_icp::Solver, mp2p_icp)
 
 using namespace mp2p_icp;
 
-void Solver_GaussNewton::initialize(const mrpt::containers::Parameters& params)
+void Solver_GaussNewton::initialize(const mrpt::containers::yaml& params)
 {
     Solver::initialize(params);
 

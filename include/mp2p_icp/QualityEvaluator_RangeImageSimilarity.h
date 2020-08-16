@@ -50,7 +50,7 @@ class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
      * #debug_show_all_in_window: false
      * \endcode
      */
-    void initialize(const mrpt::containers::Parameters& params) override;
+    void initialize(const mrpt::containers::yaml& params) override;
 
     /** See base class.
      * This implementation does NOT use `finalPairings` at all, it can be empty.

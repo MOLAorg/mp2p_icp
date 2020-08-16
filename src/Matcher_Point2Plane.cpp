@@ -24,7 +24,7 @@ Matcher_Point2Plane::Matcher_Point2Plane()
     mrpt::system::COutputLogger::setLoggerName("Matcher_Point2Plane");
 }
 
-void Matcher_Point2Plane::initialize(const mrpt::containers::Parameters& params)
+void Matcher_Point2Plane::initialize(const mrpt::containers::yaml& params)
 {
     Matcher_Points_Base::initialize(params);
 

@@ -24,7 +24,7 @@ Matcher_Points_InlierRatio::Matcher_Points_InlierRatio()
 }
 
 void Matcher_Points_InlierRatio::initialize(
-    const mrpt::containers::Parameters& params)
+    const mrpt::containers::yaml& params)
 {
     Matcher_Points_Base::initialize(params);
 

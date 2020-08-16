@@ -63,7 +63,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         {
             mp2p_icp::Matcher_Point2Plane m;
 
-            mrpt::containers::Parameters p;
+            mrpt::containers::yaml p;
             p["distanceThreshold"]   = 0.1;
             p["knn"]                 = 5;
             p["planeEigenThreshold"] = 0.1;

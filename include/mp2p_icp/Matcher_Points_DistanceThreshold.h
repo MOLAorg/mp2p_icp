@@ -37,7 +37,7 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
      *
      * Plus: the parameters of Matcher_Points_Base::initialize()
      */
-    void initialize(const mrpt::containers::Parameters& params) override;
+    void initialize(const mrpt::containers::yaml& params) override;
 
    private:
     double threshold = 0.50;

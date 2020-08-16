@@ -150,7 +150,7 @@ static void test_icp(
                     icp->matchers().at(0));
                 m)
             {
-                mrpt::containers::Parameters ps;
+                mrpt::containers::yaml ps;
                 ps["threshold"] = 0.15 * max_dim;
                 m->initialize(ps);
             }
@@ -160,7 +160,7 @@ static void test_icp(
                         icp->matchers().at(0));
                 m)
             {
-                mrpt::containers::Parameters ps;
+                mrpt::containers::yaml ps;
                 ps["distanceThreshold"]   = 0.15 * max_dim;
                 ps["planeEigenThreshold"] = 10.0;
                 ps["knn"]                 = 5;

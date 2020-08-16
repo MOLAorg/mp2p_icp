@@ -57,7 +57,7 @@ class Matcher_Points_Base : public Matcher
      *
      * - `pointLayerWeights`: Optional map of layer names to relative weights.
      */
-    void initialize(const mrpt::containers::Parameters& params) override;
+    void initialize(const mrpt::containers::yaml& params) override;
 
     /** the output of transform_local_to_global() */
     struct TransformedLocalPointCloud

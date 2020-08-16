@@ -12,7 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/pointcloud.h>
-#include <mrpt/containers/Parameters.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/serialization/CSerializable.h>
 
 namespace mp2p_icp

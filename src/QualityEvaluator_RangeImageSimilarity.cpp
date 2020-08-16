@@ -21,7 +21,7 @@ IMPLEMENTS_MRPT_OBJECT(
 using namespace mp2p_icp;
 
 void QualityEvaluator_RangeImageSimilarity::initialize(
-    const mrpt::containers::Parameters& params)
+    const mrpt::containers::yaml& params)
 {
     rangeCamera.ncols = params["ncols"].as<uint32_t>();
     rangeCamera.nrows = params["nrows"].as<uint32_t>();

@@ -11,7 +11,7 @@
  */
 #pragma once
 
-#include <mrpt/containers/Parameters.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/serialization/CSerializable.h>
 
@@ -55,8 +55,8 @@ struct WeightParameters : public mrpt::serialization::CSerializable
         double ln2ln = 1.0;  //!< Weight of line-to-line pairs
         double pl2pl = 1.0;  //!< Weight of plane-to-plane pairs
 
-        void load_from(const mrpt::containers::Parameters& p);
-        void save_to(mrpt::containers::Parameters& p) const;
+        void load_from(const mrpt::containers::yaml& p);
+        void save_to(mrpt::containers::yaml& p) const;
         void serializeTo(mrpt::serialization::CArchive& out) const;
         void serializeFrom(mrpt::serialization::CArchive& in);
     };
@@ -76,8 +76,8 @@ struct WeightParameters : public mrpt::serialization::CSerializable
 
     /** @} */
 
-    void load_from(const mrpt::containers::Parameters& p);
-    void save_to(mrpt::containers::Parameters& p) const;
+    void load_from(const mrpt::containers::yaml& p);
+    void save_to(mrpt::containers::yaml& p) const;
 };
 
 /** @} */

@@ -50,7 +50,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         {
             mp2p_icp::Matcher_Points_DistanceThreshold m;
-            mrpt::containers::Parameters               p;
+            mrpt::containers::yaml               p;
             p["threshold"] = 1.0;
 
             m.initialize(p);

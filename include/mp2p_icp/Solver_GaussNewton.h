@@ -27,7 +27,7 @@ class Solver_GaussNewton : public Solver
    public:
     uint32_t maxIterations = 5;
 
-    void initialize(const mrpt::containers::Parameters& params) override;
+    void initialize(const mrpt::containers::yaml& params) override;
 
    protected:
     // See base class docs

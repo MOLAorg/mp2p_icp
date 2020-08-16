@@ -12,7 +12,7 @@
  */
 
 #include <mp2p_icp/QualityEvaluator_RangeImageSimilarity.h>
-#include <mrpt/containers/Parameters.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <cstdlib>
@@ -31,7 +31,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const auto                        fileFullPath = datasetDir + inFile;
         mrpt::maps::CSimplePointsMap::Ptr pts = load_xyz_file(fileFullPath);
 
-        mrpt::containers::Parameters params;
+        mrpt::containers::yaml params;
 
         params["ncols"] = 100;
         params["nrows"] = 60;

@@ -17,7 +17,7 @@ IMPLEMENTS_VIRTUAL_MRPT_OBJECT(Matcher, mrpt::rtti::CObject, mp2p_icp);
 
 using namespace mp2p_icp;
 
-void Matcher::initialize(const mrpt::containers::Parameters& params)
+void Matcher::initialize(const mrpt::containers::yaml& params)
 {
     if (params.has("runFromIteration"))
         runFromIteration = params["runFromIteration"].as<uint32_t>();

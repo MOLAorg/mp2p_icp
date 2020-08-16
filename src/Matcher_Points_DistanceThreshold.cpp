@@ -25,7 +25,7 @@ Matcher_Points_DistanceThreshold::Matcher_Points_DistanceThreshold()
 }
 
 void Matcher_Points_DistanceThreshold::initialize(
-    const mrpt::containers::Parameters& params)
+    const mrpt::containers::yaml& params)
 {
     Matcher_Points_Base::initialize(params);
 

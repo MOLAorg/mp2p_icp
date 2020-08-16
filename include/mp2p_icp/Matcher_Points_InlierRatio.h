@@ -34,7 +34,7 @@ class Matcher_Points_InlierRatio : public Matcher_Points_Base
     /*** Parameters:
      * `inliersRatio`: Inliers distance ratio threshold [0-1]
      */
-    void initialize(const mrpt::containers::Parameters& params) override;
+    void initialize(const mrpt::containers::yaml& params) override;
 
    private:
     /** Inliers distance ratio threshold [0-1] */

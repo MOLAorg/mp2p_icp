@@ -160,20 +160,20 @@ bool ICP::run_solvers(
     return false;
 }
 
-void ICP::initialize_solvers(const mrpt::containers::Parameters& params)
+void ICP::initialize_solvers(const mrpt::containers::yaml& params)
 {
     initialize_solvers(params, solvers_);
 }
 
 void ICP::initialize_solvers(
-    const mrpt::containers::Parameters& params, ICP::solver_list_t& lst)
+    const mrpt::containers::yaml& params, ICP::solver_list_t& lst)
 {
     lst.clear();
 
     ASSERT_(params.isSequence());
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = std::any_cast<mrpt::containers::Parameters>(entry);
+        const auto& e = std::any_cast<mrpt::containers::yaml>(entry);
 
         const auto sClass = e["class"].as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
@@ -190,20 +190,20 @@ void ICP::initialize_solvers(
     }
 }
 
-void ICP::initialize_matchers(const mrpt::containers::Parameters& params)
+void ICP::initialize_matchers(const mrpt::containers::yaml& params)
 {
     initialize_matchers(params, matchers_);
 }
 
 void ICP::initialize_matchers(
-    const mrpt::containers::Parameters& params, ICP::matcher_list_t& lst)
+    const mrpt::containers::yaml& params, ICP::matcher_list_t& lst)
 {
     lst.clear();
 
     ASSERT_(params.isSequence());
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = std::any_cast<mrpt::containers::Parameters>(entry);
+        const auto& e = std::any_cast<mrpt::containers::yaml>(entry);
 
         const auto sClass = e["class"].as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
@@ -221,7 +221,7 @@ void ICP::initialize_matchers(
 }
 
 void ICP::initialize_quality_evaluators(
-    const mrpt::containers::Parameters& params, ICP::quality_eval_list_t& lst)
+    const mrpt::containers::yaml& params, ICP::quality_eval_list_t& lst)
 {
     lst.clear();
 
@@ -230,7 +230,7 @@ void ICP::initialize_quality_evaluators(
 
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = std::any_cast<mrpt::containers::Parameters>(entry);
+        const auto& e = std::any_cast<mrpt::containers::yaml>(entry);
 
         const auto sClass = e["class"].as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
@@ -251,7 +251,7 @@ void ICP::initialize_quality_evaluators(
 }
 
 void ICP::initialize_quality_evaluators(
-    const mrpt::containers::Parameters& params)
+    const mrpt::containers::yaml& params)
 {
     initialize_quality_evaluators(params, quality_evaluators_);
 }

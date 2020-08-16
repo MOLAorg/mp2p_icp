@@ -91,7 +91,7 @@ void Matcher_Points_Base::impl_match(
     MRPT_END
 }
 
-void Matcher_Points_Base::initialize(const mrpt::containers::Parameters& params)
+void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
 {
     Matcher::initialize(params);
 
@@ -102,25 +102,19 @@ void Matcher_Points_Base::initialize(const mrpt::containers::Parameters& params)
         weight_pt2pt_layers.clear();
         ASSERT_(p.isMap());
 
-        MRPT_TODO("Fix parse after MRPT refactor!");
-        weight_pt2pt_layers[pointcloud_t::PT_LAYER_RAW]["decimated"] = 1.0;
-
-#if 0
         for (const auto& kv : p.asMap())
         {
-            const std::string                             ly = kv.first;
-            const mrpt::containers::Parameters::scalar_t& localAndWs =
-                kv.second;
+            const std::string&                    ly         = kv.first;
+            const mrpt::containers::yaml::node_t& localAndWs = kv.second;
 
-            const auto& pp = std::get<mrpt::containers::Parameters>(localAndWs);
+            for (const auto& kkvv : localAndWs.asMap())
+            {
+                const std::string& ly2 = kkvv.first;
+                const double       w   = kkvv.second.as<double>();
 
-            ASSERT_(localAndWs.isMap());
-
-            const double w = std::any_cast<double>(kv.second);
-
-            weight_pt2pt_layers[ly] = w;
+                weight_pt2pt_layers[ly][ly2] = w;
+            }
         }
-#endif
     }
 
     maxLocalPointsPerLayer_ =

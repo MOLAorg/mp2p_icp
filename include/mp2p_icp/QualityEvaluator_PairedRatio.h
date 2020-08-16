@@ -32,7 +32,7 @@ class QualityEvaluator_PairedRatio : public QualityEvaluator
      * thresholdDistance: 0.10
      * \endcode
      */
-    void initialize(const mrpt::containers::Parameters& params) override;
+    void initialize(const mrpt::containers::yaml& params) override;
 
     double evaluate(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,

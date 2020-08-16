@@ -19,7 +19,7 @@
 #include <mp2p_icp/Results.h>
 #include <mp2p_icp/Solver.h>
 #include <mp2p_icp/pointcloud.h>
-#include <mrpt/containers/Parameters.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/math/TPose3D.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
@@ -75,10 +75,10 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      *
      * Alternatively, the objects can be directly created via solvers().
      */
-    void initialize_solvers(const mrpt::containers::Parameters& params);
+    void initialize_solvers(const mrpt::containers::yaml& params);
 
     static void initialize_solvers(
-        const mrpt::containers::Parameters& params, ICP::solver_list_t& lst);
+        const mrpt::containers::yaml& params, ICP::solver_list_t& lst);
 
     const solver_list_t& solvers() const { return solvers_; }
     solver_list_t&       solvers() { return solvers_; }
@@ -109,10 +109,10 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      *
      * Alternatively, the objects can be directly created via matchers().
      */
-    void initialize_matchers(const mrpt::containers::Parameters& params);
+    void initialize_matchers(const mrpt::containers::yaml& params);
 
     static void initialize_matchers(
-        const mrpt::containers::Parameters& params, ICP::matcher_list_t& lst);
+        const mrpt::containers::yaml& params, ICP::matcher_list_t& lst);
 
     const matcher_list_t& matchers() const { return matchers_; }
     matcher_list_t&       matchers() { return matchers_; }
@@ -156,10 +156,10 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      * Alternatively, the objects can be directly created via matchers().
      */
     void initialize_quality_evaluators(
-        const mrpt::containers::Parameters& params);
+        const mrpt::containers::yaml& params);
 
     static void initialize_quality_evaluators(
-        const mrpt::containers::Parameters& params, quality_eval_list_t& lst);
+        const mrpt::containers::yaml& params, quality_eval_list_t& lst);
 
     const quality_eval_list_t& quality_evaluators() const
     {

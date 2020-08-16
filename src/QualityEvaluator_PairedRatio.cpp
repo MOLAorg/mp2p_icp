@@ -19,7 +19,7 @@ IMPLEMENTS_MRPT_OBJECT(
 using namespace mp2p_icp;
 
 void QualityEvaluator_PairedRatio::initialize(  //
-    const mrpt::containers::Parameters& params)
+    const mrpt::containers::yaml& params)
 {
     MCP_LOAD_REQ(params, thresholdDistance);
 }

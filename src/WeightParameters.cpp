@@ -46,7 +46,7 @@ void WeightParameters::serializeFrom(
     };
 }
 
-void WeightParameters::load_from(const mrpt::containers::Parameters& p)
+void WeightParameters::load_from(const mrpt::containers::yaml& p)
 {
     MCP_LOAD_REQ(p, use_scale_outlier_detector);
     MCP_LOAD_OPT(p, scale_outlier_threshold);
@@ -57,7 +57,7 @@ void WeightParameters::load_from(const mrpt::containers::Parameters& p)
 
     if (p.has("pair_weights")) pair_weights.load_from(p["pair_weights"]);
 }
-void WeightParameters::save_to(mrpt::containers::Parameters& p) const
+void WeightParameters::save_to(mrpt::containers::yaml& p) const
 {
     MCP_SAVE(p, use_scale_outlier_detector);
     MCP_SAVE(p, scale_outlier_threshold);
@@ -66,13 +66,12 @@ void WeightParameters::save_to(mrpt::containers::Parameters& p) const
     MCP_SAVE_DEG(p, robust_kernel_param);
     MCP_SAVE(p, robust_kernel_scale);
 
-    auto a = mrpt::containers::Parameters::Map();
+    mrpt::containers::yaml a = mrpt::containers::yaml::Map();
     pair_weights.save_to(a);
     p["pair_weights"] = a;
 }
 
-void WeightParameters::PairWeights::load_from(
-    const mrpt::containers::Parameters& p)
+void WeightParameters::PairWeights::load_from(const mrpt::containers::yaml& p)
 {
     MCP_LOAD_REQ(p, pt2pt);
     MCP_LOAD_REQ(p, pt2pl);
@@ -82,8 +81,7 @@ void WeightParameters::PairWeights::load_from(
     MCP_LOAD_REQ(p, pl2pl);
 }
 
-void WeightParameters::PairWeights::save_to(
-    mrpt::containers::Parameters& p) const
+void WeightParameters::PairWeights::save_to(mrpt::containers::yaml& p) const
 {
     MCP_SAVE(p, pt2pt);
     MCP_SAVE(p, pt2pl);

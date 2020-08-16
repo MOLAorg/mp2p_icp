@@ -24,7 +24,7 @@ QualityEvaluator_Voxels::QualityEvaluator_Voxels()
 }
 
 void QualityEvaluator_Voxels::initialize(  //
-    const mrpt::containers::Parameters& params)
+    const mrpt::containers::yaml& params)
 {
     MCP_LOAD_OPT(params, resolution);
     MCP_LOAD_OPT(params, maxOccupancyUpdateCertainty);

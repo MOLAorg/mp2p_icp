@@ -13,7 +13,7 @@
 
 #include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/pointcloud.h>
-#include <mrpt/containers/Parameters.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
 
@@ -30,7 +30,7 @@ class QualityEvaluator : public mrpt::system::COutputLogger,
 
    public:
     /** Check each derived class to see required and optional parameters. */
-    virtual void initialize(const mrpt::containers::Parameters& params) = 0;
+    virtual void initialize(const mrpt::containers::yaml& params) = 0;
 
     /** Finds correspondences between the two point clouds. */
     virtual double evaluate(
