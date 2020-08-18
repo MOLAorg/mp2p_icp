@@ -163,11 +163,18 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
 
     relativePose.composePoint(p0,g);
     ln_aux.pBase = mrpt::math::TPoint3D(g);
-
+/*
+    std::cout << "\nRecta A:\n"
+              <<  pairing.ln_this << "\nRecta B:\n"
+              << pairing.ln_other << "\n";
+*/
     // Homogeneous matrix calculation
     mrpt::math::CMatrixDouble44 aux;
     relativePose.getHomogeneousMatrix(aux);
     const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
+/*    std::cout << "\nT:\n"
+              <<  T << "\n";
+*/
     // Projection of the director vector for the new pose
     const Eigen::Matrix<double, 1, 4> U =
         (Eigen::Matrix<double, 1, 4>() << u0[0], u0[1], u0[2], 1)
@@ -237,18 +244,43 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
         error[3] = U_T[2] - u1[2];
         if (jacobian)
         {
-            // Ec.35
-            const Eigen::Matrix<double, 1, 3> I =
-                (Eigen::Matrix<double, 1, 3>() << 1, 1, 1).finished();
-            Eigen::Matrix<double, 1, 3> C = I.cross(rv);
-
             // J1.1: Ec.32
-            Eigen::Matrix<double, 1, 3> J1_1 = r_w / sqrt(aux_rw);
+            Eigen::Matrix<double, 1, 3> J1_1aux0 = r_w / sqrt(aux_rw);
+            // clang-format off
+            Eigen::Matrix<double, 3, 3> J1_1aux1 =
+                (Eigen::Matrix<double, 3, 3>() <<
+                 g.x,   0,   0,
+                   0, g.y,   0,
+                   0,   0, g.z
+                 ).finished();
+            // clang-format on
+            Eigen::Matrix<double, 1, 3> J1_1 = J1_1aux0 * J1_1aux1;
 
-            // J1.2: Ec.36
+            // J1.2:
+            // Ec.34
+            const double B_aux = U_T[0]*(u1[1]-u1[0])+U_T[1]*(u1[2]-u1[0])+U_T[2]*(u1[0]-u1[1]);
+            // B
+            const double B = (1/(2*sqrt(aux_rw)))*B_aux;
+            // A
+            // clang-format off
+            Eigen::Matrix<double, 1, 3> A =
+                (Eigen::Matrix<double, 1, 3>() <<
+                    U_T[0] * 0     + U_T[1] * u1[2] - U_T[2] * u1[1],
+                   -U_T[0] * u1[2] + U_T[1] * 0     + U_T[2] * u1[0],
+                    U_T[0] * u1[1] - U_T[1] * u1[0] + U_T[2] * 0
+                ).finished();
+            // clang-format on
+            // Ec.36
+            // clang-format off
+            Eigen::Matrix<double, 3, 3> J1_2aux =
+                (Eigen::Matrix<double, 3, 3>() <<
+                 p_r2[0],      0,      0,
+                   0,    p_r2[1],      0,
+                   0,          0, p_r2[2]
+                 ).finished();
+            // clang-format on
             Eigen::Matrix<double, 1, 3> J1_2 =
-                (p_r2.cross(rv) * sqrt(aux_rw) - p_r2 * r_w.transpose() * C) /
-                aux_rw;
+                (1 / sqrt(aux_rw))*(A*sqrt(aux_rw)-r_w*B)*J1_2aux;
 
             // J1.3: Ec.37-38
             // clang-format off
@@ -284,6 +316,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
             J_aux.block<4, 12>(0, 0) = J1 * J2;
         }
     }
+//    std::cout<<"\nError:\n"<<error;
     return error;
     MRPT_END
 }

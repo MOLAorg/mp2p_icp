@@ -402,6 +402,49 @@ void test_Jacob_error_plane2plane()
     }
 }
 
+// ===========================================================================
+//  Test: error_line2line
+// ===========================================================================
+
+void test_error_line2line()
+{
+    const CPose3D p = CPose3D(
+        // x y z
+        0, 0, 0,
+        // Yaw pitch roll
+        0, 0, 0);
+
+    mp2p_icp::matched_line_t pair;
+
+    pair.ln_this.pBase.x = 0;
+    pair.ln_this.pBase.y = 1;
+    pair.ln_this.pBase.z = -4;
+    pair.ln_this.director[0] =  0.4364;
+    pair.ln_this.director[1] =  0.8729;
+    pair.ln_this.director[2] = -0.2182;
+
+    pair.ln_other.pBase.x = 0;
+    pair.ln_other.pBase.y = 0;
+    pair.ln_other.pBase.z = 0;
+    pair.ln_other.director[0] = 0.2357;
+    pair.ln_other.director[1] = 0.2357;
+    pair.ln_other.director[2] = 0.9428;
+
+    mrpt::math::CVectorFixedDouble<4> error = mp2p_icp::error_line2line(pair, p);
+
+    mrpt::math::CVectorFixedDouble<4> ref_error;
+    ref_error[0] = 0.0517;
+    ref_error[1] = 0.2007;
+    ref_error[2] = 0.6372;
+    ref_error[3] = -1.1610;
+
+    std::cout << "\nResultado: \n"
+              << error <<  "\nRecta A:\n"
+              <<  pair.ln_this << "\nRecta B:\n"
+              << pair.ln_other << "\n";
+
+}
+
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
@@ -413,6 +456,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_Jacob_error_point2plane();
         test_Jacob_error_line2line();
         test_Jacob_error_plane2plane();
+        test_error_line2line();
     }
     catch (std::exception& e)
     {
