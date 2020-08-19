@@ -191,7 +191,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     // p_r0 = (p-r_{0,r}). Ec.20
     const Eigen::Matrix<double, 1, 3> p_r2 =
         (Eigen::Matrix<double, 1, 3>()
-             << ln_aux.pBase.x -p1.x,
+             << ln_aux.pBase.x - p1.x,
                 ln_aux.pBase.y - p1.y,
                 ln_aux.pBase.z - p1.z)
         .finished();
@@ -262,6 +262,16 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
             const double Bx = (-u1[2]*r_w[1]+u1[1]*r_w[2])/B;
             const double By = ( u1[2]*r_w[0]+u1[0]*r_w[2])/B;
             const double Bz = (-u1[1]*r_w[0]+u1[0]*r_w[1])/B;
+
+            std::cout << "\nA: "
+                      <<  A << "\nAx: "
+                       << Ax <<"\nAy: "
+                       << Ay <<"\nAz: "
+                       << Az <<"\nB: "
+                       << B <<"\nBx: "
+                       << Bx <<"\nBy: "
+                       << By <<"\nBz: "
+                       << Bz << "\n";
 
             // Ec.36
             // clang-format off

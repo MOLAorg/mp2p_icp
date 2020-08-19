@@ -423,9 +423,9 @@ void test_error_line2line()
     pair.ln_this.director[1] =  0.8729;
     pair.ln_this.director[2] = -0.2182;
 
-    pair.ln_other.pBase.x = 0;
-    pair.ln_other.pBase.y = 0;
-    pair.ln_other.pBase.z = 0;
+    pair.ln_other.pBase.x = 2;
+    pair.ln_other.pBase.y = 1;
+    pair.ln_other.pBase.z = -0.5;
     pair.ln_other.director[0] = 0.2357;
     pair.ln_other.director[1] = 0.2357;
     pair.ln_other.director[2] = 0.9428;
@@ -480,7 +480,8 @@ void test_error_line2line()
                   << numJacob.asEigen() << "\njacob:\n"
                   << jacob.asEigen() << "\nDiff:\n"
                   << (numJacob - jacob) << "\nJ1:\n"
-                  << J1.asEigen() << "\n";
+                  << J1.asEigen() << "\ndDexp_de:\n"
+                  << dDexpe_de.asEigen() << "\n";
 
 }
 
