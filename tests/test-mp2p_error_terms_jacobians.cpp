@@ -430,7 +430,10 @@ void test_error_line2line()
     pair.ln_other.director[1] = 0.2357;
     pair.ln_other.director[2] = 0.9428;
 
-    mrpt::math::CVectorFixedDouble<4> error = mp2p_icp::error_line2line(pair, p);
+    // Implemented values:
+    mrpt::math::CMatrixFixed<double, 4, 12> J1;
+
+    mrpt::math::CVectorFixedDouble<4> error = mp2p_icp::error_line2line(pair, p, J1);
 
     mrpt::math::CVectorFixedDouble<4> ref_error;
     ref_error[0] = 0.0517;
@@ -443,6 +446,42 @@ void test_error_line2line()
               <<  pair.ln_this << "\nRecta B:\n"
               << pair.ln_other << "\n";
 
+    // (12x6 Jacobian)
+    const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);
+
+    const mrpt::math::CMatrixFixed<double, 4, 6> jacob(J1 * dDexpe_de);
+
+    // Numerical Jacobian:
+    CMatrixDouble numJacob;
+    {
+        CVectorFixedDouble<6> x_mean;
+        x_mean.setZero();
+
+        CVectorFixedDouble<6> x_incrs;
+        x_incrs.fill(1e-6);
+        mrpt::math::estimateJacobian(
+            x_mean,
+            /* Error function to evaluate */
+            std::function<void(
+                const CVectorFixedDouble<6>& eps, const CPose3D& D,
+                CVectorFixedDouble<4>& err)>(
+                /* Lambda, capturing the pair data */
+                [pair](
+                    const CVectorFixedDouble<6>& eps, const CPose3D& D,
+                    CVectorFixedDouble<4>& err) {
+                    // SE(3) pose increment on the manifold:
+                    const CPose3D incr         = Lie::SE<3>::exp(eps);
+                    const CPose3D D_expEpsilon = D + incr;
+                    err = mp2p_icp::error_line2line(pair, D_expEpsilon);
+                }),
+            x_incrs, p, numJacob);
+    }
+        std::cout << "numJacob:\n"
+                  << numJacob.asEigen() << "\njacob:\n"
+                  << jacob.asEigen() << "\nDiff:\n"
+                  << (numJacob - jacob) << "\nJ1:\n"
+                  << J1.asEigen() << "\n";
+
 }
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -454,7 +493,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_Jacob_error_point2point();
         test_Jacob_error_point2line();
         test_Jacob_error_point2plane();
-        test_Jacob_error_line2line();
+        // test_Jacob_error_line2line();
         test_Jacob_error_plane2plane();
         test_error_line2line();
     }

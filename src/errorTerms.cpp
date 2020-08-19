@@ -169,8 +169,6 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     mrpt::math::CMatrixDouble44 aux;
     relativePose.getHomogeneousMatrix(aux);
     const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
-    std::cout << "\nT:\n"
-              <<  T << "\n";
 
     // Projection of the director vector for the new pose
     const Eigen::Matrix<double, 1, 4> U =
@@ -181,13 +179,14 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
 
     // Angle formed between the lines
     double alfa = getAngle(pairing.ln_this, ln_aux)*180/(2*3.14159265);
-
+/*
     std::cout << "\nLine 1:\n"
               <<  pairing.ln_this << "\nLine 2:\n"
                << pairing.ln_other << "\nLine 2':\n"
                << ln_aux << "\nAngle:\n"
-               << alfa << "\n";
-
+               << alfa << "\nT:\n"
+               <<  T << "\n";
+*/
 
     // p_r0 = (p-r_{0,r}). Ec.20
     const Eigen::Matrix<double, 1, 3> p_r2 =
@@ -290,7 +289,6 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
             J1.block<1, 3>(0, 3) = J1_2;
             J1.block<3, 6>(1, 0) = J1_3;
 
-
             // J2: Ec.39-41
             // clang-format off
             const Eigen::Matrix<double, 6, 12> J2 =
@@ -306,6 +304,10 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
             // Build Jacobian
             mrpt::math::CMatrixFixed<double, 4, 12>& J_aux = jacobian.value().get();
             J_aux.block<4, 12>(0, 0) = J1 * J2;
+
+            std::cout << "\nJ1:\n"
+                      <<  J1 << "\nJ2:\n"
+                       << J2 << "\n";
         }
     }
 //    std::cout<<"\nError:\n"<<error;
