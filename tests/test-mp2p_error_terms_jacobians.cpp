@@ -265,12 +265,12 @@ void test_Jacob_error_line2line()
 
     mp2p_icp::matched_line_t pair;
 
-    pair.ln_this.pBase.x = normalf(20);
-    pair.ln_this.pBase.y = normalf(20);
-    pair.ln_this.pBase.z = normalf(20);
-    pair.ln_this.director[0] = normald(20);
-    pair.ln_this.director[1] = normald(20);
-    pair.ln_this.director[2] = normald(20);
+    pair.ln_this.pBase.x = normalf(10);
+    pair.ln_this.pBase.y = normalf(10);
+    pair.ln_this.pBase.z = normalf(10);
+    pair.ln_this.director[0] = normald(10);
+    pair.ln_this.director[1] = normald(10);
+    pair.ln_this.director[2] = normald(10);
 
     pair.ln_other.pBase.x = normalf(10);
     pair.ln_other.pBase.y = normalf(10);
@@ -410,7 +410,7 @@ void test_error_line2line()
 {
     const CPose3D p = CPose3D(
         // x y z
-        0, 0, 0,
+        1, 0.5, 0.1,
         // Yaw pitch roll
         0, 0, 0);
 
