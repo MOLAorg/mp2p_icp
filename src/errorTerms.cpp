@@ -103,7 +103,8 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
              ).finished();
         // clang-format on
         mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
-        J_aux                                          = J1 * J2;
+
+        J_aux = J1 * J2;
     }
     return error;
     MRPT_END
@@ -163,18 +164,14 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
 
     relativePose.composePoint(p0,g);
     ln_aux.pBase = mrpt::math::TPoint3D(g);
-/*
-    std::cout << "\nRecta A:\n"
-              <<  pairing.ln_this << "\nRecta B:\n"
-              << pairing.ln_other << "\n";
-*/
+
     // Homogeneous matrix calculation
     mrpt::math::CMatrixDouble44 aux;
     relativePose.getHomogeneousMatrix(aux);
     const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
-/*    std::cout << "\nT:\n"
+    std::cout << "\nT:\n"
               <<  T << "\n";
-*/
+
     // Projection of the director vector for the new pose
     const Eigen::Matrix<double, 1, 4> U =
         (Eigen::Matrix<double, 1, 4>() << u0[0], u0[1], u0[2], 1)
@@ -183,7 +180,15 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     ln_aux.director = {U_T[0], U_T[1], U_T[2]};
 
     // Angle formed between the lines
-    double alfa = getAngle(pairing.ln_this, ln_aux);
+    double alfa = getAngle(pairing.ln_this, ln_aux)*180/(2*3.14159265);
+
+    std::cout << "\nLine 1:\n"
+              <<  pairing.ln_this << "\nLine 2:\n"
+               << pairing.ln_other << "\nLine 2':\n"
+               << ln_aux << "\nAngle:\n"
+               << alfa << "\n";
+
+
     // p_r0 = (p-r_{0,r}). Ec.20
     const Eigen::Matrix<double, 1, 3> p_r2 =
         (Eigen::Matrix<double, 1, 3>()
@@ -245,42 +250,29 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
         if (jacobian)
         {
             // J1.1: Ec.32
-            Eigen::Matrix<double, 1, 3> J1_1aux0 = r_w / sqrt(aux_rw);
-            // clang-format off
-            Eigen::Matrix<double, 3, 3> J1_1aux1 =
-                (Eigen::Matrix<double, 3, 3>() <<
-                 g.x,   0,   0,
-                   0, g.y,   0,
-                   0,   0, g.z
-                 ).finished();
-            // clang-format on
-            Eigen::Matrix<double, 1, 3> J1_1 = J1_1aux0 * J1_1aux1;
+            Eigen::Matrix<double, 1, 3> J1_1 = r_w / sqrt(aux_rw);
 
             // J1.2:
-            // Ec.34
-            const double B_aux = U_T[0]*(u1[1]-u1[0])+U_T[1]*(u1[2]-u1[0])+U_T[2]*(u1[0]-u1[1]);
+            //A
+            const double A  = p_r2[0] * r_w[0] + p_r2[1] * r_w[1] + p_r2[2] * r_w[2];
+            const double Ax = - u1[2] * p_r2[1] + u1[1] * p_r2[2];
+            const double Ay =   u1[2] * p_r2[0] - u1[0] * p_r2[2];
+            const double Az = - u1[1] * p_r2[0] + u1[0] * p_r2[1];
             // B
-            const double B = (1/(2*sqrt(aux_rw)))*B_aux;
-            // A
-            // clang-format off
-            Eigen::Matrix<double, 1, 3> A =
-                (Eigen::Matrix<double, 1, 3>() <<
-                    U_T[0] * 0     + U_T[1] * u1[2] - U_T[2] * u1[1],
-                   -U_T[0] * u1[2] + U_T[1] * 0     + U_T[2] * u1[0],
-                    U_T[0] * u1[1] - U_T[1] * u1[0] + U_T[2] * 0
-                ).finished();
-            // clang-format on
+            const double B = sqrt(aux_rw);
+            const double Bx = (-u1[2]*r_w[1]+u1[1]*r_w[2])/B;
+            const double By = ( u1[2]*r_w[0]+u1[0]*r_w[2])/B;
+            const double Bz = (-u1[1]*r_w[0]+u1[0]*r_w[1])/B;
+
             // Ec.36
             // clang-format off
-            Eigen::Matrix<double, 3, 3> J1_2aux =
-                (Eigen::Matrix<double, 3, 3>() <<
-                 p_r2[0],      0,      0,
-                   0,    p_r2[1],      0,
-                   0,          0, p_r2[2]
+            Eigen::Matrix<double, 1, 3> J1_2 =
+                (Eigen::Matrix<double, 1, 3>() <<
+                 (Ax * B - A * Bx) / mrpt::square(B),
+                 (Ay * B - A * By) / mrpt::square(B),
+                 (Az * B - A * Bz) / mrpt::square(B)
                  ).finished();
             // clang-format on
-            Eigen::Matrix<double, 1, 3> J1_2 =
-                (1 / sqrt(aux_rw))*(A*sqrt(aux_rw)-r_w*B)*J1_2aux;
 
             // J1.3: Ec.37-38
             // clang-format off
