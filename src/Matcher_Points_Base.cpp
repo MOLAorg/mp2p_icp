@@ -104,13 +104,13 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
 
         for (const auto& kv : p.asMap())
         {
-            const std::string&                    ly         = kv.first;
+            const std::string ly = kv.first.as<std::string>();
             const mrpt::containers::yaml::node_t& localAndWs = kv.second;
 
             for (const auto& kkvv : localAndWs.asMap())
             {
-                const std::string& ly2 = kkvv.first;
-                const double       w   = kkvv.second.as<double>();
+                const std::string ly2 = kkvv.first.as<std::string>();
+                const double      w   = kkvv.second.as<double>();
 
                 weight_pt2pt_layers[ly][ly2] = w;
             }
