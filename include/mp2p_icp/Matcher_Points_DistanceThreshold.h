@@ -21,7 +21,7 @@ namespace mp2p_icp
  */
 class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
 {
-    DEFINE_MRPT_OBJECT(Matcher_Points_DistanceThreshold, mp2p_icp);
+    DEFINE_MRPT_OBJECT(Matcher_Points_DistanceThreshold, mp2p_icp)
 
    public:
     Matcher_Points_DistanceThreshold();

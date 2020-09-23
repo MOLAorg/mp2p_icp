@@ -14,7 +14,7 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/round.h>
 
-IMPLEMENTS_MRPT_OBJECT(Matcher_Points_InlierRatio, Matcher, mp2p_icp);
+IMPLEMENTS_MRPT_OBJECT(Matcher_Points_InlierRatio, Matcher, mp2p_icp)
 
 using namespace mp2p_icp;
 

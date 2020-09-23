@@ -45,7 +45,7 @@ struct SolverContext
  */
 class Solver : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 {
-    DEFINE_VIRTUAL_MRPT_OBJECT(Solver);
+    DEFINE_VIRTUAL_MRPT_OBJECT(Solver)
 
    public:
     /** Check each derived class to see required and optional parameters. */

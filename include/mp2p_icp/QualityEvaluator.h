@@ -26,7 +26,7 @@ namespace mp2p_icp
 class QualityEvaluator : public mrpt::system::COutputLogger,
                          public mrpt::rtti::CObject
 {
-    DEFINE_VIRTUAL_MRPT_OBJECT(QualityEvaluator);
+    DEFINE_VIRTUAL_MRPT_OBJECT(QualityEvaluator)
 
    public:
     /** Check each derived class to see required and optional parameters. */

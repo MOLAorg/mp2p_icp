@@ -22,7 +22,7 @@ namespace mp2p_icp
  */
 class Solver_GaussNewton : public Solver
 {
-    DEFINE_MRPT_OBJECT(Solver_GaussNewton, mp2p_icp);
+    DEFINE_MRPT_OBJECT(Solver_GaussNewton, mp2p_icp)
 
    public:
     uint32_t maxIterations = 5;

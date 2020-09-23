@@ -21,7 +21,7 @@ namespace mp2p_icp
  */
 class Matcher_Point2Plane : public Matcher_Points_Base
 {
-    DEFINE_MRPT_OBJECT(Matcher_Point2Plane, mp2p_icp);
+    DEFINE_MRPT_OBJECT(Matcher_Point2Plane, mp2p_icp)
 
    public:
     Matcher_Point2Plane();

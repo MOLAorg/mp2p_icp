@@ -13,7 +13,7 @@
 #include <mp2p_icp/Solver.h>
 #include <mrpt/core/exceptions.h>
 
-IMPLEMENTS_VIRTUAL_MRPT_OBJECT(Solver, mrpt::rtti::CObject, mp2p_icp);
+IMPLEMENTS_VIRTUAL_MRPT_OBJECT(Solver, mrpt::rtti::CObject, mp2p_icp)
 
 using namespace mp2p_icp;
 

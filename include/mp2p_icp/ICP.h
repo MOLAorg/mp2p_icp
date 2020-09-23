@@ -45,7 +45,7 @@ namespace mp2p_icp
  */
 class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 {
-    DEFINE_MRPT_OBJECT(ICP, mp2p_icp);
+    DEFINE_MRPT_OBJECT(ICP, mp2p_icp)
 
    public:
     /** Register (align) two point clouds (possibly after having been
@@ -155,8 +155,7 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      *
      * Alternatively, the objects can be directly created via matchers().
      */
-    void initialize_quality_evaluators(
-        const mrpt::containers::yaml& params);
+    void initialize_quality_evaluators(const mrpt::containers::yaml& params);
 
     static void initialize_quality_evaluators(
         const mrpt::containers::yaml& params, quality_eval_list_t& lst);

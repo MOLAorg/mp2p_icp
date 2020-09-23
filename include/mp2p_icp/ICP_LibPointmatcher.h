@@ -28,7 +28,7 @@ namespace mp2p_icp
  */
 class ICP_LibPointmatcher : public ICP
 {
-    DEFINE_MRPT_OBJECT(ICP_LibPointmatcher, mp2p_icp);
+    DEFINE_MRPT_OBJECT(ICP_LibPointmatcher, mp2p_icp)
 
    public:
     void align(

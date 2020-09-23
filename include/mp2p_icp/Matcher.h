@@ -40,7 +40,7 @@ struct MatchContext
  */
 class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 {
-    DEFINE_VIRTUAL_MRPT_OBJECT(Matcher);
+    DEFINE_VIRTUAL_MRPT_OBJECT(Matcher)
 
    public:
     /** Check each derived class to see required and optional parameters. */

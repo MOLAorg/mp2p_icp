@@ -21,7 +21,7 @@ namespace mp2p_icp
  */
 class QualityEvaluator_PairedRatio : public QualityEvaluator
 {
-    DEFINE_MRPT_OBJECT(QualityEvaluator_PairedRatio, mp2p_icp);
+    DEFINE_MRPT_OBJECT(QualityEvaluator_PairedRatio, mp2p_icp)
 
    public:
     double thresholdDistance = 0.10;

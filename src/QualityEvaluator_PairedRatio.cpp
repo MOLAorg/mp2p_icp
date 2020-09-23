@@ -13,8 +13,7 @@
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/QualityEvaluator_PairedRatio.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    QualityEvaluator_PairedRatio, QualityEvaluator, mp2p_icp);
+IMPLEMENTS_MRPT_OBJECT(QualityEvaluator_PairedRatio, QualityEvaluator, mp2p_icp)
 
 using namespace mp2p_icp;
 

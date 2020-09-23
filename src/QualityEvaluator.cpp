@@ -12,6 +12,6 @@
 
 #include <mp2p_icp/QualityEvaluator.h>
 
-IMPLEMENTS_VIRTUAL_MRPT_OBJECT(QualityEvaluator, mrpt::rtti::CObject, mp2p_icp);
+IMPLEMENTS_VIRTUAL_MRPT_OBJECT(QualityEvaluator, mrpt::rtti::CObject, mp2p_icp)
 
 using namespace mp2p_icp;

@@ -14,7 +14,7 @@
 #include <mrpt/maps/COccupancyGridMap3D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 
-IMPLEMENTS_MRPT_OBJECT(QualityEvaluator_Voxels, QualityEvaluator, mp2p_icp);
+IMPLEMENTS_MRPT_OBJECT(QualityEvaluator_Voxels, QualityEvaluator, mp2p_icp)
 
 using namespace mp2p_icp;
 

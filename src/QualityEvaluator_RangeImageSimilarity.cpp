@@ -16,7 +16,7 @@
 #include <mrpt/io/vector_loadsave.h>
 
 IMPLEMENTS_MRPT_OBJECT(
-    QualityEvaluator_RangeImageSimilarity, QualityEvaluator, mp2p_icp);
+    QualityEvaluator_RangeImageSimilarity, QualityEvaluator, mp2p_icp)
 
 using namespace mp2p_icp;
 

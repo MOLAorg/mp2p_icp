@@ -22,7 +22,7 @@ namespace mp2p_icp
  */
 class Solver_OLAE : public Solver
 {
-    DEFINE_MRPT_OBJECT(Solver_OLAE, mp2p_icp);
+    DEFINE_MRPT_OBJECT(Solver_OLAE, mp2p_icp)
 
    protected:
     // See base class docs

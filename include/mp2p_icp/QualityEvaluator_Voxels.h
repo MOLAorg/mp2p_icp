@@ -21,7 +21,7 @@ namespace mp2p_icp
  */
 class QualityEvaluator_Voxels : public QualityEvaluator
 {
-    DEFINE_MRPT_OBJECT(QualityEvaluator_Voxels, mp2p_icp);
+    DEFINE_MRPT_OBJECT(QualityEvaluator_Voxels, mp2p_icp)
 
    public:
     QualityEvaluator_Voxels();

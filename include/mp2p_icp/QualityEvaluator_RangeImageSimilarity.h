@@ -34,7 +34,7 @@ namespace mp2p_icp
  */
 class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
 {
-    DEFINE_MRPT_OBJECT(QualityEvaluator_RangeImageSimilarity, mp2p_icp);
+    DEFINE_MRPT_OBJECT(QualityEvaluator_RangeImageSimilarity, mp2p_icp)
 
    public:
     /** See base class. Parameters:

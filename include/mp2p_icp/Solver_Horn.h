@@ -21,7 +21,7 @@ namespace mp2p_icp
  */
 class Solver_Horn : public Solver
 {
-    DEFINE_MRPT_OBJECT(Solver_Horn, mp2p_icp);
+    DEFINE_MRPT_OBJECT(Solver_Horn, mp2p_icp)
 
    protected:
     // See base class docs
