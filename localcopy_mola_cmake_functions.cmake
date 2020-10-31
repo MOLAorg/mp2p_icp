@@ -2,7 +2,7 @@
 #        A Modular Optimization framework for Localization and mApping
 #                               (MOLA)
 #
-# Copyright (C) 2018-2019, Jose Luis Blanco-Claraco, contributors (AUTHORS.md)
+# Copyright (C) 2018-2020, Jose Luis Blanco-Claraco, contributors (AUTHORS.md)
 # All rights reserved.
 # Released under GNU GPL v3. See LICENSE file
 # ------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ function(mola_set_target_build_options TARGETNAME)
   # Optimization:
   # -------------------------
   if((NOT MSVC) AND (NOT CMAKE_CROSSCOMPILING))
-    option(MOLA_BUILD_MARCH_NATIVE "Build with `-march=\"native\"`" ON)
+    option(MOLA_BUILD_MARCH_NATIVE "Build with `-march=\"native\"`" OFF)
 
     if (MOLA_BUILD_MARCH_NATIVE)
       # Note 1: GTSAM must be built with identical flags to avoid crashes.
@@ -184,10 +184,12 @@ function(mola_configure_library TARGETNAME)
       RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
   # Install hdrs:
-  install(
-    DIRECTORY include/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  )
+  if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/)
+    install(
+      DIRECTORY include/
+      DESTINATION ${CMAKE_INSTALL_PREFIX}/include
+    )
+  endif()
 
   # Install cmake config module
   install(EXPORT ${TARGETNAME}-config DESTINATION share/${TARGETNAME}/cmake)
@@ -245,8 +247,8 @@ function(mola_add_library)
     cmake_parse_arguments(MOLA_ADD_LIBRARY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     add_library(${MOLA_ADD_LIBRARY_TARGET}
-	SHARED
-	${MOLA_ADD_LIBRARY_SOURCES}
+      SHARED
+      ${MOLA_ADD_LIBRARY_SOURCES}
     )
 
     # Define common flags:
@@ -255,15 +257,15 @@ function(mola_add_library)
 
     # lib Dependencies:
     target_link_libraries(${MOLA_ADD_LIBRARY_TARGET}
-	    PUBLIC
-	    ${MOLA_ADD_LIBRARY_PUBLIC_LINK_LIBRARIES}
+      PUBLIC
+      ${MOLA_ADD_LIBRARY_PUBLIC_LINK_LIBRARIES}
     )
     target_link_libraries(${MOLA_ADD_LIBRARY_TARGET}
-	    PRIVATE
-	    ${MOLA_ADD_LIBRARY_PRIVATE_LINK_LIBRARIES}
+      PRIVATE
+      ${MOLA_ADD_LIBRARY_PRIVATE_LINK_LIBRARIES}
     )
 
-	#TODO: install
+   #TODO: install
 
 endfunction()
 
@@ -277,13 +279,13 @@ endfunction()
 # Defines a MOLA executable
 # -----------------------------------------------------------------------------
 function(mola_add_executable)
-    set(options "")
+    set(options DONT_INSTALL)
     set(oneValueArgs TARGET)
     set(multiValueArgs SOURCES LINK_LIBRARIES)
     cmake_parse_arguments(MOLA_ADD_EXECUTABLE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     add_executable(${MOLA_ADD_EXECUTABLE_TARGET}
-	    ${MOLA_ADD_EXECUTABLE_SOURCES}
+      ${MOLA_ADD_EXECUTABLE_SOURCES}
     )
 
     # Define common flags:
@@ -292,13 +294,17 @@ function(mola_add_executable)
 
     # lib Dependencies:
     if (MOLA_ADD_EXECUTABLE_LINK_LIBRARIES)
-	    target_link_libraries(
-		    ${MOLA_ADD_EXECUTABLE_TARGET}
-		    ${MOLA_ADD_EXECUTABLE_LINK_LIBRARIES}
-	    )
+      target_link_libraries(
+      ${MOLA_ADD_EXECUTABLE_TARGET}
+      ${MOLA_ADD_EXECUTABLE_LINK_LIBRARIES}
+      )
+    endif()
+
+    # install:
+    if (NOT MOLA_ADD_EXECUTABLE_DONT_INSTALL)
+      install(TARGETS ${MOLA_ADD_EXECUTABLE_TARGET})
     endif()
 endfunction()
-
 
 # -----------------------------------------------------------------------------
 # list_subdirectories(retval curdir)
@@ -316,3 +322,17 @@ function(list_subdirectories retval curdir)
   endforeach()
   set(${retval} ${list_of_dirs} PARENT_SCOPE)
 endfunction()
+
+# -----------------------------------------------------------------------------
+# mola_find_package_or_return(package_name)
+#
+# Calls find_package(package_name QUIET), and if it is not found, prints a
+# descriptive message and call "return()" to exit the current cmake script.
+# -----------------------------------------------------------------------------
+macro(mola_find_package_or_return PACKAGE_NAME)
+	find_package(${PACKAGE_NAME} QUIET)
+	if (NOT ${PACKAGE_NAME}_FOUND)
+		message(WARNING "${PROJECT_NAME}: Skipping due to missing dependency `${PACKAGE_NAME}`")
+		return()
+	endif()
+endmacro()
