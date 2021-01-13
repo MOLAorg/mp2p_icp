@@ -13,6 +13,7 @@
 #include <mp2p_icp/Matcher_Points_InlierRatio.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/round.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(Matcher_Points_InlierRatio, Matcher, mp2p_icp)
 
@@ -44,19 +45,23 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
     // Empty maps?  Nothing to do
     if (pcGlobal.empty() || pcLocal.empty()) return;
 
+    const TransformedLocalPointCloud tl = transform_local_to_global(
+        pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
+
     // Try to do matching only if the bounding boxes have some overlap:
+#if MRPT_VERSION >= 0x218
+    if (!pcGlobal.boundingBox().intersection({tl.localMin, tl.localMax}))
+        return;
+#else
     mrpt::math::TPoint3Df globalMin, globalMax;
     pcGlobal.boundingBox(
         globalMin.x, globalMax.x, globalMin.y, globalMax.y, globalMin.z,
         globalMax.z);
-
-    const TransformedLocalPointCloud tl = transform_local_to_global(
-        pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
-
     // No need to compute: Is matching = null?
     if (tl.localMin.x > globalMax.x || tl.localMax.x < globalMin.x ||
         tl.localMin.y > globalMax.y || tl.localMax.y < globalMin.y)
         return;
+#endif
 
     // Loop for each point in local map:
     // --------------------------------------------------

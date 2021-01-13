@@ -13,6 +13,7 @@
 #include <mp2p_icp/QualityEvaluator_Voxels.h>
 #include <mrpt/maps/COccupancyGridMap3D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(QualityEvaluator_Voxels, QualityEvaluator, mp2p_icp)
 
@@ -85,6 +86,16 @@ double QualityEvaluator_Voxels::evaluate(
 
         // resize voxel grids?
         MRPT_TODO("Check against current size too, for many layers");
+#if MRPT_VERSION >= 0x218
+        {
+            const auto bb = itG->second->boundingBox();
+            voxelsGlo.resizeGrid(bb.min, bb.max);
+        }
+        {
+            const auto bb = localTransformed.boundingBox();
+            voxelsLoc.resizeGrid(bb.min, bb.max);
+        }
+#else
         {
             mrpt::math::TPoint3D bbmax, bbmin;
             itG->second->boundingBox(bbmin, bbmax);
@@ -95,7 +106,7 @@ double QualityEvaluator_Voxels::evaluate(
             localTransformed.boundingBox(bbmin, bbmax);
             voxelsLoc.resizeGrid(bbmin, bbmax);
         }
-
+#endif
         // insert:
         voxelsGlo.insertPointCloud({0, 0, 0}, *itG->second);
         voxelsLoc.insertPointCloud(
