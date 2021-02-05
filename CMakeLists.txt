@@ -25,7 +25,12 @@ find_package(mrpt-gui REQUIRED) # for tests/demos
 # to allow stand-along builds outside of MOLA, use local copy instead:
 find_package(mola-common QUIET)
 if (NOT mola-common_FOUND)
-	include(${mp2p_icp_SOURCE_DIR}/localcopy_mola_cmake_functions.cmake)
+	message(STATUS "Standalone ${PROJECT_NAME} build: cloning required mola-common repository...")
+	execute_process(COMMAND git clone git@github.com:MOLAorg/mola-common.git "${CMAKE_CURRENT_BINARY_DIR}/mola-common-src")
+	execute_process(COMMAND "${CMAKE_COMMAND}" -S "${CMAKE_CURRENT_BINARY_DIR}/mola-common-src" -B "${CMAKE_CURRENT_BINARY_DIR}/mola-common-build")
+	# 2nd attempt:
+	set(mola-common_DIR "${CMAKE_BINARY_DIR}/mola-common-build")
+	find_package(mola-common REQUIRED)
 endif()
 
 # -----------------------
