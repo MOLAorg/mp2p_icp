@@ -53,7 +53,7 @@ static void test_icp(
 
     const mrpt::maps::CSimplePointsMap::Ptr pts = load_xyz_file(fileFullPath);
 
-    std::cout << "\nRunning " << icpClassName << "|" << solverName << "|"
+    std::cout << "Running " << icpClassName << "|" << solverName << "|"
               << matcherName << " test on: " << inFile << " with "
               << pts->size() << " points\n";
 
