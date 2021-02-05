@@ -27,7 +27,9 @@ find_package(mola-common QUIET)
 if (NOT mola-common_FOUND)
 	message(STATUS "Standalone ${PROJECT_NAME} build: cloning required mola-common repository...")
 	execute_process(COMMAND git clone git@github.com:MOLAorg/mola-common.git "${CMAKE_CURRENT_BINARY_DIR}/mola-common-src")
-	execute_process(COMMAND "${CMAKE_COMMAND}" -S "${CMAKE_CURRENT_BINARY_DIR}/mola-common-src" -B "${CMAKE_CURRENT_BINARY_DIR}/mola-common-build")
+	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mola-common-build")
+	execute_process(COMMAND "${CMAKE_COMMAND}" "${CMAKE_CURRENT_BINARY_DIR}/mola-common-src"
+	                WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mola-common-build")
 	# 2nd attempt:
 	set(mola-common_DIR "${CMAKE_BINARY_DIR}/mola-common-build")
 	find_package(mola-common REQUIRED)
