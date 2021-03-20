@@ -27,6 +27,7 @@
 #include <mrpt/random.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/version.h>
 
 #include <Eigen/Dense>
 #include <iostream>
@@ -65,10 +66,15 @@ static void test_icp(
         inFile.c_str(), icpClassName.c_str(), solverName.c_str(),
         matcherName.c_str(), outliers_ratio, use_robust ? 1 : 0);
 
+#if MRPT_VERSION >= 0x218
+    const auto bbox      = pts->boundingBox();
+    const auto bbox_size = bbox.max - bbox.min;
+#else
     mrpt::math::TPoint3D bbox_min, bbox_max;
     pts->boundingBox(bbox_min, bbox_max);
-    const auto   bbox_size = bbox_max - bbox_min;
-    const double max_dim   = mrpt::max3(bbox_size.x, bbox_size.y, bbox_size.z);
+    const auto bbox_size = bbox_max - bbox_min;
+#endif
+    const double max_dim = mrpt::max3(bbox_size.x, bbox_size.y, bbox_size.z);
 
     const double f = 0.25;
 
