@@ -11,14 +11,14 @@
  */
 #pragma once
 
-#include <mrpt/img/TColor.h>
+#include <mp2p_icp/render_params.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/math/TLine3D.h>
 #include <mrpt/math/TPlane.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/math/geometry.h>
-#include <mrpt/opengl/opengl_frwds.h>
 #include <mrpt/serialization/CSerializable.h>
+
 #include <map>
 #include <optional>
 #include <string>
@@ -29,14 +29,6 @@ namespace mp2p_icp
 /** \addtogroup mp2p_icp_grp
  * @{
  */
-
-struct render_params_t
-{
-    render_params_t() = default;
-
-    mrpt::img::TColor plane_color{0xff, 0xff, 0xff, 0xff};
-    double            plane_half_width{1.0}, plane_grid_spacing{0.25};
-};
 
 struct plane_patch_t
 {
@@ -65,8 +57,8 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     /** @name Reserved point-cloud layer names (for use in `point_layers`)
      * @{ */
 
-    constexpr static const char* PT_LAYER_RAW{"raw"};
-    constexpr static const char* PT_LAYER_PLANE_CENTROIDS{"plane_centroids"};
+    constexpr static const char* PT_LAYER_RAW             = "raw";
+    constexpr static const char* PT_LAYER_PLANE_CENTROIDS = "plane_centroids";
 
     /** @} */
 
@@ -89,11 +81,17 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     /** clear all containers  */
     virtual void clear();
 
-    /** Gets a renderizable view of all planes. The target container `o` is not
-     * cleared(), clear() it manually if needed before calling. */
-    void planesAsRenderizable(
-        mrpt::opengl::CSetOfObjects& o,
-        const render_params_t&       p = render_params_t());
+    /** Gets a renderizable view of all geometric entities.
+     *
+     * See render_params_t for options to show/hide the different geometric
+     * entities and point layers.
+     *
+     * \note If deriving user classes inheriting from pointcloud_t, remember to
+     *  reimplement this method and call this base class method to render
+     *  common elements.
+     */
+    virtual auto get_visualization(const render_params_t& p = render_params_t())
+        const -> std::shared_ptr<mrpt::opengl::CSetOfObjects>;
 
     /** Merges all geometric entities from another point cloud into this one,
      * with an optional relative pose transformation.
@@ -103,10 +101,22 @@ class pointcloud_t : public mrpt::serialization::CSerializable
      * \note This method is virtual for user-extended point clouds can handle
      * other geometric primitives as needed.
      */
-    virtual void mergeWith(
+    virtual void merge_with(
         const pointcloud_t&                       otherPc,
         const std::optional<mrpt::math::TPose3D>& otherRelativePose =
             std::nullopt);
+
+    /** Used inside get_visualization(), renders planes only. */
+    void get_visualization_planes(
+        mrpt::opengl::CSetOfObjects& o, const render_params_planes_t& p) const;
+
+    /** Used inside get_visualization(), renders lines only. */
+    void get_visualization_lines(
+        mrpt::opengl::CSetOfObjects& o, const render_params_lines_t& p) const;
+
+    /** Used inside get_visualization(), renders points only. */
+    void get_visualization_points(
+        mrpt::opengl::CSetOfObjects& o, const render_params_points_t& p) const;
 };
 
 /** @} */

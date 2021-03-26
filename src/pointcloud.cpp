@@ -12,6 +12,7 @@
 
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
+#include <mrpt/opengl/CSetOfLines.h>
 #include <mrpt/opengl/CSetOfObjects.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/stl_serialization.h>
@@ -73,23 +74,70 @@ void pointcloud_t::serializeFrom(
 }
 
 /** Gets a renderizable view of all planes */
-void pointcloud_t::planesAsRenderizable(
-    mrpt::opengl::CSetOfObjects& o, const render_params_t& p)
+auto pointcloud_t::get_visualization(const render_params_t& p) const
+    -> std::shared_ptr<mrpt::opengl::CSetOfObjects>
 {
     MRPT_START
+    auto o = mrpt::opengl::CSetOfObjects::Create();
 
-    const float pw = p.plane_half_width, pf = p.plane_grid_spacing;
+    get_visualization_planes(*o, p.planes);
+    get_visualization_lines(*o, p.lines);
+    get_visualization_points(*o, p.points);
+
+    return o;
+    MRPT_END
+}
+
+void pointcloud_t::get_visualization_planes(
+    mrpt::opengl::CSetOfObjects& o, const render_params_planes_t& p) const
+{
+    MRPT_START
+    if (!p.visible) return;
+
+    const float pw = p.halfWidth, pf = p.gridSpacing;
 
     for (const auto& plane : planes)
     {
         auto gl_pl =
             mrpt::opengl::CGridPlaneXY::Create(-pw, pw, -pw, pw, .0, pf);
-        gl_pl->setColor_u8(p.plane_color);
+        gl_pl->setColor_u8(p.color);
         mrpt::math::TPose3D planePose;
         plane.plane.getAsPose3DForcingOrigin(plane.centroid, planePose);
         gl_pl->setPose(planePose);
         o.insert(gl_pl);
     }
+
+    MRPT_END
+}
+
+void pointcloud_t::get_visualization_lines(
+    mrpt::opengl::CSetOfObjects& o, const render_params_lines_t& p) const
+{
+    MRPT_START
+
+    auto glLin = mrpt::opengl::CSetOfLines::Create();
+    glLin->setColor_u8(p.color);
+
+    for (size_t idxLine = 0; idxLine < lines.size(); idxLine++)
+    {
+        const auto& line    = lines[idxLine];
+        double      linLen  = p.length;
+        const auto  halfSeg = line.director * (0.5 * linLen);
+        glLin->appendLine(line.pBase - halfSeg, line.pBase + halfSeg);
+    }
+    o.insert(glLin);
+
+    MRPT_END
+}
+
+void pointcloud_t::get_visualization_points(
+    mrpt::opengl::CSetOfObjects& o, const render_params_points_t& p) const
+{
+    MRPT_START
+    // Planes:
+    if (!p.visible) return;
+
+    MRPT_TODO("continue");
 
     MRPT_END
 }
@@ -101,7 +149,7 @@ bool pointcloud_t::empty() const
 void pointcloud_t::clear() { *this = pointcloud_t(); }
 
 MRPT_TODO("Write unit test for mergeWith()");
-void pointcloud_t::mergeWith(
+void pointcloud_t::merge_with(
     const pointcloud_t&                       otherPc,
     const std::optional<mrpt::math::TPose3D>& otherRelativePose)
 {
