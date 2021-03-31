@@ -11,6 +11,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/layer_name_t.h>
 #include <mp2p_icp/render_params.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/math/TLine3D.h>
@@ -68,9 +69,9 @@ class pointcloud_t : public mrpt::serialization::CSerializable
      * - PT_LAYER_PLANE_CENTROIDS: a point for each plane in `planes` (same
      * order).
      */
-    std::map<std::string, mrpt::maps::CPointsMap::Ptr> point_layers;
-    std::vector<mrpt::math::TLine3D>                   lines;
-    std::vector<plane_patch_t>                         planes;
+    std::map<layer_name_t, mrpt::maps::CPointsMap::Ptr> point_layers;
+    std::vector<mrpt::math::TLine3D>                    lines;
+    std::vector<plane_patch_t>                          planes;
 
     /** return true if all point cloud layers, feature lists, etc. are empty */
     virtual bool empty() const;
@@ -117,6 +118,11 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     /** Used inside get_visualization(), renders points only. */
     void get_visualization_points(
         mrpt::opengl::CSetOfObjects& o, const render_params_points_t& p) const;
+
+    /** Used inside get_visualization_points(), renders points only. */
+    static void get_visualization_point_layer(
+        mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
+        const mrpt::maps::CPointsMap::Ptr& pts);
 };
 
 /** @} */

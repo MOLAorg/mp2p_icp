@@ -12,9 +12,11 @@
  */
 #pragma once
 
+#include <mp2p_icp/layer_name_t.h>
 #include <mrpt/img/TColor.h>
 #include <mrpt/opengl/opengl_frwds.h>
 
+#include <map>
 #include <optional>
 #include <vector>
 
@@ -46,12 +48,35 @@ struct render_params_lines_t
     std::optional<std::vector<double>> lengths;  //!< individual lengths
 };
 
+/** Rendering options for each point layer, see
+ * pointcloud_t::get_visualization() */
+struct render_params_point_layer_t
+{
+    render_params_point_layer_t() = default;
+
+    float pointSize = 1.0f;
+
+    mrpt::img::TColor color{0x00, 0x00, 0xff, 0xff};
+
+    // TODO: Coloring schemes by coordinate, etc.
+};
+
 /** Used in pointcloud_t::get_visualization() */
 struct render_params_points_t
 {
     render_params_points_t() = default;
 
+    /** If false, all other options are ignored and no points will be rendered.
+     */
     bool visible = true;
+
+    /** Used only if `perLayer` is empty, this defines common parameters for all
+     * layers. */
+    render_params_point_layer_t allLayers;
+
+    /** If not empty, only the layers defined as keys will be visible, each one
+     * with its own set of parameters. */
+    std::map<layer_name_t, render_params_point_layer_t> perLayer;
 };
 
 /** Used in pointcloud_t::get_visualization() */

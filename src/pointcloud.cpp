@@ -12,6 +12,8 @@
 
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
+#include <mrpt/opengl/CPointCloud.h>
+#include <mrpt/opengl/CPointCloudColoured.h>
 #include <mrpt/opengl/CSetOfLines.h>
 #include <mrpt/opengl/CSetOfObjects.h>
 #include <mrpt/serialization/CArchive.h>
@@ -137,9 +139,45 @@ void pointcloud_t::get_visualization_points(
     // Planes:
     if (!p.visible) return;
 
-    MRPT_TODO("continue");
+    if (!p.perLayer.empty())
+    {
+        // render only these layers:
+        for (const auto& kv : p.perLayer)
+        {
+            const auto itPts = point_layers.find(kv.first);
+            if (itPts == point_layers.end())
+                THROW_EXCEPTION_FMT(
+                    "Rendering parameters given for layer '%s' which does not "
+                    "exist in this pointcloud_t object",
+                    kv.first.c_str());
+
+            get_visualization_point_layer(o, kv.second, itPts->second);
+        }
+    }
+    else
+    {
+        // render all layers with the same params:
+        for (const auto& kv : point_layers)
+            get_visualization_point_layer(o, p.allLayers, kv.second);
+    }
 
     MRPT_END
+}
+
+void pointcloud_t::get_visualization_point_layer(
+    mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
+    const mrpt::maps::CPointsMap::Ptr& pts)
+{
+    ASSERT_(pts);
+    if (pts->empty()) return;
+
+    auto glPts = mrpt::opengl::CPointCloud::Create();
+    glPts->loadFromPointsMap(pts.get());
+
+    glPts->setPointSize(p.pointSize);
+    glPts->setColor_u8(p.color);
+
+    o.insert(glPts);
 }
 
 bool pointcloud_t::empty() const
