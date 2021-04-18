@@ -35,10 +35,13 @@ struct PointCloudEigen
     std::array<double, 3> eigVals = {0, 0, 0};
 };
 
-/** Calculate eigenvectors and eigenvalues from a set of points.
+/** Calculate mean, covariance, eigenvectors, and eigenvalues from a set of
+ * points.
  *
- * If `indices` is provided, only those set of points will be considered.
- * If `totalCount` is provided, all points will be provided, ignoring `indices`.
+ * It is mandatory to provide one and only one of these two parameters:
+ *  - `indices`: only the points with these indices will be considered.
+ *  - `totalCount`: all points will be used, ignoring `indices`.
+ *
  *
  * @param xs[in] Input x coordinate vector.
  * @param ys[in] Input y coordinate vector.
