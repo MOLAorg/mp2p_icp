@@ -16,8 +16,8 @@ using namespace mp2p_icp;
 uint8_t Parameters::serializeGetVersion() const { return 0; }
 void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
-    out << maxIterations << maxPairsPerLayer << minAbsStep_trans
-        << minAbsStep_rot << pairingsWeightParameters;
+    out << maxIterations << minAbsStep_trans << minAbsStep_rot
+        << pairingsWeightParameters;
 }
 void Parameters::serializeFrom(
     mrpt::serialization::CArchive& in, uint8_t version)
@@ -26,8 +26,8 @@ void Parameters::serializeFrom(
     {
         case 0:
         {
-            in >> maxIterations >> maxPairsPerLayer >> minAbsStep_trans >>
-                minAbsStep_rot >> pairingsWeightParameters;
+            in >> maxIterations >> minAbsStep_trans >> minAbsStep_rot >>
+                pairingsWeightParameters;
         }
         break;
         default:
@@ -38,7 +38,6 @@ void Parameters::serializeFrom(
 void Parameters::load_from(const mrpt::containers::yaml& p)
 {
     MCP_LOAD_REQ(p, maxIterations);
-    MCP_LOAD_REQ(p, maxPairsPerLayer);
     MCP_LOAD_OPT(p, minAbsStep_trans);
     MCP_LOAD_OPT(p, minAbsStep_rot);
 
@@ -48,11 +47,10 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
 void Parameters::save_to(mrpt::containers::yaml& p) const
 {
     MCP_SAVE(p, maxIterations);
-    MCP_SAVE(p, maxPairsPerLayer);
     MCP_SAVE(p, minAbsStep_trans);
     MCP_SAVE(p, minAbsStep_rot);
 
-     mrpt::containers::yaml pp = mrpt::containers::yaml::Map();
+    mrpt::containers::yaml pp = mrpt::containers::yaml::Map();
     pairingsWeightParameters.save_to(pp);
     p["pairingsWeightParameters"] = std::move(pp);
 }

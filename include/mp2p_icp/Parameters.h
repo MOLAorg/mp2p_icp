@@ -10,6 +10,7 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/bits_math.h>  // DEG2RAD()
 #include <mrpt/serialization/CSerializable.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -30,13 +31,6 @@ struct Parameters : public mrpt::serialization::CSerializable
         @{ */
     /** Maximum number of ICP iterations to run. */
     uint32_t maxIterations{40};
-
-    /** Max. number of pairings per layer (point-to-point, plane-to-plane...).
-     * Decimation of the point cloud being registered against the reference
-     * one. The speed-up comes from a decimation of the number of KD-tree
-     * queries, the most expensive step in ICP
-     */
-    uint32_t maxPairsPerLayer{500};
 
     /** If the correction in all translation coordinates (X,Y,Z) is below
      * this threshold (in meters), iterations are terminated (Default:1e-6)
