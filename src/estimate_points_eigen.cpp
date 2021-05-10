@@ -86,6 +86,11 @@ mp2p_icp::PointCloudEigen mp2p_icp::estimate_points_eigen(
         mat_a *= inv_n;
     }
 
+    // Complete the upper-half symmetric part of the matrix:
+    mat_a(0, 1) = mat_a(1, 0);
+    mat_a(0, 2) = mat_a(2, 0);
+    mat_a(1, 2) = mat_a(2, 1);
+
     mp2p_icp::PointCloudEigen ret;
     ret.meanCov = {mrpt::poses::CPoint3D(mean), mat_a};
 
