@@ -186,7 +186,7 @@ bool pointcloud_t::empty() const
 }
 void pointcloud_t::clear() { *this = pointcloud_t(); }
 
-MRPT_TODO("Write unit test for mergeWith()");
+MRPT_TODO("Write unit test for mergeWith()")
 void pointcloud_t::merge_with(
     const pointcloud_t&                       otherPc,
     const std::optional<mrpt::math::TPose3D>& otherRelativePose)
