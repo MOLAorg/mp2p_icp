@@ -1,0 +1,45 @@
+# YAML configuration file for use with the CLI tool mp2p-icp-run or 
+# programatically from function mp2p_icp::icp_pipeline_from_yaml()
+#
+class_name: mp2p_icp::ICP
+
+# See: mp2p_icp::Parameter
+params:
+  maxIterations: 100
+  maxPairsPerLayer: 1000
+  minAbsStep_trans: 1e-6
+  minAbsStep_rot: 1e-6
+  pairingsWeightParameters:
+    # scale-based outlier detector
+    use_scale_outlier_detector: true
+    scale_outlier_threshold: 1.1
+    # An optional "a priori" term.
+    use_robust_kernel: false
+    robust_kernel_param: 0.1 # [degrees]
+    robust_kernel_scale: 400.0
+
+solvers:
+  - class: mp2p_icp::Solver_GaussNewton
+    params:
+      maxIterations: 3
+
+# Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
+# instances to pair geometric entities between pointclouds.
+matchers:
+  - class: mp2p_icp::Matcher_Points_DistanceThreshold
+    params:
+      threshold: 0.20
+      runFromIteration: 0  # "from 0 to 0" means "all"
+      runUpToIteration: 0
+  - class: mp2p_icp::Matcher_Point2Plane
+    params:
+      distanceThreshold: 0.20
+      planeEigenThreshold: 0.001
+      knn: 6
+      runFromIteration: 0  # "from 0 to 0" means "all"
+      runUpToIteration: 0
+
+quality:
+  - class: mp2p_icp::QualityEvaluator_PairedRatio
+    params:
+     thresholdDistance: 0.10

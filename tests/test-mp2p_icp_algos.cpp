@@ -17,6 +17,7 @@
 #include <mp2p_icp/Solver_GaussNewton.h>
 #include <mp2p_icp/Solver_Horn.h>
 #include <mp2p_icp/Solver_OLAE.h>
+#include <mp2p_icp/load_xyz_file.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/get_env.h>
 #include <mrpt/maps/CSimplePointsMap.h>
@@ -31,8 +32,6 @@
 
 #include <Eigen/Dense>
 #include <iostream>
-
-#include "test-common.h"  // load_xyz_file()
 
 // Used to validate OLAE. However, it may make the Gauss-Newton solver, or the
 // robust kernel with outliers to fail.
@@ -52,7 +51,8 @@ static void test_icp(
 
     const auto fileFullPath = datasetDir + inFile;
 
-    const mrpt::maps::CSimplePointsMap::Ptr pts = load_xyz_file(fileFullPath);
+    const mrpt::maps::CSimplePointsMap::Ptr pts =
+        mp2p_icp::load_xyz_file(fileFullPath);
 
     std::cout << "Running " << icpClassName << "|" << solverName << "|"
               << matcherName << " test on: " << inFile << " with "

@@ -12,13 +12,13 @@
  */
 
 #include <mp2p_icp/QualityEvaluator_RangeImageSimilarity.h>
+#include <mp2p_icp/load_xyz_file.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+
 #include <cstdlib>
 #include <sstream>
-
-#include "test-common.h"  // load_xyz_file()
 
 const std::string datasetDir = MP2P_DATASET_DIR;
 
@@ -29,7 +29,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const auto inFile = std::string("happy_buddha_decim.xyz.gz");
 
         const auto                        fileFullPath = datasetDir + inFile;
-        mrpt::maps::CSimplePointsMap::Ptr pts = load_xyz_file(fileFullPath);
+        mrpt::maps::CSimplePointsMap::Ptr pts =
+            mp2p_icp::load_xyz_file(fileFullPath);
 
         mrpt::containers::yaml params;
 

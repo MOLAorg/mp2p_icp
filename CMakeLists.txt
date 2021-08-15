@@ -58,6 +58,12 @@ endif()
 
 # -----------------------
 # define tests:
-enable_testing()
+option(MP2PICP_BUILD_TESTING ON)
+if (MP2PICP_BUILD_TESTING)
+  enable_testing()
+  add_subdirectory(tests)
+endif()
 
-add_subdirectory(tests)
+# -----------------------
+# define apps:
+add_subdirectory(apps)
