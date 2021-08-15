@@ -6,9 +6,8 @@ class_name: mp2p_icp::ICP
 # See: mp2p_icp::Parameter
 params:
   maxIterations: 100
-  maxPairsPerLayer: 1000
-  minAbsStep_trans: 1e-6
-  minAbsStep_rot: 1e-6
+  minAbsStep_trans: 1e-4
+  minAbsStep_rot: 1e-4
   pairingsWeightParameters:
     # scale-based outlier detector
     use_scale_outlier_detector: true
@@ -29,10 +28,12 @@ matchers:
   - class: mp2p_icp::Matcher_Points_DistanceThreshold
     params:
       threshold: 0.20
+      maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
   - class: mp2p_icp::Matcher_Point2Plane
     params:
+      maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       distanceThreshold: 0.20
       planeEigenThreshold: 0.001
       knn: 6
