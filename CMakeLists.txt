@@ -58,7 +58,7 @@ endif()
 
 # -----------------------
 # define tests:
-option(MP2PICP_BUILD_TESTING ON)
+option(MP2PICP_BUILD_TESTING "Build unit tests" ON)
 if (MP2PICP_BUILD_TESTING)
   enable_testing()
   add_subdirectory(tests)
