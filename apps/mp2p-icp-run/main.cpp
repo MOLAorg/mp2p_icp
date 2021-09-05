@@ -17,6 +17,7 @@
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/core/Clock.h>
+#include <mrpt/img/CImage.h>
 #include <mrpt/obs/CRawlog.h>
 #include <mrpt/system/datetime.h>
 #include <mrpt/system/filesystem.h>
@@ -55,6 +56,10 @@ static mrpt::obs::CRawlog::Ptr load_rawlog(const std::string& filename)
 {
     ASSERT_FILE_EXISTS_(filename);
 
+    // enable loading externally-stored lazy load objects:
+    mrpt::img::CImage::setImagesPathBase(
+        mrpt::obs::CRawlog::detectImagesDirectory(filename));
+
     auto& r = rawlogsCache[filename];
     if (r) return r;
     r = mrpt::obs::CRawlog::Create();
@@ -76,16 +81,28 @@ static mrpt::maps::CSimplePointsMap::Ptr pc_from_rawlog(
 
     auto m = mrpt::maps::CSimplePointsMap::Create();
 
-    if (auto sf = r.getAsObservations(index); sf)
+    auto o = r.getAsGeneric(index);
+    ASSERT_(o);
+
+    if (auto sf = std::dynamic_pointer_cast<mrpt::obs::CSensoryFrame>(o); sf)
     {
         // Sensory-frame format:
+        for (const auto& ithObs : *sf) ithObs->load();
+
         sf->insertObservationsInto(m.get());
+
+        for (const auto& ithObs : *sf) ithObs->unload();
         return m;
     }
-    else if (auto obs = r.getAsObservation(index); obs)
+    else if (auto obs = std::dynamic_pointer_cast<mrpt::obs::CObservation>(o);
+             obs)
     {
         // Observation format:
+        obs->load();
+
         obs->insertObservationInto(m.get());
+
+        obs->unload();
         return m;
     }
     else
