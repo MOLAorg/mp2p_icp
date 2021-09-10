@@ -46,13 +46,24 @@ class FilterEdgesPlanes : public mp2p_icp_filters::FilterBase
         std::string input_pointcloud_layer =
             mp2p_icp::pointcloud_t::PT_LAYER_RAW;
 
-        /** Size of the voxel filter [meters] */
-        unsigned int full_pointcloud_decimation{20};
-        double       voxel_filter_resolution{.5};
-        unsigned int voxel_filter_decimation{1};
-        float        voxel_filter_max_e2_e0{30.f}, voxel_filter_max_e1_e0{30.f};
-        float voxel_filter_min_e2_e0{100.f}, voxel_filter_min_e1_e0{100.f},
-            voxel_filter_min_e1{.0f};
+        unsigned int full_pointcloud_decimation = 20;
+
+        /** Size of each voxel edge [meters] */
+        double voxel_filter_resolution = .5;  // [m]
+
+        unsigned int voxel_filter_decimation = 1;
+        float        voxel_filter_max_e2_e0  = 30.f;
+        float        voxel_filter_max_e1_e0  = 30.f;
+        float        voxel_filter_min_e2_e0  = 100.f;
+        float        voxel_filter_min_e1_e0  = 100.f;
+        float        voxel_filter_min_e1     = .0f;
+
+        float init_extension_min_x = -10.0f;
+        float init_extension_min_y = -10.0f;
+        float init_extension_min_z = -10.0f;
+        float init_extension_max_x = 10.0f;
+        float init_extension_max_y = 10.0f;
+        float init_extension_max_z = 10.0f;
     };
 
     /** Algorithm parameters */

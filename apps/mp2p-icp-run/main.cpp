@@ -15,6 +15,7 @@
 #include <mp2p_icp/icp_pipeline_from_yaml.h>
 #include <mp2p_icp/load_xyz_file.h>
 #include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp_filters/FilterBase.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/img/CImage.h>
@@ -42,6 +43,16 @@ static TCLAP::ValueArg<std::string> argInput2(
 static TCLAP::ValueArg<std::string> argYamlConfigFile(
     "c", "config", "YAML config file describing the ICP pipeline", true,
     "icp-config.yaml", "icp-config.yaml", cmd);
+
+static TCLAP::ValueArg<std::string> argFilterPipelineFile1(
+    "", "filter-config1",
+    "YAML config file describing the filtering pipeline for cloud #1", false,
+    "filter-config.yaml", "filter-config.yaml", cmd);
+
+static TCLAP::ValueArg<std::string> argFilterPipelineFile2(
+    "", "filter-config2",
+    "YAML config file describing the filtering pipeline for cloud #2", false,
+    "filter-config.yaml", "filter-config.yaml", cmd);
 
 static TCLAP::ValueArg<std::string> argInitialGuess(
     "", "guess",
@@ -100,6 +111,7 @@ static mrpt::maps::CSimplePointsMap::Ptr pc_from_rawlog(
         // Observation format:
         obs->load();
 
+        MRPT_TODO("Port to using Generator() from YAML file.");
         obs->insertObservationInto(m.get());
 
         obs->unload();
@@ -135,6 +147,9 @@ static mrpt::maps::CSimplePointsMap::Ptr load_input_pc(
 
 void runIcp()
 {
+    // ------------------------------
+    // Original input point clouds
+    // ------------------------------
     const auto points1 = load_input_pc(argInput1.getValue());
     const auto points2 = load_input_pc(argInput2.getValue());
 
@@ -142,9 +157,35 @@ void runIcp()
     pc1.point_layers[mp2p_icp::pointcloud_t::PT_LAYER_RAW] = points1;
     pc2.point_layers[mp2p_icp::pointcloud_t::PT_LAYER_RAW] = points2;
 
-    std::cout << "Point cloud #1 size: " << pc1.size() << std::endl;
-    std::cout << "Point cloud #2 size: " << pc2.size() << std::endl;
+    std::cout << "Input point cloud #1 size: " << pc1.size() << std::endl;
+    std::cout << "Input point cloud #2 size: " << pc2.size() << std::endl;
 
+    // -----------------------------------------
+    // Apply filtering pipeline, if defined
+    // -----------------------------------------
+    if (argFilterPipelineFile1.isSet())
+    {
+        const auto filters = mp2p_icp_filters::filter_pipeline_from_yaml_file(
+            argFilterPipelineFile1.getValue());
+        mp2p_icp_filters::apply_filter_pipeline(filters, pc1);
+
+        std::cout << "Filtered point cloud #1 size: " << pc1.size()
+                  << std::endl;
+    }
+
+    if (argFilterPipelineFile2.isSet())
+    {
+        const auto filters = mp2p_icp_filters::filter_pipeline_from_yaml_file(
+            argFilterPipelineFile2.getValue());
+        mp2p_icp_filters::apply_filter_pipeline(filters, pc2);
+
+        std::cout << "Filtered point cloud #2 size: " << pc2.size()
+                  << std::endl;
+    }
+
+    // ------------------------------
+    // Build ICP pipeline:
+    // ------------------------------
     const auto cfg =
         mrpt::containers::yaml::FromFile(argYamlConfigFile.getValue());
 

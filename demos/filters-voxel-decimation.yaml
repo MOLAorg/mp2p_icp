@@ -1,0 +1,13 @@
+# YAML configuration file for use with the CLI tool mp2p-icp-run or
+# programatically from function mp2p_icp_filters::filter_pipeline_from_yaml_file()
+#
+# Top-level entry must be named "filters" and must contain a sequence of entries.
+# One filter object will be created for each entry, instancing the given class,
+# and with the given parameters. Filters are run in definition order on the
+# input pointcloud_t object.
+#
+filters:
+  - class_name: mp2p_icp_filters::FilterEdgesPlanes
+    params:
+      maxIterations: 100
+

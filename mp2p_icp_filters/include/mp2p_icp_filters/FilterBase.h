@@ -51,9 +51,34 @@ class FilterBase : public mrpt::rtti::CObject,  // RTTI support
 
     /** See docs above for FilterBase.
      */
-    virtual void filter(mp2p_icp::pointcloud_t& inOut) const;
+    virtual void filter(mp2p_icp::pointcloud_t& inOut) const = 0;
 
     /** @} */
 };
+
+/** A sequence of filters.
+ * \ingroup mp2p_icp_filters_grp
+ */
+using FilterPipeline = std::vector<FilterBase::Ptr>;
+
+/** Applies a pipeline of filters to a given pointcloud_t.
+ * \ingroup mp2p_icp_filters_grp
+ */
+void apply_filter_pipeline(
+    const FilterPipeline& filters, mp2p_icp::pointcloud_t& inOut);
+
+/** Creates a pipeline of filters from a YAML configuration block (a sequence).
+ *  Refer to YAML file examples.
+ * \ingroup mp2p_icp_filters_grp
+ */
+FilterPipeline filter_pipeline_from_yaml(const mrpt::containers::yaml& c);
+
+/** \overload Taking a YAML filename as input.
+ *  The file must contain with a top entry named `filters` with the sequence of
+ *  filter descriptors.
+ *  Refer to YAML file examples.
+ * \ingroup mp2p_icp_filters_grp
+ */
+FilterPipeline filter_pipeline_from_yaml_file(const std::string& filename);
 
 }  // namespace mp2p_icp_filters

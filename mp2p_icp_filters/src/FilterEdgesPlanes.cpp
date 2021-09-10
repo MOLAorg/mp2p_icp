@@ -34,6 +34,13 @@ void FilterEdgesPlanes::Parameters::load_from_yaml(
     MCP_LOAD_REQ(c, voxel_filter_min_e2_e0);
     MCP_LOAD_REQ(c, voxel_filter_min_e1_e0);
     MCP_LOAD_OPT(c, voxel_filter_min_e1);
+
+    MCP_LOAD_OPT(c, init_extension_min_x);
+    MCP_LOAD_OPT(c, init_extension_min_y);
+    MCP_LOAD_OPT(c, init_extension_min_z);
+    MCP_LOAD_OPT(c, init_extension_max_x);
+    MCP_LOAD_OPT(c, init_extension_max_y);
+    MCP_LOAD_OPT(c, init_extension_max_z);
 }
 
 FilterEdgesPlanes::FilterEdgesPlanes() = default;
@@ -46,7 +53,10 @@ void FilterEdgesPlanes::initialize(const mrpt::containers::yaml& c)
     params_.load_from_yaml(c);
 
     filter_grid_.resize(
-        {-75, -75.0, -10.0}, {75.0, 75.0, 10.0},
+        {params_.init_extension_min_x, params_.init_extension_min_y,
+         params_.init_extension_min_z},
+        {params_.init_extension_max_x, params_.init_extension_max_y,
+         params_.init_extension_max_z},
         params_.voxel_filter_resolution);
 
     MRPT_END
