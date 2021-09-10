@@ -38,6 +38,24 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
 
     FilterPipeline filters;
 
+    for (const auto& entry : c.asSequence())
+    {
+        const auto& e = entry.asMap();
+
+        const auto sClass = e.at("class_name").as<std::string>();
+        auto       o      = mrpt::rtti::classFactory(sClass);
+        ASSERT_(o);
+
+        auto f = std::dynamic_pointer_cast<FilterBase>(o);
+        ASSERTMSG_(
+            f, mrpt::format(
+                   "`%s` class seems not to be derived from FilterBase",
+                   sClass.c_str()));
+
+        f->initialize(e.at("params"));
+        filters.push_back(f);
+    }
+
     return filters;
 }
 

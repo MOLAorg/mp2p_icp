@@ -19,6 +19,7 @@
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/img/CImage.h>
+#include <mrpt/obs/CObservation3DRangeScan.h>  // TODO: Remove after refactor
 #include <mrpt/obs/CRawlog.h>
 #include <mrpt/system/datetime.h>
 #include <mrpt/system/filesystem.h>
@@ -43,16 +44,6 @@ static TCLAP::ValueArg<std::string> argInput2(
 static TCLAP::ValueArg<std::string> argYamlConfigFile(
     "c", "config", "YAML config file describing the ICP pipeline", true,
     "icp-config.yaml", "icp-config.yaml", cmd);
-
-static TCLAP::ValueArg<std::string> argFilterPipelineFile1(
-    "", "filter-config1",
-    "YAML config file describing the filtering pipeline for cloud #1", false,
-    "filter-config.yaml", "filter-config.yaml", cmd);
-
-static TCLAP::ValueArg<std::string> argFilterPipelineFile2(
-    "", "filter-config2",
-    "YAML config file describing the filtering pipeline for cloud #2", false,
-    "filter-config.yaml", "filter-config.yaml", cmd);
 
 static TCLAP::ValueArg<std::string> argInitialGuess(
     "", "guess",
@@ -95,26 +86,38 @@ static mrpt::maps::CSimplePointsMap::Ptr pc_from_rawlog(
     auto o = r.getAsGeneric(index);
     ASSERT_(o);
 
+    MRPT_TODO("Port to using Generator() from YAML file.");
+    auto lambdaInsertObs = [&m](const mrpt::obs::CObservation::Ptr& obs) {
+        // Observation format:
+        obs->load();
+
+        // unproject 3D points, if needed:
+        if (auto obs3D =
+                std::dynamic_pointer_cast<mrpt::obs::CObservation3DRangeScan>(
+                    obs);
+            obs3D && obs3D->points3D_x.empty())
+        {
+            mrpt::obs::T3DPointsProjectionParams pp;
+            pp.takeIntoAccountSensorPoseOnRobot = true;
+            obs3D->unprojectInto(*obs3D);
+        }
+
+        obs->insertObservationInto(m.get());
+
+        obs->unload();
+    };
+
     if (auto sf = std::dynamic_pointer_cast<mrpt::obs::CSensoryFrame>(o); sf)
     {
         // Sensory-frame format:
-        for (const auto& ithObs : *sf) ithObs->load();
+        for (const auto& ithObs : *sf) lambdaInsertObs(ithObs);
 
-        sf->insertObservationsInto(m.get());
-
-        for (const auto& ithObs : *sf) ithObs->unload();
         return m;
     }
     else if (auto obs = std::dynamic_pointer_cast<mrpt::obs::CObservation>(o);
              obs)
     {
-        // Observation format:
-        obs->load();
-
-        MRPT_TODO("Port to using Generator() from YAML file.");
-        obs->insertObservationInto(m.get());
-
-        obs->unload();
+        lambdaInsertObs(obs);
         return m;
     }
     else
@@ -160,29 +163,6 @@ void runIcp()
     std::cout << "Input point cloud #1 size: " << pc1.size() << std::endl;
     std::cout << "Input point cloud #2 size: " << pc2.size() << std::endl;
 
-    // -----------------------------------------
-    // Apply filtering pipeline, if defined
-    // -----------------------------------------
-    if (argFilterPipelineFile1.isSet())
-    {
-        const auto filters = mp2p_icp_filters::filter_pipeline_from_yaml_file(
-            argFilterPipelineFile1.getValue());
-        mp2p_icp_filters::apply_filter_pipeline(filters, pc1);
-
-        std::cout << "Filtered point cloud #1 size: " << pc1.size()
-                  << std::endl;
-    }
-
-    if (argFilterPipelineFile2.isSet())
-    {
-        const auto filters = mp2p_icp_filters::filter_pipeline_from_yaml_file(
-            argFilterPipelineFile2.getValue());
-        mp2p_icp_filters::apply_filter_pipeline(filters, pc2);
-
-        std::cout << "Filtered point cloud #2 size: " << pc2.size()
-                  << std::endl;
-    }
-
     // ------------------------------
     // Build ICP pipeline:
     // ------------------------------
@@ -193,6 +173,28 @@ void runIcp()
 
     const auto initialGuess =
         mrpt::math::TPose3D::FromString(argInitialGuess.getValue());
+
+    // -----------------------------------------
+    // Apply filtering pipeline, if defined
+    // -----------------------------------------
+    if (cfg.has("filters_pc1"))
+    {
+        const auto filters =
+            mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc1"]);
+        mp2p_icp_filters::apply_filter_pipeline(filters, pc1);
+
+        std::cout << "Filtered point cloud #1 size: " << pc1.size()
+                  << std::endl;
+    }
+    if (cfg.has("filters_pc2"))
+    {
+        const auto filters =
+            mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc2"]);
+        mp2p_icp_filters::apply_filter_pipeline(filters, pc2);
+
+        std::cout << "Filtered point cloud #2 size: " << pc2.size()
+                  << std::endl;
+    }
 
     const double t_ini = mrpt::Clock::nowDouble();
 

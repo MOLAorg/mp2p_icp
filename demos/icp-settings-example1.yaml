@@ -1,4 +1,4 @@
-# YAML configuration file for use with the CLI tool mp2p-icp-run or 
+# YAML configuration file for use with the CLI tool mp2p-icp-run or
 # programatically from function mp2p_icp::icp_pipeline_from_yaml()
 #
 class_name: mp2p_icp::ICP
@@ -31,6 +31,9 @@ matchers:
       maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
+      pointLayerWeights:
+        raw:
+          decimated: 1.0
   - class: mp2p_icp::Matcher_Point2Plane
     params:
       maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
@@ -39,8 +42,34 @@ matchers:
       knn: 6
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
+      pointLayerWeights:
+        raw:
+          decimated: 1.0
 
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio
     params:
      thresholdDistance: 0.10
+
+# Filters for point cloud #1 (reference) and #2 (mobile):
+#
+# One filter object will be created for each entry, instancing the given class,
+# and with the given parameters. Filters are run in definition order on the
+# input pointcloud_t object.
+#
+filters_pc1:
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      output_pointcloud_layer: 'decimated'
+      voxel_filter_resolution: 0.20  # [m]
+      use_voxel_average: true
+
+filters_pc2:
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      output_pointcloud_layer: 'decimated'
+      voxel_filter_resolution: 0.20  # [m]
+      use_voxel_average: true
+
+
+
