@@ -10,7 +10,7 @@
 cmake_minimum_required(VERSION 3.4)
 
 # Tell CMake we'll use C++ for use in its tests/flags
-project(mp2p_icp LANGUAGES CXX)
+project(mp2p_icp_all LANGUAGES CXX)
 
 # 3rd party:
 add_subdirectory(3rdparty)
@@ -36,28 +36,18 @@ if (NOT mola-common_FOUND)
 endif()
 
 # -----------------------
-# define lib:
-file(GLOB_RECURSE LIB_SRCS src/*.cpp src/*.h)
-file(GLOB_RECURSE LIB_PUBLIC_HDRS include/*.h)
+# define library targets:
+# -----------------------
 
-mola_add_library(
-	TARGET ${PROJECT_NAME}
-	SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
-	PUBLIC_LINK_LIBRARIES
-		mrpt::containers
-		mrpt::tfest
-		mrpt::maps
-		mrpt::gui
-)
+# Main mp2p_icp library:
+add_subdirectory(mp2p_icp)
 
-if (MP2PICP_BUILD_POINTMATCHER)
-	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_LIBPOINTMATCHER)
-	target_link_libraries(${PROJECT_NAME} PRIVATE libpointmatcher::libpointmatcher)
-endif()
-
+# Basic filters library:
+#add_subdirectory(mp2p_icp_filters)
 
 # -----------------------
 # define tests:
+# -----------------------
 option(MP2PICP_BUILD_TESTING "Build unit tests" ON)
 if (MP2PICP_BUILD_TESTING)
   enable_testing()
@@ -66,4 +56,5 @@ endif()
 
 # -----------------------
 # define apps:
+# -----------------------
 add_subdirectory(apps)
