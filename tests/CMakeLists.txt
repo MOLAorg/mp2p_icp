@@ -21,7 +21,7 @@ function(mp2p_add_test NAME)
   )
   target_compile_definitions(test-${NAME}
     PRIVATE
-    MP2P_DATASET_DIR="${mp2p_icp_SOURCE_DIR}/demos/")
+    MP2P_DATASET_DIR="${mp2p_icp_all_SOURCE_DIR}/demos/")
 endfunction()
 
 mp2p_add_test(mp2p_optimal_tf_algos)

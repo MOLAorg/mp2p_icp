@@ -43,7 +43,7 @@ endif()
 add_subdirectory(mp2p_icp)
 
 # Basic filters library:
-#add_subdirectory(mp2p_icp_filters)
+add_subdirectory(mp2p_icp_filters)
 
 # -----------------------
 # define tests:
