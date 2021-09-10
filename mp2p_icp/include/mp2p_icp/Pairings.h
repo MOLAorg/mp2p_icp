@@ -85,6 +85,9 @@ using TMatchedPointLineList = std::vector<point_line_pair_t>;
  */
 struct Pairings
 {
+    /** @name Data fields
+     * @{ */
+
     /// We reuse MRPT struct to allow using their matching functions.
     /// \note on MRPT naming convention: "this"=global; "other"=local.
     mrpt::tfest::TMatchingPairList paired_pt2pt;
@@ -99,6 +102,11 @@ struct Pairings
      */
     std::vector<std::pair<std::size_t, double>> point_weights;
 
+    /** @} */
+
+    /** @name Methods
+     * @{ */
+
     virtual bool empty() const
     {
         return paired_pt2pt.empty() && paired_pl2pl.empty() &&
@@ -109,11 +117,16 @@ struct Pairings
     /** Overall number of element-to-element pairings (points, lines, planes) */
     virtual size_t size() const;
 
+    /** Returns a string summarizing all the paired elements */
+    virtual std::string contents_summary() const;
+
     /** Copy and append pairings from another container. */
     virtual void push_back(const Pairings& o);
 
     /** Move pairings from another container. */
     virtual void push_back(Pairings&& o);
+
+    /** @} */
 };
 
 /** Vector of pairings that are considered outliers, from those in the

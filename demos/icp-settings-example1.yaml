@@ -31,20 +31,20 @@ matchers:
       maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
-      pointLayerWeights:
-        raw:
-          decimated: 1.0
+      pointLayerWeights: 
+        raw: # from
+          decimated: 1.0  # to
   - class: mp2p_icp::Matcher_Point2Plane
     params:
       maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
-      distanceThreshold: 0.20
-      planeEigenThreshold: 0.001
+      distanceThreshold: 0.35
+      planeEigenThreshold: 0.0000001
       knn: 6
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
       pointLayerWeights:
-        raw:
-          decimated: 1.0
+        raw: # from
+          decimated: 1.0 # to
 
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio

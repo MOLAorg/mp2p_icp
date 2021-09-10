@@ -160,8 +160,10 @@ void runIcp()
     pc1.point_layers[mp2p_icp::pointcloud_t::PT_LAYER_RAW] = points1;
     pc2.point_layers[mp2p_icp::pointcloud_t::PT_LAYER_RAW] = points2;
 
-    std::cout << "Input point cloud #1 size: " << pc1.size() << std::endl;
-    std::cout << "Input point cloud #2 size: " << pc2.size() << std::endl;
+    std::cout << "Input point cloud #1: " << pc1.contents_summary()
+              << std::endl;
+    std::cout << "Input point cloud #2: " << pc2.contents_summary()
+              << std::endl;
 
     // ------------------------------
     // Build ICP pipeline:
@@ -183,7 +185,7 @@ void runIcp()
             mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc1"]);
         mp2p_icp_filters::apply_filter_pipeline(filters, pc1);
 
-        std::cout << "Filtered point cloud #1 size: " << pc1.size()
+        std::cout << "Filtered point cloud #1: " << pc1.contents_summary()
                   << std::endl;
     }
     if (cfg.has("filters_pc2"))
@@ -192,7 +194,7 @@ void runIcp()
             mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc2"]);
         mp2p_icp_filters::apply_filter_pipeline(filters, pc2);
 
-        std::cout << "Filtered point cloud #2 size: " << pc2.size()
+        std::cout << "Filtered point cloud #2: " << pc2.contents_summary()
                   << std::endl;
     }
 
@@ -219,7 +221,9 @@ void runIcp()
                icpResults.terminationReason)
         << "\n"
            " time to solve: "
-        << mrpt::system::formatTimeInterval(t_end - t_ini) << "\n";
+        << mrpt::system::formatTimeInterval(t_end - t_ini) << "\n"
+        << " finalPairings: " << icpResults.finalPairings.contents_summary()
+        << "\n";
 }
 
 int main(int argc, char** argv)

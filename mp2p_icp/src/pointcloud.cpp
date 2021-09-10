@@ -11,6 +11,8 @@
  */
 
 #include <mp2p_icp/pointcloud.h>
+#include <mrpt/io/CFileGZInputStream.h>
+#include <mrpt/io/CFileGZOutputStream.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/opengl/CPointCloudColoured.h>
@@ -41,6 +43,9 @@ void    pointcloud_t::serializeTo(mrpt::serialization::CArchive& out) const
 
     out.WriteAs<uint32_t>(point_layers.size());
     for (const auto& l : point_layers) out << l.first << *l.second.get();
+
+    // Optional user data:
+    derivedSerializeTo(out);
 }
 void pointcloud_t::serializeFrom(
     mrpt::serialization::CArchive& in, uint8_t version)
@@ -68,6 +73,8 @@ void pointcloud_t::serializeFrom(
                     mrpt::ptr_cast<mrpt::maps::CPointsMap>::from(
                         in.ReadObject());
             }
+            // Optional user data:
+            derivedSerializeFrom(in);
         }
         break;
         default:
@@ -268,4 +275,64 @@ size_t pointcloud_t::size() const
     for (const auto& layer : point_layers) n += layer.second->size();
 
     return n;
+}
+
+std::string pointcloud_t::contents_summary() const
+{
+    using namespace std::string_literals;
+
+    if (empty()) return {"empty"s};
+
+    std::string ret;
+
+    const auto retAppend = [&ret](const std::string& s) {
+        if (!ret.empty()) ret += ", "s;
+        ret += s;
+    };
+
+    if (!lines.empty()) retAppend(std::to_string(lines.size()) + " lines"s);
+    if (!planes.empty()) retAppend(std::to_string(planes.size()) + " planes"s);
+
+    size_t nPts = 0;
+    for (const auto& layer : point_layers)
+    {
+        ASSERT_(layer.second);
+        nPts += layer.second->size();
+    }
+
+    if (nPts != 0)
+    {
+        retAppend(
+            std::to_string(nPts) + " points in "s +
+            std::to_string(point_layers.size()) + " layers ("s);
+
+        for (const auto& layer : point_layers)
+            ret += "\""s + layer.first + "\":"s +
+                   std::to_string(layer.second->size()) + " "s;
+        ret += ")";
+    }
+
+    return ret;
+}
+
+bool pointcloud_t::save_to_file(const std::string& fileName) const
+{
+    auto f = mrpt::io::CFileGZOutputStream(fileName);
+    if (!f.is_open()) return false;
+
+    auto arch = mrpt::serialization::archiveFrom(f);
+    arch << *this;
+
+    return true;
+}
+
+bool pointcloud_t::load_from_file(const std::string& fileName)
+{
+    auto f = mrpt::io::CFileGZInputStream(fileName);
+    if (!f.is_open()) return false;
+
+    auto arch = mrpt::serialization::archiveFrom(f);
+    arch >> *this;
+
+    return true;
 }

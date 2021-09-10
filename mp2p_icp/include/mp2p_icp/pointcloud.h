@@ -63,6 +63,9 @@ class pointcloud_t : public mrpt::serialization::CSerializable
 
     /** @} */
 
+    /** @name Data fields
+     * @{ */
+
     /** Different point layers, indexed by a descriptive name.
      * Known layer names: See section above.
      * - PT_LAYER_RAW: reserved to the original, full point cloud (if kept)
@@ -70,8 +73,17 @@ class pointcloud_t : public mrpt::serialization::CSerializable
      * order).
      */
     std::map<layer_name_t, mrpt::maps::CPointsMap::Ptr> point_layers;
-    std::vector<mrpt::math::TLine3D>                    lines;
-    std::vector<plane_patch_t>                          planes;
+
+    /** 3D lines (infinite lines, not segments) */
+    std::vector<mrpt::math::TLine3D> lines;
+
+    /** Plane patches=centroid point + infinite plane */
+    std::vector<plane_patch_t> planes;
+
+    /** @} */
+
+    /** @name Methods
+     * @{ */
 
     /** return true if all point cloud layers, feature lists, etc. are empty */
     virtual bool empty() const;
@@ -79,8 +91,23 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     /** Overall number of elements (points, lines, planes) */
     virtual size_t size() const;
 
+    /** Returns a string summarizing all the elements in the container (points,
+     * lines, planes) */
+    virtual std::string contents_summary() const;
+
     /** clear all containers  */
     virtual void clear();
+
+    /** Saves the pointcloud_t object  to file, using MRPT serialization and
+     *  using on-the-fly GZIP compression.
+     * \return true on success.
+     */
+    bool save_to_file(const std::string& fileName) const;
+
+    /** Loads the pointcloud_t object from a file. See \save_to_file()
+     * \return true on success.
+     */
+    bool load_from_file(const std::string& fileName);
 
     /** Gets a renderizable view of all geometric entities.
      *
@@ -123,6 +150,20 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     static void get_visualization_point_layer(
         mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
         const mrpt::maps::CPointsMap::Ptr& pts);
+    /** @} */
+
+   protected:
+    /** Implement in derived classes if new data fields are required */
+    virtual void derivedSerializeTo([
+        [maybe_unused]] mrpt::serialization::CArchive& out) const
+    {
+    }
+
+    /** Implement in derived classes if new data fields are required */
+    virtual void derivedSerializeFrom([
+        [maybe_unused]] mrpt::serialization::CArchive& in)
+    {
+    }
 };
 
 /** @} */

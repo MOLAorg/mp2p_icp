@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp/Pairings.h>
+
 #include <iterator>  // std::make_move_iterator
 
 using namespace mp2p_icp;
@@ -96,4 +97,31 @@ size_t Pairings::size() const
 {
     return paired_pt2pt.size() + paired_pt2ln.size() + paired_pt2pl.size() +
            paired_ln2ln.size() + paired_pl2pl.size();
+}
+
+template <typename CONTAINER>
+void append_container_size(
+    const CONTAINER& c, const std::string& name, std::string& ret)
+{
+    using namespace std::string_literals;
+
+    if (c.empty()) return;
+    if (!ret.empty()) ret += ", "s;
+    ret += std::to_string(c.size()) + " "s + name;
+}
+
+std::string Pairings::contents_summary() const
+{
+    using namespace std::string_literals;
+
+    if (empty()) return {"none"s};
+
+    std::string ret;
+    append_container_size(paired_pt2pt, "point-point", ret);
+    append_container_size(paired_pt2ln, "point-line", ret);
+    append_container_size(paired_pt2pl, "point-plane", ret);
+    append_container_size(paired_ln2ln, "line-line", ret);
+    append_container_size(paired_pl2pl, "plane-plane", ret);
+
+    return ret;
 }
