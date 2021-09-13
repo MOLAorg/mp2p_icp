@@ -178,13 +178,49 @@ void pointcloud_t::get_visualization_point_layer(
     ASSERT_(pts);
     if (pts->empty()) return;
 
-    auto glPts = mrpt::opengl::CPointCloud::Create();
-    glPts->loadFromPointsMap(pts.get());
+    if (p.colorMode.has_value())
+    {
+        // color point cloud:
+        auto glPts = mrpt::opengl::CPointCloudColoured::Create();
+        glPts->loadFromPointsMap(pts.get());
 
-    glPts->setPointSize(p.pointSize);
-    glPts->setColor_u8(p.color);
+        glPts->setPointSize(p.pointSize);
 
-    o.insert(glPts);
+        mrpt::math::TBoundingBoxf bb;
+
+        if (!p.colorMode->colorMapMinCoord.has_value() ||
+            !p.colorMode->colorMapMaxCoord.has_value())
+            bb = pts->boundingBox();
+
+        ASSERT_(p.colorMode->recolorizeByCoordinate.has_value());
+
+        const unsigned int coordIdx = static_cast<unsigned int>(
+            p.colorMode->recolorizeByCoordinate.value());
+
+        const float coordMin = p.colorMode->colorMapMinCoord.has_value()
+                                   ? *p.colorMode->colorMapMinCoord
+                                   : bb.min[coordIdx];
+
+        const float coordMax = p.colorMode->colorMapMaxCoord.has_value()
+                                   ? *p.colorMode->colorMapMaxCoord
+                                   : bb.max[coordIdx];
+
+        glPts->recolorizeByCoordinate(
+            coordMin, coordMax, coordIdx, p.colorMode->colorMap);
+
+        o.insert(glPts);
+    }
+    else
+    {
+        // uniform color point cloud:
+        auto glPts = mrpt::opengl::CPointCloud::Create();
+        glPts->loadFromPointsMap(pts.get());
+
+        glPts->setPointSize(p.pointSize);
+        glPts->setColor_u8(p.color);
+
+        o.insert(glPts);
+    }
 }
 
 bool pointcloud_t::empty() const

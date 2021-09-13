@@ -14,7 +14,9 @@
 
 #include <mp2p_icp/layer_name_t.h>
 #include <mrpt/img/TColor.h>
+#include <mrpt/img/color_maps.h>
 #include <mrpt/opengl/opengl_frwds.h>
+#include <mrpt/typemeta/TEnumType.h>
 
 #include <map>
 #include <optional>
@@ -48,17 +50,47 @@ struct render_params_lines_t
     std::optional<std::vector<double>> lengths;  //!< individual lengths
 };
 
+enum class Coordinate : uint8_t
+{
+    X = 0,
+    Y,
+    Z
+};
+
+struct color_mode_t
+{
+    /** The colormap palette to use. */
+    mrpt::img::TColormap colorMap = mrpt::img::cmHOT;
+
+    /** If set, the coordinate to use to recolorize points. */
+    std::optional<Coordinate> recolorizeByCoordinate;
+
+    /** Optional fixed minimum and maximum bounding box limits for
+     *  interpolating the color map. If not set, they will be set to the point
+     * cloud bounding box.
+     * For example, to recolor points so the coolest and hottest colors are
+     * at heights of 0.0 m and 5.0 m, respectively, set these variables to 0.0f
+     * and 5.0f and set the mrpt::img::cmHOT color map.
+     */
+    std::optional<float> colorMapMinCoord, colorMapMaxCoord;
+};
+
 /** Rendering options for each point layer, see
  * pointcloud_t::get_visualization() */
 struct render_params_point_layer_t
 {
     render_params_point_layer_t() = default;
 
+    /** Point size, in pixels (can be fractional). Zooming in (very close) into
+     * points show them as square patches. */
     float pointSize = 1.0f;
 
+    /** Fixed color for all points in the layer. Ignored if colorMode is set. */
     mrpt::img::TColor color{0x00, 0x00, 0xff, 0xff};
 
-    // TODO: Coloring schemes by coordinate, etc.
+    /** If set, it overrides `color` and defines a "recolorize by coordinate"
+     * mode. */
+    std::optional<color_mode_t> colorMode;
 };
 
 /** Used in pointcloud_t::get_visualization() */
@@ -92,3 +124,9 @@ struct render_params_t
 /** @} */
 
 }  // namespace mp2p_icp
+
+MRPT_ENUM_TYPE_BEGIN(mp2p_icp::Coordinate)
+MRPT_FILL_ENUM_MEMBER(mp2p_icp::Coordinate, X);
+MRPT_FILL_ENUM_MEMBER(mp2p_icp::Coordinate, Y);
+MRPT_FILL_ENUM_MEMBER(mp2p_icp::Coordinate, Z);
+MRPT_ENUM_TYPE_END()

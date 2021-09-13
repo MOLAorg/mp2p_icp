@@ -17,6 +17,8 @@
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/random/RandomGenerators.h>
 
+MRPT_TODO("Add new filter: RemoveLayer.");
+
 IMPLEMENTS_MRPT_OBJECT(
     FilterDecimateVoxels, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
