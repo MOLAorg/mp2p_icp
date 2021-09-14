@@ -67,7 +67,7 @@ static PointMatcher<double>::DataPoints pointsToPM(const pointcloud_t& pc)
 void ICP_LibPointmatcher::align(
     [[maybe_unused]] const pointcloud_t&        pcs1,
     [[maybe_unused]] const pointcloud_t&        pcs2,
-    [[maybe_unused]] const mrpt::math::TPose3D& initialGuessM2wrtM1,
+    [[maybe_unused]] const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
     [[maybe_unused]] const Parameters& p, [[maybe_unused]] Results& result)
 {
     using namespace std::string_literals;
@@ -84,7 +84,7 @@ void ICP_LibPointmatcher::align(
 
     state.currentSolution = OptimalTF_Result();
     state.currentSolution.optimalPose =
-        mrpt::poses::CPose3D(initialGuessM2wrtM1);
+        mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
     auto prev_solution = state.currentSolution.optimalPose;
 
     // Reset output:
@@ -172,7 +172,7 @@ logger:
     ASSERT_EQUAL_(ptsFrom.getEuclideanDim(), ptsTo.getEuclideanDim());
 
     PM::TransformationParameters initTransfo =
-        initialGuessM2wrtM1.getHomogeneousMatrix().asEigen();
+        initialGuessLocalWrtGlobal.getHomogeneousMatrix().asEigen();
 
     TransformationsImpl<double>::RigidTransformation rigidTrans;
 
@@ -195,7 +195,7 @@ logger:
         // PM gives us the transformation wrt the initial transformation,
         // since we already applied that transf. to the input point cloud!
         state.currentSolution.optimalPose =
-            mrpt::poses::CPose3D(initialGuessM2wrtM1) +
+            mrpt::poses::CPose3D(initialGuessLocalWrtGlobal) +
             mrpt::poses::CPose3D(mrpt::math::CMatrixDouble44(T));
 
         // result.quality = icp.errorMinimizer->getWeightedPointUsedRatio();

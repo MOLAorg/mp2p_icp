@@ -14,6 +14,7 @@
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/serialization/CSerializable.h>
+#include <mrpt/typemeta/TTypeName.h>
 
 namespace mp2p_icp
 {
@@ -32,6 +33,8 @@ struct matched_plane_t
         : p_this(pl_this), p_other(pl_other)
     {
     }
+
+    DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::matched_plane_t)
 };
 using TMatchedPlaneList = std::vector<matched_plane_t>;
 
@@ -40,6 +43,8 @@ struct matched_line_t
     /// \note "this"=global, "other"=local, while finding the transformation
     /// local wrt global
     mrpt::math::TLine3D ln_this, ln_other;
+
+    DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::matched_line_t)
 };
 using TMatchedLineList = std::vector<matched_line_t>;
 
@@ -56,6 +61,8 @@ struct point_plane_pair_t
         : pl_this(p_this), pt_other(p_other)
     {
     }
+
+    DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::point_plane_pair_t)
 };
 using TMatchedPointPlaneList = std::vector<point_plane_pair_t>;
 
@@ -72,6 +79,8 @@ struct point_line_pair_t
         : ln_this(l_this), pt_other(p_other)
     {
     }
+
+    DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::point_line_pair_t)
 };
 
 using TMatchedPointLineList = std::vector<point_line_pair_t>;
@@ -126,8 +135,18 @@ struct Pairings
     /** Move pairings from another container. */
     virtual void push_back(Pairings&& o);
 
+    virtual void serializeTo(mrpt::serialization::CArchive& out) const;
+    virtual void serializeFrom(mrpt::serialization::CArchive& in);
+
     /** @} */
+    DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::Pairings)
 };
+
+mrpt::serialization::CArchive& operator<<(
+    mrpt::serialization::CArchive& out, const Pairings& obj);
+
+mrpt::serialization::CArchive& operator>>(
+    mrpt::serialization::CArchive& in, Pairings& obj);
 
 /** Vector of pairings that are considered outliers, from those in the
  * corresponding `Pairings` structure.
@@ -159,3 +178,19 @@ std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D> eval_centroids_robust(
 /** @} */
 
 }  // namespace mp2p_icp
+
+namespace mrpt::serialization
+{
+CArchive& operator<<(CArchive& out, const mp2p_icp::point_line_pair_t& obj);
+CArchive& operator>>(CArchive& in, mp2p_icp::point_line_pair_t& obj);
+
+CArchive& operator<<(CArchive& out, const mp2p_icp::point_plane_pair_t& obj);
+CArchive& operator>>(CArchive& in, mp2p_icp::point_plane_pair_t& obj);
+
+CArchive& operator<<(CArchive& out, const mp2p_icp::matched_line_t& obj);
+CArchive& operator>>(CArchive& in, mp2p_icp::matched_line_t& obj);
+
+CArchive& operator<<(CArchive& out, const mp2p_icp::matched_plane_t& obj);
+CArchive& operator>>(CArchive& in, mp2p_icp::matched_plane_t& obj);
+
+}  // namespace mrpt::serialization

@@ -33,7 +33,7 @@ class ICP_LibPointmatcher : public ICP
    public:
     void align(
         const pointcloud_t& pc1, const pointcloud_t& pc2,
-        const mrpt::math::TPose3D& initialGuessM2wrtM1, const Parameters& p,
+        const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p,
         Results& result) override;
 
     struct ParametersLibpointmatcher

@@ -11,10 +11,46 @@
  */
 
 #include <mp2p_icp/Pairings.h>
+#include <mrpt/serialization/CArchive.h>
+#include <mrpt/serialization/stl_serialization.h>
 
 #include <iterator>  // std::make_move_iterator
 
 using namespace mp2p_icp;
+
+static const uint8_t SERIALIZATION_VERSION = 0;
+
+void Pairings::serializeTo(mrpt::serialization::CArchive& out) const
+{
+    out.WriteAs<uint8_t>(SERIALIZATION_VERSION);
+    // out << paired_pt2pt;
+    out << paired_pt2ln << paired_pt2pl << paired_ln2ln << paired_pl2pl
+        << point_weights;
+}
+
+void Pairings::serializeFrom(mrpt::serialization::CArchive& in)
+{
+    const auto readVersion = in.ReadAs<uint8_t>();
+
+    ASSERT_EQUAL_(readVersion, SERIALIZATION_VERSION);
+    in >> paired_pt2pt;
+    in >> paired_pt2ln >> paired_pt2pl >> paired_ln2ln >> paired_pl2pl >>
+        point_weights;
+}
+
+mrpt::serialization::CArchive& mp2p_icp::operator<<(
+    mrpt::serialization::CArchive& out, const Pairings& obj)
+{
+    obj.serializeTo(out);
+    return out;
+}
+
+mrpt::serialization::CArchive& mp2p_icp::operator>>(
+    mrpt::serialization::CArchive& in, Pairings& obj)
+{
+    obj.serializeFrom(in);
+    return in;
+}
 
 std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
     mp2p_icp::eval_centroids_robust(
@@ -125,3 +161,70 @@ std::string Pairings::contents_summary() const
 
     return ret;
 }
+
+namespace mrpt::serialization
+{
+CArchive& operator<<(CArchive& out, const mp2p_icp::point_line_pair_t& obj)
+{
+    out.WriteAs<uint8_t>(0);
+
+    out << obj.ln_this << obj.pt_other;
+    return out;
+}
+
+CArchive& operator>>(CArchive& in, mp2p_icp::point_line_pair_t& obj)
+{
+    // const auto ver =
+    in.ReadAs<uint8_t>();
+
+    in >> obj.ln_this >> obj.pt_other;
+    return in;
+}
+
+CArchive& operator<<(CArchive& out, const mp2p_icp::point_plane_pair_t& obj)
+{
+    out.WriteAs<uint8_t>(0);
+    out << obj.pl_this.centroid << obj.pl_this.plane << obj.pt_other;
+    return out;
+}
+
+CArchive& operator>>(CArchive& in, mp2p_icp::point_plane_pair_t& obj)
+{
+    in.ReadAs<uint8_t>();
+
+    in >> obj.pl_this.centroid >> obj.pl_this.plane >> obj.pt_other;
+    return in;
+}
+
+CArchive& operator<<(CArchive& out, const mp2p_icp::matched_line_t& obj)
+{
+    out.WriteAs<uint8_t>(0);
+    out << obj.ln_other << obj.ln_this;
+    return out;
+}
+
+CArchive& operator>>(CArchive& in, mp2p_icp::matched_line_t& obj)
+{
+    in.ReadAs<uint8_t>();
+
+    in >> obj.ln_other >> obj.ln_this;
+    return in;
+}
+
+CArchive& operator<<(CArchive& out, const mp2p_icp::matched_plane_t& obj)
+{
+    out.WriteAs<uint8_t>(0);
+    out << obj.p_other.centroid << obj.p_other.plane;
+    out << obj.p_this.centroid << obj.p_this.plane;
+    return out;
+}
+CArchive& operator>>(CArchive& in, mp2p_icp::matched_plane_t& obj)
+{
+    in.ReadAs<uint8_t>();
+
+    in >> obj.p_other.centroid >> obj.p_other.plane;
+    in >> obj.p_this.centroid >> obj.p_this.plane;
+    return in;
+}
+
+}  // namespace mrpt::serialization

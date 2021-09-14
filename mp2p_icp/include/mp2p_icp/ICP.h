@@ -54,8 +54,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      */
     virtual void align(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
-        const mrpt::math::TPose3D& initialGuessM2wrtM1, const Parameters& p,
-        Results& result);
+        const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
+        const Parameters& p, Results& result);
 
     /** @name Module: Solver instances
      * @{ */

@@ -22,7 +22,7 @@ using namespace mp2p_icp;
 
 void ICP::align(
     const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
-    const mrpt::math::TPose3D& initialGuessM2wrtM1, const Parameters& p,
+    const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p,
     Results& result)
 {
     using namespace std::string_literals;
@@ -45,7 +45,7 @@ void ICP::align(
     ICP_State state(pcGlobal, pcLocal);
 
     state.currentSolution.optimalPose =
-        mrpt::poses::CPose3D(initialGuessM2wrtM1);
+        mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
     auto prev_solution = state.currentSolution.optimalPose;
 
     for (result.nIterations = 0; result.nIterations < p.maxIterations;

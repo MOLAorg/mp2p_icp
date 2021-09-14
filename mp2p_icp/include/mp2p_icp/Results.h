@@ -38,7 +38,17 @@ struct Results
 
     /** A copy of the pairings found in the last ICP iteration. */
     Pairings finalPairings;
+
+    void serializeTo(mrpt::serialization::CArchive& out) const;
+    void serializeFrom(mrpt::serialization::CArchive& in);
 };
+
+mrpt::serialization::CArchive& operator<<(
+    mrpt::serialization::CArchive& out, const Results& obj);
+
+mrpt::serialization::CArchive& operator>>(
+    mrpt::serialization::CArchive& in, Results& obj);
+
 /** @} */
 
 }  // namespace mp2p_icp
