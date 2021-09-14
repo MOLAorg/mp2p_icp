@@ -21,7 +21,7 @@ IMPLEMENTS_MRPT_OBJECT(ICP, mrpt::rtti::CObject, mp2p_icp)
 using namespace mp2p_icp;
 
 void ICP::align(
-    const pointcloud_t& pcs1, const pointcloud_t& pcs2,
+    const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
     const mrpt::math::TPose3D& initialGuessM2wrtM1, const Parameters& p,
     Results& result)
 {
@@ -33,8 +33,8 @@ void ICP::align(
     ASSERT_(!solvers_.empty());
     ASSERT_(!quality_evaluators_.empty());
 
-    ASSERT_(!pcs1.empty());
-    ASSERT_(!pcs2.empty());
+    ASSERT_(!pcGlobal.empty());
+    ASSERT_(!pcLocal.empty());
 
     // Reset output:
     result = Results();
@@ -42,7 +42,7 @@ void ICP::align(
     // ------------------------------------------------------
     // Main ICP loop
     // ------------------------------------------------------
-    ICP_State state(pcs1, pcs2);
+    ICP_State state(pcGlobal, pcLocal);
 
     state.currentSolution.optimalPose =
         mrpt::poses::CPose3D(initialGuessM2wrtM1);
@@ -115,8 +115,8 @@ void ICP::align(
 
     // Quality:
     result.quality = evaluate_quality(
-        quality_evaluators_, pcs1, pcs2, state.currentSolution.optimalPose,
-        state.currentPairings);
+        quality_evaluators_, pcGlobal, pcLocal,
+        state.currentSolution.optimalPose, state.currentPairings);
 
     // Store output:
     result.optimal_tf.mean = state.currentSolution.optimalPose;

@@ -50,10 +50,10 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
    public:
     /** Register (align) two point clouds (possibly after having been
      * preprocessed to extract features, etc.) and returns the relative pose of
-     * pc2 with respect to pc1.
+     * pcLocal with respect to pcGlobal.
      */
     virtual void align(
-        const pointcloud_t& pc1, const pointcloud_t& pc2,
+        const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
         const mrpt::math::TPose3D& initialGuessM2wrtM1, const Parameters& p,
         Results& result);
 
@@ -64,6 +64,10 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     /** Create and configure one or more "Solver" modules from YAML-like config
      *block. Config must be a *sequence* of one or more entries, each with a
      *`class` and a `params` dictionary entries.
+     *
+     * If more than one solver exists, they will be invoked in order, and
+     * optimization will end when the first one returns a successful
+     * convergence. In other words: one solver should be enough in general.
      *
      * Example:
      *\code

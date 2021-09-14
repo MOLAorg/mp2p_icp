@@ -31,7 +31,7 @@ matchers:
       maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
-      pointLayerWeights: 
+      pointLayerWeights:
         raw: # from
           decimated: 1.0  # to
   - class: mp2p_icp::Matcher_Point2Plane
