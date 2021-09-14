@@ -19,6 +19,7 @@
 #include <mrpt/obs/CObservationRotatingScan.h>
 #include <mrpt/obs/CObservationVelodyneScan.h>
 #include <mrpt/obs/CSensoryFrame.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
@@ -117,7 +118,12 @@ void Generator::process(
             }
         }
 
+#if MRPT_VERSION >= 0x233
         o.unload();
+#else
+        // workaround to mrpt const correctness problem in <= v2.3.2
+        const_cast<mrpt::obs::CObservation&>(o).unload();
+#endif
     }
 
     MRPT_END
