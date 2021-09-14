@@ -80,6 +80,21 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     /** Plane patches=centroid point + infinite plane */
     std::vector<plane_patch_t> planes;
 
+    /** An optional numerical ID to identify the pointcloud in some higher-level
+     * system. Used to build the names of ICP debug files, if so requested.
+     * It is not mandatory and even duplicates may exist without problems: just
+     * a placeholder for the user of this library to use it.
+     */
+    std::optional<uint64_t> id;
+
+    /** An optional textual identification/description of the pointcloud in some
+     * higher-level system. Used to build the names of ICP debug files, if so
+     * requested.
+     * It is not mandatory and even duplicates may exist without problems: just
+     * a placeholder for the user of this library to use it.
+     */
+    std::optional<std::string> label;
+
     /** @} */
 
     /** @name Methods

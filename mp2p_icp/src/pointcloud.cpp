@@ -19,6 +19,7 @@
 #include <mrpt/opengl/CSetOfLines.h>
 #include <mrpt/opengl/CSetOfObjects.h>
 #include <mrpt/serialization/CArchive.h>
+#include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/serialization/stl_serialization.h>
 
 #include <algorithm>
@@ -30,7 +31,7 @@ IMPLEMENTS_MRPT_OBJECT(
 using namespace mp2p_icp;
 
 // Implementation of the CSerializable virtual interface:
-uint8_t pointcloud_t::serializeGetVersion() const { return 0; }
+uint8_t pointcloud_t::serializeGetVersion() const { return 1; }
 void    pointcloud_t::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << lines;
@@ -44,6 +45,8 @@ void    pointcloud_t::serializeTo(mrpt::serialization::CArchive& out) const
     out.WriteAs<uint32_t>(point_layers.size());
     for (const auto& l : point_layers) out << l.first << *l.second.get();
 
+    out << id << label;  // new in v1
+
     // Optional user data:
     derivedSerializeTo(out);
 }
@@ -53,6 +56,7 @@ void pointcloud_t::serializeFrom(
     switch (version)
     {
         case 0:
+        case 1:
         {
             in >> lines;
             const auto nPls = in.ReadAs<uint32_t>();
@@ -73,6 +77,14 @@ void pointcloud_t::serializeFrom(
                     mrpt::ptr_cast<mrpt::maps::CPointsMap>::from(
                         in.ReadObject());
             }
+
+            if (version >= 1) { in >> id >> label; }
+            else
+            {
+                id.reset();
+                label.reset();
+            }
+
             // Optional user data:
             derivedSerializeFrom(in);
         }
@@ -317,9 +329,12 @@ std::string pointcloud_t::contents_summary() const
 {
     using namespace std::string_literals;
 
-    if (empty()) return {"empty"s};
-
     std::string ret;
+
+    if (id) ret += "id="s + std::to_string(*id) + " "s;
+    if (label) ret += "label='"s + *label + "' "s;
+
+    if (empty()) return {ret + "empty"s};
 
     const auto retAppend = [&ret](const std::string& s) {
         if (!ret.empty()) ret += ", "s;
