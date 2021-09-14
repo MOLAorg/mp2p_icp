@@ -100,20 +100,26 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
         auto& p = params["pointLayerWeights"];
 
         weight_pt2pt_layers.clear();
-        ASSERT_(p.isMap());
+        ASSERT_(p.isSequence());
 
-        for (const auto& kv : p.asMap())
+        // - {global: "raw", local: "decimated", weight: 1.0}
+        // - {global: "raw", local: "decimated", weight: 1.0}
+        // ...
+
+        for (const auto& entry : p.asSequence())
         {
-            const std::string ly = kv.first.as<std::string>();
-            const mrpt::containers::yaml::node_t& localAndWs = kv.second;
+            ASSERT_(entry.isMap());
+            const auto& em = entry.asMap();
 
-            for (const auto& kkvv : localAndWs.asMap())
-            {
-                const std::string ly2 = kkvv.first.as<std::string>();
-                const double      w   = kkvv.second.as<double>();
+            ASSERT_(em.count("global"));
+            ASSERT_(em.count("local"));
 
-                weight_pt2pt_layers[ly][ly2] = w;
-            }
+            const std::string globalLayer = em.at("global").as<std::string>();
+            const std::string localLayer  = em.at("local").as<std::string>();
+            const double      w =
+                em.count("weight") != 0 ? em.at("weight").as<double>() : 1.0;
+
+            weight_pt2pt_layers[globalLayer][localLayer] = w;
         }
     }
 

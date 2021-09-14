@@ -56,6 +56,7 @@ class Matcher_Points_Base : public Matcher
      * time-based seed.
      *
      * - `pointLayerWeights`: Optional map of layer names to relative weights.
+     *  Refer to example YAML files.
      */
     void initialize(const mrpt::containers::yaml& params) override;
 
