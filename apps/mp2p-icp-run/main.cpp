@@ -52,6 +52,16 @@ static TCLAP::ValueArg<std::string> argYamlConfigFileGenerators(
     "Generator object will be used.",
     false, "generators-config.yaml", "generators-config.yaml", cmd);
 
+static TCLAP::ValueArg<std::string> argYamlConfigFileFilters1(
+    "", "config-filters-pc1",
+    "YAML config file describing a filtering pipeline for point cloud #1. ",
+    false, "filters-config.yaml", "filters-config.yaml", cmd);
+
+static TCLAP::ValueArg<std::string> argYamlConfigFileFilters2(
+    "", "config-filters-pc2",
+    "YAML config file describing a filtering pipeline for point cloud #2. ",
+    false, "filters-config.yaml", "filters-config.yaml", cmd);
+
 static TCLAP::ValueArg<std::string> argInitialGuess(
     "", "guess",
     "SE(3) transformation to use as initial guess for the ICP algorithm. "
@@ -191,23 +201,43 @@ void runIcp()
     // -----------------------------------------
     // Apply filtering pipeline, if defined
     // -----------------------------------------
-    if (cfg.has("filters_pc1"))
     {
-        const auto filters =
-            mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc1"]);
-        mp2p_icp_filters::apply_filter_pipeline(filters, *pc1);
-
-        std::cout << "Filtered point cloud #1: " << pc1->contents_summary()
-                  << std::endl;
+        mp2p_icp_filters::FilterPipeline filters1;
+        if (argYamlConfigFileFilters1.isSet())
+        {
+            filters1 = mp2p_icp_filters::filter_pipeline_from_yaml_file(
+                argYamlConfigFileFilters1.getValue());
+        }
+        else if (cfg.has("filters_pc1"))
+        {
+            filters1 =
+                mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc1"]);
+        }
+        if (!filters1.empty())
+        {
+            mp2p_icp_filters::apply_filter_pipeline(filters1, *pc1);
+            std::cout << "Filtered point cloud #1: " << pc1->contents_summary()
+                      << std::endl;
+        }
     }
-    if (cfg.has("filters_pc2"))
     {
-        const auto filters =
-            mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc2"]);
-        mp2p_icp_filters::apply_filter_pipeline(filters, *pc2);
-
-        std::cout << "Filtered point cloud #2: " << pc2->contents_summary()
-                  << std::endl;
+        mp2p_icp_filters::FilterPipeline filters2;
+        if (argYamlConfigFileFilters2.isSet())
+        {
+            filters2 = mp2p_icp_filters::filter_pipeline_from_yaml_file(
+                argYamlConfigFileFilters2.getValue());
+        }
+        else if (cfg.has("filters_pc2"))
+        {
+            filters2 =
+                mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc2"]);
+        }
+        if (!filters2.empty())
+        {
+            mp2p_icp_filters::apply_filter_pipeline(filters2, *pc2);
+            std::cout << "Filtered point cloud #2: " << pc2->contents_summary()
+                      << std::endl;
+        }
     }
 
     const double t_ini = mrpt::Clock::nowDouble();
