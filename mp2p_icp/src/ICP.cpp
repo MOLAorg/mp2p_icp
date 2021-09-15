@@ -16,6 +16,8 @@
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
 
+#include <regex>
+
 IMPLEMENTS_MRPT_OBJECT(ICP, mrpt::rtti::CObject, mp2p_icp)
 
 using namespace mp2p_icp;
@@ -23,12 +25,15 @@ using namespace mp2p_icp;
 void ICP::align(
     const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
     const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p,
-    Results& result)
+    Results& result, const mrpt::optional_ref<LogRecord>& outputDebugInfo)
 {
     using namespace std::string_literals;
 
     MRPT_START
 
+    // ----------------------------
+    // Initial sanity checks
+    // ----------------------------
     ASSERT_(!matchers_.empty());
     ASSERT_(!solvers_.empty());
     ASSERT_(!quality_evaluators_.empty());
@@ -36,13 +41,32 @@ void ICP::align(
     ASSERT_(!pcGlobal.empty());
     ASSERT_(!pcLocal.empty());
 
+    // ----------------------------
+    // Preparation
+    // ----------------------------
     // Reset output:
     result = Results();
+
+    // Prepare output debug records:
+    std::optional<LogRecord> currentLog;
+
+    const bool generateDebugRecord =
+        outputDebugInfo.has_value() || p.generateDebugFiles;
+
+    if (generateDebugRecord)
+    {
+        currentLog.emplace();
+        currentLog->pcGlobal = pcGlobal.get_shared_from_this_or_clone();
+        currentLog->pcLocal  = pcLocal.get_shared_from_this_or_clone();
+        currentLog->initialGuessLocalWrtGlobal = initialGuessLocalWrtGlobal;
+        currentLog->icpParameters              = p;
+    }
 
     // ------------------------------------------------------
     // Main ICP loop
     // ------------------------------------------------------
     ICP_State state(pcGlobal, pcLocal);
+    if (currentLog) state.log = &currentLog.value();
 
     state.currentSolution.optimalPose =
         mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
@@ -110,6 +134,9 @@ void ICP::align(
         prev_solution = state.currentSolution.optimalPose;
     }
 
+    // ----------------------------
+    // Fill in "result"
+    // ----------------------------
     if (result.nIterations >= p.maxIterations)
         result.terminationReason = IterTermReason::MaxIterations;
 
@@ -129,7 +156,70 @@ void ICP::align(
     result.optimal_tf.cov = mp2p_icp::covariance(
         result.finalPairings, result.optimal_tf.mean, covParams);
 
+    // ----------------------------
+    // Log records
+    // ----------------------------
+    // Store results into log struct:
+    if (currentLog) currentLog->icpResult = result;
+
+    // Save log to disk:
+    if (currentLog.has_value()) save_log_file(*currentLog, p);
+
+    // return log info:
+    if (currentLog && outputDebugInfo.has_value())
+        outputDebugInfo.value().get() = std::move(currentLog.value());
+
     MRPT_END
+}
+
+void ICP::save_log_file(const LogRecord& log, const Parameters& p)
+{
+    using namespace std::string_literals;
+
+    if (!p.generateDebugFiles) return;
+    std::string filename = p.debugFileNameFormat;
+
+    {
+        const std::string expr  = "\\$\\{GLOBAL_ID\\}";
+        const auto        value = mrpt::format(
+            "%05u", static_cast<unsigned int>(
+                        (log.pcGlobal && log.pcGlobal->id.has_value())
+                            ? log.pcGlobal->id.value()
+                            : 0));
+        filename = std::regex_replace(filename, std::regex(expr), value);
+    }
+
+    {
+        const std::string expr = "\\$\\{GLOBAL_LABEL\\}";
+        const auto value = (log.pcGlobal && log.pcGlobal->label.has_value())
+                               ? log.pcGlobal->label.value()
+                               : ""s;
+        filename = std::regex_replace(filename, std::regex(expr), value);
+    }
+    {
+        const std::string expr  = "\\$\\{LOCAL_ID\\}";
+        const auto        value = mrpt::format(
+            "%05u", static_cast<unsigned int>(
+                        (log.pcLocal && log.pcLocal->id.has_value())
+                            ? log.pcLocal->id.value()
+                            : 0));
+        filename = std::regex_replace(filename, std::regex(expr), value);
+    }
+
+    {
+        const std::string expr = "\\$\\{LOCAL_LABEL\\}";
+        const auto value       = (log.pcLocal && log.pcLocal->label.has_value())
+                               ? log.pcLocal->label.value()
+                               : ""s;
+        filename = std::regex_replace(filename, std::regex(expr), value);
+    }
+
+    const bool saveOk = log.save_to_file(filename);
+    if (!saveOk)
+    {
+        std::cerr << "[ERROR] Could not save icp log file to '" << filename
+                  << "'" << std::endl;
+    }
 }
 
 Pairings ICP::run_matchers(

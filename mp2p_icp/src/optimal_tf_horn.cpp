@@ -74,10 +74,17 @@ static void se3_l2_internal(
     MRPT_START
 
     // Compute the centroids
-    const auto nPoints     = in.paired_pt2pt.size();
-    const auto nLines      = in.paired_ln2ln.size();
-    const auto nPlanes     = in.paired_pl2pl.size();
-    const auto nAllMatches = nPoints + nLines + nPlanes;
+    const auto nPt2Pt = in.paired_pt2pt.size();
+    const auto nPt2Ln = in.paired_pt2ln.size();
+    const auto nPt2Pl = in.paired_pt2pl.size();
+    const auto nLn2Ln = in.paired_ln2ln.size();
+    const auto nPl2Pl = in.paired_pl2pl.size();
+
+    ASSERTMSG_(
+        nPt2Ln == 0, "This solver cannot handle point-to-line pairings.");
+    ASSERTMSG_(
+        nPt2Pl == 0, "This solver cannot handle point-to-plane pairings yet.");
+    const auto nAllMatches = nPt2Pt + nLn2Ln + nPl2Pl;
 
     ASSERTMSG_(nAllMatches >= 3, "Horn method needs at least 3 references!");
 

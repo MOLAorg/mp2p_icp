@@ -68,7 +68,8 @@ void ICP_LibPointmatcher::align(
     [[maybe_unused]] const pointcloud_t&        pcs1,
     [[maybe_unused]] const pointcloud_t&        pcs2,
     [[maybe_unused]] const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
-    [[maybe_unused]] const Parameters& p, [[maybe_unused]] Results& result)
+    [[maybe_unused]] const Parameters& p, [[maybe_unused]] Results& result,
+    [[maybe_unused]] const mrpt::optional_ref<LogRecord>& outputDebugInfo)
 {
     using namespace std::string_literals;
 

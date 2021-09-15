@@ -24,6 +24,9 @@ namespace mp2p_icp
 /** \addtogroup  mp2p_icp_grp
  * @{ */
 
+/** Details on an ICP run, loadable from the GUI tool mp2p-icp-log-viewer.
+ *
+ */
 class LogRecord : public mrpt::serialization::CSerializable
 {
     DEFINE_SERIALIZABLE(LogRecord, mp2p_icp)
@@ -36,7 +39,7 @@ class LogRecord : public mrpt::serialization::CSerializable
      * @{ */
 
     /** The ICP input global and local point clouds: */
-    pointcloud_t::Ptr pcGlobal, pcLocal;
+    pointcloud_t::ConstPtr pcGlobal, pcLocal;
 
     mrpt::math::TPose3D initialGuessLocalWrtGlobal;
 

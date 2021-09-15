@@ -8,14 +8,18 @@ params:
   maxIterations: 100
   minAbsStep_trans: 1e-4
   minAbsStep_rot: 1e-4
+  
+  #generateDebugFiles: true
+  #debugFileNameFormat: "icp-run-${LOCAL_ID}${LOCAL_LABEL}-to-${GLOBAL_ID}${GLOBAL_LABEL}.icplog.gz"
+  
   pairingsWeightParameters:
     # scale-based outlier detector
     use_scale_outlier_detector: true
     scale_outlier_threshold: 1.1
-    # An optional "a priori" term.
+    # An optional "a priori" term (default=false)
     use_robust_kernel: false
-    robust_kernel_param: 0.1 # [degrees]
-    robust_kernel_scale: 400.0
+    #robust_kernel_param: 0.1 # [degrees]
+    #robust_kernel_scale: 400.0
 
 solvers:
   - class: mp2p_icp::Solver_GaussNewton

@@ -21,6 +21,7 @@
 #include <mrpt/serialization/CSerializable.h>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -49,8 +50,13 @@ struct plane_patch_t
  *
  * Can be derived by users to define custom point cloud features, for use
  * in custom alignment algorithms.
+ *
+ * The class supports C++11/C++17 std::shared_from_this() via
+ * get_shared_from_this();
+ *
  */
-class pointcloud_t : public mrpt::serialization::CSerializable
+class pointcloud_t : public mrpt::serialization::CSerializable,
+                     public std::enable_shared_from_this<pointcloud_t>
 {
     DEFINE_SERIALIZABLE(pointcloud_t, mp2p_icp)
 
@@ -165,6 +171,21 @@ class pointcloud_t : public mrpt::serialization::CSerializable
     static void get_visualization_point_layer(
         mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
         const mrpt::maps::CPointsMap::Ptr& pts);
+
+    /** Returns a shared_ptr to this object, if it was already created initially
+     * as a shared_ptr, or an empty pointer otherwise.
+     */
+    Ptr get_shared_from_this();
+
+    /** Like get_shared_from_this(), or makes a deep copy if the original object
+     * was allocated in the stack, etc.
+     */
+    Ptr get_shared_from_this_or_clone();
+
+    // const versions:
+    ConstPtr get_shared_from_this() const;
+    ConstPtr get_shared_from_this_or_clone() const;
+
     /** @} */
 
    protected:

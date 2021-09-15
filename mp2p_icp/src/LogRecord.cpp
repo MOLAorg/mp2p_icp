@@ -19,7 +19,24 @@ using namespace mp2p_icp;
 uint8_t LogRecord::serializeGetVersion() const { return 0; }
 void    LogRecord::serializeTo(mrpt::serialization::CArchive& out) const
 {
-    out << pcGlobal << pcLocal;
+    if (pcGlobal)
+    {
+        out.WriteAs<bool>(true);
+        out << *pcGlobal;
+    }
+    else
+    {
+        out.WriteAs<bool>(false);
+    }
+    if (pcLocal)
+    {
+        out.WriteAs<bool>(true);
+        out << *pcLocal;
+    }
+    else
+    {
+        out.WriteAs<bool>(false);
+    }
     out << initialGuessLocalWrtGlobal;
     out << icpParameters;
     out << icpResult;
@@ -28,12 +45,25 @@ void    LogRecord::serializeTo(mrpt::serialization::CArchive& out) const
 void LogRecord::serializeFrom(
     mrpt::serialization::CArchive& in, uint8_t version)
 {
+    *this = LogRecord();
+
     switch (version)
     {
         case 0:
         {
-            in >> pcGlobal >> pcLocal >> initialGuessLocalWrtGlobal >>
-                icpParameters >> icpResult >> iterationsDetails;
+            if (in.ReadAs<bool>())
+            {
+                pcGlobal = pointcloud_t::Create();
+                in >> const_cast<pointcloud_t&>(*pcGlobal);
+            }
+            if (in.ReadAs<bool>())
+            {
+                pcLocal = pointcloud_t::Create();
+                in >> const_cast<pointcloud_t&>(*pcLocal);
+            }
+
+            in >> initialGuessLocalWrtGlobal >> icpParameters >> icpResult >>
+                iterationsDetails;
         }
         break;
         default:

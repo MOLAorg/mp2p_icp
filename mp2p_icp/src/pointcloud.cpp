@@ -387,3 +387,43 @@ bool pointcloud_t::load_from_file(const std::string& fileName)
 
     return true;
 }
+
+pointcloud_t::Ptr pointcloud_t::get_shared_from_this()
+{
+    try
+    {
+        return shared_from_this();
+    }
+    catch (const std::bad_weak_ptr&)
+    {
+        // Not created as a shared_ptr.
+        return {};
+    }
+}
+
+pointcloud_t::Ptr pointcloud_t::get_shared_from_this_or_clone()
+{
+    Ptr ret = get_shared_from_this();
+    if (!ret) ret = std::make_shared<pointcloud_t>(*this);
+    return ret;
+}
+
+pointcloud_t::ConstPtr pointcloud_t::get_shared_from_this() const
+{
+    try
+    {
+        return shared_from_this();
+    }
+    catch (const std::bad_weak_ptr&)
+    {
+        // Not created as a shared_ptr.
+        return {};
+    }
+}
+
+pointcloud_t::ConstPtr pointcloud_t::get_shared_from_this_or_clone() const
+{
+    ConstPtr ret = get_shared_from_this();
+    if (!ret) ret = std::make_shared<pointcloud_t>(*this);
+    return ret;
+}

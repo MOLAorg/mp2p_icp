@@ -47,6 +47,21 @@ struct Parameters : public mrpt::serialization::CSerializable
      * optimal pose estimation algorithms */
     WeightParameters pairingsWeightParameters;
 
+    /** If true, debug files useful to inspect how ICP works internally will be
+     * generated and saved to disk for posterior inspection with a GUI.
+     *
+     * The same mp2p_icp::LogRecord object saved to disk will be also returned
+     * by ICP::align().
+     *
+     * \sa debugFileNameFormat
+     */
+    bool generateDebugFiles = false;
+
+    /** Generated files format, if generateDebugFiles is true. */
+    std::string debugFileNameFormat =
+        "icp-run-${LOCAL_ID}${LOCAL_LABEL}-to-${GLOBAL_ID}${GLOBAL_LABEL}."
+        "icplog.gz";
+
     void load_from(const mrpt::containers::yaml& p);
     void save_to(mrpt::containers::yaml& p) const;
 };

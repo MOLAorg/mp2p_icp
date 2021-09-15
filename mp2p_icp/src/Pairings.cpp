@@ -58,14 +58,14 @@ std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
 {
     using mrpt::math::TPoint3D;
 
-    const auto nPoints = in.paired_pt2pt.size();
+    const auto nPt2Pt = in.paired_pt2pt.size();
 
     // We need more points than outliers (!)
-    ASSERT_GT_(nPoints, outliers.point2point.size());
+    ASSERT_GT_(nPt2Pt, outliers.point2point.size());
 
     // Normalized weights for centroids.
     // Discount outliers.
-    const double wcPoints = 1.0 / (nPoints - outliers.point2point.size());
+    const double wcPoints = 1.0 / (nPt2Pt - outliers.point2point.size());
 
     // Add global coordinate of points for now, we'll convert them later to
     // unit vectors relative to the centroids:
@@ -89,7 +89,7 @@ std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
             cnt++;
         }
         // Sanity check:
-        ASSERT_EQUAL_(cnt, nPoints - outliers.point2point.size());
+        ASSERT_EQUAL_(cnt, nPt2Pt - outliers.point2point.size());
 
         ct_other *= wcPoints;
         ct_this *= wcPoints;

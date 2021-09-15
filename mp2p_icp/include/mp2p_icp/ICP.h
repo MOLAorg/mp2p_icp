@@ -12,6 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/IterTermReason.h>
+#include <mp2p_icp/LogRecord.h>
 #include <mp2p_icp/Matcher.h>
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/QualityEvaluator.h>
@@ -20,6 +21,7 @@
 #include <mp2p_icp/Solver.h>
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/optional_ref.h>
 #include <mrpt/math/TPose3D.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
@@ -34,6 +36,9 @@ namespace mp2p_icp
  * algorithm and parameter for each stage.
  *
  * The main API entry point is align().
+ *
+ * A convenient way to create an ICP pipeline instance is using a YAML
+ * configuration file and calling mp2p_icp::icp_pipeline_from_yaml().
  *
  * \todo Add pipeline picture.
  *
@@ -55,19 +60,19 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     virtual void align(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
         const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
-        const Parameters& p, Results& result);
+        const Parameters& p, Results& result,
+        const mrpt::optional_ref<LogRecord>& outputDebugInfo = std::nullopt);
 
     /** @name Module: Solver instances
      * @{ */
     using solver_list_t = std::vector<mp2p_icp::Solver::Ptr>;
 
     /** Create and configure one or more "Solver" modules from YAML-like config
-     *block. Config must be a *sequence* of one or more entries, each with a
-     *`class` and a `params` dictionary entries.
+     *   block. Config must be a *sequence* of one or more entries, each with a
+     *   `class` and a `params` dictionary entries.
      *
-     * If more than one solver exists, they will be invoked in order, and
-     * optimization will end when the first one returns a successful
-     * convergence. In other words: one solver should be enough in general.
+     * Read the comments for ICP on the possible existence of more than one
+     * solver.
      *
      * Example:
      *\code
@@ -78,6 +83,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      *\endcode
      *
      * Alternatively, the objects can be directly created via solvers().
+     *
+     * \sa mp2p_icp::icp_pipeline_from_yaml()
      */
     void initialize_solvers(const mrpt::containers::yaml& params);
 
@@ -112,6 +119,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      *\endcode
      *
      * Alternatively, the objects can be directly created via matchers().
+     *
+     * \sa mp2p_icp::icp_pipeline_from_yaml()
      */
     void initialize_matchers(const mrpt::containers::yaml& params);
 
@@ -158,6 +167,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      *\endcode
      *
      * Alternatively, the objects can be directly created via matchers().
+     *
+     * \sa mp2p_icp::icp_pipeline_from_yaml()
      */
     void initialize_quality_evaluators(const mrpt::containers::yaml& params);
 
@@ -183,6 +194,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     quality_eval_list_t quality_evaluators_ = {
         {QualityEvaluator_PairedRatio::Create(), 1.0}};
 
+    static void save_log_file(const LogRecord& log, const Parameters& p);
+
     struct ICP_State
     {
         ICP_State(const pointcloud_t& pcs1, const pointcloud_t& pcs2)
@@ -196,6 +209,7 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         Pairings            currentPairings;
         OptimalTF_Result    currentSolution;
         uint32_t            currentIteration = 0;
+        LogRecord*          log              = nullptr;
     };
 };
 }  // namespace mp2p_icp

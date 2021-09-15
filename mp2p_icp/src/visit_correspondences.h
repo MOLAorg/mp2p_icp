@@ -13,6 +13,7 @@
 
 #include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/WeightParameters.h>
+#include <mrpt/core/optional_ref.h>
 #include <mrpt/math/TPoint3D.h>
 
 namespace mp2p_icp
@@ -20,28 +21,45 @@ namespace mp2p_icp
 /** \addtogroup  mp2p_icp_grp
  * @{ */
 
+struct VisitCorrespondencesStats
+{
+    uint32_t num_pairings_discarded_scale_outliers = 0;
+};
+
 /** Visit each correspondence */
 template <class LAMBDA, class LAMBDA2>
 void visit_correspondences(
     const Pairings& in, const WeightParameters& wp,
     const mrpt::math::TPoint3D& ct_other, const mrpt::math::TPoint3D& ct_this,
     OutlierIndices& in_out_outliers, LAMBDA lambda_each_pair,
-    LAMBDA2 lambda_final, bool normalize_relative_point_vectors)
+    LAMBDA2 lambda_final, bool normalize_relative_point_vectors,
+    const mrpt::optional_ref<VisitCorrespondencesStats>& outStats =
+        std::nullopt)
 {
     using mrpt::math::TPoint3D;
     using mrpt::math::TVector3D;
 
-    const auto nPoints     = in.paired_pt2pt.size();
-    const auto nLines      = in.paired_ln2ln.size();
-    const auto nPlanes     = in.paired_pl2pl.size();
-    const auto nAllMatches = nPoints + nLines + nPlanes;
+    const auto nPt2Pt = in.paired_pt2pt.size();
+    const auto nPt2Ln = in.paired_pt2ln.size();
+    const auto nPt2Pl = in.paired_pt2pl.size();
+    const auto nLn2Ln = in.paired_ln2ln.size();
+    const auto nPl2Pl = in.paired_pl2pl.size();
+
+    ASSERTMSG_(
+        nPt2Ln == 0, "This solver cannot handle point-to-line pairings.");
+    ASSERTMSG_(
+        nPt2Pl == 0, "This solver cannot handle point-to-plane pairings yet.");
+
+    const auto nAllMatches = nPt2Pt + nLn2Ln + nPl2Pl;
+
+    VisitCorrespondencesStats stats;
 
     // weight of points, block by block:
     auto point_weights = in.point_weights;
     if (point_weights.empty())
     {
         // Default, equal weights:
-        point_weights.emplace_back(nPoints, 1.0);
+        point_weights.emplace_back(nPt2Pt, 1.0);
     }
 
     auto        cur_point_block_weights = point_weights.begin();
@@ -57,7 +75,7 @@ void visit_correspondences(
             wPt + wLi + wPl > .0,
             "All, point, line, plane attidude weights, are <=0 (!)");
 
-        const auto k = 1.0 / (wPt * nPoints + wLi * nLines + wPl * nPlanes);
+        const auto k = 1.0 / (wPt * nPt2Pt + wLi * nLn2Ln + wPl * nPl2Pl);
         waPoints     = wPt * k;
         waLines      = wLi * k;
         waPlanes     = wPl * k;
@@ -91,7 +109,7 @@ void visit_correspondences(
         double    wi = .0;
 
         // Points, lines, planes, are all stored in sequence:
-        if (i < nPoints)
+        if (i < nPt2Pt)
         {
             // point-to-point pairing:  normalize(point-centroid)
             const auto& p = in.paired_pt2pt[i];
@@ -135,17 +153,18 @@ void visit_correspondences(
                 {
                     // Discard this pairing:
                     new_outliers.point2point.push_back(i);
+                    stats.num_pairings_discarded_scale_outliers++;
 
                     continue;  // Skip (same effect than: wi = 0)
                 }
             }
         }
-        else if (i < nPoints + nLines)
+        else if (i < nPt2Pt + nLn2Ln)
         {
             // line-to-line pairing:
             wi = waLines;
 
-            const auto idxLine = i - nPoints;
+            const auto idxLine = i - nPt2Pt;
 
             bi = in.paired_ln2ln[idxLine].ln_this.getDirectorVector();
             ri = in.paired_ln2ln[idxLine].ln_other.getDirectorVector();
@@ -158,7 +177,7 @@ void visit_correspondences(
             // plane-to-plane pairing:
             wi = waPlanes;
 
-            const auto idxPlane = i - (nPoints + nLines);
+            const auto idxPlane = i - (nPt2Pt + nLn2Ln);
             bi = in.paired_pl2pl[idxPlane].p_this.plane.getNormalVector();
             ri = in.paired_pl2pl[idxPlane].p_other.plane.getNormalVector();
 
@@ -197,6 +216,9 @@ void visit_correspondences(
     in_out_outliers = std::move(new_outliers);
 
     lambda_final(w_sum);
+
+    // send out optional stats
+    if (outStats.has_value()) outStats.value().get() = stats;
 
 }  // end visit_correspondences()
 
