@@ -1,10 +1,14 @@
-[![CircleCI](https://img.shields.io/circleci/build/gh/MOLAorg/mp2p_icp/master.svg)](https://circleci.com/gh/MOLAorg/mp2p_icp) [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://docs.mola-slam.org/latest/doxygen-index.html)
+[![CircleCI](https://img.shields.io/circleci/build/gh/MOLAorg/mp2p_icp/master.svg)](https://circleci.com/gh/MOLAorg/mp2p_icp) [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://docs.mola-slam.org/latest/module-mp2p-icp.html)
 
 
 # `mp2p_icp`
 A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++. 
 
 License: New BSD 3-Clause
+
+Docs:
+- [Main library documentation](https://docs.mola-slam.org/latest/module-mp2p-icp.html)
+- [C++ API reference](https://docs.mola-slam.org/latest/group_mp2p_icp_grp.html)
 
 The OLAE-ICP method is described in [this technical report](https://arxiv.org/abs/1906.10783):
 
