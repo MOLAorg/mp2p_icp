@@ -53,7 +53,7 @@ static double loss(double x, double y)
 double QualityEvaluator_Voxels::evaluate(
     const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
     const mrpt::poses::CPose3D&      localPose,
-    [[maybe_unused]] const Pairings& finalPairings) const
+    [[maybe_unused]] const Pairings& pairingsFromICP) const
 {
     // Build both voxel maps:
     // ----------------------------------

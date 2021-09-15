@@ -41,7 +41,7 @@ void QualityEvaluator_RangeImageSimilarity::initialize(
 double QualityEvaluator_RangeImageSimilarity::evaluate(
     const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
     const mrpt::poses::CPose3D&      localPose,
-    [[maybe_unused]] const Pairings& finalPairings) const
+    [[maybe_unused]] const Pairings& pairingsFromICP) const
 {
     // See Figure 3 of IROS2017 paper:
     // "Analyzing the Quality of Matched 3D Point Clouds of Objects"

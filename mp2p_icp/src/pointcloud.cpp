@@ -320,8 +320,14 @@ size_t pointcloud_t::size() const
 
     n += lines.size();
     n += planes.size();
-    for (const auto& layer : point_layers) n += layer.second->size();
+    n += size_points_only();
 
+    return n;
+}
+size_t pointcloud_t::size_points_only() const
+{
+    size_t n = 0;
+    for (const auto& layer : point_layers) n += layer.second->size();
     return n;
 }
 

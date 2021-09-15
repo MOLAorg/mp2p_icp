@@ -31,7 +31,7 @@ class QualityEvaluator_Voxels : public QualityEvaluator
     double evaluate(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
-        const Pairings&             finalPairings) const override;
+        const Pairings&             pairingsFromICP) const override;
 
     double resolution                  = 0.25;  //!< voxel size [meters]
     double maxOccupancyUpdateCertainty = 0.65;  //! <[0.5,1.0]

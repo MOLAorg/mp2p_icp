@@ -32,12 +32,21 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
     MCP_LOAD_REQ(c, voxel_filter_resolution);
     MCP_LOAD_REQ(c, use_voxel_average);
 
-    MCP_LOAD_OPT(c, init_extension_min_x);
-    MCP_LOAD_OPT(c, init_extension_min_y);
-    MCP_LOAD_OPT(c, init_extension_min_z);
-    MCP_LOAD_OPT(c, init_extension_max_x);
-    MCP_LOAD_OPT(c, init_extension_max_y);
-    MCP_LOAD_OPT(c, init_extension_max_z);
+    ASSERT_(
+        c.has("bounding_box_min") && c["bounding_box_min"].isSequence() &&
+        c["bounding_box_min"].asSequence().size() == 3);
+    ASSERT_(
+        c.has("bounding_box_max") && c["bounding_box_max"].isSequence() &&
+        c["bounding_box_max"].asSequence().size() == 3);
+
+    const auto bboxMin = c["bounding_box_min"].toStdVector<double>();
+    const auto bboxMax = c["bounding_box_max"].toStdVector<double>();
+
+    for (int i = 0; i < 3; i++)
+    {
+        bounding_box.min[i] = bboxMin.at(i);
+        bounding_box.max[i] = bboxMax.at(i);
+    }
 }
 
 FilterDecimateVoxels::FilterDecimateVoxels() = default;
@@ -50,10 +59,7 @@ void FilterDecimateVoxels::initialize(const mrpt::containers::yaml& c)
     params_.load_from_yaml(c);
 
     filter_grid_.resize(
-        {params_.init_extension_min_x, params_.init_extension_min_y,
-         params_.init_extension_min_z},
-        {params_.init_extension_max_x, params_.init_extension_max_y,
-         params_.init_extension_max_z},
+        params_.bounding_box.min, params_.bounding_box.max,
         params_.voxel_filter_resolution);
 
     MRPT_END

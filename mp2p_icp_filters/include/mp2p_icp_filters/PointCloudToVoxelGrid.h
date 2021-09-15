@@ -29,6 +29,7 @@ class PointCloudToVoxelGrid
 {
    public:
     PointCloudToVoxelGrid() = default;
+    ~PointCloudToVoxelGrid() {}
 
     void resize(
         const mrpt::math::TPoint3D& min_corner,

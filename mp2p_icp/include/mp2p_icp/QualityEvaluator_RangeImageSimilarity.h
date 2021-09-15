@@ -53,12 +53,12 @@ class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
     void initialize(const mrpt::containers::yaml& params) override;
 
     /** See base class.
-     * This implementation does NOT use `finalPairings` at all, it can be empty.
+     * This implementation does NOT use `pairingsFromICP` at all, it can be empty.
      */
     double evaluate(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
-        const Pairings&             finalPairings) const override;
+        const Pairings&             pairingsFromICP) const override;
 
     /** Parameters for the simulated camera */
     mrpt::img::TCamera rangeCamera;

@@ -36,7 +36,7 @@ class QualityEvaluator : public mrpt::system::COutputLogger,
     virtual double evaluate(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
-        const Pairings&             finalPairings) const = 0;
+        const Pairings&             pairingsFromICP) const = 0;
 };
 
 }  // namespace mp2p_icp

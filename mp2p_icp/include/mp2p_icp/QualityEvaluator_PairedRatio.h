@@ -11,6 +11,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/QualityEvaluator.h>
 
 namespace mp2p_icp
@@ -24,8 +25,6 @@ class QualityEvaluator_PairedRatio : public QualityEvaluator
     DEFINE_MRPT_OBJECT(QualityEvaluator_PairedRatio, mp2p_icp)
 
    public:
-    double thresholdDistance = 0.10;
-
     /** See base class. Parameters:
      *
      * \code
@@ -37,7 +36,10 @@ class QualityEvaluator_PairedRatio : public QualityEvaluator
     double evaluate(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
-        const Pairings&             finalPairings) const override;
+        const Pairings&             pairingsFromICP) const override;
+
+   private:
+    Matcher_Points_DistanceThreshold matcher_;
 };
 
 }  // namespace mp2p_icp

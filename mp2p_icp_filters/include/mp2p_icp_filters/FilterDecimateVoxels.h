@@ -63,12 +63,15 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
          *  the original points. */
         bool use_voxel_average = false;
 
-        float init_extension_min_x = -10.0f;
-        float init_extension_min_y = -10.0f;
-        float init_extension_min_z = -5.0f;
-        float init_extension_max_x = 10.0f;
-        float init_extension_max_y = 10.0f;
-        float init_extension_max_z = 5.0f;
+        /**
+         * YAML loading format:
+         * \code
+         * bounding_box_min: [-10, -10, -5]
+         * bounding_box_max: [ 10,  10,  5]
+         * \endcode
+         */
+        mrpt::math::TBoundingBoxf bounding_box = {
+            {-10.0f, -10.0f, -5.0f}, {10.0f, 10.0f, 5.0f}};
     };
 
     /** Algorithm parameters */

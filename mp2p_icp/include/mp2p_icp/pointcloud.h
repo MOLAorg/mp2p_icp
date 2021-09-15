@@ -112,6 +112,9 @@ class pointcloud_t : public mrpt::serialization::CSerializable,
     /** Overall number of elements (points, lines, planes) */
     virtual size_t size() const;
 
+    /** Overall number of points, including all layers. */
+    virtual size_t size_points_only() const;
+
     /** Returns a string summarizing all the elements in the container (points,
      * lines, planes) */
     virtual std::string contents_summary() const;

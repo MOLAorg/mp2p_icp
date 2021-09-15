@@ -55,7 +55,7 @@ class Matcher_Points_Base : public Matcher
      * the RNG used to pick random point indices. `0` (default) means to use a
      * time-based seed.
      *
-     * - `pointLayerWeights`: Optional map of layer names to relative weights.
+     * - `pointLayerMatches`: Optional map of layer names to relative weights.
      *  Refer to example YAML files.
      */
     void initialize(const mrpt::containers::yaml& params) override;

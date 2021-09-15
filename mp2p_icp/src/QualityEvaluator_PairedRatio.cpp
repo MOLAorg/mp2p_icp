@@ -10,28 +10,59 @@
  * @date   July 6, 2020
  */
 
-#include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/QualityEvaluator_PairedRatio.h>
 
 IMPLEMENTS_MRPT_OBJECT(QualityEvaluator_PairedRatio, QualityEvaluator, mp2p_icp)
 
 using namespace mp2p_icp;
 
-void QualityEvaluator_PairedRatio::initialize(  //
+void QualityEvaluator_PairedRatio::initialize(
     const mrpt::containers::yaml& params)
 {
-    MCP_LOAD_REQ(params, thresholdDistance);
+    matcher_.initialize(params);
 }
 
 double QualityEvaluator_PairedRatio::evaluate(
     const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
     const mrpt::poses::CPose3D&      localPose,
-    [[maybe_unused]] const Pairings& finalPairings) const
+    [[maybe_unused]] const Pairings& pairingsFromICP) const
 {
-    mp2p_icp::Pairings                         pairings;
-    mp2p_icp::Matcher_Points_DistanceThreshold matcher(thresholdDistance);
+    mp2p_icp::Pairings pairings;
 
-    matcher.match(pcGlobal, pcLocal, localPose, {}, pairings);
+    matcher_.match(pcGlobal, pcLocal, localPose, {}, pairings);
 
-    return pairings.size() / (0.5 * (pcGlobal.size() + pcLocal.size()));
+    // The ratio must be accounted for using the number of points in
+    // the active layers:
+    size_t nEffectiveLocalPoints = 0;
+    if (matcher_.weight_pt2pt_layers.empty())
+    {
+        // all layers:
+        nEffectiveLocalPoints = pcLocal.size_points_only();
+    }
+    else
+    {
+        // only selected ones:
+        for (const auto& p : matcher_.weight_pt2pt_layers)
+        {
+            for (const auto& kv : p.second)
+            {
+                const auto& localLayerName = kv.first;
+                if (const auto itLy = pcLocal.point_layers.find(localLayerName);
+                    itLy != pcLocal.point_layers.end())
+                {
+                    ASSERT_(itLy->second);
+                    nEffectiveLocalPoints += itLy->second->size();
+                }
+                else
+                    THROW_EXCEPTION_FMT(
+                        "Could not find point layer '%s' in local "
+                        "pointcloud_t.",
+                        localLayerName.c_str());
+            }
+        }
+    }
+
+    ASSERT_(nEffectiveLocalPoints != 0);
+
+    return pairings.size() / double(nEffectiveLocalPoints);
 }

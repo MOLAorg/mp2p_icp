@@ -253,8 +253,8 @@ void runIcp()
         << icpResults.optimal_tf.mean
         << "\n"
            " quality: "
-        << icpResults.quality
-        << "\n"
+        << 100 * icpResults.quality
+        << " %\n"
            " iterations: "
         << icpResults.nIterations
         << "\n"

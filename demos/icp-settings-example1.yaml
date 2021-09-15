@@ -39,7 +39,7 @@ matchers:
       #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
-      pointLayerWeights:
+      pointLayerMatches:
         - {global: "raw", local: "decimated", weight: 1.0}
 #  - class: mp2p_icp::Matcher_Point2Plane
 #    params:
@@ -49,7 +49,7 @@ matchers:
 #      knn: 7
 #      runFromIteration: 0  # "from 0 to 0" means "all"
 #      runUpToIteration: 0
-#      pointLayerWeights:
+#      pointLayerMatches:
 #        - {global: "raw", local: "decimated", weight: 1.0}
 
 quality:

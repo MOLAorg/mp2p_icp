@@ -95,9 +95,9 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
 {
     Matcher::initialize(params);
 
-    if (params.has("pointLayerWeights"))
+    if (params.has("pointLayerMatches"))
     {
-        auto& p = params["pointLayerWeights"];
+        auto& p = params["pointLayerMatches"];
 
         weight_pt2pt_layers.clear();
         ASSERT_(p.isSequence());

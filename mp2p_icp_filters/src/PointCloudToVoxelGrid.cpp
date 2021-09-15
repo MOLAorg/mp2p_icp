@@ -83,7 +83,6 @@ void PointCloudToVoxelGrid::processPointCloud(const mrpt::maps::CPointsMap& p)
 
 void PointCloudToVoxelGrid::clear()
 {
-    // for (auto& c : pts_voxels) c.indices.clear();
     for (auto idx : used_voxel_indices)
     {
         auto c = pts_voxels.cellByIndex(idx);
