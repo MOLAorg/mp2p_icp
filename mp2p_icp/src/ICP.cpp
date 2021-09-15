@@ -117,11 +117,16 @@ void ICP::align(
         const double delta_xyz = dSol.blockCopy<3, 1>(0, 0).norm();
         const double delta_rot = dSol.blockCopy<3, 1>(3, 0).norm();
 
-#if 0
-        std::cout << "Dxyz: " << std::abs(delta_xyz)
-                  << " Drot:" << std::abs(delta_rot)
-                  << " p: " << state.currentSolution.asString() << "\n";
-#endif
+        if (p.debugPrintIterationProgress)
+        {
+            printf(
+                "[ICP] Iter=%3u Delta_xyz=%9.02g, Delta_rot=%9.02g rad, "
+                "(xyzypr)=%s pairs=%s\n",
+                static_cast<unsigned int>(state.currentIteration),
+                std::abs(delta_xyz), std::abs(delta_rot),
+                state.currentSolution.optimalPose.asString().c_str(),
+                state.currentPairings.contents_summary().c_str());
+        }
 
         if (std::abs(delta_xyz) < p.minAbsStep_trans &&
             std::abs(delta_rot) < p.minAbsStep_rot)

@@ -43,6 +43,9 @@ struct Parameters : public mrpt::serialization::CSerializable
     double minAbsStep_rot{1e-4};
     /** @} */
 
+    /** @name Debugging and logging
+        @{ */
+
     /** If true, debug files useful to inspect how ICP works internally will be
      * generated and saved to disk for posterior inspection with a GUI.
      *
@@ -57,6 +60,10 @@ struct Parameters : public mrpt::serialization::CSerializable
     std::string debugFileNameFormat =
         "icp-run-${LOCAL_ID}${LOCAL_LABEL}-to-${GLOBAL_ID}${GLOBAL_LABEL}."
         "icplog.gz";
+
+    bool debugPrintIterationProgress = false;
+
+    /** @} */
 
     void load_from(const mrpt::containers::yaml& p);
     void save_to(mrpt::containers::yaml& p) const;

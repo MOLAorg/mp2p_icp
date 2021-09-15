@@ -18,6 +18,7 @@ void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << maxIterations << minAbsStep_trans << minAbsStep_rot;
     out << generateDebugFiles << debugFileNameFormat;
+    out << debugPrintIterationProgress;
 }
 void Parameters::serializeFrom(
     mrpt::serialization::CArchive& in, uint8_t version)
@@ -30,6 +31,7 @@ void Parameters::serializeFrom(
         {
             in >> maxIterations >> minAbsStep_trans >> minAbsStep_rot;
             in >> generateDebugFiles >> debugFileNameFormat;
+            in >> debugPrintIterationProgress;
         }
         break;
         default:
@@ -44,6 +46,7 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
     MCP_LOAD_OPT(p, minAbsStep_rot);
     MCP_LOAD_OPT(p, generateDebugFiles);
     MCP_LOAD_OPT(p, debugFileNameFormat);
+    MCP_LOAD_OPT(p, debugPrintIterationProgress);
 }
 void Parameters::save_to(mrpt::containers::yaml& p) const
 {
@@ -52,4 +55,5 @@ void Parameters::save_to(mrpt::containers::yaml& p) const
     MCP_SAVE(p, minAbsStep_rot);
     MCP_SAVE(p, generateDebugFiles);
     MCP_SAVE(p, debugFileNameFormat);
+    MCP_SAVE(p, debugPrintIterationProgress);
 }
