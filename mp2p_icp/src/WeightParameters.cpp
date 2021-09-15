@@ -70,34 +70,3 @@ void WeightParameters::save_to(mrpt::containers::yaml& p) const
     pair_weights.save_to(a);
     p["pair_weights"] = a;
 }
-
-void WeightParameters::PairWeights::load_from(const mrpt::containers::yaml& p)
-{
-    MCP_LOAD_REQ(p, pt2pt);
-    MCP_LOAD_REQ(p, pt2pl);
-    MCP_LOAD_REQ(p, pt2ln);
-
-    MCP_LOAD_REQ(p, ln2ln);
-    MCP_LOAD_REQ(p, pl2pl);
-}
-
-void WeightParameters::PairWeights::save_to(mrpt::containers::yaml& p) const
-{
-    MCP_SAVE(p, pt2pt);
-    MCP_SAVE(p, pt2pl);
-    MCP_SAVE(p, pt2ln);
-
-    MCP_SAVE(p, ln2ln);
-    MCP_SAVE(p, pl2pl);
-}
-
-void WeightParameters::PairWeights::serializeTo(
-    mrpt::serialization::CArchive& out) const
-{
-    out << pt2pt << pt2pl << pt2ln << ln2ln << pl2pl;
-}
-void WeightParameters::PairWeights::serializeFrom(
-    mrpt::serialization::CArchive& in)
-{
-    in >> pt2pt >> pt2pl >> pt2ln >> ln2ln >> pl2pl;
-}

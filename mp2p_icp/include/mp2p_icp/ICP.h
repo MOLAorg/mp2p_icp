@@ -97,8 +97,7 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     /** Runs a set of solvers. */
     static bool run_solvers(
         const solver_list_t& solvers, const Pairings& pairings,
-        OptimalTF_Result& out, const WeightParameters& wp,
-        const SolverContext& sc = {});
+        OptimalTF_Result& out, const SolverContext& sc = {});
 
     /** @} */
 

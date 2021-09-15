@@ -17,8 +17,22 @@ IMPLEMENTS_MRPT_OBJECT(Solver_OLAE, mp2p_icp::Solver, mp2p_icp)
 
 using namespace mp2p_icp;
 
+void Solver_OLAE::initialize(const mrpt::containers::yaml& p)
+{
+    Solver::initialize(p);
+
+    if (p.has("pairingsWeightParameters"))
+        pairingsWeightParameters.load_from(p["pairingsWeightParameters"]);
+}
+
+/* Save params:
+     mrpt::containers::yaml pp = mrpt::containers::yaml::Map();
+    pairingsWeightParameters.save_to(pp);
+    p["pairingsWeightParameters"] = std::move(pp);
+*/
+
 bool Solver_OLAE::impl_optimal_pose(
-    const Pairings& pairings, OptimalTF_Result& out, const WeightParameters& wp,
+    const Pairings& pairings, OptimalTF_Result& out,
     [[maybe_unused]] const SolverContext& sc) const
 {
     MRPT_START
@@ -28,7 +42,7 @@ bool Solver_OLAE::impl_optimal_pose(
     // Compute the optimal pose:
     try
     {
-        optimal_tf_olae(pairings, wp, out);
+        optimal_tf_olae(pairings, pairingsWeightParameters, out);
     }
     catch (const std::exception& e)
     {

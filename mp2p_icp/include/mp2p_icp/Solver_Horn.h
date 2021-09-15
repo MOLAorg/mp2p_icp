@@ -22,12 +22,18 @@ namespace mp2p_icp
 class Solver_Horn : public Solver
 {
     DEFINE_MRPT_OBJECT(Solver_Horn, mp2p_icp)
+   public:
+    /** Weight and robust kernel parameters associated with the low-level
+     * optimal pose estimation algorithms */
+    WeightParameters pairingsWeightParameters;
+
+    void initialize(const mrpt::containers::yaml& params) override;
 
    protected:
     // See base class docs
     bool impl_optimal_pose(
         const Pairings& pairings, OptimalTF_Result& out,
-        const WeightParameters& wp, const SolverContext& sc) const override;
+        const SolverContext& sc) const override;
 };
 
 }  // namespace mp2p_icp

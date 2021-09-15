@@ -59,7 +59,7 @@ class Solver : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      */
     virtual bool optimal_pose(
         const Pairings& pairings, OptimalTF_Result& out,
-        const WeightParameters& wp, const SolverContext& sc) const;
+        const SolverContext& sc) const;
 
     uint32_t runFromIteration = 0;
     uint32_t runUpToIteration = 0;  //!< 0: no limit
@@ -67,7 +67,7 @@ class Solver : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
    protected:
     virtual bool impl_optimal_pose(
         const Pairings& pairings, OptimalTF_Result& out,
-        const WeightParameters& wp, const SolverContext& sc) const = 0;
+        const SolverContext& sc) const = 0;
 };
 
 }  // namespace mp2p_icp

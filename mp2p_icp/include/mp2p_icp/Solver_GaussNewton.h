@@ -11,6 +11,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/PairWeights.h>
 #include <mp2p_icp/Solver.h>
 
 namespace mp2p_icp
@@ -25,7 +26,8 @@ class Solver_GaussNewton : public Solver
     DEFINE_MRPT_OBJECT(Solver_GaussNewton, mp2p_icp)
 
    public:
-    uint32_t maxIterations = 5;
+    uint32_t    maxIterations = 5;
+    PairWeights pairWeights;
 
     void initialize(const mrpt::containers::yaml& params) override;
 
@@ -33,7 +35,7 @@ class Solver_GaussNewton : public Solver
     // See base class docs
     bool impl_optimal_pose(
         const Pairings& pairings, OptimalTF_Result& out,
-        const WeightParameters& wp, const SolverContext& sc) const override;
+        const SolverContext& sc) const override;
 };
 
 }  // namespace mp2p_icp

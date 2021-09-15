@@ -11,6 +11,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/PairWeights.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/serialization/CSerializable.h>
@@ -39,27 +40,6 @@ struct WeightParameters : public mrpt::serialization::CSerializable
      * stricter. A much larger threshold (e.g. 5.0) would only reject the
      * most obvious outliers. Refer to the technical report. */
     double scale_outlier_threshold{1.20};
-
-    /** Relative weight of points, lines, and planes. They will be automatically
-     * normalized to sum the unity, so feel free of setting weights at any
-     * convenient scale.
-     */
-    struct PairWeights
-    {
-        /** Weight of point-to-point pairs. Note that finer control of weights
-         * can be achieved with `Pairings::point_weights`. */
-        double pt2pt = 1.0;
-        double pt2ln = 1.0;  //!< Weight of point-to-line pairs
-        double pt2pl = 1.0;  //!< Weight of point-to-plane pairs
-
-        double ln2ln = 1.0;  //!< Weight of line-to-line pairs
-        double pl2pl = 1.0;  //!< Weight of plane-to-plane pairs
-
-        void load_from(const mrpt::containers::yaml& p);
-        void save_to(mrpt::containers::yaml& p) const;
-        void serializeTo(mrpt::serialization::CArchive& out) const;
-        void serializeFrom(mrpt::serialization::CArchive& in);
-    };
 
     /// See docs for PairWeights
     PairWeights pair_weights;

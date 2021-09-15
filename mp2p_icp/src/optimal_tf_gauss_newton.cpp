@@ -13,13 +13,14 @@
 #include <mp2p_icp/errorTerms.h>
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
 #include <mrpt/poses/Lie/SE.h>
+
 #include <Eigen/Dense>
 #include <iostream>
 
 using namespace mp2p_icp;
 
 void mp2p_icp::optimal_tf_gauss_newton(
-    const Pairings& in, const WeightParameters& wp, OptimalTF_Result& result,
+    const Pairings& in, OptimalTF_Result& result,
     const OptimalTF_GN_Parameters& gnParams)
 {
     using std::size_t;
@@ -40,12 +41,13 @@ void mp2p_icp::optimal_tf_gauss_newton(
     const auto nPl2Pl = in.paired_pl2pl.size();
     const auto nLn2Ln = in.paired_ln2ln.size();
 
-    const auto nErrorTerms = (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln + nLn2Ln * 4;
+    const auto nErrorTerms =
+        (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln + nLn2Ln * 4;
 
     Eigen::VectorXd                          err(nErrorTerms);
     Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
 
-    auto w = wp.pair_weights;
+    auto w = gnParams.pairWeights;
 
     const bool  has_per_pt_weight       = !in.point_weights.empty();
     auto        cur_point_block_weights = in.point_weights.begin();
@@ -63,9 +65,10 @@ void mp2p_icp::optimal_tf_gauss_newton(
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
         {
             // Error:
-            const auto& p = in.paired_pt2pt[idx_pt];
+            const auto&                             p = in.paired_pt2pt[idx_pt];
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
-            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_point2point(p, result.optimalPose, J1);
+            mrpt::math::CVectorFixedDouble<3>       ret =
+                mp2p_icp::error_point2point(p, result.optimalPose, J1);
             err.block<3, 1>(idx_pt * 3, 0) = ret.asEigen();
 
             // Get weight:
@@ -82,7 +85,8 @@ void mp2p_icp::optimal_tf_gauss_newton(
             }
 
             // Build Jacobian:
-            J.block<3, 6>(idx_pt * 3, 0) = w.pt2pt * J1.asEigen() * dDexpe_de.asEigen();
+            J.block<3, 6>(idx_pt * 3, 0) =
+                w.pt2pt * J1.asEigen() * dDexpe_de.asEigen();
         }
         auto base_idx = nPt2Pt * 3;
 
@@ -90,16 +94,18 @@ void mp2p_icp::optimal_tf_gauss_newton(
         for (size_t idx_pt = 0; idx_pt < nPt2Ln; idx_pt++)
         {
             // Error
-            const auto& p = in.paired_pt2ln[idx_pt];
+            const auto&                             p = in.paired_pt2ln[idx_pt];
             mrpt::math::CMatrixFixed<double, 1, 12> J1;
-            mrpt::math::CVectorFixedDouble<1> ret = mp2p_icp::error_point2line(p, result.optimalPose, J1);
+            mrpt::math::CVectorFixedDouble<1>       ret =
+                mp2p_icp::error_point2line(p, result.optimalPose, J1);
             err.block<1, 1>(base_idx + idx_pt, 0) = ret.asEigen();
 
             // Get weight
             // ...
 
             // Build Jacobian
-            J.block<1, 6>(base_idx + idx_pt, 0) = w.pt2ln * J1.asEigen() * dDexpe_de.asEigen();
+            J.block<1, 6>(base_idx + idx_pt, 0) =
+                w.pt2ln * J1.asEigen() * dDexpe_de.asEigen();
         }
         base_idx += nPt2Ln;
 
@@ -107,23 +113,26 @@ void mp2p_icp::optimal_tf_gauss_newton(
         // Minimum angle to approach zero
         for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++)
         {
-            const auto& p = in.paired_ln2ln[idx_ln];
+            const auto&                             p = in.paired_ln2ln[idx_ln];
             mrpt::math::CMatrixFixed<double, 4, 12> J1;
-            mrpt::math::CVectorFixedDouble<4> ret = mp2p_icp::error_line2line(p,result.optimalPose, J1);
+            mrpt::math::CVectorFixedDouble<4>       ret =
+                mp2p_icp::error_line2line(p, result.optimalPose, J1);
             err.block<4, 1>(base_idx + idx_ln * 4, 0) = ret.asEigen();
 
             // Build Jacobian
-            J.block<4, 6>(base_idx + idx_ln, 0) = J1.asEigen() * dDexpe_de.asEigen();
+            J.block<4, 6>(base_idx + idx_ln, 0) =
+                J1.asEigen() * dDexpe_de.asEigen();
         }
-         base_idx += nLn2Ln;
+        base_idx += nLn2Ln;
 
         // Point-to-plane:
         for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
         {
             // Error:
-            const auto& p = in.paired_pt2pl[idx_pl];
+            const auto&                             p = in.paired_pt2pl[idx_pl];
             mrpt::math::CMatrixFixed<double, 1, 12> J1;
-            mrpt::math::CVectorFixedDouble<1> ret = mp2p_icp::error_point2plane(p,result.optimalPose,J1);
+            mrpt::math::CVectorFixedDouble<1>       ret =
+                mp2p_icp::error_point2plane(p, result.optimalPose, J1);
             err.block<1, 1>(idx_pl + base_idx, 0) = ret.asEigen();
 
             J.block<1, 6>(idx_pl + base_idx, 0) =
@@ -135,9 +144,10 @@ void mp2p_icp::optimal_tf_gauss_newton(
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
         {
             // Error term:
-            const auto& p = in.paired_pl2pl[idx_pl];
+            const auto&                             p = in.paired_pl2pl[idx_pl];
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
-            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_plane2plane(p, result.optimalPose,J1);
+            mrpt::math::CVectorFixedDouble<3>       ret =
+                mp2p_icp::error_plane2plane(p, result.optimalPose, J1);
             err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
 
             J.block<3, 6>(3 * idx_pl + base_idx, 0) =

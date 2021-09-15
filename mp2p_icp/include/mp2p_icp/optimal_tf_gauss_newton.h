@@ -12,8 +12,8 @@
 #pragma once
 
 #include <mp2p_icp/OptimalTF_Result.h>
+#include <mp2p_icp/PairWeights.h>
 #include <mp2p_icp/Pairings.h>
-#include <mp2p_icp/WeightParameters.h>
 
 namespace mp2p_icp
 {
@@ -32,6 +32,8 @@ struct OptimalTF_GN_Parameters
 
     /** The linerization point (the current relative pose guess) */
     std::optional<mrpt::poses::CPose3D> linearizationPoint;
+
+    PairWeights pairWeights;
 };
 
 /** Gauss-Newton non-linear, iterative optimizer to find the SE(3) optimal
@@ -41,7 +43,7 @@ struct OptimalTF_GN_Parameters
  * `OptimalTF_GN_Parameters::linearizationPoint`.
  */
 void optimal_tf_gauss_newton(
-    const Pairings& in, const WeightParameters& wp, OptimalTF_Result& result,
+    const Pairings& in, OptimalTF_Result& result,
     const OptimalTF_GN_Parameters& gnParams = OptimalTF_GN_Parameters());
 
 /** @} */

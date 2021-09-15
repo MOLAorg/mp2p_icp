@@ -43,10 +43,6 @@ struct Parameters : public mrpt::serialization::CSerializable
     double minAbsStep_rot{1e-4};
     /** @} */
 
-    /** Weight and robust kernel parameters associated with the low-level
-     * optimal pose estimation algorithms */
-    WeightParameters pairingsWeightParameters;
-
     /** If true, debug files useful to inspect how ICP works internally will be
      * generated and saved to disk for posterior inspection with a GUI.
      *

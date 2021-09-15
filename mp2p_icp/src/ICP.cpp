@@ -100,8 +100,7 @@ void ICP::align(
 
         // Compute the optimal pose:
         const bool solvedOk = run_solvers(
-            solvers_, state.currentPairings, state.currentSolution,
-            p.pairingsWeightParameters, sc);
+            solvers_, state.currentPairings, state.currentSolution, sc);
 
         if (!solvedOk)
         {
@@ -240,12 +239,12 @@ Pairings ICP::run_matchers(
 
 bool ICP::run_solvers(
     const solver_list_t& solvers, const Pairings& pairings,
-    OptimalTF_Result& out, const WeightParameters& wp, const SolverContext& sc)
+    OptimalTF_Result& out, const SolverContext& sc)
 {
     for (const auto& solver : solvers)
     {
         ASSERT_(solver);
-        if (solver->optimal_pose(pairings, out, wp, sc)) return true;
+        if (solver->optimal_pose(pairings, out, sc)) return true;
     }
     return false;
 }

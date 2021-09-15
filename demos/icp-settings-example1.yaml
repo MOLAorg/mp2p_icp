@@ -12,19 +12,21 @@ params:
   #generateDebugFiles: true
   #debugFileNameFormat: "icp-run-${LOCAL_ID}${LOCAL_LABEL}-to-${GLOBAL_ID}${GLOBAL_LABEL}.icplog.gz"
   
-  pairingsWeightParameters:
-    # scale-based outlier detector
-    use_scale_outlier_detector: true
-    scale_outlier_threshold: 1.1
-    # An optional "a priori" term (default=false)
-    use_robust_kernel: false
-    #robust_kernel_param: 0.1 # [degrees]
-    #robust_kernel_scale: 400.0
-
 solvers:
-  - class: mp2p_icp::Solver_GaussNewton
+#  - class: mp2p_icp::Solver_GaussNewton
+#    params:
+#     maxIterations: 3
+
+  - class: mp2p_icp::Solver_Horn
     params:
-      maxIterations: 3
+      pairingsWeightParameters:
+        # scale-based outlier detector
+        use_scale_outlier_detector: true
+        scale_outlier_threshold: 1.1
+        # An optional "a priori" term (default=false)
+        use_robust_kernel: false
+        #robust_kernel_param: 0.1 # [degrees]
+        #robust_kernel_scale: 400.0
 
 # Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
 # instances to pair geometric entities between pointclouds.

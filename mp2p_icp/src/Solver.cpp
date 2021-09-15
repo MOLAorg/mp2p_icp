@@ -26,12 +26,12 @@ void Solver::initialize(const mrpt::containers::yaml& params)
 }
 
 bool Solver::optimal_pose(
-    const Pairings& pairings, OptimalTF_Result& out, const WeightParameters& wp,
+    const Pairings& pairings, OptimalTF_Result& out,
     const SolverContext& sc) const
 {
     const auto iter = sc.icpIteration;
     if (iter < runFromIteration) return false;
     if (runUpToIteration > 0 && iter > runUpToIteration) return false;
 
-    return impl_optimal_pose(pairings, out, wp, sc);
+    return impl_optimal_pose(pairings, out, sc);
 }

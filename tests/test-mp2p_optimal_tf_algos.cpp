@@ -430,7 +430,7 @@ bool test_icp_algos(
             // iteration of the GN while the other methods are one-shot
             // solutions. But GN is good enough even so for small rotations to
             // solve it in just one iteration.
-            mp2p_icp::optimal_tf_gauss_newton(in, wp, res_gn, gnParams);
+            mp2p_icp::optimal_tf_gauss_newton(in, res_gn, gnParams);
 
             const auto dt_gn = profiler.leave("optimal_tf_gauss_newton");
 

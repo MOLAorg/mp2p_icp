@@ -18,8 +18,16 @@ IMPLEMENTS_MRPT_OBJECT(Solver_Horn, mp2p_icp::Solver, mp2p_icp)
 
 using namespace mp2p_icp;
 
+void Solver_Horn::initialize(const mrpt::containers::yaml& p)
+{
+    Solver::initialize(p);
+
+    if (p.has("pairingsWeightParameters"))
+        pairingsWeightParameters.load_from(p["pairingsWeightParameters"]);
+}
+
 bool Solver_Horn::impl_optimal_pose(
-    const Pairings& pairings, OptimalTF_Result& out, const WeightParameters& wp,
+    const Pairings& pairings, OptimalTF_Result& out,
     [[maybe_unused]] const SolverContext& sc) const
 {
     MRPT_START
@@ -29,7 +37,7 @@ bool Solver_Horn::impl_optimal_pose(
     // Compute the optimal pose:
     try
     {
-        optimal_tf_horn(pairings, wp, out);
+        optimal_tf_horn(pairings, pairingsWeightParameters, out);
     }
     catch (const std::exception& e)
     {
