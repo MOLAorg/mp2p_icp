@@ -12,9 +12,11 @@
 
 #include <mp2p_icp/ICP.h>
 #include <mp2p_icp/ICP_LibPointmatcher.h>
+#include <mp2p_icp/LogRecord.h>
 #include <mp2p_icp/Matcher_Point2Plane.h>
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/Matcher_Points_InlierRatio.h>
+#include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/QualityEvaluator_PairedRatio.h>
 #include <mp2p_icp/QualityEvaluator_RangeImageSimilarity.h>
 #include <mp2p_icp/QualityEvaluator_Voxels.h>
@@ -47,4 +49,7 @@ MRPT_INITIALIZER(register_mp2p_icp)
     registerClass(CLASS_ID(mp2p_icp::QualityEvaluator_PairedRatio));
     registerClass(CLASS_ID(mp2p_icp::QualityEvaluator_RangeImageSimilarity));
     registerClass(CLASS_ID(mp2p_icp::QualityEvaluator_Voxels));
+
+    registerClass(CLASS_ID(mp2p_icp::LogRecord));
+    registerClass(CLASS_ID(mp2p_icp::Parameters));
 }

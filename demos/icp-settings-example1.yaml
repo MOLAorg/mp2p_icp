@@ -11,7 +11,7 @@ params:
   
   #debugPrintIterationProgress: true  # Print progress
   #generateDebugFiles: true
-  #debugFileNameFormat: "icp-run-${LOCAL_ID}${LOCAL_LABEL}-to-${GLOBAL_ID}${GLOBAL_LABEL}.icplog.gz"
+  #debugFileNameFormat: "icp-run-${LOCAL_ID}${LOCAL_LABEL}-to-${GLOBAL_ID}${GLOBAL_LABEL}.icplog"
   
 solvers:
 #  - class: mp2p_icp::Solver_GaussNewton

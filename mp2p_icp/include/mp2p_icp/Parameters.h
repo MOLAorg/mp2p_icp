@@ -59,7 +59,7 @@ struct Parameters : public mrpt::serialization::CSerializable
     /** Generated files format, if generateDebugFiles is true. */
     std::string debugFileNameFormat =
         "icp-run-${LOCAL_ID}${LOCAL_LABEL}-to-${GLOBAL_ID}${GLOBAL_LABEL}."
-        "icplog.gz";
+        "icplog";
 
     bool debugPrintIterationProgress = false;
 

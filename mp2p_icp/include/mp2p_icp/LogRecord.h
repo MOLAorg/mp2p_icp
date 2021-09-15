@@ -77,6 +77,18 @@ class LogRecord : public mrpt::serialization::CSerializable
      */
     bool load_from_file(const std::string& fileName);
 
+    /** Static method alternative to load_from_file().
+     *  Throws on any error.
+     *
+     * \return The loaded object.
+     */
+    static LogRecord LoadFromFile(const std::string& fileName)
+    {
+        LogRecord lr;
+        lr.load_from_file(fileName);
+        return lr;
+    }
+
     /** @} */
 };
 

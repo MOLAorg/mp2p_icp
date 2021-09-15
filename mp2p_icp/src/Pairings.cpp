@@ -23,7 +23,7 @@ static const uint8_t SERIALIZATION_VERSION = 0;
 void Pairings::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out.WriteAs<uint8_t>(SERIALIZATION_VERSION);
-    // out << paired_pt2pt;
+    out << paired_pt2pt;
     out << paired_pt2ln << paired_pt2pl << paired_ln2ln << paired_pl2pl
         << point_weights;
 }
