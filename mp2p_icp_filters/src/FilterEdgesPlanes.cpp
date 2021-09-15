@@ -68,7 +68,10 @@ void FilterEdgesPlanes::filter(mp2p_icp::pointcloud_t& inOut) const
 
     // In:
     const auto& pcPtr = inOut.point_layers[params_.input_pointcloud_layer];
-    ASSERTMSG_(pcPtr, "Input point cloud layer was not found.");
+    ASSERTMSG_(
+        pcPtr, mrpt::format(
+                   "Input point cloud layer '%s' was not found.",
+                   params_.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
