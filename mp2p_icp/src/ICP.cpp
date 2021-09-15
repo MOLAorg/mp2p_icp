@@ -120,10 +120,10 @@ void ICP::align(
         if (p.debugPrintIterationProgress)
         {
             printf(
-                "[ICP] Iter=%3u Delta_xyz=%9.02g, Delta_rot=%9.02g rad, "
+                "[ICP] Iter=%3u Delta_xyz=%9.02e, Delta_rot=%6.03f deg, "
                 "(xyzypr)=%s pairs=%s\n",
                 static_cast<unsigned int>(state.currentIteration),
-                std::abs(delta_xyz), std::abs(delta_rot),
+                std::abs(delta_xyz), mrpt::RAD2DEG(std::abs(delta_rot)),
                 state.currentSolution.optimalPose.asString().c_str(),
                 state.currentPairings.contents_summary().c_str());
         }
@@ -268,6 +268,8 @@ void ICP::initialize_solvers(
     for (const auto& entry : params.asSequence())
     {
         const auto& e = entry.asMap();
+        // disabled?
+        if (e.count("enabled") && e.at("enabled").as<bool>() == false) continue;
 
         const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
@@ -298,6 +300,8 @@ void ICP::initialize_matchers(
     for (const auto& entry : params.asSequence())
     {
         const auto& e = entry.asMap();
+        // disabled?
+        if (e.count("enabled") && e.at("enabled").as<bool>() == false) continue;
 
         const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
@@ -325,6 +329,8 @@ void ICP::initialize_quality_evaluators(
     for (const auto& entry : params.asSequence())
     {
         const auto& e = entry.asMap();
+        // disabled?
+        if (e.count("enabled") && e.at("enabled").as<bool>() == false) continue;
 
         const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
