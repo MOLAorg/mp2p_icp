@@ -31,6 +31,9 @@ void Matcher_Points_DistanceThreshold::initialize(
     Matcher_Points_Base::initialize(params);
 
     MCP_LOAD_REQ(params, threshold);
+    MCP_LOAD_OPT(params, pairingsPerPoint);
+
+    ASSERT_(pairingsPerPoint >= 1);
 }
 
 void Matcher_Points_DistanceThreshold::implMatchOneLayer(
@@ -75,19 +78,43 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     const auto& lys = pcLocal.getPointsBufferRef_y();
     const auto& lzs = pcLocal.getPointsBufferRef_z();
 
+    const auto lambdaAddPair = [&out, &lxs, &lys, &lzs, &gxs, &gys, &gzs](
+                                   const size_t localIdx,
+                                   const size_t tentativeGlobalIdx,
+                                   const float  tentativeErrSqr) {
+        // Save new correspondence:
+        auto& p = out.paired_pt2pt.emplace_back();
+
+        p.this_idx = tentativeGlobalIdx;
+        p.this_x   = gxs[tentativeGlobalIdx];
+        p.this_y   = gys[tentativeGlobalIdx];
+        p.this_z   = gzs[tentativeGlobalIdx];
+
+        p.other_idx = localIdx;
+        p.other_x   = lxs[localIdx];
+        p.other_y   = lys[localIdx];
+        p.other_z   = lzs[localIdx];
+
+        p.errorSquareAfterTransformation = tentativeErrSqr;
+    };
+
+    // Declared out of the loop to avoid memory reallocations (!)
+    std::vector<size_t> neighborIndices;
+    std::vector<float>  neighborSqrDists;
+
     for (size_t i = 0; i < tl.x_locals.size(); i++)
     {
-        size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
+        const size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
 
         // For speed-up:
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],
                     lz = tl.z_locals[i];
 
+        // Use a KD-tree to look for the nearnest neighbor(s) of:
+        //   (x_local, y_local, z_local)
+        // In "this" (global/reference) points map.
+        if (pairingsPerPoint == 1)
         {
-            // Use a KD-tree to look for the nearnest neighbor of:
-            //   (x_local, y_local, z_local)
-            // In "this" (global/reference) points map.
-
             float        tentativeErrSqr;
             const size_t tentativeGlobalIdx = pcGlobal.kdTreeClosestPoint3D(
                 lx, ly, lz,  // Look closest to this guy
@@ -96,23 +123,25 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 
             // Distance below the threshold??
             if (tentativeErrSqr < maxDistForCorrespondenceSquared)
-            {
-                // Save new correspondence:
-                auto& p = out.paired_pt2pt.emplace_back();
+                lambdaAddPair(localIdx, tentativeGlobalIdx, tentativeErrSqr);
 
-                p.this_idx = tentativeGlobalIdx;
-                p.this_x   = gxs[tentativeGlobalIdx];
-                p.this_y   = gys[tentativeGlobalIdx];
-                p.this_z   = gzs[tentativeGlobalIdx];
-
-                p.other_idx = localIdx;
-                p.other_x   = lxs[localIdx];
-                p.other_y   = lys[localIdx];
-                p.other_z   = lzs[localIdx];
-
-                p.errorSquareAfterTransformation = tentativeErrSqr;
-            }
         }  // End of test_match
+        else
+        {
+            pcGlobal.kdTreeNClosestPoint3DIdx(
+                lx, ly, lz, pairingsPerPoint, neighborIndices,
+                neighborSqrDists);
+
+            // Distance below the threshold??
+            for (size_t k = 0; k < neighborIndices.size(); k++)
+            {
+                const auto tentativeErrSqr = neighborSqrDists.at(k);
+                if (tentativeErrSqr >= maxDistForCorrespondenceSquared)
+                    break;  // skip this and the rest.
+
+                lambdaAddPair(localIdx, neighborIndices.at(k), tentativeErrSqr);
+            }
+        }
     }  // For each local point
 
     MRPT_END

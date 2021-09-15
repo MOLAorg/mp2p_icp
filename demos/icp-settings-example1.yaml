@@ -9,6 +9,7 @@ params:
   minAbsStep_trans: 1e-4
   minAbsStep_rot: 1e-4
   
+  #debugPrintIterationProgress: true  # Print progress
   #generateDebugFiles: true
   #debugFileNameFormat: "icp-run-${LOCAL_ID}${LOCAL_LABEL}-to-${GLOBAL_ID}${GLOBAL_LABEL}.icplog.gz"
   
@@ -22,7 +23,7 @@ solvers:
       pairingsWeightParameters:
         # scale-based outlier detector
         use_scale_outlier_detector: true
-        scale_outlier_threshold: 1.1
+        scale_outlier_threshold: 1.5
         # An optional "a priori" term (default=false)
         use_robust_kernel: false
         #robust_kernel_param: 0.1 # [degrees]
@@ -34,21 +35,22 @@ matchers:
   - class: mp2p_icp::Matcher_Points_DistanceThreshold
     params:
       threshold: 0.20
-      maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
+      #pairingsPerPoint: 1
+      #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
       pointLayerWeights:
         - {global: "raw", local: "decimated", weight: 1.0}
-  - class: mp2p_icp::Matcher_Point2Plane
-    params:
-      maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
-      distanceThreshold: 0.40
-      planeEigenThreshold: 1e-7
-      knn: 7
-      runFromIteration: 0  # "from 0 to 0" means "all"
-      runUpToIteration: 0
-      pointLayerWeights:
-        - {global: "raw", local: "decimated", weight: 1.0}
+#  - class: mp2p_icp::Matcher_Point2Plane
+#    params:
+#      #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
+#      distanceThreshold: 0.40
+#      planeEigenThreshold: 1e-4
+#      knn: 7
+#      runFromIteration: 0  # "from 0 to 0" means "all"
+#      runUpToIteration: 0
+#      pointLayerWeights:
+#        - {global: "raw", local: "decimated", weight: 1.0}
 
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio
@@ -65,14 +67,14 @@ filters_pc1:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: 0.20  # [m]
+      voxel_filter_resolution: 0.10  # [m]
       use_voxel_average: true
 
 filters_pc2:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: 0.20  # [m]
+      voxel_filter_resolution: 0.10  # [m]
       use_voxel_average: true
 
 

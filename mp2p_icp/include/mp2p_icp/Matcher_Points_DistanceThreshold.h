@@ -34,13 +34,17 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
 
     /*** Parameters:
      * - `threshold`: Inliers distance threshold [meters][mandatory]
+     * - `pairingsPerPoint`: Number of pairings in "global" for each "local"
+     * points. Default=1. If more than one, they will be picked in ascending
+     * order of distance, up to `threshold`. [optional].
      *
      * Plus: the parameters of Matcher_Points_Base::initialize()
      */
     void initialize(const mrpt::containers::yaml& params) override;
 
    private:
-    double threshold = 0.50;
+    double       threshold        = 0.50;
+    unsigned int pairingsPerPoint = 1;
 
     void implMatchOneLayer(
         const mrpt::maps::CPointsMap& pcGlobal,
