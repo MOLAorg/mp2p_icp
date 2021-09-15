@@ -38,8 +38,13 @@ class PointCloudToVoxelGrid
 
     struct Parameters
     {
-        /** Minimum distance (infinity norm) between consecutive points to be
-         * accepted in a voxel. */
+        /** Minimum distance (infinity norm) between **consecutive** points to
+         * be accepted in a voxel. By looking at points in order, this allows
+         * for a very fast discrimination of too-close consecutive points
+         * without the need to query any KD-tree.
+         *
+         * (Default=0, i.e. disabled).
+         */
         float min_consecutive_distance{.0f};
     };
 
