@@ -41,6 +41,7 @@ bool Solver_Horn::impl_optimal_pose(
     }
     catch (const std::exception& e)
     {
+        std::cerr << e.what() << std::endl;
         // Skip ill-defined problems if the no. of points is too small.
         // Nothing we can do:
         return false;
