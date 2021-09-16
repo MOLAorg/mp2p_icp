@@ -184,7 +184,7 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     std::string filename = p.debugFileNameFormat;
 
     {
-        const std::string expr  = "\\$\\{GLOBAL_ID\\}";
+        const std::string expr  = "\\$GLOBAL_ID";
         const auto        value = mrpt::format(
             "%05u", static_cast<unsigned int>(
                         (log.pcGlobal && log.pcGlobal->id.has_value())
@@ -194,14 +194,14 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     }
 
     {
-        const std::string expr = "\\$\\{GLOBAL_LABEL\\}";
+        const std::string expr = "\\$GLOBAL_LABEL";
         const auto value = (log.pcGlobal && log.pcGlobal->label.has_value())
                                ? log.pcGlobal->label.value()
                                : ""s;
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
     {
-        const std::string expr  = "\\$\\{LOCAL_ID\\}";
+        const std::string expr  = "\\$LOCAL_ID";
         const auto        value = mrpt::format(
             "%05u", static_cast<unsigned int>(
                         (log.pcLocal && log.pcLocal->id.has_value())
@@ -211,7 +211,7 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     }
 
     {
-        const std::string expr = "\\$\\{LOCAL_LABEL\\}";
+        const std::string expr = "\\$LOCAL_LABEL";
         const auto value       = (log.pcLocal && log.pcLocal->label.has_value())
                                ? log.pcLocal->label.value()
                                : ""s;

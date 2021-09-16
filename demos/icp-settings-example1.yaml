@@ -8,11 +8,11 @@ params:
   maxIterations: 100
   minAbsStep_trans: 1e-4
   minAbsStep_rot: 1e-4
-  
+
   #debugPrintIterationProgress: true  # Print progress
   #generateDebugFiles: true
-  #debugFileNameFormat: "icp-run-${LOCAL_ID}${LOCAL_LABEL}-to-${GLOBAL_ID}${GLOBAL_LABEL}.icplog"
-  
+  #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
+
 solvers:
 #  - class: mp2p_icp::Solver_GaussNewton
 #    params:
@@ -76,6 +76,3 @@ filters_pc2:
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.10  # [m]
       use_voxel_average: true
-
-
-
