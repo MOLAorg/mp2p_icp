@@ -414,8 +414,10 @@ void rebuild_3d_view()
         lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : ""));
 
     lbICPStats[1]->setCaption(mrpt::format(
-        "Log quality: %.02f%% iters: %u", 100.0 * lr.icpResult.quality,
-        static_cast<unsigned int>(lr.icpResult.nIterations)));
+        "Log quality: %.02f%% iters: %u Term.Reason: %s",
+        100.0 * lr.icpResult.quality,
+        static_cast<unsigned int>(lr.icpResult.nIterations),
+        mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str()));
 
     lbICPStats[2]->setCaption("Global: "s + lr.pcGlobal->contents_summary());
     lbICPStats[3]->setCaption("Local: "s + lr.pcLocal->contents_summary());
