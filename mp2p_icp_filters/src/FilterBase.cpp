@@ -32,7 +32,7 @@ void mp2p_icp_filters::apply_filter_pipeline(
 }
 
 FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
-    const mrpt::containers::yaml& c)
+    const mrpt::containers::yaml& c, const mrpt::system::VerbosityLevel& vLevel)
 {
     ASSERT_(c.isSequence());
 
@@ -52,6 +52,8 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
                    "`%s` class seems not to be derived from FilterBase",
                    sClass.c_str()));
 
+        f->setMinLoggingLevel(vLevel);
+
         f->initialize(e.at("params"));
         filters.push_back(f);
     }
@@ -60,11 +62,11 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
 }
 
 FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml_file(
-    const std::string& filename)
+    const std::string& filename, const mrpt::system::VerbosityLevel& vLevel)
 {
     const auto yamlContent = mrpt::containers::yaml::FromFile(filename);
 
     ASSERT_(yamlContent.has("filters") && yamlContent["filters"].isSequence());
 
-    return filter_pipeline_from_yaml(yamlContent["filters"]);
+    return filter_pipeline_from_yaml(yamlContent["filters"], vLevel);
 }

@@ -215,7 +215,7 @@ void mp2p_icp_filters::apply_generators(
 }
 
 GeneratorSet mp2p_icp_filters::generators_from_yaml(
-    const mrpt::containers::yaml& c)
+    const mrpt::containers::yaml& c, const mrpt::system::VerbosityLevel& vLevel)
 {
     ASSERT_(c.isSequence());
 
@@ -235,6 +235,8 @@ GeneratorSet mp2p_icp_filters::generators_from_yaml(
                    "`%s` class seems not to be derived from Generator",
                    sClass.c_str()));
 
+        f->setMinLoggingLevel(vLevel);
+
         f->initialize(e.at("params"));
         generators.push_back(f);
     }
@@ -243,7 +245,7 @@ GeneratorSet mp2p_icp_filters::generators_from_yaml(
 }
 
 GeneratorSet mp2p_icp_filters::generators_from_yaml_file(
-    const std::string& filename)
+    const std::string& filename, const mrpt::system::VerbosityLevel& vLevel)
 {
     const auto yamlContent = mrpt::containers::yaml::FromFile(filename);
 
@@ -251,5 +253,5 @@ GeneratorSet mp2p_icp_filters::generators_from_yaml_file(
         yamlContent.has("generators") &&
         yamlContent["generators"].isSequence());
 
-    return generators_from_yaml(yamlContent["generators"]);
+    return generators_from_yaml(yamlContent["generators"], vLevel);
 }

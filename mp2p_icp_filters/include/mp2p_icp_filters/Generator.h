@@ -178,14 +178,18 @@ mp2p_icp::pointcloud_t apply_generators(
 /** Creates a set of generators from a YAML configuration block (a sequence).
  *  Refer to YAML file examples.
  */
-GeneratorSet generators_from_yaml(const mrpt::containers::yaml& c);
+GeneratorSet generators_from_yaml(
+    const mrpt::containers::yaml&       c,
+    const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 
 /** \overload Taking a YAML filename as input.
  *  The file must contain with a top entry named `generators` with the sequence
  *  of generator descriptors.
  *  Refer to YAML file examples.
  */
-GeneratorSet generators_from_yaml_file(const std::string& filename);
+GeneratorSet generators_from_yaml_file(
+    const std::string&                  filename,
+    const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 
 /** @} */
 

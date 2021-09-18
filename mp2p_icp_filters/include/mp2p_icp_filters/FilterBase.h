@@ -71,7 +71,9 @@ void apply_filter_pipeline(
  *  Refer to YAML file examples.
  * \ingroup mp2p_icp_filters_grp
  */
-FilterPipeline filter_pipeline_from_yaml(const mrpt::containers::yaml& c);
+FilterPipeline filter_pipeline_from_yaml(
+    const mrpt::containers::yaml&       c,
+    const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 
 /** \overload Taking a YAML filename as input.
  *  The file must contain with a top entry named `filters` with the sequence of
@@ -79,6 +81,8 @@ FilterPipeline filter_pipeline_from_yaml(const mrpt::containers::yaml& c);
  *  Refer to YAML file examples.
  * \ingroup mp2p_icp_filters_grp
  */
-FilterPipeline filter_pipeline_from_yaml_file(const std::string& filename);
+FilterPipeline filter_pipeline_from_yaml_file(
+    const std::string&                  filename,
+    const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 
 }  // namespace mp2p_icp_filters
