@@ -181,7 +181,24 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     using namespace std::string_literals;
 
     if (!p.generateDebugFiles) return;
+
+    // global log file record counter:
+    static unsigned int logFileCounter = 0;
+    static std::mutex   counterMtx;
+    unsigned int        RECORD_UNIQUE_ID;
+    {
+        counterMtx.lock();
+        RECORD_UNIQUE_ID = logFileCounter++;
+        counterMtx.unlock();
+    }
+
     std::string filename = p.debugFileNameFormat;
+
+    {
+        const std::string expr  = "\\$UNIQUE_ID";
+        const auto        value = mrpt::format("%05u", RECORD_UNIQUE_ID);
+        filename = std::regex_replace(filename, std::regex(expr), value);
+    }
 
     {
         const std::string expr  = "\\$GLOBAL_ID";

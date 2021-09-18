@@ -86,6 +86,7 @@ static void main_show_gui()
         searchDir, FILE_ATTRIB_ARCHIVE, files);
     mrpt::system::CDirectoryExplorer::filterByExtension(
         files, argExtension.getValue());
+    mrpt::system::CDirectoryExplorer::sortByName(files);
 
     std::cout << "Found " << files.size() << " ICP records." << std::endl;
 
