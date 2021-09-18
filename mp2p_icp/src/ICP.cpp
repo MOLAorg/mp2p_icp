@@ -23,7 +23,7 @@ IMPLEMENTS_MRPT_OBJECT(ICP, mrpt::rtti::CObject, mp2p_icp)
 using namespace mp2p_icp;
 
 void ICP::align(
-    const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+    const pointcloud_t& pcLocal, const pointcloud_t& pcGlobal,
     const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p,
     Results& result, const mrpt::optional_ref<LogRecord>& outputDebugInfo)
 {
@@ -83,8 +83,8 @@ void ICP::align(
         mc.icpIteration = state.currentIteration;
 
         state.currentPairings = run_matchers(
-            matchers_, state.pc1, state.pc2, state.currentSolution.optimalPose,
-            mc);
+            matchers_, state.pcGlobal, state.pcLocal,
+            state.currentSolution.optimalPose, mc);
 
         if (state.currentPairings.empty())
         {
@@ -227,8 +227,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
 }
 
 Pairings ICP::run_matchers(
-    const matcher_list_t& matchers, const pointcloud_t& pc1,
-    const pointcloud_t& pc2, const mrpt::poses::CPose3D& pc2_wrt_pc1,
+    const matcher_list_t& matchers, const pointcloud_t& pcGlobal,
+    const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
     const MatchContext& mc)
 {
     Pairings pairings;
@@ -236,7 +236,7 @@ Pairings ICP::run_matchers(
     {
         ASSERT_(matcher);
         Pairings pc;
-        matcher->match(pc1, pc2, pc2_wrt_pc1, mc, pc);
+        matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, pc);
         pairings.push_back(pc);
     }
     return pairings;

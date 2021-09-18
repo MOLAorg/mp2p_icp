@@ -58,7 +58,7 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      * pcLocal with respect to pcGlobal.
      */
     virtual void align(
-        const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+        const pointcloud_t& pcLocal, const pointcloud_t& pcGlobal,
         const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
         const Parameters& p, Results& result,
         const mrpt::optional_ref<LogRecord>& outputDebugInfo = std::nullopt);
@@ -131,9 +131,10 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     /** Runs a set of matchers. */
     static Pairings run_matchers(
-        const matcher_list_t& matchers, const pointcloud_t& pc1,
-        const pointcloud_t& pc2, const mrpt::poses::CPose3D& pc2_wrt_pc1,
-        const MatchContext& mc = {});
+        const matcher_list_t& matchers, const pointcloud_t& pcGlobal,
+        const pointcloud_t&         pcLocal,
+        const mrpt::poses::CPose3D& local_wrt_global,
+        const MatchContext&         mc = {});
 
     /** @} */
 
@@ -197,13 +198,13 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     struct ICP_State
     {
-        ICP_State(const pointcloud_t& pcs1, const pointcloud_t& pcs2)
-            : pc1(pcs1), pc2(pcs2)
+        ICP_State(const pointcloud_t& pcsGlobal, const pointcloud_t& pcsLocal)
+            : pcGlobal(pcsGlobal), pcLocal(pcsLocal)
         {
         }
 
-        const pointcloud_t& pc1;
-        const pointcloud_t& pc2;
+        const pointcloud_t& pcGlobal;
+        const pointcloud_t& pcLocal;
         std::string         layerOfLargestPc;
         Pairings            currentPairings;
         OptimalTF_Result    currentSolution;
