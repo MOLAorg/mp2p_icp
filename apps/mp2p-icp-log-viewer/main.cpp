@@ -93,6 +93,7 @@ static void main_show_gui()
     // load files:
     for (const auto& file : files)
     {
+        std::cout << "Loading: " << file.wholePath << "...\n";
         const auto& lr = logRecords.emplace_back(
             mp2p_icp::LogRecord::LoadFromFile(file.wholePath));
 
