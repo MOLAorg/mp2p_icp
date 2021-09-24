@@ -19,7 +19,7 @@
 
 namespace mp2p_icp
 {
-/** Defines the context of a match operation.
+/** Defines the static part of a match operation.
  *
  * \ingroup mp2p_icp_grp
  */
@@ -27,7 +27,21 @@ struct MatchContext
 {
     MatchContext() = default;
 
+    /// The ICP iteration number we are in:
     uint32_t icpIteration = 0;
+};
+
+struct MatchState
+{
+    MatchState(const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal)
+    {
+        (void)pcGlobal;
+        pairingsBitField.initialize_from(pcLocal);
+    }
+
+    /// The pairings already assigned by former matches in the pipeline
+    /// indexed by the pcLocal entities (true=already have a pairing).
+    pointcloud_bitfield_t pairingsBitField;
 };
 
 /** Pointcloud matching generic base class.
@@ -52,7 +66,7 @@ class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     virtual void match(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
         const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
-        Pairings& out) const;
+        MatchState& ms, Pairings& out) const;
 
     uint32_t runFromIteration = 0;
     uint32_t runUpToIteration = 0;  //!< 0: no limit
@@ -61,7 +75,7 @@ class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     virtual void impl_match(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
         const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
-        Pairings& out) const = 0;
+        MatchState& ms, Pairings& out) const = 0;
 };
 
 }  // namespace mp2p_icp

@@ -49,7 +49,9 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
     void implMatchOneLayer(
         const mrpt::maps::CPointsMap& pcGlobal,
         const mrpt::maps::CPointsMap& pcLocal,
-        const mrpt::poses::CPose3D& localPose, Pairings& out) const override;
+        const mrpt::poses::CPose3D& localPose, MatchState& ms,
+        const layer_name_t& globalName, const layer_name_t& localName,
+        Pairings& out) const override;
 };
 
 }  // namespace mp2p_icp

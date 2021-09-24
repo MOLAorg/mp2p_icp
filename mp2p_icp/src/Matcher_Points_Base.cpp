@@ -21,7 +21,8 @@ using namespace mp2p_icp;
 void Matcher_Points_Base::impl_match(
     const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
     const mrpt::poses::CPose3D&          localPose,
-    [[maybe_unused]] const MatchContext& mc, Pairings& out) const
+    [[maybe_unused]] const MatchContext& mc, MatchState& ms,
+    Pairings& out) const
 {
     MRPT_START
 
@@ -77,7 +78,9 @@ void Matcher_Points_Base::impl_match(
 
             const size_t nBefore = out.paired_pt2pt.size();
 
-            implMatchOneLayer(*glLayer, *lcLayer, localPose, out);
+            implMatchOneLayer(
+                *glLayer, *lcLayer, localPose, ms, glLayerName, localLayerName,
+                out);
 
             const size_t nAfter = out.paired_pt2pt.size();
 
@@ -127,6 +130,8 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
         params.getOrDefault("maxLocalPointsPerLayer", maxLocalPointsPerLayer_);
     localPointsSampleSeed_ =
         params.getOrDefault("localPointsSampleSeed", localPointsSampleSeed_);
+    allowMatchAlreadyMatchedPoints_ = params.getOrDefault(
+        "allowMatchAlreadyMatchedPoints", allowMatchAlreadyMatchedPoints_);
 }
 
 Matcher_Points_Base::TransformedLocalPointCloud

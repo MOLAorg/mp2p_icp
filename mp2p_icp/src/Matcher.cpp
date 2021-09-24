@@ -19,18 +19,16 @@ using namespace mp2p_icp;
 
 void Matcher::initialize(const mrpt::containers::yaml& params)
 {
-    if (params.has("runFromIteration"))
-        runFromIteration = params["runFromIteration"].as<uint32_t>();
-    if (params.has("runUpToIteration"))
-        runUpToIteration = params["runUpToIteration"].as<uint32_t>();
+    runFromIteration = params.getOrDefault<uint32_t>("runFromIteration", 0);
+    runUpToIteration = params.getOrDefault<uint32_t>("runUpToIteration", 0);
 }
 
 void Matcher::match(
     const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
     const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
-    Pairings& out) const
+    MatchState& ms, Pairings& out) const
 {
     if (mc.icpIteration < runFromIteration) return;
     if (runUpToIteration > 0 && mc.icpIteration > runUpToIteration) return;
-    impl_match(pcGlobal, pcLocal, localPose, mc, out);
+    impl_match(pcGlobal, pcLocal, localPose, mc, ms, out);
 }

@@ -72,23 +72,27 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
             {
                 // For pose: identity
-                mp2p_icp::Pairings pairs;
-                m.match(pcGlobal, pcLocal, {0, 0, 0, 0, 0, 0}, {}, pairs);
+                mp2p_icp::Pairings   pairs;
+                mp2p_icp::MatchState ms(pcGlobal, pcLocal);
+                m.match(pcGlobal, pcLocal, {0, 0, 0, 0, 0, 0}, {}, ms, pairs);
                 ASSERT_(pairs.empty());
             }
 
             {
                 // For pose #1
-                mp2p_icp::Pairings pairs;
-                m.match(pcGlobal, pcLocal, {0, 5, 0, 0, 0, 0}, {}, pairs);
+                mp2p_icp::Pairings   pairs;
+                mp2p_icp::MatchState ms(pcGlobal, pcLocal);
+                m.match(pcGlobal, pcLocal, {0, 5, 0, 0, 0, 0}, {}, ms, pairs);
                 ASSERT_EQUAL_(pairs.size(), 1U);
                 ASSERT_EQUAL_(pairs.paired_pt2pl.size(), 1U);
             }
 
             {
                 // For pose #2
-                mp2p_icp::Pairings pairs;
-                m.match(pcGlobal, pcLocal, {8.04, 0, 0.0, 0, 0, 0}, {}, pairs);
+                mp2p_icp::Pairings   pairs;
+                mp2p_icp::MatchState ms(pcGlobal, pcLocal);
+                m.match(
+                    pcGlobal, pcLocal, {8.04, 0, 0.0, 0, 0, 0}, {}, ms, pairs);
                 ASSERT_EQUAL_(pairs.size(), 1U);
                 ASSERT_EQUAL_(pairs.paired_pt2pl.size(), 1U);
 
@@ -111,9 +115,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
             {
                 // For pose #3
-                mp2p_icp::Pairings pairs;
+                mp2p_icp::Pairings   pairs;
+                mp2p_icp::MatchState ms(pcGlobal, pcLocal);
                 m.match(
-                    pcGlobal, pcLocal, {18.053, 0.05, 0.03, 0, 0, 0}, {},
+                    pcGlobal, pcLocal, {18.053, 0.05, 0.03, 0, 0, 0}, {}, ms,
                     pairs);
                 ASSERT_EQUAL_(pairs.paired_pt2pl.size(), 0U);
             }

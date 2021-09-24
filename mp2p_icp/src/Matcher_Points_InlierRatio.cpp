@@ -35,7 +35,9 @@ void Matcher_Points_InlierRatio::initialize(
 void Matcher_Points_InlierRatio::implMatchOneLayer(
     const mrpt::maps::CPointsMap& pcGlobal,
     const mrpt::maps::CPointsMap& pcLocal,
-    const mrpt::poses::CPose3D& localPose, Pairings& out) const
+    const mrpt::poses::CPose3D& localPose, MatchState& ms,
+    [[maybe_unused]] const layer_name_t& globalName,
+    const layer_name_t& localName, Pairings& out) const
 {
     MRPT_START
 
@@ -78,6 +80,10 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
     for (size_t i = 0; i < tl.x_locals.size(); i++)
     {
         size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
+
+        if (!allowMatchAlreadyMatchedPoints_ &&
+            ms.pairingsBitField.point_layers.at(localName).at(localIdx))
+            continue;  // skip, already paired.
 
         // For speed-up:
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],

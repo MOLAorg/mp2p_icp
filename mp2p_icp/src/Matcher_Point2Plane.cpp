@@ -37,7 +37,9 @@ void Matcher_Point2Plane::initialize(const mrpt::containers::yaml& params)
 void Matcher_Point2Plane::implMatchOneLayer(
     const mrpt::maps::CPointsMap& pcGlobal,
     const mrpt::maps::CPointsMap& pcLocal,
-    const mrpt::poses::CPose3D& localPose, Pairings& out) const
+    const mrpt::poses::CPose3D& localPose, MatchState& ms,
+    [[maybe_unused]] const layer_name_t& globalName,
+    const layer_name_t& localName, Pairings& out) const
 {
     MRPT_START
 
@@ -62,7 +64,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
         return;
 #endif
     // Prepare output: no correspondences initially:
-    out.paired_pt2pl.reserve(out.paired_pt2pl.size() + pcLocal.size() / 2);
+    out.paired_pt2pl.reserve(out.paired_pt2pl.size() + pcLocal.size() / 10);
 
     // Loop for each point in local map:
     // --------------------------------------------------
@@ -82,7 +84,11 @@ void Matcher_Point2Plane::implMatchOneLayer(
 
     for (size_t i = 0; i < tl.x_locals.size(); i++)
     {
-        size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
+        const size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
+
+        if (!allowMatchAlreadyMatchedPoints_ &&
+            ms.pairingsBitField.point_layers.at(localName).at(localIdx))
+            continue;  // skip, already paired.
 
         // For speed-up:
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],
@@ -138,8 +144,8 @@ void Matcher_Point2Plane::implMatchOneLayer(
 
         auto& p            = out.paired_pt2pl.emplace_back();
         p.pt_other         = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
-        p.pl_this.centroid = {eig.meanCov.mean.x(), eig.meanCov.mean.y(),
-                              eig.meanCov.mean.z()};
+        p.pl_this.centroid = {
+            eig.meanCov.mean.x(), eig.meanCov.mean.y(), eig.meanCov.mean.z()};
 
         const auto& normal = eig.eigVectors[0];
         p.pl_this.plane    = mrpt::math::TPlane(p.pl_this.centroid, normal);

@@ -29,7 +29,9 @@ double QualityEvaluator_PairedRatio::evaluate(
 {
     mp2p_icp::Pairings pairings;
 
-    matcher_.match(pcGlobal, pcLocal, localPose, {}, pairings);
+    MatchState ms(pcGlobal, pcLocal);
+
+    matcher_.match(pcGlobal, pcLocal, localPose, {}, ms, pairings);
 
     // The ratio must be accounted for using the number of points in
     // the active layers:

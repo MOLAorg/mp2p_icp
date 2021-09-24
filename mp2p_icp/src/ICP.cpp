@@ -248,12 +248,15 @@ Pairings ICP::run_matchers(
     const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
     const MatchContext& mc)
 {
-    Pairings pairings;
+    Pairings   pairings;
+    MatchState ms(pcGlobal, pcLocal);
+    MRPT_TODO("Avoid reallocations inside ms?");
+
     for (const auto& matcher : matchers)
     {
         ASSERT_(matcher);
         Pairings pc;
-        matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, pc);
+        matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, ms, pc);
         pairings.push_back(pc);
     }
     return pairings;

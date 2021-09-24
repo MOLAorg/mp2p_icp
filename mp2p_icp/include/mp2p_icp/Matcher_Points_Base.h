@@ -44,6 +44,10 @@ class Matcher_Points_Base : public Matcher
     uint64_t maxLocalPointsPerLayer_ = 0;
     uint64_t localPointsSampleSeed_  = 0;
 
+    /** Whether to allow matching points that have been already matched by a
+     * former Matcher instance in the pipeline. */
+    bool allowMatchAlreadyMatchedPoints_ = false;
+
     /** Common parameters to all derived classes:
      *
      * - `maxLocalPointsPerLayer`: Maximum number of local points to consider
@@ -87,13 +91,15 @@ class Matcher_Points_Base : public Matcher
     void impl_match(
         const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
         const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
-        Pairings& out) const override final;
+        MatchState& ms, Pairings& out) const override final;
 
    private:
     virtual void implMatchOneLayer(
         const mrpt::maps::CPointsMap& pcGlobal,
         const mrpt::maps::CPointsMap& pcLocal,
-        const mrpt::poses::CPose3D& localPose, Pairings& out) const = 0;
+        const mrpt::poses::CPose3D& localPose, MatchState& ms,
+        const layer_name_t& globalName, const layer_name_t& localName,
+        Pairings& out) const = 0;
 };
 
 }  // namespace mp2p_icp
