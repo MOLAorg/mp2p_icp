@@ -80,25 +80,28 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     const auto& lys = pcLocal.getPointsBufferRef_y();
     const auto& lzs = pcLocal.getPointsBufferRef_z();
 
-    const auto lambdaAddPair = [&out, &lxs, &lys, &lzs, &gxs, &gys, &gzs](
-                                   const size_t localIdx,
-                                   const size_t tentativeGlobalIdx,
-                                   const float  tentativeErrSqr) {
-        // Save new correspondence:
-        auto& p = out.paired_pt2pt.emplace_back();
+    const auto lambdaAddPair =
+        [&out, &lxs, &lys, &lzs, &gxs, &gys, &gzs, &ms, &localName](
+            const size_t localIdx, const size_t tentativeGlobalIdx,
+            const float tentativeErrSqr) {
+            // Save new correspondence:
+            auto& p = out.paired_pt2pt.emplace_back();
 
-        p.this_idx = tentativeGlobalIdx;
-        p.this_x   = gxs[tentativeGlobalIdx];
-        p.this_y   = gys[tentativeGlobalIdx];
-        p.this_z   = gzs[tentativeGlobalIdx];
+            p.this_idx = tentativeGlobalIdx;
+            p.this_x   = gxs[tentativeGlobalIdx];
+            p.this_y   = gys[tentativeGlobalIdx];
+            p.this_z   = gzs[tentativeGlobalIdx];
 
-        p.other_idx = localIdx;
-        p.other_x   = lxs[localIdx];
-        p.other_y   = lys[localIdx];
-        p.other_z   = lzs[localIdx];
+            p.other_idx = localIdx;
+            p.other_x   = lxs[localIdx];
+            p.other_y   = lys[localIdx];
+            p.other_z   = lzs[localIdx];
 
-        p.errorSquareAfterTransformation = tentativeErrSqr;
-    };
+            p.errorSquareAfterTransformation = tentativeErrSqr;
+
+            // Mark local point as already paired:
+            ms.pairingsBitField.point_layers[localName].at(localIdx) = true;
+        };
 
     // Declared out of the loop to avoid memory reallocations (!)
     std::vector<size_t> neighborIndices;

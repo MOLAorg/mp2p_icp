@@ -12,6 +12,7 @@
  */
 
 #include <mp2p_icp/Matcher_Point2Plane.h>
+#include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/pointcloud.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 
@@ -61,20 +62,20 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             generateLocalPoints();
 
         {
-            mp2p_icp::Matcher_Point2Plane m;
+            auto m = mp2p_icp::Matcher_Point2Plane::Create();
 
             mrpt::containers::yaml p;
             p["distanceThreshold"]   = 0.1;
             p["knn"]                 = 5;
             p["planeEigenThreshold"] = 0.1;
 
-            m.initialize(p);
+            m->initialize(p);
 
             {
                 // For pose: identity
                 mp2p_icp::Pairings   pairs;
                 mp2p_icp::MatchState ms(pcGlobal, pcLocal);
-                m.match(pcGlobal, pcLocal, {0, 0, 0, 0, 0, 0}, {}, ms, pairs);
+                m->match(pcGlobal, pcLocal, {0, 0, 0, 0, 0, 0}, {}, ms, pairs);
                 ASSERT_(pairs.empty());
             }
 
@@ -82,7 +83,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 // For pose #1
                 mp2p_icp::Pairings   pairs;
                 mp2p_icp::MatchState ms(pcGlobal, pcLocal);
-                m.match(pcGlobal, pcLocal, {0, 5, 0, 0, 0, 0}, {}, ms, pairs);
+                m->match(pcGlobal, pcLocal, {0, 5, 0, 0, 0, 0}, {}, ms, pairs);
                 ASSERT_EQUAL_(pairs.size(), 1U);
                 ASSERT_EQUAL_(pairs.paired_pt2pl.size(), 1U);
             }
@@ -91,7 +92,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 // For pose #2
                 mp2p_icp::Pairings   pairs;
                 mp2p_icp::MatchState ms(pcGlobal, pcLocal);
-                m.match(
+                m->match(
                     pcGlobal, pcLocal, {8.04, 0, 0.0, 0, 0, 0}, {}, ms, pairs);
                 ASSERT_EQUAL_(pairs.size(), 1U);
                 ASSERT_EQUAL_(pairs.paired_pt2pl.size(), 1U);
@@ -117,10 +118,49 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 // For pose #3
                 mp2p_icp::Pairings   pairs;
                 mp2p_icp::MatchState ms(pcGlobal, pcLocal);
-                m.match(
+                m->match(
                     pcGlobal, pcLocal, {18.053, 0.05, 0.03, 0, 0, 0}, {}, ms,
                     pairs);
                 ASSERT_EQUAL_(pairs.paired_pt2pl.size(), 0U);
+            }
+
+            {
+                // For pose #2 bis, NOT avoiding duplicated matches with another
+                // pt-to-pt matcher:
+                auto mPt2Pt =
+                    mp2p_icp::Matcher_Points_DistanceThreshold::Create();
+                mrpt::containers::yaml p2;
+                p2["threshold"]                      = 0.1;
+                p2["allowMatchAlreadyMatchedPoints"] = true;
+                mPt2Pt->initialize(p2);
+
+                const mp2p_icp::Pairings pairs = mp2p_icp::run_matchers(
+                    {m, mPt2Pt}, pcGlobal, pcLocal, {8.04, 0, 0.0, 0, 0, 0},
+                    {});
+
+                // std::cout << pairs.contents_summary() << std::endl;
+                ASSERT_EQUAL_(pairs.size(), 2U);
+                ASSERT_EQUAL_(pairs.paired_pt2pt.size(), 1U);
+                ASSERT_EQUAL_(pairs.paired_pt2pl.size(), 1U);
+            }
+
+            {
+                // For pose #2 tris, DO avoid duplicated matches with another
+                // pt-to-pt matcher:
+                auto mPt2Pt =
+                    mp2p_icp::Matcher_Points_DistanceThreshold::Create();
+                mrpt::containers::yaml p2;
+                p2["threshold"]                      = 0.1;
+                p2["allowMatchAlreadyMatchedPoints"] = false;
+                mPt2Pt->initialize(p2);
+
+                const mp2p_icp::Pairings pairs = mp2p_icp::run_matchers(
+                    {m, mPt2Pt}, pcGlobal, pcLocal, {8.04, 0, 0.0, 0, 0, 0},
+                    {});
+
+                // std::cout << pairs.contents_summary() << std::endl;
+                ASSERT_EQUAL_(pairs.size(), 1U);
+                ASSERT_EQUAL_(pairs.paired_pt2pl.size(), 1U);
             }
         }
     }

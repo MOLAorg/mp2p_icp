@@ -103,7 +103,6 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     /** @name Module: Matcher instances
      * @{ */
-    using matcher_list_t = std::vector<mp2p_icp::Matcher::Ptr>;
 
     /** Create and configure one or more "Match" modules from YAML-like config
      *block. Config must be a *sequence* of one or more entries, each with a
@@ -124,17 +123,10 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     void initialize_matchers(const mrpt::containers::yaml& params);
 
     static void initialize_matchers(
-        const mrpt::containers::yaml& params, ICP::matcher_list_t& lst);
+        const mrpt::containers::yaml& params, matcher_list_t& lst);
 
     const matcher_list_t& matchers() const { return matchers_; }
     matcher_list_t&       matchers() { return matchers_; }
-
-    /** Runs a set of matchers. */
-    static Pairings run_matchers(
-        const matcher_list_t& matchers, const pointcloud_t& pcGlobal,
-        const pointcloud_t&         pcLocal,
-        const mrpt::poses::CPose3D& local_wrt_global,
-        const MatchContext&         mc = {});
 
     /** @} */
 

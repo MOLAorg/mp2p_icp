@@ -116,7 +116,6 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
             // Sort by distance:
             sortedPairings.emplace_hint(
                 sortedPairings.begin(), tentativeErrSqr, p);
-
         }  // End of test_match
     }  // For each local point
 
@@ -132,7 +131,13 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
     std::advance(itEnd, nKeep);
 
     for (auto it = sortedPairings.begin(); it != itEnd; ++it)
+    {
         out.paired_pt2pt.push_back(it->second);
+
+        // Mark local point as already paired:
+        const auto localIdx = it->second.other_idx;
+        ms.pairingsBitField.point_layers[localName].at(localIdx) = true;
+    }
 
     MRPT_END
 }

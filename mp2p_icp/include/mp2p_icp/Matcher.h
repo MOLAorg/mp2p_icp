@@ -78,4 +78,11 @@ class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         MatchState& ms, Pairings& out) const = 0;
 };
 
+using matcher_list_t = std::vector<mp2p_icp::Matcher::Ptr>;
+
+Pairings run_matchers(
+    const matcher_list_t& matchers, const pointcloud_t& pcGlobal,
+    const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
+    const MatchContext& mc);
+
 }  // namespace mp2p_icp

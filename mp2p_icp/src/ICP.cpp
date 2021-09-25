@@ -243,25 +243,6 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     }
 }
 
-Pairings ICP::run_matchers(
-    const matcher_list_t& matchers, const pointcloud_t& pcGlobal,
-    const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
-    const MatchContext& mc)
-{
-    Pairings   pairings;
-    MatchState ms(pcGlobal, pcLocal);
-    MRPT_TODO("Avoid reallocations inside ms?");
-
-    for (const auto& matcher : matchers)
-    {
-        ASSERT_(matcher);
-        Pairings pc;
-        matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, ms, pc);
-        pairings.push_back(pc);
-    }
-    return pairings;
-}
-
 bool ICP::run_solvers(
     const solver_list_t& solvers, const Pairings& pairings,
     OptimalTF_Result& out, const SolverContext& sc)
@@ -312,7 +293,7 @@ void ICP::initialize_matchers(const mrpt::containers::yaml& params)
 }
 
 void ICP::initialize_matchers(
-    const mrpt::containers::yaml& params, ICP::matcher_list_t& lst)
+    const mrpt::containers::yaml& params, matcher_list_t& lst)
 {
     lst.clear();
 

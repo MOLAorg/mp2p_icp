@@ -32,3 +32,22 @@ void Matcher::match(
     if (runUpToIteration > 0 && mc.icpIteration > runUpToIteration) return;
     impl_match(pcGlobal, pcLocal, localPose, mc, ms, out);
 }
+
+Pairings mp2p_icp::run_matchers(
+    const matcher_list_t& matchers, const pointcloud_t& pcGlobal,
+    const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
+    const MatchContext& mc)
+{
+    Pairings   pairings;
+    MatchState ms(pcGlobal, pcLocal);
+    MRPT_TODO("Avoid reallocations inside ms?");
+
+    for (const auto& matcher : matchers)
+    {
+        ASSERT_(matcher);
+        Pairings pc;
+        matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, ms, pc);
+        pairings.push_back(pc);
+    }
+    return pairings;
+}

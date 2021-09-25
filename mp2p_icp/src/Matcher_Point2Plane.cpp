@@ -150,6 +150,9 @@ void Matcher_Point2Plane::implMatchOneLayer(
         const auto& normal = eig.eigVectors[0];
         p.pl_this.plane    = mrpt::math::TPlane(p.pl_this.centroid, normal);
 
+        // Mark local point as already paired:
+        ms.pairingsBitField.point_layers[localName].at(localIdx) = true;
+
     }  // For each local point
 
     MRPT_END
