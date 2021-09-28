@@ -34,14 +34,22 @@ struct MatchContext
 struct MatchState
 {
     MatchState(const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal)
+        : pcGlobal_(pcGlobal), pcLocal_(pcLocal)
     {
-        (void)pcGlobal;
-        pairingsBitField.initialize_from(pcLocal);
+        initialize();
     }
 
     /// The pairings already assigned by former matches in the pipeline
     /// indexed by the pcLocal entities (true=already have a pairing).
     pointcloud_bitfield_t pairingsBitField;
+
+    /** Initialize all bit fields to their correct length and default value
+     * (false) */
+    void initialize() { pairingsBitField.initialize_from(pcLocal_); }
+
+   private:
+    const pointcloud_t& pcGlobal_;
+    const pointcloud_t& pcLocal_;
 };
 
 /** Pointcloud matching generic base class.
@@ -80,9 +88,17 @@ class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
 using matcher_list_t = std::vector<mp2p_icp::Matcher::Ptr>;
 
+/** Runs a sequence of matcher between two pointcloud_t objects.
+ *
+ * This is normally invoked by mp2p_icp::ICP, but users can use it as a
+ * standalone module as needed.
+ *
+ * \ingroup mp2p_icp_grp
+ */
 Pairings run_matchers(
     const matcher_list_t& matchers, const pointcloud_t& pcGlobal,
     const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
-    const MatchContext& mc);
+    const MatchContext&                   mc,
+    const mrpt::optional_ref<MatchState>& userProvidedMS = std::nullopt);
 
 }  // namespace mp2p_icp

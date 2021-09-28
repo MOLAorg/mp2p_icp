@@ -36,17 +36,32 @@ void Matcher::match(
 Pairings mp2p_icp::run_matchers(
     const matcher_list_t& matchers, const pointcloud_t& pcGlobal,
     const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
-    const MatchContext& mc)
+    const MatchContext&                   mc,
+    const mrpt::optional_ref<MatchState>& userProvidedMS)
 {
-    Pairings   pairings;
-    MatchState ms(pcGlobal, pcLocal);
-    MRPT_TODO("Avoid reallocations inside ms?");
+    Pairings pairings;
+
+    MatchState* ms = nullptr;
+
+    std::optional<MatchState> localMS;
+
+    if (userProvidedMS.has_value())
+    {
+        // Use user-provided memory storage:
+        ms = &userProvidedMS.value().get();
+    }
+    else
+    {
+        // Reserve here:
+        localMS.emplace(pcGlobal, pcLocal);
+        ms = &localMS.value();
+    }
 
     for (const auto& matcher : matchers)
     {
         ASSERT_(matcher);
         Pairings pc;
-        matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, ms, pc);
+        matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, *ms, pc);
         pairings.push_back(pc);
     }
     return pairings;

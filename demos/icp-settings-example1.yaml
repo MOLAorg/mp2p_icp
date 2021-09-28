@@ -9,8 +9,8 @@ params:
   minAbsStep_trans: 1e-4
   minAbsStep_rot: 1e-4
 
-  #debugPrintIterationProgress: true  # Print progress
-  #generateDebugFiles: true
+  debugPrintIterationProgress: true  # Print progress
+  generateDebugFiles: true
   #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
 
 solvers:
@@ -34,7 +34,7 @@ solvers:
 matchers:
   - class: mp2p_icp::Matcher_Points_DistanceThreshold
     params:
-      threshold: 0.20
+      threshold: 0.01
       #pairingsPerPoint: 1
       #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       runFromIteration: 0  # "from 0 to 0" means "all"
@@ -55,7 +55,7 @@ matchers:
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio
     params:
-     thresholdDistance: 0.10
+     threshold: 0.10
 
 # Filters for point cloud #1 (reference) and #2 (mobile):
 #
@@ -67,12 +67,16 @@ filters_pc1:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: 0.10  # [m]
+      voxel_filter_resolution: 0.01  # [m]
       use_voxel_average: true
+      bounding_box_min: [-1, -1, -1]
+      bounding_box_max: [ 1,  1,  1]
 
 filters_pc2:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: 0.10  # [m]
+      voxel_filter_resolution: 0.01  # [m]
       use_voxel_average: true
+      bounding_box_min: [-1, -1, -1]
+      bounding_box_max: [ 1,  1,  1]
