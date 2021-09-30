@@ -16,10 +16,7 @@ project(mp2p_icp_all LANGUAGES CXX)
 add_subdirectory(3rdparty)
 
 # find dependencies:
-find_package(mrpt-containers 2.0.5 REQUIRED)
-find_package(mrpt-tfest REQUIRED)
-find_package(mrpt-maps REQUIRED)
-find_package(mrpt-gui REQUIRED) # for tests/demos
+find_package(MRPT 2.4.0 REQUIRED COMPONENTS containers tfest maps gui)
 
 # MOLA CMake scripts: "mola_xxx()"
 # to allow stand-along builds outside of MOLA, use local copy instead:

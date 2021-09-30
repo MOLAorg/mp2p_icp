@@ -53,12 +53,12 @@ This library provides:
  * A C++17 compiler. Tested with gcc-7, MSVC 2017.
  * Eigen3
  * CMake >= 3.4
- * MRPT >=1.9.9
+ * MRPT >=2.4.0
 
 Install all the dependencies in Ubuntu with:
 
 ```
-# MRPT >1.9.9, for now from this PPA (or build from sources if preferred):
+# MRPT >=2.4.0, for now from this PPA (or build from sources if preferred):
 sudo add-apt-repository ppa:joseluisblancoc/mrpt
 sudo apt update
 sudo apt install libmrpt-dev
