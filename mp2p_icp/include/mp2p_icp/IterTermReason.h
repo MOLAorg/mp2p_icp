@@ -8,12 +8,14 @@
 
 #include <mrpt/typemeta/TEnumType.h>
 
+#include <cstdint>
+
 namespace mp2p_icp
 {
 /** Reason of iterating termination.
  * \ingroup mp2p_icp_grp
  */
-enum class IterTermReason
+enum class IterTermReason : uint8_t
 {
     Undefined = 0,
     NoPairings,
