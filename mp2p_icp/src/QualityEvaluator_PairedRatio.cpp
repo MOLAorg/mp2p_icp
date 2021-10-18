@@ -23,7 +23,7 @@ void QualityEvaluator_PairedRatio::initialize(
 }
 
 double QualityEvaluator_PairedRatio::evaluate(
-    const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+    const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D&      localPose,
     [[maybe_unused]] const Pairings& pairingsFromICP) const
 {
@@ -58,7 +58,7 @@ double QualityEvaluator_PairedRatio::evaluate(
                 else
                     THROW_EXCEPTION_FMT(
                         "Could not find point layer '%s' in local "
-                        "pointcloud_t.",
+                        "metric_map_t.",
                         localLayerName.c_str());
             }
         }

@@ -34,7 +34,7 @@ class QualityEvaluator_PairedRatio : public QualityEvaluator
     void initialize(const mrpt::containers::yaml& params) override;
 
     double evaluate(
-        const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+        const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
         const Pairings&             pairingsFromICP) const override;
 

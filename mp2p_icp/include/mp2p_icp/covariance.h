@@ -12,6 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/Pairings.h>
+#include <mrpt/math/CMatrixFixed.h>
 
 namespace mp2p_icp
 {

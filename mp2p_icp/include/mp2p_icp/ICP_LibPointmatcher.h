@@ -15,7 +15,7 @@
 #include <mp2p_icp/IterTermReason.h>
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/Results.h>
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/rtti/CObject.h>
 
 #include <vector>
@@ -32,7 +32,7 @@ class ICP_LibPointmatcher : public ICP
 
    public:
     void align(
-        const pointcloud_t& pc1, const pointcloud_t& pc2,
+        const metric_map_t& pc1, const metric_map_t& pc2,
         const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
         const Parameters& p, Results& result,
         const mrpt::optional_ref<LogRecord>& outputDebugInfo =

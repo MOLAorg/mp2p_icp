@@ -14,7 +14,7 @@
 #include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/Results.h>
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/serialization/CSerializable.h>
 
 #include <optional>
@@ -39,7 +39,7 @@ class LogRecord : public mrpt::serialization::CSerializable
      * @{ */
 
     /** The ICP input global and local point clouds: */
-    pointcloud_t::ConstPtr pcGlobal, pcLocal;
+    metric_map_t::ConstPtr pcGlobal, pcLocal;
 
     mrpt::math::TPose3D initialGuessLocalWrtGlobal;
 

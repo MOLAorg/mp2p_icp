@@ -12,7 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/Pairings.h>
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
@@ -34,7 +34,7 @@ class QualityEvaluator : public mrpt::system::COutputLogger,
 
     /** Finds correspondences between the two point clouds. */
     virtual double evaluate(
-        const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+        const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
         const Pairings&             pairingsFromICP) const = 0;
 };

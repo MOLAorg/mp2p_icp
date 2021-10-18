@@ -12,10 +12,10 @@
 #pragma once
 
 #include <mp2p_icp/layer_name_t.h>
+#include <mp2p_icp/plane_patch.h>
 #include <mp2p_icp/render_params.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/math/TLine3D.h>
-#include <mrpt/math/TPlane.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/math/geometry.h>
 #include <mrpt/serialization/CSerializable.h>
@@ -32,19 +32,6 @@ namespace mp2p_icp
  * @{
  */
 
-struct plane_patch_t
-{
-    mrpt::math::TPlane   plane;
-    mrpt::math::TPoint3D centroid;
-
-    plane_patch_t() = default;
-    plane_patch_t(
-        const mrpt::math::TPlane3D& pl, const mrpt::math::TPoint3D& center)
-        : plane(pl), centroid(center)
-    {
-    }
-};
-
 /**
  * @brief Generic container of pointcloud(s), and/or extracted features.
  *
@@ -55,10 +42,10 @@ struct plane_patch_t
  * get_shared_from_this();
  *
  */
-class pointcloud_t : public mrpt::serialization::CSerializable,
-                     public std::enable_shared_from_this<pointcloud_t>
+class metric_map_t : public mrpt::serialization::CSerializable,
+                     public std::enable_shared_from_this<metric_map_t>
 {
-    DEFINE_SERIALIZABLE(pointcloud_t, mp2p_icp)
+    DEFINE_SERIALIZABLE(metric_map_t, mp2p_icp)
 
    public:
     /** @name Reserved point-cloud layer names (for use in `point_layers`)
@@ -122,13 +109,13 @@ class pointcloud_t : public mrpt::serialization::CSerializable,
     /** clear all containers  */
     virtual void clear();
 
-    /** Saves the pointcloud_t object  to file, using MRPT serialization and
+    /** Saves the metric_map_t object  to file, using MRPT serialization and
      *  using on-the-fly GZIP compression.
      * \return true on success.
      */
     bool save_to_file(const std::string& fileName) const;
 
-    /** Loads the pointcloud_t object from a file. See \save_to_file()
+    /** Loads the metric_map_t object from a file. See \save_to_file()
      * \return true on success.
      */
     bool load_from_file(const std::string& fileName);
@@ -138,7 +125,7 @@ class pointcloud_t : public mrpt::serialization::CSerializable,
      * See render_params_t for options to show/hide the different geometric
      * entities and point layers.
      *
-     * \note If deriving user classes inheriting from pointcloud_t, remember to
+     * \note If deriving user classes inheriting from metric_map_t, remember to
      *  reimplement this method and call this base class method to render
      *  common elements.
      */
@@ -154,7 +141,7 @@ class pointcloud_t : public mrpt::serialization::CSerializable,
      * other geometric primitives as needed.
      */
     virtual void merge_with(
-        const pointcloud_t&                       otherPc,
+        const metric_map_t&                       otherPc,
         const std::optional<mrpt::math::TPose3D>& otherRelativePose =
             std::nullopt);
 
@@ -205,7 +192,7 @@ class pointcloud_t : public mrpt::serialization::CSerializable,
     }
 };
 
-/** A bit field with a bool for each pointcloud_t entity.
+/** A bit field with a bool for each metric_map_t entity.
  *  Useful, for example, to keep track of which elements have already been
  * matched during the matching pipeline.
  */
@@ -221,7 +208,7 @@ struct pointcloud_bitfield_t
     std::vector<bool>                         planes;
     /** @} */
 
-    void initialize_from(const pointcloud_t& pc, bool initBoolValue = false)
+    void initialize_from(const metric_map_t& pc, bool initBoolValue = false)
     {
         // Points:
         // Done in this way to avoid avoidable memory reallocations.

@@ -13,6 +13,8 @@
 #include <mp2p_icp/Solver_OLAE.h>
 #include <mp2p_icp/optimal_tf_olae.h>
 
+#include <iostream>
+
 IMPLEMENTS_MRPT_OBJECT(Solver_OLAE, mp2p_icp::Solver, mp2p_icp)
 
 using namespace mp2p_icp;

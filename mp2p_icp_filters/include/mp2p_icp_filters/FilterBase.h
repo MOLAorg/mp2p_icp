@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/obs/obs_frwds.h>
@@ -24,7 +24,7 @@
 
 namespace mp2p_icp_filters
 {
-/** Pure virtual base class of filters, modifying an input/output pointcloud_t.
+/** Pure virtual base class of filters, modifying an input/output metric_map_t.
  *
  * Filters can be used to remove noisy points from a point cloud, decimate it,
  * or to detect planes, lines, or split points into different layers.
@@ -51,7 +51,7 @@ class FilterBase : public mrpt::rtti::CObject,  // RTTI support
 
     /** See docs above for FilterBase.
      */
-    virtual void filter(mp2p_icp::pointcloud_t& inOut) const = 0;
+    virtual void filter(mp2p_icp::metric_map_t& inOut) const = 0;
 
     /** @} */
 };
@@ -61,11 +61,11 @@ class FilterBase : public mrpt::rtti::CObject,  // RTTI support
  */
 using FilterPipeline = std::vector<FilterBase::Ptr>;
 
-/** Applies a pipeline of filters to a given pointcloud_t.
+/** Applies a pipeline of filters to a given metric_map_t.
  * \ingroup mp2p_icp_filters_grp
  */
 void apply_filter_pipeline(
-    const FilterPipeline& filters, mp2p_icp::pointcloud_t& inOut);
+    const FilterPipeline& filters, mp2p_icp::metric_map_t& inOut);
 
 /** Creates a pipeline of filters from a YAML configuration block (a sequence).
  *  Refer to YAML file examples.

@@ -24,7 +24,7 @@ void Matcher::initialize(const mrpt::containers::yaml& params)
 }
 
 void Matcher::match(
-    const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+    const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
     MatchState& ms, Pairings& out) const
 {
@@ -34,8 +34,8 @@ void Matcher::match(
 }
 
 Pairings mp2p_icp::run_matchers(
-    const matcher_list_t& matchers, const pointcloud_t& pcGlobal,
-    const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
+    const matcher_list_t& matchers, const metric_map_t& pcGlobal,
+    const metric_map_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
     const MatchContext&                   mc,
     const mrpt::optional_ref<MatchState>& userProvidedMS)
 {

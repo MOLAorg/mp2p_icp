@@ -53,13 +53,13 @@ void LogRecord::serializeFrom(
         {
             if (in.ReadAs<bool>())
             {
-                pcGlobal = pointcloud_t::Create();
-                in >> const_cast<pointcloud_t&>(*pcGlobal);
+                pcGlobal = metric_map_t::Create();
+                in >> const_cast<metric_map_t&>(*pcGlobal);
             }
             if (in.ReadAs<bool>())
             {
-                pcLocal = pointcloud_t::Create();
-                in >> const_cast<pointcloud_t&>(*pcLocal);
+                pcLocal = metric_map_t::Create();
+                in >> const_cast<metric_map_t&>(*pcLocal);
             }
 
             in >> initialGuessLocalWrtGlobal >> icpParameters >> icpResult >>

@@ -23,7 +23,7 @@ IMPLEMENTS_MRPT_OBJECT(ICP, mrpt::rtti::CObject, mp2p_icp)
 using namespace mp2p_icp;
 
 void ICP::align(
-    const pointcloud_t& pcLocal, const pointcloud_t& pcGlobal,
+    const metric_map_t& pcLocal, const metric_map_t& pcGlobal,
     const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p,
     Results& result, const mrpt::optional_ref<LogRecord>& outputDebugInfo)
 {
@@ -358,8 +358,8 @@ void ICP::initialize_quality_evaluators(const mrpt::containers::yaml& params)
 }
 
 double ICP::evaluate_quality(
-    const quality_eval_list_t& evaluators, const pointcloud_t& pcGlobal,
-    const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& localPose,
+    const quality_eval_list_t& evaluators, const metric_map_t& pcGlobal,
+    const metric_map_t& pcLocal, const mrpt::poses::CPose3D& localPose,
     const Pairings& finalPairings)
 {
     ASSERT_(!evaluators.empty());

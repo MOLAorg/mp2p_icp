@@ -14,9 +14,12 @@
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
 #include <mrpt/math/CVectorFixed.h>
 #include <mrpt/math/TPoint3D.h>
+#include <mrpt/math/geometry.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/Lie/SE.h>
+
 #include <Eigen/Dense>
+#include <iostream>
 
 using namespace mp2p_icp;
 using namespace mrpt::math;
@@ -63,10 +66,10 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
 {
     MRPT_START
     mrpt::math::CVectorFixedDouble<1> error;
-    const auto &p = pairing.pt_other;
-    const auto &ln_aux = pairing.ln_this;
-    const mrpt::math::TPoint3D l = TPoint3D(p.x, p.y, p.z);
-    mrpt::math::TPoint3D g;
+    const auto&                       p      = pairing.pt_other;
+    const auto&                       ln_aux = pairing.ln_this;
+    const mrpt::math::TPoint3D        l      = TPoint3D(p.x, p.y, p.z);
+    mrpt::math::TPoint3D              g;
     relativePose.composePoint(l, g);
 
     error[0] = mrpt::square(pairing.ln_this.distance(g));
@@ -90,9 +93,9 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
                 .finished();
         double mod_ru = ru * ru.transpose();
 
-       // J1
+        // J1
         Eigen::Matrix<double, 1, 3> J1 =
-           2 * p_r0 - (2 / mod_ru) * (p_r0 * ru.transpose()) * ru;
+            2 * p_r0 - (2 / mod_ru) * (p_r0 * ru.transpose()) * ru;
         // J2
         // clang-format off
         Eigen::Matrix<double, 3, 12> J2 =
@@ -117,10 +120,10 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
 {
     MRPT_START
     mrpt::math::CVectorFixedDouble<1> error;
-    const auto &p = pairing.pt_other;
-    const auto &pl_aux = pairing.pl_this.plane;
-    const mrpt::math::TPoint3D l = TPoint3D(p.x, p.y, p.z);
-    mrpt::math::TPoint3D g;
+    const auto&                       p      = pairing.pt_other;
+    const auto&                       pl_aux = pairing.pl_this.plane;
+    const mrpt::math::TPoint3D        l      = TPoint3D(p.x, p.y, p.z);
+    mrpt::math::TPoint3D              g;
     relativePose.composePoint(l, g);
 
     error[0] = pl_aux.evaluatePoint(g);
@@ -137,8 +140,9 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
         // clang-format on
 
         const Eigen::Matrix<double, 1, 3> Jpl =
-            (Eigen::Matrix<double, 1, 3>() << pl_aux.coefs[0],
-             pl_aux.coefs[1], pl_aux.coefs[2]).finished();
+            (Eigen::Matrix<double, 1, 3>() << pl_aux.coefs[0], pl_aux.coefs[1],
+             pl_aux.coefs[2])
+                .finished();
 
         mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
         J_aux                                          = Jpl * J1;
@@ -148,21 +152,21 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
 }
 
 mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
-    const mp2p_icp::matched_line_t&            pairing,
-    const mrpt::poses::CPose3D&                relativePose,
+    const mp2p_icp::matched_line_t&                             pairing,
+    const mrpt::poses::CPose3D&                                 relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 4, 12>> jacobian)
 {
     MRPT_START
     mrpt::math::CVectorFixedDouble<4> error;
     mrpt::math::TLine3D               ln_aux;
-    mrpt::math::TPoint3D g;
+    mrpt::math::TPoint3D              g;
 
-    const auto &p0 = pairing.ln_other.pBase;
-    const auto &u0 = pairing.ln_other.director;
-    const auto &p1 = pairing.ln_this.pBase;
-    const auto &u1 = pairing.ln_this.director;
+    const auto& p0 = pairing.ln_other.pBase;
+    const auto& u0 = pairing.ln_other.director;
+    const auto& p1 = pairing.ln_this.pBase;
+    const auto& u1 = pairing.ln_this.director;
 
-    relativePose.composePoint(p0,g);
+    relativePose.composePoint(p0, g);
     ln_aux.pBase = mrpt::math::TPoint3D(g);
 
     // Homogeneous matrix calculation
@@ -172,34 +176,29 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
 
     // Projection of the director vector for the new pose
     const Eigen::Matrix<double, 1, 4> U =
-        (Eigen::Matrix<double, 1, 4>() << u0[0], u0[1], u0[2], 1)
-            .finished();
+        (Eigen::Matrix<double, 1, 4>() << u0[0], u0[1], u0[2], 1).finished();
     const Eigen::Matrix<double, 1, 4> U_T = U * T;
-    ln_aux.director = {U_T[0], U_T[1], U_T[2]};
+    ln_aux.director                       = {U_T[0], U_T[1], U_T[2]};
 
     // Angle formed between the lines
-    double alfa = getAngle(pairing.ln_this, ln_aux)*180/(2*3.14159265);
-/*
-    std::cout << "\nLine 1:\n"
-              <<  pairing.ln_this << "\nLine 2:\n"
-               << pairing.ln_other << "\nLine 2':\n"
-               << ln_aux << "\nAngle:\n"
-               << alfa << "\nT:\n"
-               <<  T << "\n";
-*/
+    double alfa = getAngle(pairing.ln_this, ln_aux) * 180 / (2 * 3.14159265);
+    /*
+        std::cout << "\nLine 1:\n"
+                  <<  pairing.ln_this << "\nLine 2:\n"
+                   << pairing.ln_other << "\nLine 2':\n"
+                   << ln_aux << "\nAngle:\n"
+                   << alfa << "\nT:\n"
+                   <<  T << "\n";
+    */
 
     // p_r0 = (p-r_{0,r}). Ec.20
     const Eigen::Matrix<double, 1, 3> p_r2 =
-        (Eigen::Matrix<double, 1, 3>()
-             << ln_aux.pBase.x - p1.x,
-                ln_aux.pBase.y - p1.y,
-                ln_aux.pBase.z - p1.z)
-        .finished();
-
-    const Eigen::Matrix<double, 1, 3> rv =
-        (Eigen::Matrix<double, 1, 3>() << u1[0], u1[1], u1[2])
+        (Eigen::Matrix<double, 1, 3>() << ln_aux.pBase.x - p1.x,
+         ln_aux.pBase.y - p1.y, ln_aux.pBase.z - p1.z)
             .finished();
 
+    const Eigen::Matrix<double, 1, 3> rv =
+        (Eigen::Matrix<double, 1, 3>() << u1[0], u1[1], u1[2]).finished();
 
     // Relationship between lines
     const double tolerance = 0.01;
@@ -225,7 +224,8 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
                  ).finished();
             // clang-format on
             // Build Jacobian
-            mrpt::math::CMatrixFixed<double, 4, 12>& J_auxp = jacobian.value().get();
+            mrpt::math::CMatrixFixed<double, 4, 12>& J_auxp =
+                jacobian.value().get();
             J_auxp.block<1, 12>(0, 0) = J1 * J2;
         }
     }
@@ -252,26 +252,23 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
             Eigen::Matrix<double, 1, 3> J1_1 = r_w / sqrt(aux_rw);
 
             // J1.2:
-            //A
-            const double A  = p_r2[0] * r_w[0] + p_r2[1] * r_w[1] + p_r2[2] * r_w[2];
-            const double Ax = - u1[2] * p_r2[1] + u1[1] * p_r2[2];
-            const double Ay =   u1[2] * p_r2[0] - u1[0] * p_r2[2];
-            const double Az = - u1[1] * p_r2[0] + u1[0] * p_r2[1];
+            // A
+            const double A =
+                p_r2[0] * r_w[0] + p_r2[1] * r_w[1] + p_r2[2] * r_w[2];
+            const double Ax = -u1[2] * p_r2[1] + u1[1] * p_r2[2];
+            const double Ay = u1[2] * p_r2[0] - u1[0] * p_r2[2];
+            const double Az = -u1[1] * p_r2[0] + u1[0] * p_r2[1];
             // B
-            const double B = sqrt(aux_rw);
-            const double Bx = (-u1[2]*r_w[1]+u1[1]*r_w[2])/B;
-            const double By = ( u1[2]*r_w[0]+u1[0]*r_w[2])/B;
-            const double Bz = (-u1[1]*r_w[0]+u1[0]*r_w[1])/B;
+            const double B  = sqrt(aux_rw);
+            const double Bx = (-u1[2] * r_w[1] + u1[1] * r_w[2]) / B;
+            const double By = (u1[2] * r_w[0] + u1[0] * r_w[2]) / B;
+            const double Bz = (-u1[1] * r_w[0] + u1[0] * r_w[1]) / B;
 
-            std::cout << "\nA: "
-                      <<  A << "\nAx: "
-                       << Ax <<"\nAy: "
-                       << Ay <<"\nAz: "
-                       << Az <<"\nB: "
-                       << B <<"\nBx: "
-                       << Bx <<"\nBy: "
-                       << By <<"\nBz: "
-                       << Bz << "\n";
+#if 0
+            std::cout << "\nA: " << A << "\nAx: " << Ax << "\nAy: " << Ay
+                      << "\nAz: " << Az << "\nB: " << B << "\nBx: " << Bx
+                      << "\nBy: " << By << "\nBz: " << Bz << "\n";
+#endif
 
             // Ec.36
             // clang-format off
@@ -312,22 +309,21 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
                 ).finished();
             // clang-format on
             // Build Jacobian
-            mrpt::math::CMatrixFixed<double, 4, 12>& J_aux = jacobian.value().get();
+            mrpt::math::CMatrixFixed<double, 4, 12>& J_aux =
+                jacobian.value().get();
             J_aux.block<4, 12>(0, 0) = J1 * J2;
 
-            std::cout << "\nJ1:\n"
-                      <<  J1 << "\nJ2:\n"
-                       << J2 << "\n";
+            std::cout << "\nJ1:\n" << J1 << "\nJ2:\n" << J2 << "\n";
         }
     }
-//    std::cout<<"\nError:\n"<<error;
+    //    std::cout<<"\nError:\n"<<error;
     return error;
     MRPT_END
 }
 
 mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_plane2plane(
-    const mp2p_icp::matched_plane_t& pairing,
-    const mrpt::poses::CPose3D&      relativePose,
+    const mp2p_icp::matched_plane_t&                            pairing,
+    const mrpt::poses::CPose3D&                                 relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     MRPT_START

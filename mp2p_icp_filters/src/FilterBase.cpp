@@ -22,7 +22,7 @@ FilterBase::FilterBase() : mrpt::system::COutputLogger("FilterBase") {}
 FilterBase::~FilterBase() = default;
 
 void mp2p_icp_filters::apply_filter_pipeline(
-    const FilterPipeline& filters, mp2p_icp::pointcloud_t& inOut)
+    const FilterPipeline& filters, mp2p_icp::metric_map_t& inOut)
 {
     for (const auto& f : filters)
     {

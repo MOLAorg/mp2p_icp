@@ -62,7 +62,7 @@ void FilterEdgesPlanes::initialize(const mrpt::containers::yaml& c)
     MRPT_END
 }
 
-void FilterEdgesPlanes::filter(mp2p_icp::pointcloud_t& inOut) const
+void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
 

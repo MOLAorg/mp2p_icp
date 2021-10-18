@@ -89,7 +89,7 @@ class Matcher_Points_Base : public Matcher
 
    protected:
     void impl_match(
-        const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+        const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
         MatchState& ms, Pairings& out) const override final;
 

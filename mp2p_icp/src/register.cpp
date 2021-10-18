@@ -23,14 +23,14 @@
 #include <mp2p_icp/Solver_GaussNewton.h>
 #include <mp2p_icp/Solver_Horn.h>
 #include <mp2p_icp/Solver_OLAE.h>
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/core/initializer.h>
 
 MRPT_INITIALIZER(register_mp2p_icp)
 {
     using mrpt::rtti::registerClass;
 
-    registerClass(CLASS_ID(mp2p_icp::pointcloud_t));
+    registerClass(CLASS_ID(mp2p_icp::metric_map_t));
 
     registerClass(CLASS_ID(mp2p_icp::ICP));
     registerClass(CLASS_ID(mp2p_icp::ICP_LibPointmatcher));

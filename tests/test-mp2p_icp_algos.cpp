@@ -103,7 +103,7 @@ static void test_icp(
         pts_reg->changeCoordinatesReference(*pts, gt_pose);
 
         // Point clouds: reference and modified:
-        mp2p_icp::pointcloud_t pc_ref, pc_mod;
+        mp2p_icp::metric_map_t pc_ref, pc_mod;
         pc_ref.point_layers["raw"] = pts;
         pc_mod.point_layers["raw"] = pts_reg;
 

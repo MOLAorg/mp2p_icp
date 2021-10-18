@@ -39,7 +39,7 @@ void QualityEvaluator_RangeImageSimilarity::initialize(
 }
 
 double QualityEvaluator_RangeImageSimilarity::evaluate(
-    const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+    const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D&      localPose,
     [[maybe_unused]] const Pairings& pairingsFromICP) const
 {
@@ -47,8 +47,8 @@ double QualityEvaluator_RangeImageSimilarity::evaluate(
     // "Analyzing the Quality of Matched 3D Point Clouds of Objects"
     // Igor Bogoslavskyi, Cyrill Stachniss
 
-    const auto& p1 = *pcGlobal.point_layers.at(pointcloud_t::PT_LAYER_RAW);
-    const auto& p2 = *pcLocal.point_layers.at(pointcloud_t::PT_LAYER_RAW);
+    const auto& p1 = *pcGlobal.point_layers.at(metric_map_t::PT_LAYER_RAW);
+    const auto& p2 = *pcLocal.point_layers.at(metric_map_t::PT_LAYER_RAW);
 
     const auto I11 = projectPoints(p1);
     const auto I12 = projectPoints(p1, localPose);

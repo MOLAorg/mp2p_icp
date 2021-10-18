@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/obs/obs_frwds.h>
 #include <mrpt/rtti/CObject.h>
@@ -39,7 +39,7 @@ struct NotImplementedError : public std::runtime_error
 };
 
 /** Generic base class providing process(), converting a generic
- *  mrpt::obs::CObservation into a pointcloud_t with just a point cloud layer
+ *  mrpt::obs::CObservation into a metric_map_t with just a point cloud layer
  (named `raw`).
  *
  * This pointcloud-t can optionally then be passed through one or more
@@ -92,7 +92,7 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
      */
     virtual void process(
         const mrpt::obs::CObservation& input_raw,
-        mp2p_icp::pointcloud_t&        inOut);
+        mp2p_icp::metric_map_t&        inOut);
 
     struct Parameters
     {
@@ -101,7 +101,7 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
         /** The point cloud points layer name where the observation will be
          * loaded. Default: "raw" */
         std::string target_pointcloud_layer =
-            mp2p_icp::pointcloud_t::PT_LAYER_RAW;
+            mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
         /** Sensor observation class names to process. Default = ".*" (any).
          *  Example: use "mrpt::obs::CObservation2DRangeScan" if you only want
@@ -126,22 +126,22 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     /** Process a 2D lidar scan. \return false if not implemented */
     virtual bool filterScan2D(
         const mrpt::obs::CObservation2DRangeScan& pc,
-        mp2p_icp::pointcloud_t&                   out);
+        mp2p_icp::metric_map_t&                   out);
     /** Process a depth camera observation. \return false if not implemented */
     virtual bool filterScan3D(
         const mrpt::obs::CObservation3DRangeScan& pc,
-        mp2p_icp::pointcloud_t&                   out);
+        mp2p_icp::metric_map_t&                   out);
     /** Process a 3D lidar scan. \return false if not implemented   */
     virtual bool filterVelodyneScan(
         const mrpt::obs::CObservationVelodyneScan& pc,
-        mp2p_icp::pointcloud_t&                    out);
+        mp2p_icp::metric_map_t&                    out);
     /** Process a 2D/3D point-cloud. \return false if not implemented  */
     virtual bool filterPointCloud(
-        const mrpt::maps::CPointsMap& pc, mp2p_icp::pointcloud_t& out);
+        const mrpt::maps::CPointsMap& pc, mp2p_icp::metric_map_t& out);
     /** Process a 3D lidar scan. \return false if not implemented   */
     virtual bool filterRotatingScan(
         const mrpt::obs::CObservationRotatingScan& pc,
-        mp2p_icp::pointcloud_t&                    out);
+        mp2p_icp::metric_map_t&                    out);
 
     bool       initialized_ = false;
     std::regex process_class_names_regex_;
@@ -152,27 +152,27 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
 using GeneratorSet = std::vector<Generator::Ptr>;
 
 /** Applies a set of generators to a given input raw observation(s) and
- *  generates a pointcloud_t.
+ *  generates a metric_map_t.
  *
- *  \note The former contents on the output pointcloud_t object are untouched,
+ *  \note The former contents on the output metric_map_t object are untouched,
  *  so calling this function several times can be used to accumulate point cloud
  * elements from different sensors.
  */
 void apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
-    mp2p_icp::pointcloud_t& output);
+    mp2p_icp::metric_map_t& output);
 
-/// \overload (functional version returning the pointcloud_t)
-mp2p_icp::pointcloud_t apply_generators(
+/// \overload (functional version returning the metric_map_t)
+mp2p_icp::metric_map_t apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs);
 
 /// \overload (version with an input CSensoryFrame)
 void apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf,
-    mp2p_icp::pointcloud_t& output);
+    mp2p_icp::metric_map_t& output);
 
-/// \overload (functional version returning the pointcloud_t)
-mp2p_icp::pointcloud_t apply_generators(
+/// \overload (functional version returning the metric_map_t)
+mp2p_icp::metric_map_t apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf);
 
 /** Creates a set of generators from a YAML configuration block (a sequence).

@@ -51,7 +51,7 @@ void Generator::initialize(const mrpt::containers::yaml& c)
 }
 
 void Generator::process(
-    const mrpt::obs::CObservation& o, mp2p_icp::pointcloud_t& out)
+    const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out)
 {
     MRPT_START
     using namespace mrpt::obs;
@@ -131,27 +131,27 @@ void Generator::process(
 
 bool Generator::filterScan2D(  //
     [[maybe_unused]] const mrpt::obs::CObservation2DRangeScan& pc,
-    [[maybe_unused]] mp2p_icp::pointcloud_t&                   out)
+    [[maybe_unused]] mp2p_icp::metric_map_t&                   out)
 {
     return false;  // Not implemented
 }
 
 bool Generator::filterVelodyneScan(  //
     [[maybe_unused]] const mrpt::obs::CObservationVelodyneScan& pc,
-    [[maybe_unused]] mp2p_icp::pointcloud_t&                    out)
+    [[maybe_unused]] mp2p_icp::metric_map_t&                    out)
 {
     return false;  // Not implemented
 }
 
 bool Generator::filterScan3D(  //
     [[maybe_unused]] const mrpt::obs::CObservation3DRangeScan& pc,
-    [[maybe_unused]] mp2p_icp::pointcloud_t&                   out)
+    [[maybe_unused]] mp2p_icp::metric_map_t&                   out)
 {
     return false;  // Not implemented
 }
 
 bool Generator::filterPointCloud(  //
-    const mrpt::maps::CPointsMap& pc, mp2p_icp::pointcloud_t& out)
+    const mrpt::maps::CPointsMap& pc, mp2p_icp::metric_map_t& out)
 {
     auto& outPc = out.point_layers[params_.target_pointcloud_layer];
 
@@ -165,14 +165,14 @@ bool Generator::filterPointCloud(  //
 
 bool Generator::filterRotatingScan(  //
     [[maybe_unused]] const mrpt::obs::CObservationRotatingScan& pc,
-    [[maybe_unused]] mp2p_icp::pointcloud_t&                    out)
+    [[maybe_unused]] mp2p_icp::metric_map_t&                    out)
 {
     return false;  // Not implemented
 }
 
 void mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
-    mp2p_icp::pointcloud_t& output)
+    mp2p_icp::metric_map_t& output)
 {
     ASSERT_(!generators.empty());
     for (const auto& g : generators)
@@ -182,25 +182,25 @@ void mp2p_icp_filters::apply_generators(
     }
 }
 
-mp2p_icp::pointcloud_t mp2p_icp_filters::apply_generators(
+mp2p_icp::metric_map_t mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs)
 {
-    mp2p_icp::pointcloud_t pc;
+    mp2p_icp::metric_map_t pc;
     apply_generators(generators, obs, pc);
     return pc;
 }
 
-mp2p_icp::pointcloud_t mp2p_icp_filters::apply_generators(
+mp2p_icp::metric_map_t mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf)
 {
-    mp2p_icp::pointcloud_t pc;
+    mp2p_icp::metric_map_t pc;
     apply_generators(generators, sf, pc);
     return pc;
 }
 
 void mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf,
-    mp2p_icp::pointcloud_t& output)
+    mp2p_icp::metric_map_t& output)
 {
     ASSERT_(!generators.empty());
     for (const auto& g : generators)

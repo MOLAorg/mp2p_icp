@@ -11,9 +11,11 @@
  */
 #pragma once
 
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/plane_patch.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/math/TLine3D.h>
 #include <mrpt/serialization/CSerializable.h>
+#include <mrpt/tfest/TMatchingPair.h>
 #include <mrpt/typemeta/TTypeName.h>
 
 namespace mp2p_icp

@@ -13,7 +13,7 @@
 
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/Matcher_Points_InlierRatio.h>
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 
 static mrpt::maps::CSimplePointsMap::Ptr generateGlobalPoints()
@@ -40,12 +40,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
     {
-        mp2p_icp::pointcloud_t pcGlobal;
-        pcGlobal.point_layers[mp2p_icp::pointcloud_t::PT_LAYER_RAW] =
+        mp2p_icp::metric_map_t pcGlobal;
+        pcGlobal.point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] =
             generateGlobalPoints();
 
-        mp2p_icp::pointcloud_t pcLocal;
-        pcLocal.point_layers[mp2p_icp::pointcloud_t::PT_LAYER_RAW] =
+        mp2p_icp::metric_map_t pcLocal;
+        pcLocal.point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] =
             generateLocalPoints();
 
         {

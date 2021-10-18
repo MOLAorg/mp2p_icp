@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
 #include <mrpt/maps/CPointsMap.h>
@@ -37,14 +37,14 @@ class FilterEdgesPlanes : public mp2p_icp_filters::FilterBase
     void initialize(const mrpt::containers::yaml& c) override;
 
     // See docs in FilterBase
-    void filter(mp2p_icp::pointcloud_t& inOut) const override;
+    void filter(mp2p_icp::metric_map_t& inOut) const override;
 
     struct Parameters
     {
         void load_from_yaml(const mrpt::containers::yaml& c);
 
         std::string input_pointcloud_layer =
-            mp2p_icp::pointcloud_t::PT_LAYER_RAW;
+            mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
         unsigned int full_pointcloud_decimation = 20;
 

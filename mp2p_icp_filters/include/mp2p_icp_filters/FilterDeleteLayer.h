@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mrpt/maps/CPointsMap.h>
 
@@ -32,7 +32,7 @@ class FilterDeleteLayer : public mp2p_icp_filters::FilterBase
     void initialize(const mrpt::containers::yaml& c) override;
 
     // See docs in FilterBase
-    void filter(mp2p_icp::pointcloud_t& inOut) const override;
+    void filter(mp2p_icp::metric_map_t& inOut) const override;
 
     struct Parameters
     {

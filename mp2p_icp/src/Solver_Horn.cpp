@@ -14,6 +14,8 @@
 #include <mp2p_icp/optimal_tf_horn.h>
 #include <mrpt/core/exceptions.h>
 
+#include <iostream>
+
 IMPLEMENTS_MRPT_OBJECT(Solver_Horn, mp2p_icp::Solver, mp2p_icp)
 
 using namespace mp2p_icp;

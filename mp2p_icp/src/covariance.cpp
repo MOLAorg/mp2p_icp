@@ -12,6 +12,7 @@
 
 #include <mp2p_icp/covariance.h>
 #include <mp2p_icp/errorTerms.h>
+#include <mrpt/math/CVectorDynamic.h>
 #include <mrpt/math/num_jacobian.h>
 
 #include <Eigen/Dense>

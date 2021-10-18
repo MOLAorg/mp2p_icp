@@ -42,7 +42,7 @@ bool ICP_LibPointmatcher::methodAvailable()
 }
 
 #if defined(MP2P_HAS_LIBPOINTMATCHER)
-static PointMatcher<double>::DataPoints pointsToPM(const pointcloud_t& pc)
+static PointMatcher<double>::DataPoints pointsToPM(const metric_map_t& pc)
 {
     // TODO: Convert pointclouds in a more efficient way (!)
     std::stringstream ss;
@@ -65,8 +65,8 @@ static PointMatcher<double>::DataPoints pointsToPM(const pointcloud_t& pc)
 #endif
 
 void ICP_LibPointmatcher::align(
-    [[maybe_unused]] const pointcloud_t&        pcs1,
-    [[maybe_unused]] const pointcloud_t&        pcs2,
+    [[maybe_unused]] const metric_map_t&        pcs1,
+    [[maybe_unused]] const metric_map_t&        pcs2,
     [[maybe_unused]] const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
     [[maybe_unused]] const Parameters& p, [[maybe_unused]] Results& result,
     [[maybe_unused]] const mrpt::optional_ref<LogRecord>& outputDebugInfo)

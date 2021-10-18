@@ -10,7 +10,7 @@
  * @date   Jun 10, 2019
  */
 
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/io/CFileGZOutputStream.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
@@ -26,13 +26,13 @@
 #include <iterator>
 
 IMPLEMENTS_MRPT_OBJECT(
-    pointcloud_t, mrpt::serialization::CSerializable, mp2p_icp)
+    metric_map_t, mrpt::serialization::CSerializable, mp2p_icp)
 
 using namespace mp2p_icp;
 
 // Implementation of the CSerializable virtual interface:
-uint8_t pointcloud_t::serializeGetVersion() const { return 1; }
-void    pointcloud_t::serializeTo(mrpt::serialization::CArchive& out) const
+uint8_t metric_map_t::serializeGetVersion() const { return 1; }
+void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << lines;
 
@@ -50,7 +50,7 @@ void    pointcloud_t::serializeTo(mrpt::serialization::CArchive& out) const
     // Optional user data:
     derivedSerializeTo(out);
 }
-void pointcloud_t::serializeFrom(
+void metric_map_t::serializeFrom(
     mrpt::serialization::CArchive& in, uint8_t version)
 {
     switch (version)
@@ -95,7 +95,7 @@ void pointcloud_t::serializeFrom(
 }
 
 /** Gets a renderizable view of all planes */
-auto pointcloud_t::get_visualization(const render_params_t& p) const
+auto metric_map_t::get_visualization(const render_params_t& p) const
     -> std::shared_ptr<mrpt::opengl::CSetOfObjects>
 {
     MRPT_START
@@ -109,7 +109,7 @@ auto pointcloud_t::get_visualization(const render_params_t& p) const
     MRPT_END
 }
 
-void pointcloud_t::get_visualization_planes(
+void metric_map_t::get_visualization_planes(
     mrpt::opengl::CSetOfObjects& o, const render_params_planes_t& p) const
 {
     MRPT_START
@@ -131,7 +131,7 @@ void pointcloud_t::get_visualization_planes(
     MRPT_END
 }
 
-void pointcloud_t::get_visualization_lines(
+void metric_map_t::get_visualization_lines(
     mrpt::opengl::CSetOfObjects& o, const render_params_lines_t& p) const
 {
     MRPT_START
@@ -151,7 +151,7 @@ void pointcloud_t::get_visualization_lines(
     MRPT_END
 }
 
-void pointcloud_t::get_visualization_points(
+void metric_map_t::get_visualization_points(
     mrpt::opengl::CSetOfObjects& o, const render_params_points_t& p) const
 {
     MRPT_START
@@ -167,7 +167,7 @@ void pointcloud_t::get_visualization_points(
             if (itPts == point_layers.end())
                 THROW_EXCEPTION_FMT(
                     "Rendering parameters given for layer '%s' which does not "
-                    "exist in this pointcloud_t object",
+                    "exist in this metric_map_t object",
                     kv.first.c_str());
 
             get_visualization_point_layer(o, kv.second, itPts->second);
@@ -183,7 +183,7 @@ void pointcloud_t::get_visualization_points(
     MRPT_END
 }
 
-void pointcloud_t::get_visualization_point_layer(
+void metric_map_t::get_visualization_point_layer(
     mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
     const mrpt::maps::CPointsMap::Ptr& pts)
 {
@@ -235,15 +235,15 @@ void pointcloud_t::get_visualization_point_layer(
     }
 }
 
-bool pointcloud_t::empty() const
+bool metric_map_t::empty() const
 {
     return point_layers.empty() && lines.empty() && planes.empty();
 }
-void pointcloud_t::clear() { *this = pointcloud_t(); }
+void metric_map_t::clear() { *this = metric_map_t(); }
 
 MRPT_TODO("Write unit test for mergeWith()")
-void pointcloud_t::merge_with(
-    const pointcloud_t&                       otherPc,
+void metric_map_t::merge_with(
+    const metric_map_t&                       otherPc,
     const std::optional<mrpt::math::TPose3D>& otherRelativePose)
 {
     mrpt::poses::CPose3D pose;
@@ -314,7 +314,7 @@ void pointcloud_t::merge_with(
     }
 }
 
-size_t pointcloud_t::size() const
+size_t metric_map_t::size() const
 {
     size_t n = 0;
 
@@ -324,14 +324,14 @@ size_t pointcloud_t::size() const
 
     return n;
 }
-size_t pointcloud_t::size_points_only() const
+size_t metric_map_t::size_points_only() const
 {
     size_t n = 0;
     for (const auto& layer : point_layers) n += layer.second->size();
     return n;
 }
 
-std::string pointcloud_t::contents_summary() const
+std::string metric_map_t::contents_summary() const
 {
     using namespace std::string_literals;
 
@@ -372,7 +372,7 @@ std::string pointcloud_t::contents_summary() const
     return ret;
 }
 
-bool pointcloud_t::save_to_file(const std::string& fileName) const
+bool metric_map_t::save_to_file(const std::string& fileName) const
 {
     auto f = mrpt::io::CFileGZOutputStream(fileName);
     if (!f.is_open()) return false;
@@ -383,7 +383,7 @@ bool pointcloud_t::save_to_file(const std::string& fileName) const
     return true;
 }
 
-bool pointcloud_t::load_from_file(const std::string& fileName)
+bool metric_map_t::load_from_file(const std::string& fileName)
 {
     auto f = mrpt::io::CFileGZInputStream(fileName);
     if (!f.is_open()) return false;
@@ -394,7 +394,7 @@ bool pointcloud_t::load_from_file(const std::string& fileName)
     return true;
 }
 
-pointcloud_t::Ptr pointcloud_t::get_shared_from_this()
+metric_map_t::Ptr metric_map_t::get_shared_from_this()
 {
     try
     {
@@ -407,14 +407,14 @@ pointcloud_t::Ptr pointcloud_t::get_shared_from_this()
     }
 }
 
-pointcloud_t::Ptr pointcloud_t::get_shared_from_this_or_clone()
+metric_map_t::Ptr metric_map_t::get_shared_from_this_or_clone()
 {
     Ptr ret = get_shared_from_this();
-    if (!ret) ret = std::make_shared<pointcloud_t>(*this);
+    if (!ret) ret = std::make_shared<metric_map_t>(*this);
     return ret;
 }
 
-pointcloud_t::ConstPtr pointcloud_t::get_shared_from_this() const
+metric_map_t::ConstPtr metric_map_t::get_shared_from_this() const
 {
     try
     {
@@ -427,9 +427,9 @@ pointcloud_t::ConstPtr pointcloud_t::get_shared_from_this() const
     }
 }
 
-pointcloud_t::ConstPtr pointcloud_t::get_shared_from_this_or_clone() const
+metric_map_t::ConstPtr metric_map_t::get_shared_from_this_or_clone() const
 {
     ConstPtr ret = get_shared_from_this();
-    if (!ret) ret = std::make_shared<pointcloud_t>(*this);
+    if (!ret) ret = std::make_shared<metric_map_t>(*this);
     return ret;
 }

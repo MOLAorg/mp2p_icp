@@ -29,7 +29,7 @@ class QualityEvaluator_Voxels : public QualityEvaluator
     // See base class
     void   initialize(const mrpt::containers::yaml& params) override;
     double evaluate(
-        const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+        const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
         const Pairings&             pairingsFromICP) const override;
 
@@ -39,7 +39,7 @@ class QualityEvaluator_Voxels : public QualityEvaluator
     double dist2quality_scale          = 0.1;
 
     /** Evaluate points only in these layers */
-    std::set<std::string> pointLayers = {mp2p_icp::pointcloud_t::PT_LAYER_RAW};
+    std::set<std::string> pointLayers = {mp2p_icp::metric_map_t::PT_LAYER_RAW};
 };
 
 }  // namespace mp2p_icp

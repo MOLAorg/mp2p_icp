@@ -14,7 +14,7 @@
 #include <mp2p_icp/ICP.h>
 #include <mp2p_icp/icp_pipeline_from_yaml.h>
 #include <mp2p_icp/load_xyz_file.h>
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/Generator.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
@@ -95,7 +95,7 @@ static mrpt::obs::CRawlog::Ptr load_rawlog(const std::string& filename)
 
 static mp2p_icp_filters::GeneratorSet generators;
 
-static mp2p_icp::pointcloud_t::Ptr pc_from_rawlog(
+static mp2p_icp::metric_map_t::Ptr pc_from_rawlog(
     const mrpt::obs::CRawlog& r, const size_t index)
 {
     ASSERT_LT_(index, r.size());
@@ -111,7 +111,7 @@ static mp2p_icp::pointcloud_t::Ptr pc_from_rawlog(
         generators.push_back(defaultGen);
     }
 
-    auto pc = mp2p_icp::pointcloud_t::Create();
+    auto pc = mp2p_icp::metric_map_t::Create();
 
     auto o = r.getAsGeneric(index);
     ASSERT_(o);
@@ -138,7 +138,7 @@ static mp2p_icp::pointcloud_t::Ptr pc_from_rawlog(
     return pc;
 }
 
-static mp2p_icp::pointcloud_t::Ptr load_input_pc(const std::string& filename)
+static mp2p_icp::metric_map_t::Ptr load_input_pc(const std::string& filename)
 {
     if (auto extPos = filename.find(".rawlog:"); extPos != std::string::npos)
     {
@@ -155,8 +155,8 @@ static mp2p_icp::pointcloud_t::Ptr load_input_pc(const std::string& filename)
     mrpt::maps::CSimplePointsMap::Ptr points =
         mp2p_icp::load_xyz_file(filename);
 
-    auto pc = mp2p_icp::pointcloud_t::Create();
-    pc->point_layers[mp2p_icp::pointcloud_t::PT_LAYER_RAW] = points;
+    auto pc = mp2p_icp::metric_map_t::Create();
+    pc->point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = points;
 
     return pc;
 }

@@ -24,6 +24,7 @@
 #include <mrpt/system/filesystem.h>  // fileNameStripInvalidChars()
 
 #include <cstdlib>
+#include <iostream>
 #include <sstream>
 
 // Used to validate OLAE. However, it may make the Gauss-Newton solver, or the

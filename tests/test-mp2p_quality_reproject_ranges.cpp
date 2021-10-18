@@ -79,11 +79,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             auto p2 = mrpt::maps::CSimplePointsMap::Create();
             p2->insertAnotherMap(pts.get(), relPoseGT);
 
-            mp2p_icp::pointcloud_t pcG;
-            pcG.point_layers[mp2p_icp::pointcloud_t::PT_LAYER_RAW] = p1;
+            mp2p_icp::metric_map_t pcG;
+            pcG.point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = p1;
 
-            mp2p_icp::pointcloud_t pcL;
-            pcL.point_layers[mp2p_icp::pointcloud_t::PT_LAYER_RAW] = p2;
+            mp2p_icp::metric_map_t pcL;
+            pcL.point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = p2;
 
             const double quality = q.evaluate(pcG, pcL, relPoseTest, {});
 

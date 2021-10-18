@@ -28,7 +28,7 @@ namespace mp2p_icp
  * @{
  */
 
-/** Used in pointcloud_t::get_visualization() */
+/** Used in metric_map_t::get_visualization() */
 struct render_params_planes_t
 {
     render_params_planes_t() = default;
@@ -39,7 +39,7 @@ struct render_params_planes_t
     mrpt::img::TColor color{0xff, 0xff, 0xff, 0xff};
 };
 
-/** Used in pointcloud_t::get_visualization() */
+/** Used in metric_map_t::get_visualization() */
 struct render_params_lines_t
 {
     render_params_lines_t() = default;
@@ -76,7 +76,7 @@ struct color_mode_t
 };
 
 /** Rendering options for each point layer, see
- * pointcloud_t::get_visualization() */
+ * metric_map_t::get_visualization() */
 struct render_params_point_layer_t
 {
     render_params_point_layer_t() = default;
@@ -93,7 +93,7 @@ struct render_params_point_layer_t
     std::optional<color_mode_t> colorMode;
 };
 
-/** Used in pointcloud_t::get_visualization() */
+/** Used in metric_map_t::get_visualization() */
 struct render_params_points_t
 {
     render_params_points_t() = default;
@@ -111,7 +111,7 @@ struct render_params_points_t
     std::map<layer_name_t, render_params_point_layer_t> perLayer;
 };
 
-/** Used in pointcloud_t::get_visualization() */
+/** Used in metric_map_t::get_visualization() */
 struct render_params_t
 {
     render_params_t() = default;

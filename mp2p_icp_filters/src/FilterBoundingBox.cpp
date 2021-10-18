@@ -58,7 +58,7 @@ void FilterBoundingBox::initialize(const mrpt::containers::yaml& c)
     MRPT_END
 }
 
-void FilterBoundingBox::filter(mp2p_icp::pointcloud_t& inOut) const
+void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
 

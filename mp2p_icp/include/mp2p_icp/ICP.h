@@ -19,7 +19,7 @@
 #include <mp2p_icp/QualityEvaluator_PairedRatio.h>
 #include <mp2p_icp/Results.h>
 #include <mp2p_icp/Solver.h>
-#include <mp2p_icp/pointcloud.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/optional_ref.h>
 #include <mrpt/math/TPose3D.h>
@@ -58,7 +58,7 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      * pcLocal with respect to pcGlobal.
      */
     virtual void align(
-        const pointcloud_t& pcLocal, const pointcloud_t& pcGlobal,
+        const metric_map_t& pcLocal, const metric_map_t& pcGlobal,
         const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
         const Parameters& p, Results& result,
         const mrpt::optional_ref<LogRecord>& outputDebugInfo = std::nullopt);
@@ -174,8 +174,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     quality_eval_list_t& quality_evaluators() { return quality_evaluators_; }
 
     static double evaluate_quality(
-        const quality_eval_list_t& evaluators, const pointcloud_t& pcGlobal,
-        const pointcloud_t& pcLocal, const mrpt::poses::CPose3D& localPose,
+        const quality_eval_list_t& evaluators, const metric_map_t& pcGlobal,
+        const metric_map_t& pcLocal, const mrpt::poses::CPose3D& localPose,
         const Pairings& finalPairings);
 
     /** @} */
@@ -190,13 +190,13 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     struct ICP_State
     {
-        ICP_State(const pointcloud_t& pcsGlobal, const pointcloud_t& pcsLocal)
+        ICP_State(const metric_map_t& pcsGlobal, const metric_map_t& pcsLocal)
             : pcGlobal(pcsGlobal), pcLocal(pcsLocal)
         {
         }
 
-        const pointcloud_t& pcGlobal;
-        const pointcloud_t& pcLocal;
+        const metric_map_t& pcGlobal;
+        const metric_map_t& pcLocal;
         std::string         layerOfLargestPc;
         Pairings            currentPairings;
         OptimalTF_Result    currentSolution;

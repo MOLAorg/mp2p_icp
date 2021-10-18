@@ -51,7 +51,7 @@ static double loss(double x, double y)
 }
 
 double QualityEvaluator_Voxels::evaluate(
-    const pointcloud_t& pcGlobal, const pointcloud_t& pcLocal,
+    const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D&      localPose,
     [[maybe_unused]] const Pairings& pairingsFromICP) const
 {
