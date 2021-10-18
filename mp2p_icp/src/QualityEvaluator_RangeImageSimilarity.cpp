@@ -47,8 +47,8 @@ double QualityEvaluator_RangeImageSimilarity::evaluate(
     // "Analyzing the Quality of Matched 3D Point Clouds of Objects"
     // Igor Bogoslavskyi, Cyrill Stachniss
 
-    const auto& p1 = *pcGlobal.point_layers.at(metric_map_t::PT_LAYER_RAW);
-    const auto& p2 = *pcLocal.point_layers.at(metric_map_t::PT_LAYER_RAW);
+    const auto& p1 = *pcGlobal.point_layer(metric_map_t::PT_LAYER_RAW);
+    const auto& p2 = *pcLocal.point_layer(metric_map_t::PT_LAYER_RAW);
 
     const auto I11 = projectPoints(p1);
     const auto I12 = projectPoints(p1, localPose);

@@ -4,7 +4,7 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   pointcloud.h
+ * @file   metricmap.h
  * @brief  Generic representation of pointcloud(s) and/or extracted features.
  * @author Jose Luis Blanco Claraco
  * @date   Jun 10, 2019
@@ -33,10 +33,12 @@ namespace mp2p_icp
  */
 
 /**
- * @brief Generic container of pointcloud(s), and/or extracted features.
+ * @brief Generic container of pointcloud(s), extracted features and other maps.
  *
- * Can be derived by users to define custom point cloud features, for use
- * in custom alignment algorithms.
+ * Refer to
+ *
+ * This class could be derived by users to define custom point cloud features,
+ * for use in custom alignment algorithms.
  *
  * The class supports C++11/C++17 std::shared_from_this() via
  * get_shared_from_this();
@@ -59,13 +61,17 @@ class metric_map_t : public mrpt::serialization::CSerializable,
     /** @name Data fields
      * @{ */
 
-    /** Different point layers, indexed by a descriptive name.
-     * Known layer names: See section above.
+    /** Different layers indexed by a descriptive name, with point-clouds,
+     *  2D/3D gridmap, etc.
+     *
+     * Standarized layer names: See section above.
      * - PT_LAYER_RAW: reserved to the original, full point cloud (if kept)
      * - PT_LAYER_PLANE_CENTROIDS: a point for each plane in `planes` (same
      * order).
+     *
+     * \sa point_layers()
      */
-    std::map<layer_name_t, mrpt::maps::CPointsMap::Ptr> point_layers;
+    std::map<layer_name_t, mrpt::maps::CMetricMap::Ptr> layers;
 
     /** 3D lines (infinite lines, not segments) */
     std::vector<mrpt::math::TLine3D> lines;
@@ -119,6 +125,17 @@ class metric_map_t : public mrpt::serialization::CSerializable,
      * \return true on success.
      */
     bool load_from_file(const std::string& fileName);
+
+    /** Returns a shared_ptr to the given point cloud layer, or throws if
+     *  the layer does not exist or it contains a different type of metric map
+     * (e.g. if it is a gridmap).
+     *
+     * Note that this method is only provided by convenience and
+     * backwards-compatibility: users can always directly access `layers` and
+     * perform a `std::dynamic_pointer_cast<>`.
+     *
+     */
+    mrpt::maps::CPointsMap::Ptr point_layer(const layer_name_t& name) const;
 
     /** Gets a renderizable view of all geometric entities.
      *
@@ -212,16 +229,18 @@ struct pointcloud_bitfield_t
     {
         // Points:
         // Done in this way to avoid avoidable memory reallocations.
-        for (const auto& kv : pc.point_layers)
+        for (const auto& kv : pc.layers)
         {
             ASSERT_(kv.second);
-            point_layers[kv.first].assign(kv.second->size(), initBoolValue);
+            auto pts =
+                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(kv.second);
+            if (!pts) continue;
+            point_layers[kv.first].assign(pts->size(), initBoolValue);
         }
         std::set<layer_name_t> layersToRemove;
         for (auto& kv : point_layers)
         {
-            if (pc.point_layers.count(kv.first) == 0)
-                layersToRemove.insert(kv.first);
+            if (pc.layers.count(kv.first) == 0) layersToRemove.insert(kv.first);
         }
         for (const auto& ly : layersToRemove) point_layers.erase(ly);
 

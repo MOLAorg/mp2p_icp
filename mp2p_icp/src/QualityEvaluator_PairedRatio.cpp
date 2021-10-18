@@ -49,17 +49,8 @@ double QualityEvaluator_PairedRatio::evaluate(
             for (const auto& kv : p.second)
             {
                 const auto& localLayerName = kv.first;
-                if (const auto itLy = pcLocal.point_layers.find(localLayerName);
-                    itLy != pcLocal.point_layers.end())
-                {
-                    ASSERT_(itLy->second);
-                    nEffectiveLocalPoints += itLy->second->size();
-                }
-                else
-                    THROW_EXCEPTION_FMT(
-                        "Could not find point layer '%s' in local "
-                        "metric_map_t.",
-                        localLayerName.c_str());
+                nEffectiveLocalPoints +=
+                    pcLocal.point_layer(localLayerName)->size();
             }
         }
     }

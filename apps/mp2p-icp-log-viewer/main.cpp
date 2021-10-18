@@ -100,7 +100,7 @@ static void main_show_gui()
         // Obtain layer info from first entry:
         if (layerNames_global.empty() && lr.pcGlobal)
         {
-            for (const auto& layer : lr.pcGlobal->point_layers)
+            for (const auto& layer : lr.pcGlobal->layers)
             {
                 layerNames_global.push_back(layer.first);
                 std::cout << "Global point cloud: Found point layer='"
@@ -109,7 +109,7 @@ static void main_show_gui()
         }
         if (layerNames_local.empty() && lr.pcLocal)
         {
-            for (const auto& layer : lr.pcLocal->point_layers)
+            for (const auto& layer : lr.pcLocal->layers)
             {
                 layerNames_local.push_back(layer.first);
                 std::cout << "Local point cloud: Found point layer='"

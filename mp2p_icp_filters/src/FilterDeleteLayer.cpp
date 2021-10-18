@@ -41,7 +41,7 @@ void FilterDeleteLayer::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     const auto nRemoved =
-        inOut.point_layers.erase(params_.pointcloud_layer_to_remove);
+        inOut.layers.erase(params_.pointcloud_layer_to_remove);
 
     ASSERTMSG_(
         nRemoved != 0, mrpt::format(

@@ -80,10 +80,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             p2->insertAnotherMap(pts.get(), relPoseGT);
 
             mp2p_icp::metric_map_t pcG;
-            pcG.point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = p1;
+            pcG.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = p1;
 
             mp2p_icp::metric_map_t pcL;
-            pcL.point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = p2;
+            pcL.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = p2;
 
             const double quality = q.evaluate(pcG, pcL, relPoseTest, {});
 

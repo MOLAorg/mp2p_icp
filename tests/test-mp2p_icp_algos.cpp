@@ -104,8 +104,8 @@ static void test_icp(
 
         // Point clouds: reference and modified:
         mp2p_icp::metric_map_t pc_ref, pc_mod;
-        pc_ref.point_layers["raw"] = pts;
-        pc_mod.point_layers["raw"] = pts_reg;
+        pc_ref.layers["raw"] = pts;
+        pc_mod.layers["raw"] = pts_reg;
 
         const auto init_guess = mrpt::math::TPose3D::Identity();
 

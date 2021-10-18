@@ -29,7 +29,7 @@ void Matcher_Points_Base::impl_match(
     out = Pairings();
 
     // Analyze point cloud layers, one by one:
-    for (const auto& glLayerKV : pcGlobal.point_layers)
+    for (const auto& glLayerKV : pcGlobal.layers)
     {
         const auto& glLayerName = glLayerKV.first;
 
@@ -57,8 +57,8 @@ void Matcher_Points_Base::impl_match(
             const bool  hasWeight      = localWeight.second.has_value();
 
             // Look for a matching layer in "local":
-            auto itLocal = pcLocal.point_layers.find(localLayerName);
-            if (itLocal == pcLocal.point_layers.end())
+            auto itLocal = pcLocal.layers.find(localLayerName);
+            if (itLocal == pcLocal.layers.end())
             {
                 // Silently ignore it:
                 if (!hasWeight)
@@ -70,11 +70,18 @@ void Matcher_Points_Base::impl_match(
                         localLayerName.c_str(), glLayerName.c_str());
             }
 
-            const mrpt::maps::CPointsMap::Ptr& glLayer = glLayerKV.second;
-            const mrpt::maps::CPointsMap::Ptr& lcLayer = itLocal->second;
-
+            const mrpt::maps::CMetricMap::Ptr& glLayer = glLayerKV.second;
             ASSERT_(glLayer);
-            ASSERT_(lcLayer);
+
+            const mrpt::maps::CMetricMap::Ptr& lcLayerMap = itLocal->second;
+            ASSERT_(lcLayerMap);
+            const auto lcLayer =
+                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(lcLayerMap);
+            if (!lcLayer)
+                THROW_EXCEPTION_FMT(
+                    "Local layer map must be a point cloud, but found type "
+                    "'%s'",
+                    lcLayerMap->GetRuntimeClass()->className);
 
             const size_t nBefore = out.paired_pt2pt.size();
 

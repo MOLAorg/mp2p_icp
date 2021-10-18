@@ -37,13 +37,22 @@ void Matcher_Points_DistanceThreshold::initialize(
 }
 
 void Matcher_Points_DistanceThreshold::implMatchOneLayer(
-    const mrpt::maps::CPointsMap& pcGlobal,
+    const mrpt::maps::CMetricMap& pcGlobalMap,
     const mrpt::maps::CPointsMap& pcLocal,
     const mrpt::poses::CPose3D& localPose, MatchState& ms,
     [[maybe_unused]] const layer_name_t& globalName,
     const layer_name_t& localName, Pairings& out) const
 {
     MRPT_START
+
+    const auto* pcGlobalPtr =
+        dynamic_cast<const mrpt::maps::CPointsMap*>(&pcGlobalMap);
+    if (!pcGlobalPtr)
+        THROW_EXCEPTION_FMT(
+            "This class only supports global maps of point cloud types, but "
+            "found type '%s'",
+            pcGlobalMap.GetRuntimeClass()->className);
+    const auto& pcGlobal = *pcGlobalPtr;
 
     // Empty maps?  Nothing to do
     if (pcGlobal.empty() || pcLocal.empty()) return;

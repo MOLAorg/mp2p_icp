@@ -83,9 +83,24 @@ void Generator::process(
     // done?
     if (!processed)
     {
-        auto& outPc = out.point_layers[params_.target_pointcloud_layer];
+        // Create if new: Append to existing layer, if already existed.
+        mrpt::maps::CPointsMap::Ptr outPc;
+        if (auto itLy = out.layers.find(params_.target_pointcloud_layer);
+            itLy != out.layers.end())
+        {
+            outPc =
+                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
+            if (!outPc)
+                THROW_EXCEPTION_FMT(
+                    "Layer '%s' must be of point cloud type.",
+                    params_.target_pointcloud_layer.c_str());
+        }
+        else
+        {
+            outPc = mrpt::maps::CSimplePointsMap::Create();
+            out.layers[params_.target_pointcloud_layer] = outPc;
+        }
 
-        // Create if new, reuse if already existed:
         if (!outPc) outPc = mrpt::maps::CSimplePointsMap::Create();
 
         // Observation format:
@@ -153,10 +168,22 @@ bool Generator::filterScan3D(  //
 bool Generator::filterPointCloud(  //
     const mrpt::maps::CPointsMap& pc, mp2p_icp::metric_map_t& out)
 {
-    auto& outPc = out.point_layers[params_.target_pointcloud_layer];
-
-    // Create if new, reuse if already existed:
-    if (!outPc) outPc = mrpt::maps::CSimplePointsMap::Create();
+    // Create if new: Append to existing layer, if already existed.
+    mrpt::maps::CPointsMap::Ptr outPc;
+    if (auto itLy = out.layers.find(params_.target_pointcloud_layer);
+        itLy != out.layers.end())
+    {
+        outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
+        if (!outPc)
+            THROW_EXCEPTION_FMT(
+                "Layer '%s' must be of point cloud type.",
+                params_.target_pointcloud_layer.c_str());
+    }
+    else
+    {
+        outPc = mrpt::maps::CSimplePointsMap::Create();
+        out.layers[params_.target_pointcloud_layer] = outPc;
+    }
 
     outPc->insertAnotherMap(&pc, mrpt::poses::CPose3D::Identity());
 

@@ -156,7 +156,7 @@ static mp2p_icp::metric_map_t::Ptr load_input_pc(const std::string& filename)
         mp2p_icp::load_xyz_file(filename);
 
     auto pc = mp2p_icp::metric_map_t::Create();
-    pc->point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = points;
+    pc->layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = points;
 
     return pc;
 }

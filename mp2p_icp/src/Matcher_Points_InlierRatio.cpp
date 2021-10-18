@@ -33,7 +33,7 @@ void Matcher_Points_InlierRatio::initialize(
 }
 
 void Matcher_Points_InlierRatio::implMatchOneLayer(
-    const mrpt::maps::CPointsMap& pcGlobal,
+    const mrpt::maps::CMetricMap& pcGlobalMap,
     const mrpt::maps::CPointsMap& pcLocal,
     const mrpt::poses::CPose3D& localPose, MatchState& ms,
     [[maybe_unused]] const layer_name_t& globalName,
@@ -43,6 +43,15 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
 
     ASSERT_GT_(inliersRatio, 0.0);
     ASSERT_LT_(inliersRatio, 1.0);
+
+    const auto* pcGlobalPtr =
+        dynamic_cast<const mrpt::maps::CPointsMap*>(&pcGlobalMap);
+    if (!pcGlobalPtr)
+        THROW_EXCEPTION_FMT(
+            "This class only supports global maps of point cloud types, but "
+            "found type '%s'",
+            pcGlobalMap.GetRuntimeClass()->className);
+    const auto& pcGlobal = *pcGlobalPtr;
 
     // Empty maps?  Nothing to do
     if (pcGlobal.empty() || pcLocal.empty()) return;

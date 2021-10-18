@@ -95,7 +95,7 @@ class Matcher_Points_Base : public Matcher
 
    private:
     virtual void implMatchOneLayer(
-        const mrpt::maps::CPointsMap& pcGlobal,
+        const mrpt::maps::CMetricMap& pcGlobal,
         const mrpt::maps::CPointsMap& pcLocal,
         const mrpt::poses::CPose3D& localPose, MatchState& ms,
         const layer_name_t& globalName, const layer_name_t& localName,

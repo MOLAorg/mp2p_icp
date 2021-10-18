@@ -41,11 +41,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     try
     {
         mp2p_icp::metric_map_t pcGlobal;
-        pcGlobal.point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] =
+        pcGlobal.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] =
             generateGlobalPoints();
 
         mp2p_icp::metric_map_t pcLocal;
-        pcLocal.point_layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] =
+        pcLocal.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] =
             generateLocalPoints();
 
         {

@@ -70,10 +70,9 @@ double QualityEvaluator_Voxels::evaluate(
 
     for (const auto& ly : pointLayers)
     {
-        auto itG = pcGlobal.point_layers.find(ly);
-        auto itL = pcLocal.point_layers.find(ly);
-        if (itG == pcGlobal.point_layers.end() ||
-            itL == pcLocal.point_layers.end())
+        auto itG = pcGlobal.layers.find(ly);
+        auto itL = pcLocal.layers.find(ly);
+        if (itG == pcGlobal.layers.end() || itL == pcLocal.layers.end())
         {
             MRPT_LOG_ERROR_FMT(
                 "Layer `%s` not found in both global/local layers.",
@@ -81,14 +80,21 @@ double QualityEvaluator_Voxels::evaluate(
             return 0;
         }
 
+        auto ptsG =
+            std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itG->second);
+        auto ptsL =
+            std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second);
+        ASSERT_(ptsG);
+        ASSERT_(ptsL);
+
         mrpt::maps::CSimplePointsMap localTransformed;
-        localTransformed.insertAnotherMap(itL->second.get(), localPose);
+        localTransformed.insertAnotherMap(ptsL.get(), localPose);
 
         // resize voxel grids?
         MRPT_TODO("Check against current size too, for many layers");
 #if MRPT_VERSION >= 0x218
         {
-            const auto bb = itG->second->boundingBox();
+            const auto bb = ptsG->boundingBox();
             voxelsGlo.resizeGrid(bb.min, bb.max);
         }
         {
@@ -98,7 +104,7 @@ double QualityEvaluator_Voxels::evaluate(
 #else
         {
             mrpt::math::TPoint3D bbmax, bbmin;
-            itG->second->boundingBox(bbmin, bbmax);
+            ptsG->boundingBox(bbmin, bbmax);
             voxelsGlo.resizeGrid(bbmin, bbmax);
         }
         {
@@ -108,7 +114,7 @@ double QualityEvaluator_Voxels::evaluate(
         }
 #endif
         // insert:
-        voxelsGlo.insertPointCloud({0, 0, 0}, *itG->second);
+        voxelsGlo.insertPointCloud({0, 0, 0}, *ptsG);
         voxelsLoc.insertPointCloud(
             mrpt::math::TPoint3D(localPose.asTPose()), localTransformed);
     }

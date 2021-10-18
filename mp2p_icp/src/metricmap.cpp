@@ -42,8 +42,8 @@ void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
     out.WriteAs<uint32_t>(lines.size());
     for (const auto& l : lines) out << l;
 
-    out.WriteAs<uint32_t>(point_layers.size());
-    for (const auto& l : point_layers) out << l.first << *l.second.get();
+    out.WriteAs<uint32_t>(layers.size());
+    for (const auto& l : layers) out << l.first << *l.second.get();
 
     out << id << label;  // new in v1
 
@@ -68,14 +68,13 @@ void metric_map_t::serializeFrom(
             for (auto& l : lines) in >> l;
 
             const auto nPts = in.ReadAs<uint32_t>();
-            point_layers.clear();
+            layers.clear();
             for (std::size_t i = 0; i < nPts; i++)
             {
                 std::string name;
                 in >> name;
-                point_layers[name] =
-                    mrpt::ptr_cast<mrpt::maps::CPointsMap>::from(
-                        in.ReadObject());
+                layers[name] = mrpt::ptr_cast<mrpt::maps::CMetricMap>::from(
+                    in.ReadObject());
             }
 
             if (version >= 1) { in >> id >> label; }
@@ -163,21 +162,30 @@ void metric_map_t::get_visualization_points(
         // render only these layers:
         for (const auto& kv : p.perLayer)
         {
-            const auto itPts = point_layers.find(kv.first);
-            if (itPts == point_layers.end())
+            const auto itPts = layers.find(kv.first);
+            if (itPts == layers.end())
                 THROW_EXCEPTION_FMT(
                     "Rendering parameters given for layer '%s' which does not "
                     "exist in this metric_map_t object",
                     kv.first.c_str());
 
-            get_visualization_point_layer(o, kv.second, itPts->second);
+            get_visualization_point_layer(
+                o, kv.second,
+                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+                    itPts->second));
         }
     }
     else
     {
         // render all layers with the same params:
-        for (const auto& kv : point_layers)
-            get_visualization_point_layer(o, p.allLayers, kv.second);
+        for (const auto& kv : layers)
+        {
+            auto pts =
+                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(kv.second);
+            if (!pts) continue;  // not a point cloud.
+
+            get_visualization_point_layer(o, p.allLayers, pts);
+        }
     }
 
     MRPT_END
@@ -237,7 +245,7 @@ void metric_map_t::get_visualization_point_layer(
 
 bool metric_map_t::empty() const
 {
-    return point_layers.empty() && lines.empty() && planes.empty();
+    return layers.empty() && lines.empty() && planes.empty();
 }
 void metric_map_t::clear() { *this = metric_map_t(); }
 
@@ -290,26 +298,54 @@ void metric_map_t::merge_with(
     }
 
     // Points:
-    for (const auto& layer : otherPc.point_layers)
+    for (const auto& layer : otherPc.layers)
     {
         const auto& name     = layer.first;
-        const auto& otherPts = layer.second;
+        const auto& otherMap = layer.second;
 
         // New layer?
-        if (point_layers.count(name) == 0)
+        if (layers.count(name) == 0)
         {
             // Make a copy and transform (if applicable):
-            point_layers[name] =
-                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
-                    otherPts->duplicateGetSmartPtr());
+            layers[name] = std::dynamic_pointer_cast<mrpt::maps::CMetricMap>(
+                otherMap->duplicateGetSmartPtr());
 
             if (otherRelativePose.has_value())
-                point_layers[name]->changeCoordinatesReference(pose);
+            {
+                if (auto pts =
+                        std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+                            layers[name]);
+                    pts)
+                {
+                    // Transform:
+                    pts->changeCoordinatesReference(pose);
+                }
+                else
+                {
+                    THROW_EXCEPTION(
+                        "Merging with SE(3) transform only available for "
+                        "metric maps of point cloud types.");
+                }
+            }
         }
         else
         {
             // merge with existing layer:
-            point_layers[name]->insertAnotherMap(otherPts.get(), pose);
+            if (auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+                    layers[name]);
+                pts)
+            {
+                pts->insertAnotherMap(
+                    std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(otherMap)
+                        .get(),
+                    pose);
+            }
+            else
+            {
+                THROW_EXCEPTION(
+                    "Merging with SE(3) transform only available for "
+                    "metric maps of point cloud types.");
+            }
         }
     }
 }
@@ -327,7 +363,13 @@ size_t metric_map_t::size() const
 size_t metric_map_t::size_points_only() const
 {
     size_t n = 0;
-    for (const auto& layer : point_layers) n += layer.second->size();
+    for (const auto& layer : layers)
+    {
+        if (auto pts =
+                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(layer.second);
+            pts)
+        { n += pts->size(); }
+    }
     return n;
 }
 
@@ -351,22 +393,27 @@ std::string metric_map_t::contents_summary() const
     if (!planes.empty()) retAppend(std::to_string(planes.size()) + " planes"s);
 
     size_t nPts = 0;
-    for (const auto& layer : point_layers)
+    for (const auto& layer : layers)
     {
         ASSERT_(layer.second);
-        nPts += layer.second->size();
+        if (auto pts =
+                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(layer.second);
+            pts)
+        { nPts += pts->size(); }
     }
 
     if (nPts != 0)
     {
         retAppend(
             std::to_string(nPts) + " points in "s +
-            std::to_string(point_layers.size()) + " layers ("s);
+            std::to_string(layers.size()) + " layers ("s);
 
-        for (const auto& layer : point_layers)
-            ret += "\""s + layer.first + "\":"s +
-                   std::to_string(layer.second->size()) + " "s;
-        ret += ")";
+        for (const auto& layer : layers)
+        {
+            ret +=
+                "\""s + layer.first + "\":"s + layer.second->asString() + " "s;
+            ret += ")";
+        }
     }
 
     return ret;
@@ -431,5 +478,24 @@ metric_map_t::ConstPtr metric_map_t::get_shared_from_this_or_clone() const
 {
     ConstPtr ret = get_shared_from_this();
     if (!ret) ret = std::make_shared<metric_map_t>(*this);
+    return ret;
+}
+
+mrpt::maps::CPointsMap::Ptr metric_map_t::point_layer(
+    const layer_name_t& name) const
+{
+    auto it = layers.find(name);
+    if (it == layers.end())
+        THROW_EXCEPTION_FMT("Layer '%s' does not exist.", name.c_str());
+
+    const auto& ptr = it->second;
+    if (!ptr) return {};  // empty shared_ptr.
+
+    auto ret = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(ptr);
+    if (!ret)
+        THROW_EXCEPTION_FMT(
+            "Layer '%s' is not a point cloud (actual class:'%s').",
+            name.c_str(), ptr->GetRuntimeClass()->className);
+
     return ret;
 }

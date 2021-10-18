@@ -67,7 +67,7 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     // In:
-    const auto& pcPtr = inOut.point_layers[params_.input_pointcloud_layer];
+    const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr, mrpt::format(
                    "Input point cloud layer '%s' was not found.",
@@ -76,15 +76,15 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& pc = *pcPtr;
 
     // Out:
-    auto& pc_edges           = inOut.point_layers["edge_points"];
-    auto& pc_planes          = inOut.point_layers["plane_points"];
-    auto& pc_full_decim      = inOut.point_layers["full_decim"];
-    auto& pc_plane_centroids = inOut.point_layers["plane_centroids"];
+    auto pc_edges           = mrpt::maps::CSimplePointsMap::Create();
+    auto pc_planes          = mrpt::maps::CSimplePointsMap::Create();
+    auto pc_full_decim      = mrpt::maps::CSimplePointsMap::Create();
+    auto pc_plane_centroids = mrpt::maps::CSimplePointsMap::Create();
 
-    pc_edges           = mrpt::maps::CSimplePointsMap::Create();
-    pc_planes          = mrpt::maps::CSimplePointsMap::Create();
-    pc_full_decim      = mrpt::maps::CSimplePointsMap::Create();
-    pc_plane_centroids = mrpt::maps::CSimplePointsMap::Create();
+    inOut.layers["edge_points"]     = pc_edges;
+    inOut.layers["plane_points"]    = pc_planes;
+    inOut.layers["full_decim"]      = pc_full_decim;
+    inOut.layers["plane_centroids"] = pc_plane_centroids;
 
     pc_edges->reserve(pc.size() / 10);
     pc_planes->reserve(pc.size() / 10);
