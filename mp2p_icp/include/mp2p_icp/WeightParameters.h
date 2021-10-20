@@ -31,7 +31,7 @@ struct WeightParameters : public mrpt::serialization::CSerializable
      * technical report.  This robustness feature is independent from
      * use_robust_kernel.
      */
-    bool use_scale_outlier_detector{true};
+    bool use_scale_outlier_detector = false;
 
     /** If use_scale_outlier_detector==true, discard a potential point-to-point
      * pairing if the ratio between the norm of their final vectors is larger

@@ -61,6 +61,10 @@ class Matcher_Points_Base : public Matcher
      *
      * - `pointLayerMatches`: Optional map of layer names to relative weights.
      *  Refer to example YAML files.
+     *
+     * - `allowMatchAlreadyMatchedPoints`: Optional (Default=false). Whether to
+     * find matches for local points which were already paired by other matcher
+     * in an earlier stage in the matchers pipeline.
      */
     void initialize(const mrpt::containers::yaml& params) override;
 

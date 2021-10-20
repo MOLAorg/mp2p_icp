@@ -32,7 +32,7 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
         threshold = distThreshold;
     }
 
-    /*** Parameters:
+    /** Parameters:
      * - `threshold`: Inliers distance threshold [meters][mandatory]
      * - `pairingsPerPoint`: Number of pairings in "global" for each "local"
      * points. Default=1. If more than one, they will be picked in ascending
