@@ -120,7 +120,12 @@ void Generator::process(
         else
         {
             // General case:
-            const bool insertDone = o.insertObservationInto(outPc.get());
+#if MRPT_VERSION >= 0x240
+            auto& thePc = *outPc;
+#else
+            auto* thePc = outPc.get();
+#endif
+            const bool insertDone = o.insertObservationInto(thePc);
 
             if (!insertDone && params_.throw_on_unhandled_observation_class)
             {
