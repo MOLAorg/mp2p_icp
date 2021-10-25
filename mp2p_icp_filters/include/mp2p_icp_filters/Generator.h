@@ -92,7 +92,7 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
      */
     virtual void process(
         const mrpt::obs::CObservation& input_raw,
-        mp2p_icp::metric_map_t&        inOut);
+        mp2p_icp::metric_map_t&        inOut) const;
 
     struct Parameters
     {
@@ -126,22 +126,22 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     /** Process a 2D lidar scan. \return false if not implemented */
     virtual bool filterScan2D(
         const mrpt::obs::CObservation2DRangeScan& pc,
-        mp2p_icp::metric_map_t&                   out);
+        mp2p_icp::metric_map_t&                   out) const;
     /** Process a depth camera observation. \return false if not implemented */
     virtual bool filterScan3D(
         const mrpt::obs::CObservation3DRangeScan& pc,
-        mp2p_icp::metric_map_t&                   out);
+        mp2p_icp::metric_map_t&                   out) const;
     /** Process a 3D lidar scan. \return false if not implemented   */
     virtual bool filterVelodyneScan(
         const mrpt::obs::CObservationVelodyneScan& pc,
-        mp2p_icp::metric_map_t&                    out);
+        mp2p_icp::metric_map_t&                    out) const;
     /** Process a 2D/3D point-cloud. \return false if not implemented  */
     virtual bool filterPointCloud(
-        const mrpt::maps::CPointsMap& pc, mp2p_icp::metric_map_t& out);
+        const mrpt::maps::CPointsMap& pc, mp2p_icp::metric_map_t& out) const;
     /** Process a 3D lidar scan. \return false if not implemented   */
     virtual bool filterRotatingScan(
         const mrpt::obs::CObservationRotatingScan& pc,
-        mp2p_icp::metric_map_t&                    out);
+        mp2p_icp::metric_map_t&                    out) const;
 
     bool       initialized_ = false;
     std::regex process_class_names_regex_;

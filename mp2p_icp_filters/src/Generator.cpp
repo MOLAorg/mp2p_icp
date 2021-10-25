@@ -51,7 +51,7 @@ void Generator::initialize(const mrpt::containers::yaml& c)
 }
 
 void Generator::process(
-    const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out)
+    const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out) const
 {
     MRPT_START
     using namespace mrpt::obs;
@@ -151,27 +151,27 @@ void Generator::process(
 
 bool Generator::filterScan2D(  //
     [[maybe_unused]] const mrpt::obs::CObservation2DRangeScan& pc,
-    [[maybe_unused]] mp2p_icp::metric_map_t&                   out)
+    [[maybe_unused]] mp2p_icp::metric_map_t&                   out) const
 {
     return false;  // Not implemented
 }
 
 bool Generator::filterVelodyneScan(  //
     [[maybe_unused]] const mrpt::obs::CObservationVelodyneScan& pc,
-    [[maybe_unused]] mp2p_icp::metric_map_t&                    out)
+    [[maybe_unused]] mp2p_icp::metric_map_t&                    out) const
 {
     return false;  // Not implemented
 }
 
 bool Generator::filterScan3D(  //
     [[maybe_unused]] const mrpt::obs::CObservation3DRangeScan& pc,
-    [[maybe_unused]] mp2p_icp::metric_map_t&                   out)
+    [[maybe_unused]] mp2p_icp::metric_map_t&                   out) const
 {
     return false;  // Not implemented
 }
 
 bool Generator::filterPointCloud(  //
-    const mrpt::maps::CPointsMap& pc, mp2p_icp::metric_map_t& out)
+    const mrpt::maps::CPointsMap& pc, mp2p_icp::metric_map_t& out) const
 {
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc;
@@ -197,7 +197,7 @@ bool Generator::filterPointCloud(  //
 
 bool Generator::filterRotatingScan(  //
     [[maybe_unused]] const mrpt::obs::CObservationRotatingScan& pc,
-    [[maybe_unused]] mp2p_icp::metric_map_t&                    out)
+    [[maybe_unused]] mp2p_icp::metric_map_t&                    out) const
 {
     return false;  // Not implemented
 }
