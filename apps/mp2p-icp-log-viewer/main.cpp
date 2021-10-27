@@ -18,6 +18,7 @@
 
 // other deps:
 #include <mrpt/3rdparty/tclap/CmdLine.h>
+#include <mrpt/config.h>
 #include <mrpt/core/round.h>
 #include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
@@ -30,7 +31,7 @@
 
 constexpr const char* APP_NAME = "mp2p-icp-log-viewer";
 
-// Declare supported cli switches ===========
+// =========== Declare supported cli switches ===========
 static TCLAP::CmdLine cmd(APP_NAME);
 
 static TCLAP::ValueArg<std::string> argExtension(
@@ -44,6 +45,9 @@ static TCLAP::ValueArg<std::string> argSearchDir(
 
 TCLAP::ValueArg<std::string> argVerbosity(
     "v", "verbose", "Verbosity level", false, "DEBUG", "DEBUG", cmd);
+
+// =========== Declare global variables ===========
+#if MRPT_HAS_NANOGUI
 
 auto glVizICP = mrpt::opengl::CSetOfObjects::Create();
 
@@ -362,24 +366,6 @@ static void main_show_gui()
     nanogui::shutdown();
 }
 
-int main(int argc, char** argv)
-{
-    try
-    {
-        // Parse arguments:
-        if (!cmd.parse(argc, argv)) return 1;  // should exit.
-
-        main_show_gui();
-        return 0;
-    }
-    catch (std::exception& e)
-    {
-        std::cerr << "Exit due to exception:\n"
-                  << mrpt::exception_to_str(e) << std::endl;
-        return 1;
-    }
-}
-
 template <class MATRIX>  //
 double conditionNumber(const MATRIX& m)
 {
@@ -535,5 +521,33 @@ void rebuild_3d_view()
 
         glPts->setPose(relativePose.mean);
         glVizICP->insert(glPts);
+    }
+}
+
+#else  // MRPT_HAS_NANOGUI
+static void main_show_gui()
+{
+    THROW_EXCEPTION(
+        "This application requires a version of MRPT built with nanogui "
+        "support.");
+}
+
+#endif  // MRPT_HAS_NANOGUI
+
+int main(int argc, char** argv)
+{
+    try
+    {
+        // Parse arguments:
+        if (!cmd.parse(argc, argv)) return 1;  // should exit.
+
+        main_show_gui();
+        return 0;
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << "Exit due to exception:\n"
+                  << mrpt::exception_to_str(e) << std::endl;
+        return 1;
     }
 }
