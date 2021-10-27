@@ -54,4 +54,7 @@ endif()
 # -----------------------
 # define apps:
 # -----------------------
-add_subdirectory(apps)
+option(MP2PICP_BUILD_APPLICATIONS "Build mp2p_icp applications" ON)
+if (MP2PICP_BUILD_APPLICATIONS)
+  add_subdirectory(apps)
+endif()
