@@ -43,8 +43,14 @@ static TCLAP::ValueArg<std::string> argSearchDir(
     "d", "directory", "Directory in which to search for *.icplog files.", true,
     "", ".", cmd);
 
-TCLAP::ValueArg<std::string> argVerbosity(
+static TCLAP::ValueArg<std::string> argVerbosity(
     "v", "verbose", "Verbosity level", false, "DEBUG", "DEBUG", cmd);
+
+static TCLAP::ValueArg<double> argMinQuality(
+    "", "min-quality",
+    "Minimum quality (range [0,1]) for a log files to be loaded and shown in "
+    "the list. Default=0 so all log files are visible.",
+    false, 0.0, "Quality[0,1]", cmd);
 
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
@@ -95,6 +101,7 @@ static void main_show_gui()
     std::cout << "Found " << files.size() << " ICP records." << std::endl;
 
     // load files:
+    size_t filesLoaded = 0, filesFilteredOut = 0;
     for (const auto& file : files)
     {
         std::cout << "Loading: " << file.wholePath << "...\n";
@@ -120,8 +127,20 @@ static void main_show_gui()
                           << layer.first << "'\n";
             }
         }
+
+        filesLoaded++;
+
+        // Filter by quality:
+        if (lr.icpResult.quality < argMinQuality.getValue())
+        {
+            ++filesFilteredOut;
+            // Remove last one:
+            logRecords.erase(logRecords.rbegin().base());
+        }
     }
-    std::cout << "Loaded " << logRecords.size() << " ICP records." << std::endl;
+    std::cout << "Loaded " << logRecords.size() << " ICP records ("
+              << filesLoaded << " actually loaded, " << filesFilteredOut
+              << " filtered out)" << std::endl;
 
     ASSERT_(!logRecords.empty());
 
