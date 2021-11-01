@@ -176,6 +176,7 @@ mp2p_icp::metric_map_t apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf);
 
 /** Creates a set of generators from a YAML configuration block (a sequence).
+ *  Returns an empty generators set for an empty or null yaml node.
  *  Refer to YAML file examples.
  */
 GeneratorSet generators_from_yaml(
@@ -185,6 +186,7 @@ GeneratorSet generators_from_yaml(
 /** \overload Taking a YAML filename as input.
  *  The file must contain with a top entry named `generators` with the sequence
  *  of generator descriptors.
+ *  Returns an empty generators set for an empty or null yaml node.
  *  Refer to YAML file examples.
  */
 GeneratorSet generators_from_yaml_file(

@@ -34,6 +34,8 @@ void mp2p_icp_filters::apply_filter_pipeline(
 FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
     const mrpt::containers::yaml& c, const mrpt::system::VerbosityLevel& vLevel)
 {
+    if (c.isNullNode()) return {};
+
     ASSERT_(c.isSequence());
 
     FilterPipeline filters;

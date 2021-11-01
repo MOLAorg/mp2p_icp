@@ -249,6 +249,8 @@ void mp2p_icp_filters::apply_generators(
 GeneratorSet mp2p_icp_filters::generators_from_yaml(
     const mrpt::containers::yaml& c, const mrpt::system::VerbosityLevel& vLevel)
 {
+    if (c.isNullNode()) return {};
+
     ASSERT_(c.isSequence());
 
     GeneratorSet generators;

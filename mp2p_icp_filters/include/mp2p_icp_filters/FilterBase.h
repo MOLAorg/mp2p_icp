@@ -68,8 +68,8 @@ void apply_filter_pipeline(
     const FilterPipeline& filters, mp2p_icp::metric_map_t& inOut);
 
 /** Creates a pipeline of filters from a YAML configuration block (a sequence).
- *  Refer to YAML file examples.
- * \ingroup mp2p_icp_filters_grp
+ *  Refer to YAML file examples. Returns an empty pipeline for an empty or null
+ * yaml node. \ingroup mp2p_icp_filters_grp
  */
 FilterPipeline filter_pipeline_from_yaml(
     const mrpt::containers::yaml&       c,
@@ -78,6 +78,7 @@ FilterPipeline filter_pipeline_from_yaml(
 /** \overload Taking a YAML filename as input.
  *  The file must contain with a top entry named `filters` with the sequence of
  *  filter descriptors.
+ *  Returns an empty pipeline for an empty or null yaml node.
  *  Refer to YAML file examples.
  * \ingroup mp2p_icp_filters_grp
  */
