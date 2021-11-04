@@ -36,20 +36,8 @@ bool Solver_Horn::impl_optimal_pose(
 
     out = OptimalTF_Result();
 
-    // Compute the optimal pose:
-    try
-    {
-        optimal_tf_horn(pairings, pairingsWeightParameters, out);
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << e.what() << std::endl;
-        // Skip ill-defined problems if the no. of points is too small.
-        // Nothing we can do:
-        return false;
-    }
-
-    return true;
+    // Compute the optimal pose, and return its validity:
+    return optimal_tf_horn(pairings, pairingsWeightParameters, out);
 
     MRPT_END
 }

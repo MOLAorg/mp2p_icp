@@ -19,7 +19,7 @@
 
 using namespace mp2p_icp;
 
-void mp2p_icp::optimal_tf_gauss_newton(
+bool mp2p_icp::optimal_tf_gauss_newton(
     const Pairings& in, OptimalTF_Result& result,
     const OptimalTF_GN_Parameters& gnParams)
 {
@@ -176,5 +176,8 @@ void mp2p_icp::optimal_tf_gauss_newton(
         if (delta.norm() < gnParams.minDelta) break;
 
     }  // for each iteration
+
+    return true;
+
     MRPT_END
 }

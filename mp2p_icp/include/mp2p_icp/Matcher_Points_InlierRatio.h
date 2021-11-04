@@ -17,6 +17,14 @@ namespace mp2p_icp
 {
 /** Pointcloud matcher: fixed ratio of inliers/outliers by distance
  *
+ * Finds point-to-point pairings between the `local` and `global` input metric
+ * maps.
+ *
+ * By default, each `local` point layer is matched against the layer with the
+ * same name in the `global` map, unless especified otherwise in the base class
+ * member `weight_pt2pt_layers`. Refer to example configuration YAML files for
+ * example configurations.
+ *
  * \ingroup mp2p_icp_grp
  */
 class Matcher_Points_InlierRatio : public Matcher_Points_Base
@@ -31,7 +39,7 @@ class Matcher_Points_InlierRatio : public Matcher_Points_Base
         inliersRatio = ratio;
     }
 
-    /*** Parameters:
+    /** Parameters:
      * `inliersRatio`: Inliers distance ratio threshold [0-1]
      */
     void initialize(const mrpt::containers::yaml& params) override;

@@ -17,6 +17,15 @@ namespace mp2p_icp
 {
 /** Pointcloud matcher: point to plane-fit of nearby points
  *
+ * Finds point-to-plane pairings between `local` point layers and points fitting
+ * a plane in layers of the `global` input metric map.
+ *
+ * By default, each `local` point layer is matched against the layer with the
+ * same name in the `global` map, unless especified otherwise in the base class
+ * member `weight_pt2pt_layers`. Refer to example configuration YAML files for
+ * example configurations.
+ *
+ *
  * \ingroup mp2p_icp_grp
  */
 class Matcher_Point2Plane : public Matcher_Points_Base
@@ -26,7 +35,7 @@ class Matcher_Point2Plane : public Matcher_Points_Base
    public:
     Matcher_Point2Plane();
 
-    /*** Parameters:
+    /** Parameters:
      * - `distanceThreshold`: Inliers distance threshold [meters][mandatory]
      * - `knn`: Number of neighbors to look for [mandatory]
      * - `planeEigenThreshold`: maximum e0/e2 ratio [mandatory]

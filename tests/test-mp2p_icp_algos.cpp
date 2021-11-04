@@ -33,11 +33,8 @@
 #include <Eigen/Dense>
 #include <iostream>
 
-// Used to validate OLAE. However, it may make the Gauss-Newton solver, or the
-// robust kernel with outliers to fail.
-static double XYZ_RANGE = mrpt::get_env<double>("XYZ_RANGE", 5.0);
-static int    NUM_REPS  = mrpt::get_env<int>("NUM_REPS", 3);
-static bool   DO_SAVE_STAT_FILES =
+static int  NUM_REPS = mrpt::get_env<int>("NUM_REPS", 3);
+static bool DO_SAVE_STAT_FILES =
     mrpt::get_env<bool>("DO_SAVE_STAT_FILES", false);
 static bool DO_PRINT_ALL = mrpt::get_env<bool>("DO_PRINT_ALL", false);
 
@@ -45,14 +42,27 @@ const std::string datasetDir = MP2P_DATASET_DIR;
 
 static void test_icp(
     const std::string& inFile, const std::string& icpClassName,
-    const std::string& solverName, const std::string& matcherName)
+    const std::string& solverName, const std::string& matcherName,
+    int pointDecimation)
 {
     using namespace mrpt::poses::Lie;
 
     const auto fileFullPath = datasetDir + inFile;
 
-    const mrpt::maps::CSimplePointsMap::Ptr pts =
+    mrpt::maps::CSimplePointsMap::Ptr pts =
         mp2p_icp::load_xyz_file(fileFullPath);
+
+    if (pointDecimation > 1)
+    {
+        auto decimPts = mrpt::maps::CSimplePointsMap::Create();
+        for (size_t i = 0; i < pts->size(); i += pointDecimation)
+        {
+            float x, y, z;
+            pts->getPoint(i, x, y, z);
+            decimPts->insertPoint(x, y, z);
+        }
+        pts = decimPts;
+    }
 
     std::cout << "Running " << icpClassName << "|" << solverName << "|"
               << matcherName << " test on: " << inFile << " with "
@@ -100,7 +110,7 @@ static void test_icp(
         stats(rep, 1) = gt_pose.norm();
 
         auto pts_reg = mrpt::maps::CSimplePointsMap::Create();
-        pts_reg->changeCoordinatesReference(*pts, gt_pose);
+        pts_reg->changeCoordinatesReference(*pts, -gt_pose);
 
         // Point clouds: reference and modified:
         mp2p_icp::metric_map_t pc_ref, pc_mod;
@@ -192,6 +202,8 @@ static void test_icp(
         const auto err_xyz   = pos_error.norm();
         const auto err_se3   = SE<3>::log(pos_error).norm();
 
+        ASSERT_LT_(err_se3, 0.1);
+
         stats(rep, 2 + 0) = err_log_n;
         stats(rep, 2 + 1) = err_xyz;
         stats(rep, 2 + 2) = dt;
@@ -235,34 +247,36 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const std::vector<const char*> lst_files{
             {"bunny_decim.xyz.gz", "happy_buddha_decim.xyz.gz"}};
 
-        using lst_algos_t =
-            std::vector<std::tuple<const char*, const char*, const char*>>;
+        using lst_algos_t = std::vector<std::tuple<
+            const char*, const char*, const char*, int /*decimation*/>>;
         // clang-format off
         lst_algos_t lst_algos = {
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_DistanceThreshold"},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_InlierRatio"},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Point2Plane"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_DistanceThreshold", 1},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_InlierRatio", 10},
+             // Horn method cannot handle pt-to-plane.
+             //{"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Point2Plane", 10},
              
              
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_DistanceThreshold"},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_InlierRatio"},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Point2Plane"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_DistanceThreshold", 10},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_InlierRatio", 10},
+             // OLAE method cannot handle pt-to-plane only.
+             //{"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Point2Plane", 10},
              
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_DistanceThreshold"},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_InlierRatio"},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Point2Plane"},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_DistanceThreshold", 10},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_InlierRatio", 10},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Point2Plane", 10},
              };
         // clang-format on
 
         // Optional methods:
         if (mp2p_icp::ICP_LibPointmatcher::methodAvailable())
-            lst_algos.push_back({"mp2p_icp::ICP_LibPointmatcher", "", ""});
+            lst_algos.push_back({"mp2p_icp::ICP_LibPointmatcher", "", "", 1});
 
         for (const auto& algo : lst_algos)
             for (const auto& fil : lst_files)
                 test_icp(
                     fil, std::get<0>(algo), std::get<1>(algo),
-                    std::get<2>(algo));
+                    std::get<2>(algo), std::get<3>(algo));
     }
     catch (std::exception& e)
     {

@@ -25,8 +25,11 @@ namespace mp2p_icp
  * technical report: Jose-Luis Blanco-Claraco. OLAE-ICP: Robust and fast
  * alignment of geometric features with the optimal linear attitude estimator,
  * Arxiv 2019.
+ *
+ * \return false If the number of pairings is too small for a unique
+ * solution, true on success.
  */
-void optimal_tf_olae(
+[[nodiscard]] bool optimal_tf_olae(
     const Pairings& in, const WeightParameters& wp, OptimalTF_Result& result);
 
 /** @} */

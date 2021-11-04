@@ -41,8 +41,11 @@ struct OptimalTF_GN_Parameters
  *
  * This method requires a linearization point in
  * `OptimalTF_GN_Parameters::linearizationPoint`.
+ *
+ * \return false If the number of pairings is too small for a unique
+ * solution, true on success.
  */
-void optimal_tf_gauss_newton(
+[[nodiscard]] bool optimal_tf_gauss_newton(
     const Pairings& in, OptimalTF_Result& result,
     const OptimalTF_GN_Parameters& gnParams = OptimalTF_GN_Parameters());
 

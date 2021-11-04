@@ -230,7 +230,7 @@ static OLAE_LinearSystems olae_build_linear_system(
 }
 
 // See .h docs, and associated technical report.
-void mp2p_icp::optimal_tf_olae(
+bool mp2p_icp::optimal_tf_olae(
     const Pairings& in, const WeightParameters& wp, OptimalTF_Result& result)
 {
     MRPT_START
@@ -354,6 +354,8 @@ void mp2p_icp::optimal_tf_olae(
     result.optimalPose.x(ct_this.x - pp.x);
     result.optimalPose.y(ct_this.y - pp.y);
     result.optimalPose.z(ct_this.z - pp.z);
+
+    return true;
 
     MRPT_END
 }

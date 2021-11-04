@@ -23,6 +23,9 @@ namespace mp2p_icp
 {
 /** Pointcloud matcher auxiliary class for iterating over point layers.
  *
+ * The common to all matchers working on **points** in the `local` input metric
+ * map. See derived classes for possible generated pairings.
+ *
  * \ingroup mp2p_icp_grp
  */
 class Matcher_Points_Base : public Matcher

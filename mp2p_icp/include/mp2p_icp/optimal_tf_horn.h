@@ -20,12 +20,11 @@ namespace mp2p_icp
 /** Classic Horn's solution for optimal SE(3) transformation, modified to
  * accept point-to-point, line-to-line, plane-to-plane pairings.
  *
- *
  * \note On MRPT naming convention: "this"=global; "other"=local.
- * \except std::logic_error If the number of pairings is too small for a unique
- * solution.
+ * \return false If the number of pairings is too small for a unique
+ * solution, true on success.
  */
-void optimal_tf_horn(
+[[nodiscard]] bool optimal_tf_horn(
     const mp2p_icp::Pairings& in, const WeightParameters& wp,
     OptimalTF_Result& result);
 

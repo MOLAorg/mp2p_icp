@@ -15,7 +15,15 @@
 
 namespace mp2p_icp
 {
-/** Pointcloud matcher: fixed distance thresholds
+/** Pointcloud matcher: fixed distance thresholds.
+ *
+ * Finds point-to-point pairings between the `local` and `global` input metric
+ * maps.
+ *
+ * By default, each `local` point layer is matched against the layer with the
+ * same name in the `global` map, unless especified otherwise in the base class
+ * member `weight_pt2pt_layers`. Refer to example configuration YAML files for
+ * example configurations.
  *
  * \ingroup mp2p_icp_grp
  */

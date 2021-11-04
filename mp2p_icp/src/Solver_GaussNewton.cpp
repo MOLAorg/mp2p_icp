@@ -43,19 +43,8 @@ bool Solver_GaussNewton::impl_optimal_pose(
     gnParams.linearizationPoint =
         mrpt::poses::CPose3D(sc.guessRelativePose.value());
 
-    // Compute the optimal pose:
-    try
-    {
-        optimal_tf_gauss_newton(pairings, out, gnParams);
-    }
-    catch (const std::exception& e)
-    {
-        // Skip ill-defined problems if the no. of points is too small.
-        // Nothing we can do:
-        return false;
-    }
-
-    return true;
+    // Compute the optimal pose, and return its validity:
+    return optimal_tf_gauss_newton(pairings, out, gnParams);
 
     MRPT_END
 }

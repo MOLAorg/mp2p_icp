@@ -65,7 +65,8 @@ using namespace mp2p_icp;
 // scaled and rotated Left centroid)
 //		t = ct_this-sR(ct_others)
 
-static void se3_l2_internal(
+// Returns false if the number of pairings is not >=3
+static bool se3_l2_internal(
     const mp2p_icp::Pairings& in, const WeightParameters& wp,
     const mrpt::math::TPoint3D& ct_other, const mrpt::math::TPoint3D& ct_this,
     mrpt::math::CQuaternionDouble& out_attitude,
@@ -86,7 +87,8 @@ static void se3_l2_internal(
         nPt2Pl == 0, "This solver cannot handle point-to-plane pairings yet.");
     const auto nAllMatches = nPt2Pt + nLn2Ln + nPl2Pl;
 
-    ASSERTMSG_(nAllMatches >= 3, "Horn method needs at least 3 references!");
+    // Horn method needs at least 3 references
+    if (nAllMatches < 3) return false;
 
     auto S = mrpt::math::CMatrixDouble33::Zero();
 
@@ -190,10 +192,11 @@ static void se3_l2_internal(
     }
 #endif
 
+    return true;
     MRPT_END
 }
 
-void mp2p_icp::optimal_tf_horn(
+bool mp2p_icp::optimal_tf_horn(
     const mp2p_icp::Pairings& in, const WeightParameters& wp,
     OptimalTF_Result& result)
 {
@@ -214,13 +217,12 @@ void mp2p_icp::optimal_tf_horn(
     mrpt::math::CQuaternionDouble optimal_q;
 
     // Build the linear system & solves for optimal quaternion:
-    se3_l2_internal(
-        in, wp, ct_other, ct_this, optimal_q, result.outliers /* in/out */);
-
-    MRPT_TODO("Refactor to avoid duplicated code? Is it possible?");
+    if (!se3_l2_internal(
+            in, wp, ct_other, ct_this, optimal_q, result.outliers /* in/out */))
+        return false;
 
     // Re-evaluate the centroids, now that we have a guess on outliers.
-    if (!result.outliers.empty())
+    if (wp.use_scale_outlier_detector && !result.outliers.empty())
     {
         // Re-evaluate the centroids:
         const auto [new_ct_other, new_ct_this] =
@@ -230,8 +232,10 @@ void mp2p_icp::optimal_tf_horn(
         ct_this  = new_ct_this;
 
         // And rebuild the linear system with the new values:
-        se3_l2_internal(
-            in, wp, ct_other, ct_this, optimal_q, result.outliers /* in/out */);
+        if (!se3_l2_internal(
+                in, wp, ct_other, ct_this, optimal_q,
+                result.outliers /* in/out */))
+            return false;
     }
 
     // quaternion to rotation matrix:
@@ -246,6 +250,8 @@ void mp2p_icp::optimal_tf_horn(
     result.optimalPose.x(ct_this.x - pp.x);
     result.optimalPose.y(ct_this.y - pp.y);
     result.optimalPose.z(ct_this.z - pp.z);
+
+    return true;
 
     MRPT_END
 }
