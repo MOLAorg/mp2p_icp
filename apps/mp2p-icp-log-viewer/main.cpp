@@ -41,7 +41,7 @@ static TCLAP::ValueArg<std::string> argExtension(
 
 static TCLAP::ValueArg<std::string> argSearchDir(
     "d", "directory", "Directory in which to search for *.icplog files.", false,
-    "", ".", cmd);
+    ".", ".", cmd);
 
 static TCLAP::ValueArg<std::string> argVerbosity(
     "v", "verbose", "Verbosity level", false, "DEBUG", "DEBUG", cmd);
