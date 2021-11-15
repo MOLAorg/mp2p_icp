@@ -13,6 +13,7 @@
 #pragma once
 
 #include <mp2p_icp/metricmap.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/obs/obs_frwds.h>
 #include <mrpt/rtti/CObject.h>

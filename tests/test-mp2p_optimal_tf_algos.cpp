@@ -353,7 +353,8 @@ bool test_icp_algos(
         {
             profiler.enter("olea_match");
 
-            mp2p_icp::optimal_tf_olae(in, wp, res_olae);
+            bool ok = mp2p_icp::optimal_tf_olae(in, wp, res_olae);
+            ASSERT_(ok);
 
             // const double dt_last =
             const auto dt_olea = profiler.leave("olea_match");
