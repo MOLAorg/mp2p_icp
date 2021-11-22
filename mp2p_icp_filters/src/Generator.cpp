@@ -112,10 +112,14 @@ void Generator::process(
                 dynamic_cast<const mrpt::obs::CObservation3DRangeScan*>(&o);
             obs3D && obs3D->points3D_x.empty())
         {
+            mrpt::maps::CSimplePointsMap tmpMap;
+
             mrpt::obs::T3DPointsProjectionParams pp;
             pp.takeIntoAccountSensorPoseOnRobot = true;
             const_cast<mrpt::obs::CObservation3DRangeScan*>(obs3D)
-                ->unprojectInto(*outPc);
+                ->unprojectInto(tmpMap, pp);
+
+            outPc->insertAnotherMap(&tmpMap, mrpt::poses::CPose3D::Identity());
         }
         else
         {
