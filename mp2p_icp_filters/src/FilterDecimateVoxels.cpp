@@ -26,6 +26,7 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c)
 {
     MCP_LOAD_OPT(c, input_pointcloud_layer);
+    MCP_LOAD_OPT(c, error_on_missing_input_layer);
 
     MCP_LOAD_REQ(c, output_pointcloud_layer);
 
@@ -90,8 +91,31 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     // In:
-    MRPT_TODO("Param not to throw if input layer does not exist");
-    const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    mrpt::maps::CPointsMap::Ptr pcPtr;
+    if (auto itLy = inOut.layers.find(params_.input_pointcloud_layer);
+        itLy != inOut.layers.end())
+    {
+        pcPtr = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
+        if (!pcPtr)
+            THROW_EXCEPTION_FMT(
+                "Layer '%s' must be of point cloud type.",
+                params_.input_pointcloud_layer.c_str());
+    }
+    else
+    {
+        // Input layer doesn't exist:
+        if (params_.error_on_missing_input_layer)
+        {
+            THROW_EXCEPTION_FMT(
+                "Input layer '%s' not found on input map.",
+                params_.input_pointcloud_layer.c_str());
+        }
+        else
+        {
+            // Silently return with an unmodified output layer "outPc"
+            return;
+        }
+    }
 
     const auto& pc = *pcPtr;
 

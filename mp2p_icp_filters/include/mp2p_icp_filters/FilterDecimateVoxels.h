@@ -53,6 +53,11 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
         std::string input_pointcloud_layer =
             mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
+        /** Whether to throw an exception if the input layer does not exist, or,
+         * otherwise, it should be silently ignored producing an empty output.
+         */
+        bool error_on_missing_input_layer = true;
+
         /** The output point cloud layer name */
         std::string output_pointcloud_layer;
 
