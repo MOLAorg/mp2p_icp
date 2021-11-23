@@ -166,7 +166,7 @@ static void main_show_gui()
     }
 
     auto gl_base = mrpt::opengl::stock_objects::CornerXYZ(1.0f);
-    gl_base->setName("Origin");
+    gl_base->setName("Global");
     gl_base->enableShowName();
     scene->insert(gl_base);
 
@@ -517,9 +517,12 @@ void rebuild_3d_view()
     glCornerFrom->setPose(poseFromCorner);
     glVizICP->insert(glCornerFrom);
 
-    auto glCornerTo = mrpt::opengl::stock_objects::CornerXYZSimple(0.85f, 5.0f);
-    glCornerTo->setPose(relativePose.mean);
-    glVizICP->insert(glCornerTo);
+    auto glCornerLocal =
+        mrpt::opengl::stock_objects::CornerXYZSimple(0.85f, 5.0f);
+    glCornerLocal->setPose(relativePose.mean);
+    glCornerLocal->setName("Local");
+    glCornerLocal->enableShowName(true);
+    glVizICP->insert(glCornerLocal);
 
     auto glCornerToCov = mrpt::opengl::CEllipsoid3D::Create();
     glCornerToCov->set3DsegmentsCount(16);
