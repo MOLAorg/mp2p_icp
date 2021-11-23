@@ -29,16 +29,19 @@
 // CLI flags:
 static TCLAP::CmdLine cmd("mp2p-icp-run");
 
-static TCLAP::ValueArg<std::string> argInput1(
-    "1", "input1",
-    "Input point cloud #1. It is interpreted as a rawlog entry if using the "
+static TCLAP::ValueArg<std::string> argInputLocal(
+    "", "input-local",
+    "Local input point cloud/map."
+    "It is interpreted as a rawlog entry if using the "
     "format `<RAWLOG_FILE.rawlog>:<N>` to select the N-th entry in the "
-    "rawlog, or otherwise the filename is assumed to be a 3D pointcloud stored "
-    "as a Nx3 ASCII matrix file.",
+    "rawlog; otherwise, if the file extension is `.mm` it is loaded as a "
+    "serialized metric_map_t object; in any other case, the file is assumed to "
+    "be a 3D pointcloud stored as a Nx3 ASCII matrix file.",
     true, "pointcloud1.txt", "pointcloud1.txt", cmd);
 
-static TCLAP::ValueArg<std::string> argInput2(
-    "2", "input2", "Input point cloud #2. Same format than --input1. ", true,
+static TCLAP::ValueArg<std::string> argInputGlobal(
+    "", "input-global",
+    "Global input point cloud/map. Same format than input-local. ", true,
     "pointcloud2.txt", "pointcloud2.txt", cmd);
 
 static TCLAP::ValueArg<std::string> argYamlConfigFile(
@@ -52,19 +55,20 @@ static TCLAP::ValueArg<std::string> argYamlConfigFileGenerators(
     "Generator object will be used.",
     false, "generators-config.yaml", "generators-config.yaml", cmd);
 
-static TCLAP::ValueArg<std::string> argYamlConfigFileFilters1(
-    "", "config-filters-pc1",
-    "YAML config file describing a filtering pipeline for point cloud #1. ",
-    false, "filters-config.yaml", "filters-config.yaml", cmd);
+static TCLAP::ValueArg<std::string> argYamlConfigFileFiltersLocal(
+    "", "config-filters-local",
+    "YAML config file describing a filtering pipeline for local map. ", false,
+    "filters-config.yaml", "filters-config.yaml", cmd);
 
-static TCLAP::ValueArg<std::string> argYamlConfigFileFilters2(
-    "", "config-filters-pc2",
-    "YAML config file describing a filtering pipeline for point cloud #2. ",
-    false, "filters-config.yaml", "filters-config.yaml", cmd);
+static TCLAP::ValueArg<std::string> argYamlConfigFileFiltersGlobal(
+    "", "config-filters-global",
+    "YAML config file describing a filtering pipeline for global map. ", false,
+    "filters-config.yaml", "filters-config.yaml", cmd);
 
 static TCLAP::ValueArg<std::string> argInitialGuess(
     "", "guess",
-    "SE(3) transformation to use as initial guess for the ICP algorithm. "
+    "SE(3) transformation of local wrt global, to use as initial guess for the "
+    "ICP algorithm. "
     "Format: \"[x y z yaw_deg pitch_deg roll_deg]\"",
     false, "[0 0 0 0 0 0]", "[0 0 0 0 0 0]", cmd);
 
@@ -140,6 +144,7 @@ static mp2p_icp::metric_map_t::Ptr pc_from_rawlog(
 
 static mp2p_icp::metric_map_t::Ptr load_input_pc(const std::string& filename)
 {
+    // rawlog?
     if (auto extPos = filename.find(".rawlog:"); extPos != std::string::npos)
     {
         const auto sepPos      = extPos + 7;
@@ -151,7 +156,18 @@ static mp2p_icp::metric_map_t::Ptr load_input_pc(const std::string& filename)
         return pc_from_rawlog(*r, rawlogIndex);
     }
 
-    // Assume it's an ASCII point cloud file:
+    // serialized metric_map_t object?
+    if (auto extPos = filename.find(".mm"); extPos != std::string::npos)
+    {
+        auto r = mp2p_icp::metric_map_t::Create();
+
+        bool readOk = r->load_from_file(filename);
+        ASSERT_(readOk);
+
+        return r;
+    }
+
+    // Otherwise: assume it's an ASCII point cloud file:
     mrpt::maps::CSimplePointsMap::Ptr points =
         mp2p_icp::load_xyz_file(filename);
 
@@ -179,12 +195,12 @@ void runIcp()
     // ------------------------------
     // Original input point clouds
     // ------------------------------
-    auto pc1 = load_input_pc(argInput1.getValue());
-    auto pc2 = load_input_pc(argInput2.getValue());
+    auto pcLocal  = load_input_pc(argInputLocal.getValue());
+    auto pcGlobal = load_input_pc(argInputGlobal.getValue());
 
-    std::cout << "Input point cloud #1: " << pc1->contents_summary()
+    std::cout << "Input point cloud #1: " << pcLocal->contents_summary()
               << std::endl;
-    std::cout << "Input point cloud #2: " << pc2->contents_summary()
+    std::cout << "Input point cloud #2: " << pcGlobal->contents_summary()
               << std::endl;
 
     // ------------------------------
@@ -202,40 +218,40 @@ void runIcp()
     // Apply filtering pipeline, if defined
     // -----------------------------------------
     {
-        mp2p_icp_filters::FilterPipeline filters1;
-        if (argYamlConfigFileFilters1.isSet())
+        mp2p_icp_filters::FilterPipeline filtersLocal;
+        if (argYamlConfigFileFiltersLocal.isSet())
         {
-            filters1 = mp2p_icp_filters::filter_pipeline_from_yaml_file(
-                argYamlConfigFileFilters1.getValue());
+            filtersLocal = mp2p_icp_filters::filter_pipeline_from_yaml_file(
+                argYamlConfigFileFiltersLocal.getValue());
         }
-        else if (cfg.has("filters_pc1"))
+        else if (cfg.has("filters_local_map"))
         {
-            filters1 =
-                mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc1"]);
+            filtersLocal = mp2p_icp_filters::filter_pipeline_from_yaml(
+                cfg["filters_local_map"]);
         }
-        if (!filters1.empty())
+        if (!filtersLocal.empty())
         {
-            mp2p_icp_filters::apply_filter_pipeline(filters1, *pc1);
-            std::cout << "Filtered point cloud #1: " << pc1->contents_summary()
+            mp2p_icp_filters::apply_filter_pipeline(filtersLocal, *pcLocal);
+            std::cout << "Filtered local map: " << pcLocal->contents_summary()
                       << std::endl;
         }
     }
     {
-        mp2p_icp_filters::FilterPipeline filters2;
-        if (argYamlConfigFileFilters2.isSet())
+        mp2p_icp_filters::FilterPipeline filtersGlobal;
+        if (argYamlConfigFileFiltersGlobal.isSet())
         {
-            filters2 = mp2p_icp_filters::filter_pipeline_from_yaml_file(
-                argYamlConfigFileFilters2.getValue());
+            filtersGlobal = mp2p_icp_filters::filter_pipeline_from_yaml_file(
+                argYamlConfigFileFiltersGlobal.getValue());
         }
-        else if (cfg.has("filters_pc2"))
+        else if (cfg.has("filters_global_map"))
         {
-            filters2 =
-                mp2p_icp_filters::filter_pipeline_from_yaml(cfg["filters_pc2"]);
+            filtersGlobal = mp2p_icp_filters::filter_pipeline_from_yaml(
+                cfg["filters_global_map"]);
         }
-        if (!filters2.empty())
+        if (!filtersGlobal.empty())
         {
-            mp2p_icp_filters::apply_filter_pipeline(filters2, *pc2);
-            std::cout << "Filtered point cloud #2: " << pc2->contents_summary()
+            mp2p_icp_filters::apply_filter_pipeline(filtersGlobal, *pcGlobal);
+            std::cout << "Filtered global map: " << pcGlobal->contents_summary()
                       << std::endl;
         }
     }
@@ -243,7 +259,7 @@ void runIcp()
     const double t_ini = mrpt::Clock::nowDouble();
 
     mp2p_icp::Results icpResults;
-    icp->align(*pc1, *pc2, initialGuess, icpParams, icpResults);
+    icp->align(*pcLocal, *pcGlobal, initialGuess, icpParams, icpResults);
 
     const double t_end = mrpt::Clock::nowDouble();
 

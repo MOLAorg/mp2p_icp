@@ -50,13 +50,13 @@ quality:
     params:
      threshold: 0.02
 
-# Filters for point cloud #1 (reference) and #2 (mobile):
+# Filters for local and global point clouds:
 #
 # One filter object will be created for each entry, instancing the given class,
 # and with the given parameters. Filters are run in definition order on the
 # input pointcloud_t object.
 #
-filters_pc1:
+filters_local_map:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       output_pointcloud_layer: 'decimated'
@@ -65,7 +65,7 @@ filters_pc1:
       bounding_box_min: [-1, -1, -1]
       bounding_box_max: [ 1,  1,  1]
 
-filters_pc2:
+filters_global_map:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       output_pointcloud_layer: 'decimated'

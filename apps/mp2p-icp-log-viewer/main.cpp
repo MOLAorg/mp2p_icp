@@ -23,6 +23,7 @@
 #include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/stock_objects.h>
+#include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/system/CDirectoryExplorer.h>
 #include <mrpt/system/filesystem.h>
@@ -179,7 +180,8 @@ static void main_show_gui()
     // Control GUI sub-window:
     {
         auto w = win.createManagedSubWindow("Control");
-        w->setPosition({10, 20});
+        w->setPosition({5, 25});
+        w->requestFocus();
         w->setLayout(new nanogui::BoxLayout(
             nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 5, 2));
         w->setFixedWidth(450);
@@ -257,6 +259,8 @@ static void main_show_gui()
         auto* tab3 = tabWidget->createTab("Layers");
         tab3->setLayout(new nanogui::GroupLayout());
 
+        tabWidget->setActiveTab(0);
+
         tab1->add<nanogui::Label>(
             "ICP result pose [x y z yaw(deg) pitch(deg) roll(deg)]:");
         tbLogPose = tab1->add<nanogui::TextBox>();
@@ -276,6 +280,7 @@ static void main_show_gui()
 
         tab2->add<nanogui::Label>("Uncertainty: Covariance condition numbers");
         tbConditionNumber = tab2->add<nanogui::TextBox>();
+        tbConditionNumber->setFontSize(16);
         tbConditionNumber->setEditable(false);
 
         const float handTunedRange[6] = {4.0,        4.0,         10.0,
@@ -301,7 +306,33 @@ static void main_show_gui()
 
         tab1->add<nanogui::Label>("Initial guess pose:");
         tbInitialGuess = tab1->add<nanogui::TextBox>();
+        tbInitialGuess->setFontSize(16);
         tbInitialGuess->setEditable(true);
+
+        // Save map buttons:
+        auto lambdaSave = [&](const mp2p_icp::metric_map_t& m) {
+            const std::string outFile = nanogui::file_dialog(
+                {{"mm",
+                  "mp2p_icp::metric_map_t binary serialized object (*.mm)"}},
+                true /*save*/);
+            if (outFile.empty()) return;
+            m.save_to_file(outFile);
+        };
+
+        tab1->add<nanogui::Label>(" ");
+        tab1->add<nanogui::Button>("Export 'local' map...")->setCallback([&]() {
+            const size_t idx = mrpt::round(slSelectorICP->value());
+            auto&        lr  = logRecords.at(idx);
+            ASSERT_(lr.pcLocal);
+            lambdaSave(*lr.pcLocal);
+        });
+        tab1->add<nanogui::Button>("Export 'global' map...")
+            ->setCallback([&]() {
+                const size_t idx = mrpt::round(slSelectorICP->value());
+                auto&        lr  = logRecords.at(idx);
+                ASSERT_(lr.pcGlobal);
+                lambdaSave(*lr.pcGlobal);
+            });
 
         // tab 3:
 
@@ -470,11 +501,16 @@ void rebuild_3d_view()
         tbCovariance->setValue(s);
     }
 
+    // Extract SE(2) covariance:
+    const mrpt::poses::CPosePDFGaussian pose2D(relativePose);
+
+    // Condition numbers:
     tbConditionNumber->setValue(mrpt::format(
-        " cn(XYZ)=%.02f cn(rot)=%.02f cn=%.02f",
+        " cn{XYZ}=%.02f cn{SO(3)}=%.02f cn{SE(2)}=%.02f "
+        "cn{SE(3)}=%.02f",
         conditionNumber(relativePose.cov.blockCopy<3, 3>(0, 0)),
         conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)),
-        conditionNumber(relativePose.cov)));
+        conditionNumber(pose2D.cov), conditionNumber(relativePose.cov)));
 
     auto glCornerFrom =
         mrpt::opengl::stock_objects::CornerXYZSimple(0.75f, 3.0f);
