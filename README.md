@@ -80,3 +80,9 @@ cmake --build .   # or make
 ```
 make test
 ```
+
+### Run the demos
+
+```
+
+```

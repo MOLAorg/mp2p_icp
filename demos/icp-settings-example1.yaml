@@ -20,14 +20,7 @@ solvers:
 
   - class: mp2p_icp::Solver_Horn
     params:
-      pairingsWeightParameters:
-        # scale-based outlier detector
-        use_scale_outlier_detector: true
-        scale_outlier_threshold: 1.5
-        # An optional "a priori" term (default=false)
-        use_robust_kernel: false
-        #robust_kernel_param: 0.1 # [degrees]
-        #robust_kernel_scale: 400.0
+      ~
 
 # Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
 # instances to pair geometric entities between pointclouds.
@@ -35,7 +28,7 @@ matchers:
   - class: mp2p_icp::Matcher_Points_DistanceThreshold
     params:
       threshold: 0.01
-      #pairingsPerPoint: 1
+      #pairingsPerPoint: 3
       #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
@@ -55,7 +48,7 @@ matchers:
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio
     params:
-     threshold: 0.10
+     threshold: 0.02
 
 # Filters for point cloud #1 (reference) and #2 (mobile):
 #
