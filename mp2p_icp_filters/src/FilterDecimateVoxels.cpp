@@ -69,11 +69,6 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
 
-    // In:
-    const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
-
-    const auto& pc = *pcPtr;
-
     // Out:
     ASSERT_(!params_.output_pointcloud_layer.empty());
 
@@ -94,6 +89,13 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         inOut.layers[params_.output_pointcloud_layer] = outPc;
     }
 
+    // In:
+    MRPT_TODO("Param not to throw if input layer does not exist");
+    const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+
+    const auto& pc = *pcPtr;
+
+    // Do filter:
     outPc->reserve(outPc->size() + pc.size() / 10);
 
     filter_grid_.clear();
