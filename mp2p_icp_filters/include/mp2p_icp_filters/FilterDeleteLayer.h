@@ -40,6 +40,10 @@ class FilterDeleteLayer : public mp2p_icp_filters::FilterBase
 
         std::string pointcloud_layer_to_remove;
 
+        /** Whether to throw an exception if the input layer does not exist, or,
+         * otherwise, it should be silently ignored producing an empty output.
+         */
+        bool error_on_missing_input_layer = true;
     };
 
     /** Algorithm parameters */

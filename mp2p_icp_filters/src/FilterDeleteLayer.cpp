@@ -22,6 +22,7 @@ void FilterDeleteLayer::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c)
 {
     MCP_LOAD_REQ(c, pointcloud_layer_to_remove);
+    MCP_LOAD_OPT(c, error_on_missing_input_layer);
 }
 
 FilterDeleteLayer::FilterDeleteLayer() = default;
@@ -43,9 +44,12 @@ void FilterDeleteLayer::filter(mp2p_icp::metric_map_t& inOut) const
     const auto nRemoved =
         inOut.layers.erase(params_.pointcloud_layer_to_remove);
 
-    ASSERTMSG_(
-        nRemoved != 0, mrpt::format(
-                           "Point cloud layer '%s' was not found.",
-                           params_.pointcloud_layer_to_remove.c_str()));
+    if (params_.error_on_missing_input_layer)
+    {
+        ASSERTMSG_(
+            nRemoved != 0, mrpt::format(
+                               "Point cloud layer '%s' was not found.",
+                               params_.pointcloud_layer_to_remove.c_str()));
+    }
     MRPT_END
 }
