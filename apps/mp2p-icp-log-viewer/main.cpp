@@ -65,8 +65,10 @@ nanogui::Button *btnSelectorBack = nullptr, *btnSelectorForw = nullptr;
 
 std::array<nanogui::Label*, 4> lbICPStats = {
     nullptr, nullptr, nullptr, nullptr};
-nanogui::CheckBox* cbShowInitialPose = nullptr;
-nanogui::CheckBox* cbViewOrtho       = nullptr;
+nanogui::CheckBox* cbShowInitialPose      = nullptr;
+nanogui::CheckBox* cbViewOrtho            = nullptr;
+nanogui::CheckBox* cbViewFinalPairings    = nullptr;
+nanogui::CheckBox* cbViewPairingEvolution = nullptr;
 
 nanogui::TextBox *tbLogPose = nullptr, *tbInitialGuess = nullptr,
                  *tbInit2Final = nullptr, *tbCovariance = nullptr,
@@ -372,6 +374,20 @@ static void main_show_gui()
         }
 
         // tab4: pairings:
+        cbViewFinalPairings =
+            tab4->add<nanogui::CheckBox>("View final pairings");
+        cbViewPairingEvolution =
+            tab4->add<nanogui::CheckBox>("View pairing evolution");
+
+        cbViewFinalPairings->setCallback([](bool checked) {
+            cbViewPairingEvolution->setChecked(!checked);
+            rebuild_3d_view();
+        });
+
+        cbViewPairingEvolution->setCallback([](bool checked) {
+            cbViewFinalPairings->setChecked(!checked);
+            rebuild_3d_view();
+        });
 
         // tab5: view
         {
@@ -544,6 +560,7 @@ void rebuild_3d_view()
         conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)),
         conditionNumber(pose2D.cov), conditionNumber(relativePose.cov)));
 
+    // 3D objects -------------------
     auto glCornerFrom =
         mrpt::opengl::stock_objects::CornerXYZSimple(0.75f, 3.0f);
     glCornerFrom->setPose(poseFromCorner);
@@ -617,6 +634,30 @@ void rebuild_3d_view()
     {
         std::lock_guard<std::mutex> lck(win->background_scene_mtx);
         win->camera().setCameraProjective(!cbViewOrtho->checked());
+    }
+
+    // Pairings ------------------
+    cbViewPairingEvolution->setEnabled(lr.iterationsDetails.has_value());
+
+    const mp2p_icp::Pairings* pairsToViz = nullptr;
+
+    if (cbViewFinalPairings->checked())
+    {
+        // final:
+        pairsToViz = &lr.icpResult.finalPairings;
+    }
+    else
+    {
+        // pairings evolution:
+        // TODO: get from slider:
+    }
+
+    // viz pairings:
+    if (pairsToViz)
+    {
+        mp2p_icp::pairings_render_params_t rp;
+
+        glVizICP->insert(pairsToViz->get_visualization(relativePose.mean, rp));
     }
 }
 

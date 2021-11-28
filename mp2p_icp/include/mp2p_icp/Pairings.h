@@ -12,6 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/plane_patch.h>
+#include <mp2p_icp/render_params.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/TLine3D.h>
 #include <mrpt/serialization/CSerializable.h>
@@ -139,6 +140,32 @@ struct Pairings
 
     virtual void serializeTo(mrpt::serialization::CArchive& out) const;
     virtual void serializeFrom(mrpt::serialization::CArchive& in);
+
+    /** Gets a renderizable view of all geometric entities.
+     *
+     * See render_params_t for options to show/hide the different geometric
+     * entities and point layers.
+     *
+     * \note If deriving user classes inheriting from metric_map_t, remember to
+     *  reimplement this method and call this base class method to render
+     *  common elements.
+     */
+    virtual auto get_visualization(
+        const mrpt::poses::CPose3D&     localWrtGlobal,
+        const pairings_render_params_t& p = pairings_render_params_t()) const
+        -> std::shared_ptr<mrpt::opengl::CSetOfObjects>;
+
+    /** Used inside get_visualization(), renders pt-to-pt pairings only. */
+    virtual void get_visualization_pt2pt(
+        mrpt::opengl::CSetOfObjects&    o,
+        const mrpt::poses::CPose3D&     localWrtGlobal,
+        const pairings_render_params_t& p) const;
+
+    /** Used inside get_visualization(), renders pt-to-ln pairings only. */
+    virtual void get_visualization_pt2ln(
+        mrpt::opengl::CSetOfObjects&    o,
+        const mrpt::poses::CPose3D&     localWrtGlobal,
+        const pairings_render_params_t& p) const;
 
     /** @} */
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::Pairings)

@@ -121,6 +121,29 @@ struct render_params_t
     render_params_points_t points;
 };
 
+struct render_params_pairings_pt2pt_t
+{
+    render_params_pairings_pt2pt_t() = default;
+
+    bool visible = true;
+};
+
+struct render_params_pairings_pt2pl_t
+{
+    render_params_pairings_pt2pl_t() = default;
+
+    bool visible = true;
+};
+
+/** Used in Pairings::get_visualization() */
+struct pairings_render_params_t
+{
+    pairings_render_params_t() = default;
+
+    render_params_pairings_pt2pt_t pt2pt;
+    render_params_pairings_pt2pl_t pt2pl;
+};
+
 /** @} */
 
 }  // namespace mp2p_icp

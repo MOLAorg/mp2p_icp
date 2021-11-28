@@ -93,7 +93,6 @@ void metric_map_t::serializeFrom(
     };
 }
 
-/** Gets a renderizable view of all planes */
 auto metric_map_t::get_visualization(const render_params_t& p) const
     -> std::shared_ptr<mrpt::opengl::CSetOfObjects>
 {

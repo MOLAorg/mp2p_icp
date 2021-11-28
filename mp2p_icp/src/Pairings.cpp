@@ -11,6 +11,8 @@
  */
 
 #include <mp2p_icp/Pairings.h>
+#include <mrpt/opengl/CSetOfLines.h>
+#include <mrpt/opengl/CSetOfObjects.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/stl_serialization.h>
 
@@ -160,6 +162,54 @@ std::string Pairings::contents_summary() const
     append_container_size(paired_pl2pl, "plane-plane", ret);
 
     return ret;
+}
+
+auto Pairings::get_visualization(
+    const mrpt::poses::CPose3D&     localWrtGlobal,
+    const pairings_render_params_t& p) const
+    -> std::shared_ptr<mrpt::opengl::CSetOfObjects>
+{
+    MRPT_START
+    auto o = mrpt::opengl::CSetOfObjects::Create();
+
+    get_visualization_pt2pt(*o, localWrtGlobal, p);
+    get_visualization_pt2ln(*o, localWrtGlobal, p);
+
+    return o;
+    MRPT_END
+}
+
+void Pairings::get_visualization_pt2pt(
+    mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
+    const pairings_render_params_t& p) const
+{
+    if (!p.pt2pt.visible) return;
+
+    auto lns = mrpt::opengl::CSetOfLines::Create();
+    lns->setColor_u8(0x80, 0x80, 0x80, 0xa0);
+
+    // this: global, other: local
+    for (const auto& pair : paired_pt2pt)
+    {
+        const auto ptGlobal =
+            mrpt::math::TPoint3Df(pair.this_x, pair.this_y, pair.this_z);
+        const auto ptLocal =
+            mrpt::math::TPoint3Df(pair.other_x, pair.other_y, pair.other_z);
+        const auto ptLocalTf = localWrtGlobal.composePoint(ptLocal);
+
+        lns->appendLine(ptLocalTf, ptGlobal);
+    }
+
+    o.insert(lns);
+}
+
+void Pairings::get_visualization_pt2ln(
+    mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
+    const pairings_render_params_t& p) const
+{
+    if (!p.pt2pl.visible) return;
+
+    // TODO:
 }
 
 namespace mrpt::serialization
