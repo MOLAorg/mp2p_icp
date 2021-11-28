@@ -91,7 +91,7 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
         size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
 
         if (!allowMatchAlreadyMatchedPoints_ &&
-            ms.pairingsBitField.point_layers.at(localName).at(localIdx))
+            ms.localPairedBitField.point_layers.at(localName).at(localIdx))
             continue;  // skip, already paired.
 
         // For speed-up:
@@ -141,11 +141,20 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
 
     for (auto it = sortedPairings.begin(); it != itEnd; ++it)
     {
+        const auto localIdx  = it->second.other_idx;
+        const auto globalIdx = it->second.this_idx;
+
+        // Filter out if global alread assigned:
+        if (!allowMatchAlreadyMatchedGlobalPoints_ &&
+            ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
+            return;  // skip, global point already paired.
+
         out.paired_pt2pt.push_back(it->second);
 
-        // Mark local point as already paired:
-        const auto localIdx = it->second.other_idx;
-        ms.pairingsBitField.point_layers[localName].at(localIdx) = true;
+        // Mark local & global points as already paired:
+        ms.localPairedBitField.point_layers[localName].at(localIdx) = true;
+
+        ms.globalPairedBitField.point_layers[globalName].at(globalIdx) = true;
     }
 
     MRPT_END

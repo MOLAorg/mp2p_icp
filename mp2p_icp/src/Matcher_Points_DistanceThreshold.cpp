@@ -89,28 +89,35 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     const auto& lys = pcLocal.getPointsBufferRef_y();
     const auto& lzs = pcLocal.getPointsBufferRef_z();
 
-    const auto lambdaAddPair =
-        [&out, &lxs, &lys, &lzs, &gxs, &gys, &gzs, &ms, &localName](
-            const size_t localIdx, const size_t tentativeGlobalIdx,
-            const float tentativeErrSqr) {
-            // Save new correspondence:
-            auto& p = out.paired_pt2pt.emplace_back();
+    const auto lambdaAddPair = [this, &out, &lxs, &lys, &lzs, &gxs, &gys, &gzs,
+                                &ms, &localName, &globalName](
+                                   const size_t localIdx,
+                                   const size_t globalIdx,
+                                   const float  tentativeErrSqr) {
+        // Filter out if global alread assigned:
+        if (!allowMatchAlreadyMatchedGlobalPoints_ &&
+            ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
+            return;  // skip, global point already paired.
 
-            p.this_idx = tentativeGlobalIdx;
-            p.this_x   = gxs[tentativeGlobalIdx];
-            p.this_y   = gys[tentativeGlobalIdx];
-            p.this_z   = gzs[tentativeGlobalIdx];
+        // Save new correspondence:
+        auto& p = out.paired_pt2pt.emplace_back();
 
-            p.other_idx = localIdx;
-            p.other_x   = lxs[localIdx];
-            p.other_y   = lys[localIdx];
-            p.other_z   = lzs[localIdx];
+        p.this_idx = globalIdx;
+        p.this_x   = gxs[globalIdx];
+        p.this_y   = gys[globalIdx];
+        p.this_z   = gzs[globalIdx];
 
-            p.errorSquareAfterTransformation = tentativeErrSqr;
+        p.other_idx = localIdx;
+        p.other_x   = lxs[localIdx];
+        p.other_y   = lys[localIdx];
+        p.other_z   = lzs[localIdx];
 
-            // Mark local point as already paired:
-            ms.pairingsBitField.point_layers[localName].at(localIdx) = true;
-        };
+        p.errorSquareAfterTransformation = tentativeErrSqr;
+
+        // Mark local & global points as already paired:
+        ms.localPairedBitField.point_layers[localName].at(localIdx)    = true;
+        ms.globalPairedBitField.point_layers[globalName].at(globalIdx) = true;
+    };
 
     // Declared out of the loop to avoid memory reallocations (!)
     std::vector<size_t> neighborIndices;
@@ -121,7 +128,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         const size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
 
         if (!allowMatchAlreadyMatchedPoints_ &&
-            ms.pairingsBitField.point_layers.at(localName).at(localIdx))
+            ms.localPairedBitField.point_layers.at(localName).at(localIdx))
             continue;  // skip, already paired.
 
         // For speed-up:
@@ -142,7 +149,6 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
             // Distance below the threshold??
             if (tentativeErrSqr < maxDistForCorrespondenceSquared)
                 lambdaAddPair(localIdx, tentativeGlobalIdx, tentativeErrSqr);
-
         }  // End of test_match
         else
         {

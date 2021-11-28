@@ -47,9 +47,13 @@ class Matcher_Points_Base : public Matcher
     uint64_t maxLocalPointsPerLayer_ = 0;
     uint64_t localPointsSampleSeed_  = 0;
 
-    /** Whether to allow matching points that have been already matched by a
-     * former Matcher instance in the pipeline. */
+    /** Whether to allow matching *local* points that have been already matched
+     * by a former Matcher instance in the pipeline. */
     bool allowMatchAlreadyMatchedPoints_ = false;
+
+    /** If false, global map points can be paired exclusively against one local
+     * point. */
+    bool allowMatchAlreadyMatchedGlobalPoints_ = false;
 
     /** Common parameters to all derived classes:
      *

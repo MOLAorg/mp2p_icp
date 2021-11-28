@@ -41,11 +41,18 @@ struct MatchState
 
     /// The pairings already assigned by former matches in the pipeline
     /// indexed by the pcLocal entities (true=already have a pairing).
-    pointcloud_bitfield_t pairingsBitField;
+    pointcloud_bitfield_t localPairedBitField;
+
+    /// Like localPairedBitField for the global map
+    pointcloud_bitfield_t globalPairedBitField;
 
     /** Initialize all bit fields to their correct length and default value
      * (false) */
-    void initialize() { pairingsBitField.initialize_from(pcLocal_); }
+    void initialize()
+    {
+        localPairedBitField.initialize_from(pcLocal_);
+        globalPairedBitField.initialize_from(pcGlobal_);
+    }
 
    private:
     const metric_map_t& pcGlobal_;

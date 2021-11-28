@@ -135,10 +135,16 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
 
     maxLocalPointsPerLayer_ =
         params.getOrDefault("maxLocalPointsPerLayer", maxLocalPointsPerLayer_);
+
     localPointsSampleSeed_ =
         params.getOrDefault("localPointsSampleSeed", localPointsSampleSeed_);
+
     allowMatchAlreadyMatchedPoints_ = params.getOrDefault(
         "allowMatchAlreadyMatchedPoints", allowMatchAlreadyMatchedPoints_);
+
+    allowMatchAlreadyMatchedGlobalPoints_ = params.getOrDefault(
+        "allowMatchAlreadyMatchedGlobalPoints",
+        allowMatchAlreadyMatchedGlobalPoints_);
 }
 
 Matcher_Points_Base::TransformedLocalPointCloud

@@ -96,8 +96,13 @@ void Matcher_Point2Plane::implMatchOneLayer(
         const size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
 
         if (!allowMatchAlreadyMatchedPoints_ &&
-            ms.pairingsBitField.point_layers.at(localName).at(localIdx))
+            ms.localPairedBitField.point_layers.at(localName).at(localIdx))
             continue;  // skip, already paired.
+
+        // Don't discard **global** map points if already used by another
+        // matcher, since the assumption of "plane" features implies that
+        // many local points may match the *same* "global plane", so it's ok
+        // to have multiple-local-to-one-global pairings.
 
         // For speed-up:
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],
@@ -160,7 +165,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
         p.pl_this.plane    = mrpt::math::TPlane(p.pl_this.centroid, normal);
 
         // Mark local point as already paired:
-        ms.pairingsBitField.point_layers[localName].at(localIdx) = true;
+        ms.localPairedBitField.point_layers[localName].at(localIdx) = true;
 
     }  // For each local point
 
