@@ -19,7 +19,14 @@ using namespace mp2p_icp;
 void QualityEvaluator_PairedRatio::initialize(
     const mrpt::containers::yaml& params)
 {
-    matcher_.initialize(params);
+    // By default, matchers only assign one pairing to each global point.
+    // However, in quality assesment, it DOES make sense to count several times
+    // the same global point:
+    mrpt::containers::yaml p = params;
+    if (!p.has("allowMatchAlreadyMatchedGlobalPoints"))
+        p["allowMatchAlreadyMatchedGlobalPoints"] = true;
+
+    matcher_.initialize(p);
 }
 
 double QualityEvaluator_PairedRatio::evaluate(
