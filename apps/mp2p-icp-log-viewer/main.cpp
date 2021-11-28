@@ -27,6 +27,7 @@
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/system/CDirectoryExplorer.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/progress.h>
 
 #include <iostream>
 
@@ -103,9 +104,19 @@ static void main_show_gui()
 
     // load files:
     size_t filesLoaded = 0, filesFilteredOut = 0;
+    std::cout << std::endl;
     for (const auto& file : files)
     {
-        std::cout << "Loading: " << file.wholePath << "...\n";
+        const double pc = static_cast<double>(filesLoaded) /
+                          (std::max<size_t>(1, files.size() - 1));
+        printf(
+            "\r"
+            " Loading %s %7.02f%% (%u / %u)       ",
+            mrpt::system::progress(pc, 50).c_str(), 100 * pc,
+            static_cast<unsigned int>(filesLoaded + 1),
+            static_cast<unsigned int>(files.size()));
+        fflush(stdout);
+
         const auto& lr = logRecords.emplace_back(
             mp2p_icp::LogRecord::LoadFromFile(file.wholePath));
 
@@ -139,6 +150,7 @@ static void main_show_gui()
             logRecords.erase(logRecords.rbegin().base());
         }
     }
+    std::cout << std::endl;
     std::cout << "Loaded " << logRecords.size() << " ICP records ("
               << filesLoaded << " actually loaded, " << filesFilteredOut
               << " filtered out)" << std::endl;
