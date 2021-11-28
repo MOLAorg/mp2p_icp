@@ -58,6 +58,7 @@ static TCLAP::ValueArg<double> argMinQuality(
 #if MRPT_HAS_NANOGUI
 
 auto glVizICP = mrpt::opengl::CSetOfObjects::Create();
+mrpt::gui::CDisplayWindowGUI::Ptr win;
 
 nanogui::Slider* slSelectorICP   = nullptr;
 nanogui::Button *btnSelectorBack = nullptr, *btnSelectorForw = nullptr;
@@ -65,6 +66,7 @@ nanogui::Button *btnSelectorBack = nullptr, *btnSelectorForw = nullptr;
 std::array<nanogui::Label*, 4> lbICPStats = {
     nullptr, nullptr, nullptr, nullptr};
 nanogui::CheckBox* cbShowInitialPose = nullptr;
+nanogui::CheckBox* cbViewOrtho       = nullptr;
 
 nanogui::TextBox *tbLogPose = nullptr, *tbInitialGuess = nullptr,
                  *tbInit2Final = nullptr, *tbCovariance = nullptr,
@@ -120,7 +122,26 @@ static void main_show_gui()
         const auto& lr = logRecords.emplace_back(
             mp2p_icp::LogRecord::LoadFromFile(file.wholePath));
 
-        // Obtain layer info from first entry:
+        filesLoaded++;
+
+        // Filter by quality:
+        if (lr.icpResult.quality < argMinQuality.getValue())
+        {
+            ++filesFilteredOut;
+            // Remove last one:
+            logRecords.erase(logRecords.rbegin().base());
+        }
+    }
+    std::cout << std::endl;
+    std::cout << "Loaded " << logRecords.size() << " ICP records ("
+              << filesLoaded << " actually loaded, " << filesFilteredOut
+              << " filtered out)" << std::endl;
+
+    ASSERT_(!logRecords.empty());
+
+    // Obtain layer info from first entry:
+    {
+        const auto& lr = logRecords.front();
         if (layerNames_global.empty() && lr.pcGlobal)
         {
             for (const auto& layer : lr.pcGlobal->layers)
@@ -139,23 +160,7 @@ static void main_show_gui()
                           << layer.first << "'\n";
             }
         }
-
-        filesLoaded++;
-
-        // Filter by quality:
-        if (lr.icpResult.quality < argMinQuality.getValue())
-        {
-            ++filesFilteredOut;
-            // Remove last one:
-            logRecords.erase(logRecords.rbegin().base());
-        }
     }
-    std::cout << std::endl;
-    std::cout << "Loaded " << logRecords.size() << " ICP records ("
-              << filesLoaded << " actually loaded, " << filesFilteredOut
-              << " filtered out)" << std::endl;
-
-    ASSERT_(!logRecords.empty());
 
     /*
      * -------------------------------------------------------------------
@@ -166,11 +171,10 @@ static void main_show_gui()
 
     mrpt::gui::CDisplayWindowGUI_Params cp;
     cp.maximized = true;
-    mrpt::gui::CDisplayWindowGUI win(APP_NAME, 1024, 800, cp);
+    win = mrpt::gui::CDisplayWindowGUI::Create(APP_NAME, 1024, 800, cp);
 
     // Add a background scene:
     auto scene = mrpt::opengl::COpenGLScene::Create();
-
     {
         auto glGrid = mrpt::opengl::CGridPlaneXY::Create();
         glGrid->setColor_u8(0xff, 0xff, 0xff, 0x10);
@@ -185,13 +189,13 @@ static void main_show_gui()
     scene->insert(glVizICP);
 
     {
-        std::lock_guard<std::mutex> lck(win.background_scene_mtx);
-        win.background_scene = std::move(scene);
+        std::lock_guard<std::mutex> lck(win->background_scene_mtx);
+        win->background_scene = std::move(scene);
     }
 
     // Control GUI sub-window:
     {
-        auto w = win.createManagedSubWindow("Control");
+        auto w = win->createManagedSubWindow("Control");
         w->setPosition({5, 25});
         w->requestFocus();
         w->setLayout(new nanogui::BoxLayout(
@@ -201,19 +205,6 @@ static void main_show_gui()
         cbShowInitialPose =
             w->add<nanogui::CheckBox>("Show at INITIAL GUESS pose");
         cbShowInitialPose->setCallback([=](bool) { rebuild_3d_view(); });
-
-        {
-            auto pn = w->add<nanogui::Widget>();
-            pn->setLayout(new nanogui::GridLayout(
-                nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
-
-            pn->add<nanogui::Label>("Point size");
-
-            slPointSize = pn->add<nanogui::Slider>();
-            slPointSize->setRange({1.0f, 10.0f});
-            slPointSize->setValue(2.0f);
-            slPointSize->setCallback([&](float) { rebuild_3d_view(); });
-        }
 
         //
         w->add<nanogui::Label>(" ");  // separator
@@ -262,14 +253,20 @@ static void main_show_gui()
 
         auto tabWidget = w->add<nanogui::TabWidget>();
 
-        auto* tab1 = tabWidget->createTab("ICP");
+        auto* tab1 = tabWidget->createTab("Summary");
         tab1->setLayout(new nanogui::GroupLayout());
 
         auto* tab2 = tabWidget->createTab("Uncertainty");
         tab2->setLayout(new nanogui::GroupLayout());
 
-        auto* tab3 = tabWidget->createTab("Layers");
+        auto* tab3 = tabWidget->createTab("Maps");
         tab3->setLayout(new nanogui::GroupLayout());
+
+        auto* tab4 = tabWidget->createTab("Pairings");
+        tab4->setLayout(new nanogui::GroupLayout());
+
+        auto* tab5 = tabWidget->createTab("View");
+        tab5->setLayout(new nanogui::GroupLayout());
 
         tabWidget->setActiveTab(0);
 
@@ -331,22 +328,26 @@ static void main_show_gui()
             m.save_to_file(outFile);
         };
 
-        tab1->add<nanogui::Label>(" ");
-        tab1->add<nanogui::Button>("Export 'local' map...")->setCallback([&]() {
-            const size_t idx = mrpt::round(slSelectorICP->value());
-            auto&        lr  = logRecords.at(idx);
-            ASSERT_(lr.pcLocal);
-            lambdaSave(*lr.pcLocal);
-        });
-        tab1->add<nanogui::Button>("Export 'global' map...")
-            ->setCallback([&]() {
-                const size_t idx = mrpt::round(slSelectorICP->value());
-                auto&        lr  = logRecords.at(idx);
-                ASSERT_(lr.pcGlobal);
-                lambdaSave(*lr.pcGlobal);
-            });
-
         // tab 3:
+        {
+            auto pn = tab3->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::BoxLayout(
+                nanogui::Orientation::Horizontal, nanogui::Alignment::Middle));
+            pn->add<nanogui::Button>("Export 'local' map...")
+                ->setCallback([&]() {
+                    const size_t idx = mrpt::round(slSelectorICP->value());
+                    auto&        lr  = logRecords.at(idx);
+                    ASSERT_(lr.pcLocal);
+                    lambdaSave(*lr.pcLocal);
+                });
+            pn->add<nanogui::Button>("Export 'global' map...")
+                ->setCallback([&]() {
+                    const size_t idx = mrpt::round(slSelectorICP->value());
+                    auto&        lr  = logRecords.at(idx);
+                    ASSERT_(lr.pcGlobal);
+                    lambdaSave(*lr.pcGlobal);
+                });
+        }
 
         tab3->add<nanogui::Label>("[GLOBAL point cloud] Show point layers:");
         cbPointLayers_global.resize(layerNames_global.size());
@@ -370,14 +371,33 @@ static void main_show_gui()
                 [](bool) { rebuild_3d_view(); });
         }
 
+        // tab4: pairings:
+
+        // tab5: view
+        {
+            auto pn = tab5->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+
+            pn->add<nanogui::Label>("Point size");
+
+            slPointSize = pn->add<nanogui::Slider>();
+            slPointSize->setRange({1.0f, 10.0f});
+            slPointSize->setValue(2.0f);
+            slPointSize->setCallback([&](float) { rebuild_3d_view(); });
+        }
+
+        cbViewOrtho = tab5->add<nanogui::CheckBox>("Orthogonal view");
+        cbViewOrtho->setCallback([&](bool) { rebuild_3d_view(); });
+
         // ----
         w->add<nanogui::Label>(" ");  // separator
         w->add<nanogui::Button>("Quit", ENTYPO_ICON_ARROW_BOLD_LEFT)
-            ->setCallback([&win]() { win.setVisible(false); });
+            ->setCallback([]() { win->setVisible(false); });
 
-        win.setKeyboardCallback([&](int key, [[maybe_unused]] int scancode,
-                                    int                  action,
-                                    [[maybe_unused]] int modifiers) {
+        win->setKeyboardCallback([&](int key, [[maybe_unused]] int scancode,
+                                     int                  action,
+                                     [[maybe_unused]] int modifiers) {
             if (action != GLFW_PRESS && action != GLFW_REPEAT) return false;
 
             int increment = 0;
@@ -411,18 +431,18 @@ static void main_show_gui()
         });
     }
 
-    win.performLayout();
-    win.camera().setCameraPointing(8.0f, .0f, .0f);
-    win.camera().setAzimuthDegrees(110.0f);
-    win.camera().setElevationDegrees(15.0f);
-    win.camera().setZoomDistance(30.0f);
+    win->performLayout();
+    win->camera().setCameraPointing(8.0f, .0f, .0f);
+    win->camera().setAzimuthDegrees(110.0f);
+    win->camera().setElevationDegrees(15.0f);
+    win->camera().setZoomDistance(30.0f);
 
     rebuild_3d_view();
 
     // Main loop
     // ---------------------
-    win.drawAll();
-    win.setVisible(true);
+    win->drawAll();
+    win->setVisible(true);
     nanogui::mainloop(10 /*refresh Hz*/);
 
     nanogui::shutdown();
@@ -591,6 +611,12 @@ void rebuild_3d_view()
 
         glPts->setPose(relativePose.mean);
         glVizICP->insert(glPts);
+    }
+
+    // Global view options:
+    {
+        std::lock_guard<std::mutex> lck(win->background_scene_mtx);
+        win->camera().setCameraProjective(!cbViewOrtho->checked());
     }
 }
 
