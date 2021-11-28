@@ -32,6 +32,8 @@ void Matcher_Point2Plane::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_REQ(params, distanceThreshold);
     MCP_LOAD_REQ(params, knn);
     MCP_LOAD_REQ(params, planeEigenThreshold);
+    MCP_LOAD_REQ(params, minimumPlanePoints);
+    ASSERT_ABOVEEQ_(minimumPlanePoints, 3UL);
 }
 
 void Matcher_Point2Plane::implMatchOneLayer(
@@ -139,7 +141,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
         }
 
         // minimum: 3 points to be able to fit a plane
-        if (kddIdxs.size() < 3) continue;
+        if (kddIdxs.size() < minimumPlanePoints) continue;
 
         const PointCloudEigen& eig = mp2p_icp::estimate_points_eigen(
             gxs.data(), gys.data(), gzs.data(), kddIdxs);

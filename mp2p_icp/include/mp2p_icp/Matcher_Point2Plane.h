@@ -38,6 +38,7 @@ class Matcher_Point2Plane : public Matcher_Points_Base
     /** Parameters:
      * - `distanceThreshold`: Inliers distance threshold [meters][mandatory]
      * - `knn`: Number of neighbors to look for [mandatory]
+     * - `minimumPlanePoints`: Minimum number of found points [mandatory]
      * - `planeEigenThreshold`: maximum e0/e2 ratio [mandatory]
      *
      * Where e0 and e2 are the smallest and largest eigenvalues of the Gaussian
@@ -50,6 +51,7 @@ class Matcher_Point2Plane : public Matcher_Points_Base
    private:
     double   distanceThreshold   = 0.50;
     uint32_t knn                 = 5;
+    uint32_t minimumPlanePoints  = 5;
     double   planeEigenThreshold = 0.01;
 
     void implMatchOneLayer(

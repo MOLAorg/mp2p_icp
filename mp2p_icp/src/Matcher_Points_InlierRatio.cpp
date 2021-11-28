@@ -93,6 +93,7 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
         if (!allowMatchAlreadyMatchedPoints_ &&
             ms.localPairedBitField.point_layers.at(localName).at(localIdx))
             continue;  // skip, already paired.
+        MRPT_TODO("Refactor so global unique-pair is the closest one!");
 
         // For speed-up:
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],

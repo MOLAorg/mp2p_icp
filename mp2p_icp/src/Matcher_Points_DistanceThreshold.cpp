@@ -98,6 +98,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
             ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
             return;  // skip, global point already paired.
+        MRPT_TODO("Refactor so global unique-pair is the closest one!");
 
         // Save new correspondence:
         auto& p = out.paired_pt2pt.emplace_back();
