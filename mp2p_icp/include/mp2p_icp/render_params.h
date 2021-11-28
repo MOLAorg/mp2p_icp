@@ -126,6 +126,8 @@ struct render_params_pairings_pt2pt_t
     render_params_pairings_pt2pt_t() = default;
 
     bool visible = true;
+
+    mrpt::img::TColor color{0x80, 0x80, 0x80, 0xa0};
 };
 
 struct render_params_pairings_pt2pl_t
@@ -133,6 +135,10 @@ struct render_params_pairings_pt2pl_t
     render_params_pairings_pt2pl_t() = default;
 
     bool visible = true;
+
+    mrpt::img::TColor segmentColor{0x00, 0xff, 0x00, 0xa0};
+    mrpt::img::TColor planePatchColor{0x00, 0xff, 0x00, 0x80};
+    double            planePatchSize = 0.2;
 };
 
 /** Used in Pairings::get_visualization() */

@@ -157,15 +157,15 @@ struct Pairings
 
     /** Used inside get_visualization(), renders pt-to-pt pairings only. */
     virtual void get_visualization_pt2pt(
-        mrpt::opengl::CSetOfObjects&    o,
-        const mrpt::poses::CPose3D&     localWrtGlobal,
-        const pairings_render_params_t& p) const;
+        mrpt::opengl::CSetOfObjects&          o,
+        const mrpt::poses::CPose3D&           localWrtGlobal,
+        const render_params_pairings_pt2pt_t& p) const;
 
     /** Used inside get_visualization(), renders pt-to-ln pairings only. */
     virtual void get_visualization_pt2ln(
-        mrpt::opengl::CSetOfObjects&    o,
-        const mrpt::poses::CPose3D&     localWrtGlobal,
-        const pairings_render_params_t& p) const;
+        mrpt::opengl::CSetOfObjects&          o,
+        const mrpt::poses::CPose3D&           localWrtGlobal,
+        const render_params_pairings_pt2pl_t& p) const;
 
     /** @} */
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::Pairings)

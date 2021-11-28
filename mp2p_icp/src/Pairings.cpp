@@ -13,6 +13,7 @@
 #include <mp2p_icp/Pairings.h>
 #include <mrpt/opengl/CSetOfLines.h>
 #include <mrpt/opengl/CSetOfObjects.h>
+#include <mrpt/opengl/CTexturedPlane.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/stl_serialization.h>
 
@@ -172,8 +173,8 @@ auto Pairings::get_visualization(
     MRPT_START
     auto o = mrpt::opengl::CSetOfObjects::Create();
 
-    get_visualization_pt2pt(*o, localWrtGlobal, p);
-    get_visualization_pt2ln(*o, localWrtGlobal, p);
+    get_visualization_pt2pt(*o, localWrtGlobal, p.pt2pt);
+    get_visualization_pt2ln(*o, localWrtGlobal, p.pt2pl);
 
     return o;
     MRPT_END
@@ -181,12 +182,12 @@ auto Pairings::get_visualization(
 
 void Pairings::get_visualization_pt2pt(
     mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
-    const pairings_render_params_t& p) const
+    const render_params_pairings_pt2pt_t& p) const
 {
-    if (!p.pt2pt.visible) return;
+    if (!p.visible) return;
 
     auto lns = mrpt::opengl::CSetOfLines::Create();
-    lns->setColor_u8(0x80, 0x80, 0x80, 0xa0);
+    lns->setColor_u8(p.color);
 
     // this: global, other: local
     for (const auto& pair : paired_pt2pt)
@@ -205,11 +206,38 @@ void Pairings::get_visualization_pt2pt(
 
 void Pairings::get_visualization_pt2ln(
     mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
-    const pairings_render_params_t& p) const
+    const render_params_pairings_pt2pl_t& p) const
 {
-    if (!p.pt2pl.visible) return;
+    if (!p.visible) return;
 
-    // TODO:
+    auto lns = mrpt::opengl::CSetOfLines::Create();
+    lns->setColor_u8(p.segmentColor);
+
+    const double L = 0.5 * p.planePatchSize;
+
+    // this: global, other: local
+    for (const auto& pair : paired_pt2pl)
+    {
+        const auto globalPlanePose = mrpt::poses::CPose3D(
+            pair.pl_this.plane.getAsPose3DForcingOrigin(pair.pl_this.centroid));
+
+        const auto ptLocal   = pair.pt_other;
+        const auto ptLocalTf = localWrtGlobal.composePoint(ptLocal);
+
+        // line segment:
+        lns->appendLine(ptLocalTf, globalPlanePose.translation());
+
+        // plane patch:
+        auto glPlane = mrpt::opengl::CTexturedPlane::Create();
+        glPlane->setPlaneCorners(-L, L, -L, L);
+        glPlane->setColor_u8(p.planePatchColor);
+
+        glPlane->setPose(globalPlanePose);
+
+        o.insert(glPlane);
+    }
+
+    o.insert(lns);
 }
 
 namespace mrpt::serialization

@@ -70,11 +70,19 @@ nanogui::CheckBox* cbViewOrtho            = nullptr;
 nanogui::CheckBox* cbViewFinalPairings    = nullptr;
 nanogui::CheckBox* cbViewPairingEvolution = nullptr;
 
+nanogui::CheckBox* cbViewPairings_pt2pt = nullptr;
+nanogui::CheckBox* cbViewPairings_pt2pl = nullptr;
+
 nanogui::TextBox *tbLogPose = nullptr, *tbInitialGuess = nullptr,
                  *tbInit2Final = nullptr, *tbCovariance = nullptr,
-                 *tbConditionNumber = nullptr;
+                 *tbConditionNumber = nullptr, *tbPairings = nullptr;
 
-nanogui::Slider* slPointSize = nullptr;
+nanogui::Slider* slPairingsPl2PlSize   = nullptr;
+nanogui::Slider* slPointSize           = nullptr;
+nanogui::Slider* slMidDepthField       = nullptr;
+nanogui::Slider* slThicknessDepthField = nullptr;
+nanogui::Label * lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
+               *lbDepthFieldThickness = nullptr;
 
 nanogui::Slider* slGTPose[6] = {nullptr, nullptr, nullptr,
                                 nullptr, nullptr, nullptr};
@@ -374,20 +382,46 @@ static void main_show_gui()
         }
 
         // tab4: pairings:
+        tbPairings = tab4->add<nanogui::TextBox>();
+        tbPairings->setFontSize(16);
+        tbPairings->setEditable(false);
+
         cbViewFinalPairings =
             tab4->add<nanogui::CheckBox>("View final pairings");
         cbViewPairingEvolution =
             tab4->add<nanogui::CheckBox>("View pairing evolution");
 
         cbViewFinalPairings->setCallback([](bool checked) {
-            cbViewPairingEvolution->setChecked(!checked);
+            if (checked) cbViewPairingEvolution->setChecked(false);
             rebuild_3d_view();
         });
 
         cbViewPairingEvolution->setCallback([](bool checked) {
-            cbViewFinalPairings->setChecked(!checked);
+            if (checked) cbViewFinalPairings->setChecked(false);
             rebuild_3d_view();
         });
+
+        cbViewPairings_pt2pt =
+            tab4->add<nanogui::CheckBox>("View: point-to-point");
+        cbViewPairings_pt2pt->setChecked(true);
+        cbViewPairings_pt2pt->setCallback([](bool) { rebuild_3d_view(); });
+
+        {
+            auto pn = tab4->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
+
+            cbViewPairings_pt2pl =
+                pn->add<nanogui::CheckBox>("View: point-to-plane");
+            cbViewPairings_pt2pl->setChecked(true);
+            cbViewPairings_pt2pl->setCallback([](bool) { rebuild_3d_view(); });
+
+            pn->add<nanogui::Label>("Plane size:");
+            slPairingsPl2PlSize = pn->add<nanogui::Slider>();
+            slPairingsPl2PlSize->setRange({-2.0f, 2.0f});
+            slPairingsPl2PlSize->setValue(-1.0f);
+            slPairingsPl2PlSize->setCallback([&](float) { rebuild_3d_view(); });
+        }
 
         // tab5: view
         {
@@ -402,6 +436,20 @@ static void main_show_gui()
             slPointSize->setValue(2.0f);
             slPointSize->setCallback([&](float) { rebuild_3d_view(); });
         }
+
+        lbDepthFieldMid = tab5->add<nanogui::Label>("Center depth clip plane:");
+        slMidDepthField = tab5->add<nanogui::Slider>();
+        slMidDepthField->setRange({-2.0, 3.0});
+        slMidDepthField->setValue(1.0f);
+        slMidDepthField->setCallback([&](float) { rebuild_3d_view(); });
+
+        lbDepthFieldThickness =
+            tab5->add<nanogui::Label>("Max-Min depth thickness:");
+        slThicknessDepthField = tab5->add<nanogui::Slider>();
+        slThicknessDepthField->setRange({-2.0, 3.0});
+        slThicknessDepthField->setValue(3.0);
+        slThicknessDepthField->setCallback([&](float) { rebuild_3d_view(); });
+        lbDepthFieldValues = tab5->add<nanogui::Label>(" ");
 
         cbViewOrtho = tab5->add<nanogui::CheckBox>("Orthogonal view");
         cbViewOrtho->setCallback([&](bool) { rebuild_3d_view(); });
@@ -634,6 +682,25 @@ void rebuild_3d_view()
     {
         std::lock_guard<std::mutex> lck(win->background_scene_mtx);
         win->camera().setCameraProjective(!cbViewOrtho->checked());
+
+        // clip planes:
+        const auto depthFieldMid = std::pow(10.0, slMidDepthField->value());
+        const auto depthFieldThickness =
+            std::pow(10.0, slThicknessDepthField->value());
+
+        const auto clipNear =
+            std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
+        const auto clipFar = depthFieldMid + 0.5 * depthFieldThickness;
+
+        lbDepthFieldMid->setCaption(
+            mrpt::format("Center depth clip plane: %f", depthFieldMid));
+        lbDepthFieldThickness->setCaption(
+            mrpt::format("Max-Min depth thickness:%f", depthFieldThickness));
+        lbDepthFieldValues->setCaption(mrpt::format(
+            "Depth field: near plane=%f far plane=%f", clipNear, clipFar));
+
+        win->background_scene->getViewport()->setViewportClipDistances(
+            clipNear, clipFar);
     }
 
     // Pairings ------------------
@@ -657,7 +724,18 @@ void rebuild_3d_view()
     {
         mp2p_icp::pairings_render_params_t rp;
 
+        rp.pt2pt.visible        = cbViewPairings_pt2pt->checked();
+        rp.pt2pl.visible        = cbViewPairings_pt2pl->checked();
+        rp.pt2pl.planePatchSize = std::pow(10.0, slPairingsPl2PlSize->value());
+
         glVizICP->insert(pairsToViz->get_visualization(relativePose.mean, rp));
+
+        tbPairings->setValue(pairsToViz->contents_summary());
+    }
+    else
+    {
+        tbPairings->setValue(
+            "None selected (mark one of the checkboxes below)");
     }
 }
 
