@@ -83,7 +83,7 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
         const TPoints& pA, TPoints& pB,
         mrpt::tfest::TMatchingPairList& pointsPairs, const TPlanes& plA,
         TPlanes& plB, std::vector<mp2p_icp::matched_plane_t>& planePairs,
-        mp2p_icp::TMatchedPointPlaneList& pt2plPairs,
+        mp2p_icp::MatchedPointPlaneList& pt2plPairs,
         const double xyz_noise_std, const double n_err_std /* normals noise*/,
         const double outliers_ratio)
 {
@@ -245,14 +245,14 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
 
         // Add plane-plane pairing:
         mp2p_icp::matched_plane_t pair;
-        pair.p_this  = plA[i];
-        pair.p_other = plB[i];
+        pair.p_global  = plA[i];
+        pair.p_local = plB[i];
         planePairs.push_back(pair);
 
         // Add point-plane pairing:
         mp2p_icp::point_plane_pair_t pt2pl;
-        pt2pl.pl_this  = plA[i];
-        pt2pl.pt_other = mrpt::math::TPoint3Df(
+        pt2pl.pl_global  = plA[i];
+        pt2pl.pt_local = mrpt::math::TPoint3Df(
             plB[i].centroid.x, plB[i].centroid.y, plB[i].centroid.z);
 
         pt2plPairs.push_back(pt2pl);
@@ -306,8 +306,8 @@ bool test_icp_algos(
         TPlanes plB;
 
         mrpt::tfest::TMatchingPairList   pointPairs;
-        mp2p_icp::TMatchedPlaneList      planePairs;
-        mp2p_icp::TMatchedPointPlaneList pt2plPairs;
+        mp2p_icp::MatchedPlaneList      planePairs;
+        mp2p_icp::MatchedPointPlaneList pt2plPairs;
 
         const auto [this_gt_pose, this_outliers] = transform_points_planes(
             pA, pB, pointPairs, plA, plB, planePairs, pt2plPairs, xyz_noise_std,

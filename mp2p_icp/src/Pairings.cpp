@@ -174,7 +174,8 @@ auto Pairings::get_visualization(
     auto o = mrpt::opengl::CSetOfObjects::Create();
 
     get_visualization_pt2pt(*o, localWrtGlobal, p.pt2pt);
-    get_visualization_pt2ln(*o, localWrtGlobal, p.pt2pl);
+    get_visualization_pt2pl(*o, localWrtGlobal, p.pt2pl);
+    get_visualization_pt2ln(*o, localWrtGlobal, p.pt2ln);
 
     return o;
     MRPT_END
@@ -204,7 +205,7 @@ void Pairings::get_visualization_pt2pt(
     o.insert(lns);
 }
 
-void Pairings::get_visualization_pt2ln(
+void Pairings::get_visualization_pt2pl(
     mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
     const render_params_pairings_pt2pl_t& p) const
 {
@@ -215,13 +216,13 @@ void Pairings::get_visualization_pt2ln(
 
     const double L = 0.5 * p.planePatchSize;
 
-    // this: global, other: local
     for (const auto& pair : paired_pt2pl)
     {
-        const auto globalPlanePose = mrpt::poses::CPose3D(
-            pair.pl_this.plane.getAsPose3DForcingOrigin(pair.pl_this.centroid));
+        const auto globalPlanePose =
+            mrpt::poses::CPose3D(pair.pl_global.plane.getAsPose3DForcingOrigin(
+                pair.pl_global.centroid));
 
-        const auto ptLocal   = pair.pt_other;
+        const auto ptLocal   = pair.pt_local;
         const auto ptLocalTf = localWrtGlobal.composePoint(ptLocal);
 
         // line segment:
@@ -240,13 +241,47 @@ void Pairings::get_visualization_pt2ln(
     o.insert(lns);
 }
 
+void Pairings::get_visualization_pt2ln(
+    mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
+    const render_params_pairings_pt2ln_t& p) const
+{
+    if (!p.visible) return;
+
+    auto pairingLines = mrpt::opengl::CSetOfLines::Create();
+    pairingLines->setColor_u8(p.segmentColor);
+
+    auto globalLines = mrpt::opengl::CSetOfLines::Create();
+    globalLines->setColor_u8(p.lineColor);
+
+    const double L = 0.5 * p.lineLength;
+
+    for (const auto& pair : paired_pt2ln)
+    {
+        const auto& globalLine = pair.ln_global;
+
+        const auto ptLocal   = pair.pt_local;
+        const auto ptLocalTf = localWrtGlobal.composePoint(ptLocal);
+
+        // line segment:
+        pairingLines->appendLine(ptLocalTf, globalLine.pBase);
+
+        // line segment:
+        globalLines->appendLine(
+            globalLine.pBase - globalLine.director * L,
+            globalLine.pBase + globalLine.director * L);
+    }
+
+    o.insert(pairingLines);
+    o.insert(globalLines);
+}
+
 namespace mrpt::serialization
 {
 CArchive& operator<<(CArchive& out, const mp2p_icp::point_line_pair_t& obj)
 {
     out.WriteAs<uint8_t>(0);
 
-    out << obj.ln_this << obj.pt_other;
+    out << obj.ln_global << obj.pt_local;
     return out;
 }
 
@@ -255,14 +290,14 @@ CArchive& operator>>(CArchive& in, mp2p_icp::point_line_pair_t& obj)
     // const auto ver =
     in.ReadAs<uint8_t>();
 
-    in >> obj.ln_this >> obj.pt_other;
+    in >> obj.ln_global >> obj.pt_local;
     return in;
 }
 
 CArchive& operator<<(CArchive& out, const mp2p_icp::point_plane_pair_t& obj)
 {
     out.WriteAs<uint8_t>(0);
-    out << obj.pl_this.centroid << obj.pl_this.plane << obj.pt_other;
+    out << obj.pl_global.centroid << obj.pl_global.plane << obj.pt_local;
     return out;
 }
 
@@ -270,14 +305,14 @@ CArchive& operator>>(CArchive& in, mp2p_icp::point_plane_pair_t& obj)
 {
     in.ReadAs<uint8_t>();
 
-    in >> obj.pl_this.centroid >> obj.pl_this.plane >> obj.pt_other;
+    in >> obj.pl_global.centroid >> obj.pl_global.plane >> obj.pt_local;
     return in;
 }
 
 CArchive& operator<<(CArchive& out, const mp2p_icp::matched_line_t& obj)
 {
     out.WriteAs<uint8_t>(0);
-    out << obj.ln_other << obj.ln_this;
+    out << obj.ln_local << obj.ln_global;
     return out;
 }
 
@@ -285,23 +320,23 @@ CArchive& operator>>(CArchive& in, mp2p_icp::matched_line_t& obj)
 {
     in.ReadAs<uint8_t>();
 
-    in >> obj.ln_other >> obj.ln_this;
+    in >> obj.ln_local >> obj.ln_global;
     return in;
 }
 
 CArchive& operator<<(CArchive& out, const mp2p_icp::matched_plane_t& obj)
 {
     out.WriteAs<uint8_t>(0);
-    out << obj.p_other.centroid << obj.p_other.plane;
-    out << obj.p_this.centroid << obj.p_this.plane;
+    out << obj.p_local.centroid << obj.p_local.plane;
+    out << obj.p_global.centroid << obj.p_global.plane;
     return out;
 }
 CArchive& operator>>(CArchive& in, mp2p_icp::matched_plane_t& obj)
 {
     in.ReadAs<uint8_t>();
 
-    in >> obj.p_other.centroid >> obj.p_other.plane;
-    in >> obj.p_this.centroid >> obj.p_this.plane;
+    in >> obj.p_local.centroid >> obj.p_local.plane;
+    in >> obj.p_global.centroid >> obj.p_global.plane;
     return in;
 }
 

@@ -72,12 +72,14 @@ nanogui::CheckBox* cbViewPairingEvolution = nullptr;
 
 nanogui::CheckBox* cbViewPairings_pt2pt = nullptr;
 nanogui::CheckBox* cbViewPairings_pt2pl = nullptr;
+nanogui::CheckBox* cbViewPairings_pt2ln = nullptr;
 
 nanogui::TextBox *tbLogPose = nullptr, *tbInitialGuess = nullptr,
                  *tbInit2Final = nullptr, *tbCovariance = nullptr,
                  *tbConditionNumber = nullptr, *tbPairings = nullptr;
 
 nanogui::Slider* slPairingsPl2PlSize   = nullptr;
+nanogui::Slider* slPairingsPl2LnSize   = nullptr;
 nanogui::Slider* slPointSize           = nullptr;
 nanogui::Slider* slMidDepthField       = nullptr;
 nanogui::Slider* slThicknessDepthField = nullptr;
@@ -423,6 +425,23 @@ static void main_show_gui()
             slPairingsPl2PlSize->setCallback([&](float) { rebuild_3d_view(); });
         }
 
+        {
+            auto pn = tab4->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
+
+            cbViewPairings_pt2ln =
+                pn->add<nanogui::CheckBox>("View: point-to-line");
+            cbViewPairings_pt2ln->setChecked(true);
+            cbViewPairings_pt2ln->setCallback([](bool) { rebuild_3d_view(); });
+
+            pn->add<nanogui::Label>("Line length:");
+            slPairingsPl2LnSize = pn->add<nanogui::Slider>();
+            slPairingsPl2LnSize->setRange({-2.0f, 2.0f});
+            slPairingsPl2LnSize->setValue(-1.0f);
+            slPairingsPl2LnSize->setCallback([&](float) { rebuild_3d_view(); });
+        }
+
         // tab5: view
         {
             auto pn = tab5->add<nanogui::Widget>();
@@ -727,6 +746,9 @@ void rebuild_3d_view()
         rp.pt2pt.visible        = cbViewPairings_pt2pt->checked();
         rp.pt2pl.visible        = cbViewPairings_pt2pl->checked();
         rp.pt2pl.planePatchSize = std::pow(10.0, slPairingsPl2PlSize->value());
+
+        rp.pt2ln.visible    = cbViewPairings_pt2ln->checked();
+        rp.pt2ln.lineLength = std::pow(10.0, slPairingsPl2LnSize->value());
 
         glVizICP->insert(pairsToViz->get_visualization(relativePose.mean, rp));
 

@@ -66,13 +66,13 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
 {
     MRPT_START
     mrpt::math::CVectorFixedDouble<1> error;
-    const auto&                       p      = pairing.pt_other;
-    const auto&                       ln_aux = pairing.ln_this;
+    const auto&                       p      = pairing.pt_local;
+    const auto&                       ln_aux = pairing.ln_global;
     const mrpt::math::TPoint3D        l      = TPoint3D(p.x, p.y, p.z);
     mrpt::math::TPoint3D              g;
     relativePose.composePoint(l, g);
 
-    error[0] = mrpt::square(pairing.ln_this.distance(g));
+    error[0] = mrpt::square(pairing.ln_global.distance(g));
 
     if (jacobian)
     {
@@ -120,8 +120,8 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
 {
     MRPT_START
     mrpt::math::CVectorFixedDouble<1> error;
-    const auto&                       p      = pairing.pt_other;
-    const auto&                       pl_aux = pairing.pl_this.plane;
+    const auto&                       p      = pairing.pt_local;
+    const auto&                       pl_aux = pairing.pl_global.plane;
     const mrpt::math::TPoint3D        l      = TPoint3D(p.x, p.y, p.z);
     mrpt::math::TPoint3D              g;
     relativePose.composePoint(l, g);
@@ -161,10 +161,10 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     mrpt::math::TLine3D               ln_aux;
     mrpt::math::TPoint3D              g;
 
-    const auto& p0 = pairing.ln_other.pBase;
-    const auto& u0 = pairing.ln_other.director;
-    const auto& p1 = pairing.ln_this.pBase;
-    const auto& u1 = pairing.ln_this.director;
+    const auto& p0 = pairing.ln_local.pBase;
+    const auto& u0 = pairing.ln_local.director;
+    const auto& p1 = pairing.ln_global.pBase;
+    const auto& u1 = pairing.ln_global.director;
 
     relativePose.composePoint(p0, g);
     ln_aux.pBase = mrpt::math::TPoint3D(g);
@@ -181,7 +181,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     ln_aux.director                       = {U_T[0], U_T[1], U_T[2]};
 
     // Angle formed between the lines
-    double alfa = getAngle(pairing.ln_this, ln_aux) * 180 / (2 * 3.14159265);
+    double alfa = getAngle(pairing.ln_global, ln_aux) * 180 / (2 * 3.14159265);
     /*
         std::cout << "\nLine 1:\n"
                   <<  pairing.ln_this << "\nLine 2:\n"
@@ -205,7 +205,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     if (abs(alfa) < tolerance)
     {  // Parallel
         // Error: Ec.20
-        error[0] = mrpt::square(pairing.ln_this.distance(ln_aux.pBase));
+        error[0] = mrpt::square(pairing.ln_global.distance(ln_aux.pBase));
         if (jacobian)
         {
             // Module of vector director of line
@@ -329,8 +329,8 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_plane2plane(
     MRPT_START
     mrpt::math::CVectorFixedDouble<3> error;
 
-    const auto nl = pairing.p_other.plane.getNormalVector();
-    const auto ng = pairing.p_this.plane.getNormalVector();
+    const auto nl = pairing.p_local.plane.getNormalVector();
+    const auto ng = pairing.p_global.plane.getNormalVector();
 
     const auto p_oplus_nl = relativePose.rotateVector(nl);
 

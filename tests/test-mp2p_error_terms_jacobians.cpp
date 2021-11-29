@@ -119,16 +119,16 @@ void test_Jacob_error_point2line()
 
     mp2p_icp::point_line_pair_t pair;
 
-    pair.ln_this.pBase.x = normalf(20);
-    pair.ln_this.pBase.y = normalf(20);
-    pair.ln_this.pBase.z = normalf(20);
-    pair.ln_this.director[0] = normald(20);
-    pair.ln_this.director[1] = normald(20);
-    pair.ln_this.director[2] = normald(20);
+    pair.ln_global.pBase.x = normalf(20);
+    pair.ln_global.pBase.y = normalf(20);
+    pair.ln_global.pBase.z = normalf(20);
+    pair.ln_global.director[0] = normald(20);
+    pair.ln_global.director[1] = normald(20);
+    pair.ln_global.director[2] = normald(20);
 
-    pair.pt_other.x = normalf(10);
-    pair.pt_other.y = normalf(10);
-    pair.pt_other.z = normalf(10);
+    pair.pt_local.x = normalf(10);
+    pair.pt_local.y = normalf(10);
+    pair.pt_local.z = normalf(10);
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 1, 12> J1;
@@ -192,16 +192,16 @@ void test_Jacob_error_point2plane()
 
     mp2p_icp::point_plane_pair_t pair;
 
-    pair.pl_this.centroid.x = normalf(20);
-    pair.pl_this.centroid.y = normalf(20);
-    pair.pl_this.centroid.z = normalf(20);
-    pair.pl_this.plane.coefs[0] = normald(20);
-    pair.pl_this.plane.coefs[1] = normald(20);
-    pair.pl_this.plane.coefs[2] = normald(20);
+    pair.pl_global.centroid.x = normalf(20);
+    pair.pl_global.centroid.y = normalf(20);
+    pair.pl_global.centroid.z = normalf(20);
+    pair.pl_global.plane.coefs[0] = normald(20);
+    pair.pl_global.plane.coefs[1] = normald(20);
+    pair.pl_global.plane.coefs[2] = normald(20);
 
-    pair.pt_other.x = normalf(10);
-    pair.pt_other.y = normalf(10);
-    pair.pt_other.z = normalf(10);
+    pair.pt_local.x = normalf(10);
+    pair.pt_local.y = normalf(10);
+    pair.pt_local.z = normalf(10);
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 1, 12> J1;
@@ -265,19 +265,19 @@ void test_Jacob_error_line2line()
 
     mp2p_icp::matched_line_t pair;
 
-    pair.ln_this.pBase.x = normalf(10);
-    pair.ln_this.pBase.y = normalf(10);
-    pair.ln_this.pBase.z = normalf(10);
-    pair.ln_this.director[0] = normald(10);
-    pair.ln_this.director[1] = normald(10);
-    pair.ln_this.director[2] = normald(10);
+    pair.ln_global.pBase.x = normalf(10);
+    pair.ln_global.pBase.y = normalf(10);
+    pair.ln_global.pBase.z = normalf(10);
+    pair.ln_global.director[0] = normald(10);
+    pair.ln_global.director[1] = normald(10);
+    pair.ln_global.director[2] = normald(10);
 
-    pair.ln_other.pBase.x = normalf(10);
-    pair.ln_other.pBase.y = normalf(10);
-    pair.ln_other.pBase.z = normalf(10);
-    pair.ln_other.director[0] = normald(10);
-    pair.ln_other.director[1] = normald(10);
-    pair.ln_other.director[2] = normald(10);
+    pair.ln_local.pBase.x = normalf(10);
+    pair.ln_local.pBase.y = normalf(10);
+    pair.ln_local.pBase.z = normalf(10);
+    pair.ln_local.director[0] = normald(10);
+    pair.ln_local.director[1] = normald(10);
+    pair.ln_local.director[2] = normald(10);
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 4, 12> J1;
@@ -341,19 +341,19 @@ void test_Jacob_error_plane2plane()
 
     mp2p_icp::matched_plane_t pair;
 
-    pair.p_this.centroid.x = normalf(20);
-    pair.p_this.centroid.y = normalf(20);
-    pair.p_this.centroid.z = normalf(20);
-    pair.p_this.plane.coefs[0] = normald(20);
-    pair.p_this.plane.coefs[1] = normald(20);
-    pair.p_this.plane.coefs[2] = normald(20);
+    pair.p_global.centroid.x = normalf(20);
+    pair.p_global.centroid.y = normalf(20);
+    pair.p_global.centroid.z = normalf(20);
+    pair.p_global.plane.coefs[0] = normald(20);
+    pair.p_global.plane.coefs[1] = normald(20);
+    pair.p_global.plane.coefs[2] = normald(20);
 
-    pair.p_other.centroid.x = normalf(10);
-    pair.p_other.centroid.y = normalf(10);
-    pair.p_other.centroid.z = normalf(10);
-    pair.p_other.plane.coefs[0] = normald(10);
-    pair.p_other.plane.coefs[1] = normald(10);
-    pair.p_other.plane.coefs[2] = normald(10);
+    pair.p_local.centroid.x = normalf(10);
+    pair.p_local.centroid.y = normalf(10);
+    pair.p_local.centroid.z = normalf(10);
+    pair.p_local.plane.coefs[0] = normald(10);
+    pair.p_local.plane.coefs[1] = normald(10);
+    pair.p_local.plane.coefs[2] = normald(10);
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 3, 12> J1;
@@ -416,19 +416,19 @@ void test_error_line2line()
 
     mp2p_icp::matched_line_t pair;
 
-    pair.ln_this.pBase.x = 0;
-    pair.ln_this.pBase.y = 1;
-    pair.ln_this.pBase.z = -4;
-    pair.ln_this.director[0] =  0.4364;
-    pair.ln_this.director[1] =  0.8729;
-    pair.ln_this.director[2] = -0.2182;
+    pair.ln_global.pBase.x = 0;
+    pair.ln_global.pBase.y = 1;
+    pair.ln_global.pBase.z = -4;
+    pair.ln_global.director[0] =  0.4364;
+    pair.ln_global.director[1] =  0.8729;
+    pair.ln_global.director[2] = -0.2182;
 
-    pair.ln_other.pBase.x = 2;
-    pair.ln_other.pBase.y = 1;
-    pair.ln_other.pBase.z = -0.5;
-    pair.ln_other.director[0] = 0.2357;
-    pair.ln_other.director[1] = 0.2357;
-    pair.ln_other.director[2] = 0.9428;
+    pair.ln_local.pBase.x = 2;
+    pair.ln_local.pBase.y = 1;
+    pair.ln_local.pBase.z = -0.5;
+    pair.ln_local.director[0] = 0.2357;
+    pair.ln_local.director[1] = 0.2357;
+    pair.ln_local.director[2] = 0.9428;
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 4, 12> J1;
@@ -443,8 +443,8 @@ void test_error_line2line()
 
     std::cout << "\nResultado: \n"
               << error <<  "\nRecta A:\n"
-              <<  pair.ln_this << "\nRecta B:\n"
-              << pair.ln_other << "\n";
+              <<  pair.ln_global << "\nRecta B:\n"
+              << pair.ln_local << "\n";
 
     // (12x6 Jacobian)
     const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);

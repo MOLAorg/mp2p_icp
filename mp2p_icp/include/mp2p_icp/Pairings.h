@@ -24,69 +24,65 @@ namespace mp2p_icp
 /** \addtogroup  mp2p_icp_grp
  * @{ */
 
+/** Plane-to-plane pair */
 struct matched_plane_t
 {
-    /** \note "this"=global, "other"=local, while finding the transformation
-     * local wrt global
-     */
-    plane_patch_t p_this, p_other;
+    plane_patch_t p_global, p_local;
 
     matched_plane_t() = default;
     matched_plane_t(const plane_patch_t& pl_this, const plane_patch_t& pl_other)
-        : p_this(pl_this), p_other(pl_other)
+        : p_global(pl_this), p_local(pl_other)
     {
     }
 
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::matched_plane_t)
 };
-using TMatchedPlaneList = std::vector<matched_plane_t>;
+using MatchedPlaneList = std::vector<matched_plane_t>;
 
+/** Line-to-line pair */
 struct matched_line_t
 {
-    /// \note "this"=global, "other"=local, while finding the transformation
-    /// local wrt global
-    mrpt::math::TLine3D ln_this, ln_other;
+    mrpt::math::TLine3D ln_global, ln_local;
 
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::matched_line_t)
 };
-using TMatchedLineList = std::vector<matched_line_t>;
+using MatchedLineList = std::vector<matched_line_t>;
 
+/** Point-to-plane pair */
 struct point_plane_pair_t
 {
-    /// \note "this"=global, "other"=local, while finding the transformation
-    /// local wrt global
-    plane_patch_t         pl_this;
-    mrpt::math::TPoint3Df pt_other;
+    plane_patch_t         pl_global;
+    mrpt::math::TPoint3Df pt_local;
 
     point_plane_pair_t() = default;
     point_plane_pair_t(
-        const plane_patch_t& p_this, const mrpt::math::TPoint3Df& p_other)
-        : pl_this(p_this), pt_other(p_other)
+        const plane_patch_t& p_global, const mrpt::math::TPoint3Df& p_local)
+        : pl_global(p_global), pt_local(p_local)
     {
     }
 
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::point_plane_pair_t)
 };
-using TMatchedPointPlaneList = std::vector<point_plane_pair_t>;
+using MatchedPointPlaneList = std::vector<point_plane_pair_t>;
 
+/** Point-to-line pair */
 struct point_line_pair_t
 {
-    /// \note "this"=global, "other"=local, while finding the transformation
-    /// local wrt global
-    mrpt::math::TLine3D  ln_this;
-    mrpt::math::TPoint3D pt_other;
+    mrpt::math::TLine3D  ln_global;
+    mrpt::math::TPoint3D pt_local;
 
     point_line_pair_t() = default;
     point_line_pair_t(
-        const mrpt::math::TLine3D& l_this, const mrpt::math::TPoint3D& p_other)
-        : ln_this(l_this), pt_other(p_other)
+        const mrpt::math::TLine3D&  l_global,
+        const mrpt::math::TPoint3D& p_local)
+        : ln_global(l_global), pt_local(p_local)
     {
     }
 
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::point_line_pair_t)
 };
 
-using TMatchedPointLineList = std::vector<point_line_pair_t>;
+using MatchedPointLineList = std::vector<point_line_pair_t>;
 
 /** Common pairing input data for OLAE, Horn's, and other solvers.
  * Planes and lines must have unit director and normal vectors, respectively.
@@ -103,10 +99,10 @@ struct Pairings
     /// We reuse MRPT struct to allow using their matching functions.
     /// \note on MRPT naming convention: "this"=global; "other"=local.
     mrpt::tfest::TMatchingPairList paired_pt2pt;
-    TMatchedPointLineList          paired_pt2ln;
-    TMatchedPointPlaneList         paired_pt2pl;
-    TMatchedLineList               paired_ln2ln;
-    TMatchedPlaneList              paired_pl2pl;
+    MatchedPointLineList           paired_pt2ln;
+    MatchedPointPlaneList          paired_pt2pl;
+    MatchedLineList                paired_ln2ln;
+    MatchedPlaneList               paired_pl2pl;
 
     /** *Individual* weights for paired_pt2pt: each entry specifies how many
      * points have the given (mapped second value) weight, in the same order as
@@ -161,11 +157,17 @@ struct Pairings
         const mrpt::poses::CPose3D&           localWrtGlobal,
         const render_params_pairings_pt2pt_t& p) const;
 
+    /** Used inside get_visualization(), renders pt-to-pl pairings only. */
+    virtual void get_visualization_pt2pl(
+        mrpt::opengl::CSetOfObjects&          o,
+        const mrpt::poses::CPose3D&           localWrtGlobal,
+        const render_params_pairings_pt2pl_t& p) const;
+
     /** Used inside get_visualization(), renders pt-to-ln pairings only. */
     virtual void get_visualization_pt2ln(
         mrpt::opengl::CSetOfObjects&          o,
         const mrpt::poses::CPose3D&           localWrtGlobal,
-        const render_params_pairings_pt2pl_t& p) const;
+        const render_params_pairings_pt2ln_t& p) const;
 
     /** @} */
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::Pairings)

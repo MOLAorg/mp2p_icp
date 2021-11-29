@@ -166,8 +166,8 @@ void visit_correspondences(
 
             const auto idxLine = i - nPt2Pt;
 
-            bi = in.paired_ln2ln[idxLine].ln_this.getDirectorVector();
-            ri = in.paired_ln2ln[idxLine].ln_other.getDirectorVector();
+            bi = in.paired_ln2ln[idxLine].ln_global.getDirectorVector();
+            ri = in.paired_ln2ln[idxLine].ln_local.getDirectorVector();
 
             ASSERTDEB_LT_(std::abs(bi.norm() - 1.0), 0.01);
             ASSERTDEB_LT_(std::abs(ri.norm() - 1.0), 0.01);
@@ -178,8 +178,8 @@ void visit_correspondences(
             wi = waPlanes;
 
             const auto idxPlane = i - (nPt2Pt + nLn2Ln);
-            bi = in.paired_pl2pl[idxPlane].p_this.plane.getNormalVector();
-            ri = in.paired_pl2pl[idxPlane].p_other.plane.getNormalVector();
+            bi = in.paired_pl2pl[idxPlane].p_global.plane.getNormalVector();
+            ri = in.paired_pl2pl[idxPlane].p_local.plane.getNormalVector();
 
             ASSERTDEB_LT_(std::abs(bi.norm() - 1.0), 0.01);
             ASSERTDEB_LT_(std::abs(ri.norm() - 1.0), 0.01);

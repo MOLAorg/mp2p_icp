@@ -99,19 +99,19 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
                 const auto& p0 = pairs.paired_pt2pl.at(0);
 
-                ASSERT_NEAR_(p0.pt_other.x, 2.0, 1e-3);
-                ASSERT_NEAR_(p0.pt_other.y, 0.0, 1e-3);
-                ASSERT_NEAR_(p0.pt_other.z, 0.0, 1e-3);
+                ASSERT_NEAR_(p0.pt_local.x, 2.0, 1e-3);
+                ASSERT_NEAR_(p0.pt_local.y, 0.0, 1e-3);
+                ASSERT_NEAR_(p0.pt_local.z, 0.0, 1e-3);
 
-                ASSERT_NEAR_(p0.pl_this.centroid.x, 10.0, 0.01);
-                ASSERT_NEAR_(p0.pl_this.centroid.y, 0.0, 0.01);
-                ASSERT_NEAR_(p0.pl_this.centroid.z, 0.0, 0.01);
+                ASSERT_NEAR_(p0.pl_global.centroid.x, 10.0, 0.01);
+                ASSERT_NEAR_(p0.pl_global.centroid.y, 0.0, 0.01);
+                ASSERT_NEAR_(p0.pl_global.centroid.z, 0.0, 0.01);
 
                 // Plane equation: "x=10"  (Ax+By+Cz+D=0)
-                ASSERT_NEAR_(p0.pl_this.plane.coefs[0], 1.0, 1e-3);
-                ASSERT_NEAR_(p0.pl_this.plane.coefs[1], 0.0, 1e-3);
-                ASSERT_NEAR_(p0.pl_this.plane.coefs[2], 0.0, 1e-3);
-                ASSERT_NEAR_(p0.pl_this.plane.coefs[3], -10.0, 1e-3);
+                ASSERT_NEAR_(p0.pl_global.plane.coefs[0], 1.0, 1e-3);
+                ASSERT_NEAR_(p0.pl_global.plane.coefs[1], 0.0, 1e-3);
+                ASSERT_NEAR_(p0.pl_global.plane.coefs[2], 0.0, 1e-3);
+                ASSERT_NEAR_(p0.pl_global.plane.coefs[3], -10.0, 1e-3);
             }
 
             {

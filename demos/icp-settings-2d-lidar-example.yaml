@@ -14,17 +14,29 @@ params:
   #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
 
 solvers:
-#  - class: mp2p_icp::Solver_GaussNewton
-#    params:
-#     maxIterations: 3
-
-  - class: mp2p_icp::Solver_Horn
+  - class: mp2p_icp::Solver_GaussNewton
     params:
-      ~
+     maxIterations: 3
+
+#  - class: mp2p_icp::Solver_Horn
+#    params:
+#      ~
 
 # Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
 # instances to pair geometric entities between pointclouds.
 matchers:
+  - class: mp2p_icp::Matcher_Point2Line
+    params:
+      # Inliers distance threshold [meters][mandatory]
+      distanceThreshold: 0.25
+      # Number of neighbors to look for [mandatory]
+      knn: 5
+      # Minimum number of found points [mandatory]
+      minimumLinePoints: 4
+      # maximum e0/e2 and e1/e2 ratio [mandatory]
+      lineEigenThreshold: 1e-2
+      pointLayerMatches:
+        - {global: "2d_lidar", local: "2d_lidar", weight: 1.0}
   - class: mp2p_icp::Matcher_Points_DistanceThreshold
     params:
       threshold: 0.15

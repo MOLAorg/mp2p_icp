@@ -141,6 +141,17 @@ struct render_params_pairings_pt2pl_t
     double            planePatchSize = 0.2;
 };
 
+struct render_params_pairings_pt2ln_t
+{
+    render_params_pairings_pt2ln_t() = default;
+
+    bool visible = true;
+
+    mrpt::img::TColor segmentColor{0x00, 0xff, 0x00, 0xa0};
+    mrpt::img::TColor lineColor{0x00, 0xff, 0x00, 0x80};
+    double            lineLength = 0.2;
+};
+
 /** Used in Pairings::get_visualization() */
 struct pairings_render_params_t
 {
@@ -148,6 +159,7 @@ struct pairings_render_params_t
 
     render_params_pairings_pt2pt_t pt2pt;
     render_params_pairings_pt2pl_t pt2pl;
+    render_params_pairings_pt2ln_t pt2ln;
 };
 
 /** @} */

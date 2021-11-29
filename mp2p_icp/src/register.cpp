@@ -13,6 +13,7 @@
 #include <mp2p_icp/ICP.h>
 #include <mp2p_icp/ICP_LibPointmatcher.h>
 #include <mp2p_icp/LogRecord.h>
+#include <mp2p_icp/Matcher_Point2Line.h>
 #include <mp2p_icp/Matcher_Point2Plane.h>
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/Matcher_Points_InlierRatio.h>
@@ -43,6 +44,7 @@ MRPT_INITIALIZER(register_mp2p_icp)
     registerClass(CLASS_ID(mp2p_icp::Matcher));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Points_DistanceThreshold));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Points_InlierRatio));
+    registerClass(CLASS_ID(mp2p_icp::Matcher_Point2Line));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Point2Plane));
 
     registerClass(CLASS_ID(mp2p_icp::QualityEvaluator));
