@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp/Matcher_Points_Base.h>
+#include <mrpt/random/random_shuffle.h>
 
 #include <chrono>
 #include <numeric>  // iota
@@ -198,9 +199,9 @@ Matcher_Points_Base::TransformedLocalPointCloud
                 ? localPointsSampleSeed
                 : std::chrono::system_clock::now().time_since_epoch().count();
 
-        MRPT_TODO("Partial shuffle only?");
-        std::shuffle(
-            r.idxs->begin(), r.idxs->end(), std::default_random_engine(seed));
+        mrpt::random::partial_shuffle(
+            r.idxs->begin(), r.idxs->end(), std::default_random_engine(seed),
+            maxLocalPoints);
 
         r.x_locals.resize(maxLocalPoints);
         r.y_locals.resize(maxLocalPoints);

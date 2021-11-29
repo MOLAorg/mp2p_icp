@@ -390,7 +390,8 @@ bool test_icp_algos(
         {
             profiler.enter("se3_l2");
 
-            mp2p_icp::optimal_tf_horn(in, wp, res_horn);
+            bool ok = mp2p_icp::optimal_tf_horn(in, wp, res_horn);
+            ASSERT_(ok);
 
             const auto dt_horn = profiler.leave("se3_l2");
 
@@ -432,7 +433,8 @@ bool test_icp_algos(
             // iteration of the GN while the other methods are one-shot
             // solutions. But GN is good enough even so for small rotations to
             // solve it in just one iteration.
-            mp2p_icp::optimal_tf_gauss_newton(in, res_gn, gnParams);
+            bool ok = mp2p_icp::optimal_tf_gauss_newton(in, res_gn, gnParams);
+            ASSERT_(ok);
 
             const auto dt_gn = profiler.leave("optimal_tf_gauss_newton");
 
