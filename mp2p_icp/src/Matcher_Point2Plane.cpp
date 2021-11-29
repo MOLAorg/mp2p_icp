@@ -61,19 +61,9 @@ void Matcher_Point2Plane::implMatchOneLayer(
         pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
 
     // Try to do matching only if the bounding boxes have some overlap:
-#if MRPT_VERSION >= 0x218
     if (!pcGlobal.boundingBox().intersection({tl.localMin, tl.localMax}))
         return;
-#else
-    mrpt::math::TPoint3Df globalMin, globalMax;
-    pcGlobal.boundingBox(
-        globalMin.x, globalMax.x, globalMin.y, globalMax.y, globalMin.z,
-        globalMax.z);
-    // No need to compute: Is matching = null?
-    if (tl.localMin.x > globalMax.x || tl.localMax.x < globalMin.x ||
-        tl.localMin.y > globalMax.y || tl.localMax.y < globalMin.y)
-        return;
-#endif
+
     // Prepare output: no correspondences initially:
     out.paired_pt2pl.reserve(out.paired_pt2pl.size() + pcLocal.size() / 10);
 

@@ -60,19 +60,8 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
         pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
 
     // Try to do matching only if the bounding boxes have some overlap:
-#if MRPT_VERSION >= 0x218
     if (!pcGlobal.boundingBox().intersection({tl.localMin, tl.localMax}))
         return;
-#else
-    mrpt::math::TPoint3Df globalMin, globalMax;
-    pcGlobal.boundingBox(
-        globalMin.x, globalMax.x, globalMin.y, globalMax.y, globalMin.z,
-        globalMax.z);
-    // No need to compute: Is matching = null?
-    if (tl.localMin.x > globalMax.x || tl.localMax.x < globalMin.x ||
-        tl.localMin.y > globalMax.y || tl.localMax.y < globalMin.y)
-        return;
-#endif
 
     // Loop for each point in local map:
     // --------------------------------------------------
@@ -93,7 +82,6 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
         if (!allowMatchAlreadyMatchedPoints_ &&
             ms.localPairedBitField.point_layers.at(localName).at(localIdx))
             continue;  // skip, already paired.
-        MRPT_TODO("Refactor so global unique-pair is the closest one!");
 
         // For speed-up:
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],
@@ -148,7 +136,7 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
         // Filter out if global alread assigned:
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
             ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
-            return;  // skip, global point already paired.
+            continue;  // skip, global point already paired.
 
         out.paired_pt2pt.push_back(it->second);
 

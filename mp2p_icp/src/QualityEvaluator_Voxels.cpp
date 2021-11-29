@@ -92,7 +92,6 @@ double QualityEvaluator_Voxels::evaluate(
 
         // resize voxel grids?
         MRPT_TODO("Check against current size too, for many layers");
-#if MRPT_VERSION >= 0x218
         {
             const auto bb = ptsG->boundingBox();
             voxelsGlo.resizeGrid(bb.min, bb.max);
@@ -101,18 +100,6 @@ double QualityEvaluator_Voxels::evaluate(
             const auto bb = localTransformed.boundingBox();
             voxelsLoc.resizeGrid(bb.min, bb.max);
         }
-#else
-        {
-            mrpt::math::TPoint3D bbmax, bbmin;
-            ptsG->boundingBox(bbmin, bbmax);
-            voxelsGlo.resizeGrid(bbmin, bbmax);
-        }
-        {
-            mrpt::math::TPoint3D bbmax, bbmin;
-            localTransformed.boundingBox(bbmin, bbmax);
-            voxelsLoc.resizeGrid(bbmin, bbmax);
-        }
-#endif
         // insert:
         voxelsGlo.insertPointCloud({0, 0, 0}, *ptsG);
         voxelsLoc.insertPointCloud(

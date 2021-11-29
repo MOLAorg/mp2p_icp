@@ -61,19 +61,9 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
 
     // Try to do matching only if the bounding boxes have some overlap:
-#if MRPT_VERSION >= 0x218
     if (!pcGlobal.boundingBox().intersection({tl.localMin, tl.localMax}))
         return;
-#else
-    mrpt::math::TPoint3Df globalMin, globalMax;
-    pcGlobal.boundingBox(
-        globalMin.x, globalMax.x, globalMin.y, globalMax.y, globalMin.z,
-        globalMax.z);
-    // No need to compute: Is matching = null?
-    if (tl.localMin.x > globalMax.x || tl.localMax.x < globalMin.x ||
-        tl.localMin.y > globalMax.y || tl.localMax.y < globalMin.y)
-        return;
-#endif
+
     // Prepare output: no correspondences initially:
     out.paired_pt2pt.reserve(out.paired_pt2pt.size() + pcLocal.size());
 
@@ -89,19 +79,23 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     const auto& lys = pcLocal.getPointsBufferRef_y();
     const auto& lzs = pcLocal.getPointsBufferRef_z();
 
-    const auto lambdaAddPair = [this, &out, &lxs, &lys, &lzs, &gxs, &gys, &gzs,
-                                &ms, &localName, &globalName](
+    // In order to find the closest association for each global point, we must
+    // first build this temporary list of *potential* associations, indexed by
+    // global point indices, and sorted by errSqr:
+    std::map<size_t, std::map<float, mrpt::tfest::TMatchingPair>>
+        candidateMatchesForGlobal;
+
+    const auto lambdaAddPair = [this, &candidateMatchesForGlobal, &lxs, &lys,
+                                &lzs, &gxs, &gys, &gzs, &ms, &globalName](
                                    const size_t localIdx,
-                                   const size_t globalIdx,
-                                   const float  tentativeErrSqr) {
+                                   const size_t globalIdx, const float errSqr) {
         // Filter out if global alread assigned:
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
             ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
             return;  // skip, global point already paired.
-        MRPT_TODO("Refactor so global unique-pair is the closest one!");
 
         // Save new correspondence:
-        auto& p = out.paired_pt2pt.emplace_back();
+        auto& p = candidateMatchesForGlobal[globalIdx][errSqr];
 
         p.this_idx = globalIdx;
         p.this_x   = gxs[globalIdx];
@@ -113,11 +107,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         p.other_y   = lys[localIdx];
         p.other_z   = lzs[localIdx];
 
-        p.errorSquareAfterTransformation = tentativeErrSqr;
-
-        // Mark local & global points as already paired:
-        ms.localPairedBitField.point_layers[localName].at(localIdx)    = true;
-        ms.globalPairedBitField.point_layers[globalName].at(globalIdx) = true;
+        p.errorSquareAfterTransformation = errSqr;
     };
 
     // Declared out of the loop to avoid memory reallocations (!)
@@ -168,6 +158,29 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
             }
         }
     }  // For each local point
+
+    // Now, process candidates pairing and store them in `out.paired_pt2pt`:
+    for (const auto& kv : candidateMatchesForGlobal)
+    {
+        const auto globalIdx = kv.first;
+
+        if (!allowMatchAlreadyMatchedGlobalPoints_ &&
+            ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
+            return;  // skip, global point already paired.
+
+        const auto& pairs = kv.second;
+        ASSERT_(!pairs.empty());
+
+        // take the one with the smallest error (std::map sorts them by sqrErr):
+        const auto& bestPair = pairs.begin()->second;
+
+        out.paired_pt2pt.emplace_back(bestPair);
+
+        // Mark local & global points as already paired:
+        const auto localIdx = bestPair.other_idx;
+        ms.localPairedBitField.point_layers[localName].at(localIdx)    = true;
+        ms.globalPairedBitField.point_layers[globalName].at(globalIdx) = true;
+    }
 
     MRPT_END
 }
