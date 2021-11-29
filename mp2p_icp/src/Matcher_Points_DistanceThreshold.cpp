@@ -166,7 +166,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
             ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
-            return;  // skip, global point already paired.
+            continue;  // skip, global point already paired.
 
         const auto& pairs = kv.second;
         ASSERT_(!pairs.empty());
