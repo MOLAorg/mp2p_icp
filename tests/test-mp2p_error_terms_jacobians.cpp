@@ -17,6 +17,7 @@
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/random.h>
+
 #include <Eigen/Dense>
 #include <iostream>  // cerr
 
@@ -39,7 +40,7 @@ static float normalf(const float sigma)
 //  Test: error_point2point
 // ===========================================================================
 
-void test_Jacob_error_point2point()
+static void test_Jacob_error_point2point()
 {
     const CPose3D p = CPose3D(
         // x y z
@@ -108,7 +109,7 @@ void test_Jacob_error_point2point()
 //  Test: error_point2line
 // ===========================================================================
 
-void test_Jacob_error_point2line()
+static void test_Jacob_error_point2line()
 {
     const CPose3D p = CPose3D(
         // x y z
@@ -122,9 +123,8 @@ void test_Jacob_error_point2line()
     pair.ln_global.pBase.x = normalf(20);
     pair.ln_global.pBase.y = normalf(20);
     pair.ln_global.pBase.z = normalf(20);
-    pair.ln_global.director[0] = normald(20);
-    pair.ln_global.director[1] = normald(20);
-    pair.ln_global.director[2] = normald(20);
+    pair.ln_global.director =
+        mrpt::math::TPoint3D(normald(1), normald(1), normald(1)).unitarize();
 
     pair.pt_local.x = normalf(10);
     pair.pt_local.y = normalf(10);
@@ -181,7 +181,7 @@ void test_Jacob_error_point2line()
 //  Test: error_point2plane
 // ===========================================================================
 
-void test_Jacob_error_point2plane()
+static void test_Jacob_error_point2plane()
 {
     const CPose3D p = CPose3D(
         // x y z
@@ -192,9 +192,9 @@ void test_Jacob_error_point2plane()
 
     mp2p_icp::point_plane_pair_t pair;
 
-    pair.pl_global.centroid.x = normalf(20);
-    pair.pl_global.centroid.y = normalf(20);
-    pair.pl_global.centroid.z = normalf(20);
+    pair.pl_global.centroid.x     = normalf(20);
+    pair.pl_global.centroid.y     = normalf(20);
+    pair.pl_global.centroid.z     = normalf(20);
     pair.pl_global.plane.coefs[0] = normald(20);
     pair.pl_global.plane.coefs[1] = normald(20);
     pair.pl_global.plane.coefs[2] = normald(20);
@@ -254,7 +254,7 @@ void test_Jacob_error_point2plane()
 //  Test: error_line2line
 // ===========================================================================
 
-void test_Jacob_error_line2line()
+static void test_Jacob_error_line2line()
 {
     const CPose3D p = CPose3D(
         // x y z
@@ -265,16 +265,16 @@ void test_Jacob_error_line2line()
 
     mp2p_icp::matched_line_t pair;
 
-    pair.ln_global.pBase.x = normalf(10);
-    pair.ln_global.pBase.y = normalf(10);
-    pair.ln_global.pBase.z = normalf(10);
+    pair.ln_global.pBase.x     = normalf(10);
+    pair.ln_global.pBase.y     = normalf(10);
+    pair.ln_global.pBase.z     = normalf(10);
     pair.ln_global.director[0] = normald(10);
     pair.ln_global.director[1] = normald(10);
     pair.ln_global.director[2] = normald(10);
 
-    pair.ln_local.pBase.x = normalf(10);
-    pair.ln_local.pBase.y = normalf(10);
-    pair.ln_local.pBase.z = normalf(10);
+    pair.ln_local.pBase.x     = normalf(10);
+    pair.ln_local.pBase.y     = normalf(10);
+    pair.ln_local.pBase.z     = normalf(10);
     pair.ln_local.director[0] = normald(10);
     pair.ln_local.director[1] = normald(10);
     pair.ln_local.director[2] = normald(10);
@@ -330,7 +330,7 @@ void test_Jacob_error_line2line()
 //  Test: error_plane2plane
 // ===========================================================================
 
-void test_Jacob_error_plane2plane()
+static void test_Jacob_error_plane2plane()
 {
     const CPose3D p = CPose3D(
         // x y z
@@ -341,16 +341,16 @@ void test_Jacob_error_plane2plane()
 
     mp2p_icp::matched_plane_t pair;
 
-    pair.p_global.centroid.x = normalf(20);
-    pair.p_global.centroid.y = normalf(20);
-    pair.p_global.centroid.z = normalf(20);
+    pair.p_global.centroid.x     = normalf(20);
+    pair.p_global.centroid.y     = normalf(20);
+    pair.p_global.centroid.z     = normalf(20);
     pair.p_global.plane.coefs[0] = normald(20);
     pair.p_global.plane.coefs[1] = normald(20);
     pair.p_global.plane.coefs[2] = normald(20);
 
-    pair.p_local.centroid.x = normalf(10);
-    pair.p_local.centroid.y = normalf(10);
-    pair.p_local.centroid.z = normalf(10);
+    pair.p_local.centroid.x     = normalf(10);
+    pair.p_local.centroid.y     = normalf(10);
+    pair.p_local.centroid.z     = normalf(10);
     pair.p_local.plane.coefs[0] = normald(10);
     pair.p_local.plane.coefs[1] = normald(10);
     pair.p_local.plane.coefs[2] = normald(10);
@@ -406,7 +406,7 @@ void test_Jacob_error_plane2plane()
 //  Test: error_line2line
 // ===========================================================================
 
-void test_error_line2line()
+static void test_error_line2line()
 {
     const CPose3D p = CPose3D(
         // x y z
@@ -416,16 +416,16 @@ void test_error_line2line()
 
     mp2p_icp::matched_line_t pair;
 
-    pair.ln_global.pBase.x = 0;
-    pair.ln_global.pBase.y = 1;
-    pair.ln_global.pBase.z = -4;
-    pair.ln_global.director[0] =  0.4364;
-    pair.ln_global.director[1] =  0.8729;
+    pair.ln_global.pBase.x     = 0;
+    pair.ln_global.pBase.y     = 1;
+    pair.ln_global.pBase.z     = -4;
+    pair.ln_global.director[0] = 0.4364;
+    pair.ln_global.director[1] = 0.8729;
     pair.ln_global.director[2] = -0.2182;
 
-    pair.ln_local.pBase.x = 2;
-    pair.ln_local.pBase.y = 1;
-    pair.ln_local.pBase.z = -0.5;
+    pair.ln_local.pBase.x     = 2;
+    pair.ln_local.pBase.y     = 1;
+    pair.ln_local.pBase.z     = -0.5;
     pair.ln_local.director[0] = 0.2357;
     pair.ln_local.director[1] = 0.2357;
     pair.ln_local.director[2] = 0.9428;
@@ -433,18 +433,21 @@ void test_error_line2line()
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 4, 12> J1;
 
-    mrpt::math::CVectorFixedDouble<4> error = mp2p_icp::error_line2line(pair, p, J1);
-
     mrpt::math::CVectorFixedDouble<4> ref_error;
     ref_error[0] = 0.0517;
     ref_error[1] = 0.2007;
     ref_error[2] = 0.6372;
     ref_error[3] = -1.1610;
 
+#if 0
+    mrpt::math::CVectorFixedDouble<4> error =
+        mp2p_icp::error_line2line(pair, p, J1);
+
     std::cout << "\nResultado: \n"
-              << error <<  "\nRecta A:\n"
-              <<  pair.ln_global << "\nRecta B:\n"
+              << error << "\nRecta A:\n"
+              << pair.ln_global << "\nRecta B:\n"
               << pair.ln_local << "\n";
+#endif
 
     // (12x6 Jacobian)
     const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);
@@ -476,27 +479,62 @@ void test_error_line2line()
                 }),
             x_incrs, p, numJacob);
     }
-        std::cout << "numJacob:\n"
-                  << numJacob.asEigen() << "\njacob:\n"
-                  << jacob.asEigen() << "\nDiff:\n"
-                  << (numJacob - jacob) << "\nJ1:\n"
-                  << J1.asEigen() << "\ndDexp_de:\n"
-                  << dDexpe_de.asEigen() << "\n";
+#if 0
+    std::cout << "numJacob:\n"
+              << numJacob.asEigen() << "\njacob:\n"
+              << jacob.asEigen() << "\nDiff:\n"
+              << (numJacob - jacob) << "\nJ1:\n"
+              << J1.asEigen() << "\ndDexp_de:\n"
+              << dDexpe_de.asEigen() << "\n";
+#endif
+}
 
+static void test_against_ground_truth_error_point2line()
+{
+    const CPose3D p = CPose3D::Identity();
+
+    mp2p_icp::point_line_pair_t pair;
+
+    pair.ln_global.pBase.x  = 10;
+    pair.ln_global.pBase.y  = 11;
+    pair.ln_global.pBase.z  = 12;
+    pair.ln_global.director = mrpt::math::TPoint3D(0, 0, 1).unitarize();
+
+    pair.pt_local.x = 10;
+    pair.pt_local.y = 11;
+    pair.pt_local.z = -1.0;
+
+    // Implemented values:
+    mrpt::math::CMatrixFixed<double, 1, 12> J1;
+
+    CVectorFixedDouble<1> err = mp2p_icp::error_point2line(pair, p, J1);
+    ASSERT_NEAR_(err[0], 0.0, 1e-6);
 }
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
     {
+        // test Jacobians:
+        // ----------------------------------------------
         rnd.randomize(1234);  // for reproducible tests
 
-        test_Jacob_error_point2point();
-        test_Jacob_error_point2line();
-        test_Jacob_error_point2plane();
-        // test_Jacob_error_line2line();
-        test_Jacob_error_plane2plane();
-        test_error_line2line();
+        // Run for many different random conditions:
+        for (int i = 0; i < 1000; i++)
+        {
+            test_Jacob_error_point2point();
+            test_Jacob_error_point2line();
+            test_Jacob_error_point2plane();
+            test_Jacob_error_plane2plane();
+            // TODO: Fix this one:
+            // test_Jacob_error_line2line();
+
+            test_error_line2line();
+        }
+
+        // Test for known fixed conditions:
+        // ----------------------------------------------
+        test_against_ground_truth_error_point2line();
     }
     catch (std::exception& e)
     {
