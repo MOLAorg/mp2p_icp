@@ -28,6 +28,7 @@ class Solver_GaussNewton : public Solver
    public:
     uint32_t    maxIterations = 5;
     PairWeights pairWeights;
+    bool        innerLoopVerbose = false;  //!< Prints GN inner loop details
 
     void initialize(const mrpt::containers::yaml& params) override;
 
