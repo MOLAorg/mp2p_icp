@@ -147,7 +147,7 @@ static void test_Jacob_error_point2line()
         x_mean.setZero();
 
         CVectorFixedDouble<6> x_incrs;
-        x_incrs.fill(1e-6);
+        x_incrs.fill(1e-5);
         mrpt::math::estimateJacobian(
             x_mean,
             /* Error function to evaluate */
@@ -168,10 +168,18 @@ static void test_Jacob_error_point2line()
 
     if ((numJacob.asEigen() - jacob.asEigen()).array().abs().maxCoeff() > 1e-5)
     {
-        std::cerr << "numJacob:\n"
-                  << numJacob.asEigen() << "\njacob:\n"
-                  << jacob.asEigen() << "\nDiff:\n"
-                  << (numJacob - jacob) << "\nJ1:\n"
+        std::cerr << "relativePose: " << p
+                  << "\n"
+                     "numJacob:"
+                  << numJacob.asEigen()
+                  << "\n"
+                     "jacob   :"
+                  << jacob.asEigen()
+                  << "\n"
+                     "diff    :"
+                  << (numJacob - jacob)
+                  << "\n"
+                     "J1      :"
                   << J1.asEigen() << "\n";
         THROW_EXCEPTION("Jacobian mismatch, see above.");
     }
