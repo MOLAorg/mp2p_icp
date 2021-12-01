@@ -30,8 +30,9 @@ bool Solver::optimal_pose(
     const SolverContext& sc) const
 {
     const auto iter = sc.icpIteration;
-    if (iter < runFromIteration) return false;
-    if (runUpToIteration > 0 && iter > runUpToIteration) return false;
+    if (iter.has_value() && *iter < runFromIteration) return false;
+    if (iter.has_value() && runUpToIteration > 0 && *iter > runUpToIteration)
+        return false;
 
     return impl_optimal_pose(pairings, out, sc);
 }
