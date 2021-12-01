@@ -30,6 +30,9 @@ struct OptimalTF_GN_Parameters
     /** Minimum SE(3) change to stop iterating. */
     double minDelta = 1e-7;
 
+    /** Maximum cost function; when reached, stop iterating. */
+    double maxCost = 0;
+
     /** The linerization point (the current relative pose guess) */
     std::optional<mrpt::poses::CPose3D> linearizationPoint;
 

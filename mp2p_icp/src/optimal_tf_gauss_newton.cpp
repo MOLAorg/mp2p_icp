@@ -154,6 +154,9 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 w.pl2pl * J1.asEigen() * dDexpe_de.asEigen();
         }
 
+        // Target error?
+        if (err.norm() <= gnParams.maxCost) break;
+
         // 3) Solve Gauss-Newton:
         const Eigen::VectorXd             g = J.transpose() * err;
         const Eigen::Matrix<double, 6, 6> H = J.transpose() * J;
