@@ -8,8 +8,8 @@
 Library: mp2p-icp
 ======================
 
-A repertory of multi primitive-to-primitive (MP2P) ICP algorithms and data
-structures written in C++.
+A repertory of multi-primitive-to-primitive (MP2P) matchers, optimizers, and ICP-related 
+algorithms and data structures written in C++.
 
 .. contents:: :local:
 
@@ -19,7 +19,7 @@ structures written in C++.
 Point clouds
 -------------
 
-.. image:: ../../externals/mp2p_icp/docs/pointcloud_t_with_details.png
+.. image:: ../../externals/mp2p_icp/docs/metric_map_t_with_details.png
   :width: 600
 
 Pairings
@@ -35,7 +35,7 @@ Pairings
 Write me!
 
 
-3. YAML definition files
-###########################
+3. YAML pipeline definition files
+###################################
 
 Write me!
