@@ -83,6 +83,40 @@ make test
 
 ### Run the demos
 
+```bash
+# 2D icp with point-to-point pairings only:
+build/bin/mp2p-icp-run \
+  --input-local demos/local_001.mm \
+  --input-global demos/global_001.mm \
+  -c demos/icp-settings-2d-lidar-example-point2point.yaml \
+  --generate-debug-log
+
+# Inspect the debug log:
+build/bin/mp2p-icp-log-viewer
 ```
 
+```bash
+# 2D icp with point-to-line pairings:
+build/bin/mp2p-icp-run \
+  --input-local demos/local_001.mm \
+  --input-global demos/global_001.mm \
+  -c demos/icp-settings-2d-lidar-example-point2line.yaml \
+  --generate-debug-log
+
+# Inspect the debug log:
+build/bin/mp2p-icp-log-viewer
 ```
+
+
+```bash
+# 3D icp with external library wrapper
+build/bin/mp2p-icp-run \
+  --input-local demos/local_001.mm \
+  --input-global demos/global_001.mm \
+  -c demos/icp-settings-example-libpointmatcher.yaml \
+  --generate-debug-log
+
+# Inspect the debug log:
+build/bin/mp2p-icp-log-viewer
+```
+

@@ -180,6 +180,18 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     /** @} */
 
+    /** For whole-ICP overriden classes (e.g. external ICP library wrappers),
+     * initialize those external libraries with these parameters.
+     * Invoked from mp2p_icp::icp_pipeline_from_yaml().
+     *
+     * \sa mp2p_icp::icp_pipeline_from_yaml()
+     */
+    virtual void initialize_derived(  //
+        [[maybe_unused]] const mrpt::containers::yaml& p)
+    {
+        // Default: do nothing
+    }
+
    protected:
     solver_list_t       solvers_;
     matcher_list_t      matchers_;

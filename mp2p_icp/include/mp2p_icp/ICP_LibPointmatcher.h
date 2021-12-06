@@ -31,8 +31,10 @@ class ICP_LibPointmatcher : public ICP
     DEFINE_MRPT_OBJECT(ICP_LibPointmatcher, mp2p_icp)
 
    public:
+    void initialize_derived(const mrpt::containers::yaml& params) override;
+
     void align(
-        const metric_map_t& pc1, const metric_map_t& pc2,
+        const metric_map_t& pcLocal, const metric_map_t& pcGlobal,
         const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
         const Parameters& p, Results& result,
         const mrpt::optional_ref<LogRecord>& outputDebugInfo =
@@ -58,7 +60,9 @@ class ICP_LibPointmatcher : public ICP
     static bool methodAvailable();
 
    private:
+    std::string pm_icp_yaml_settings_;
 #if defined(MP2P_HAS_LIBPOINTMATCHER)
+
 #endif
 };
 }  // namespace mp2p_icp

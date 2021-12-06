@@ -10,33 +10,17 @@ params:
   minAbsStep_rot: 1e-4
 
   debugPrintIterationProgress: true  # Print progress
-  generateDebugFiles: true
+  #generateDebugFiles: true
   #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
 
 solvers:
-  - class: mp2p_icp::Solver_GaussNewton
+  - class: mp2p_icp::Solver_Horn
     params:
-     maxIterations: 3
-
-#  - class: mp2p_icp::Solver_Horn
-#    params:
-#      ~
+      ~
 
 # Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
 # instances to pair geometric entities between pointclouds.
 matchers:
-  - class: mp2p_icp::Matcher_Point2Line
-    params:
-      # Inliers distance threshold [meters][mandatory]
-      distanceThreshold: 0.25
-      # Number of neighbors to look for [mandatory]
-      knn: 5
-      # Minimum number of found points [mandatory]
-      minimumLinePoints: 4
-      # maximum e0/e2 and e1/e2 ratio [mandatory]
-      lineEigenThreshold: 1e-2
-      pointLayerMatches:
-        - {global: "2d_lidar", local: "2d_lidar", weight: 1.0}
   - class: mp2p_icp::Matcher_Points_DistanceThreshold
     params:
       threshold: 0.15
@@ -44,8 +28,11 @@ matchers:
       #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       #runFromIteration: 0  # "from 0 to 0" means "all"
       #runUpToIteration: 0
-      pointLayerMatches:
-        - {global: "2d_lidar", local: "2d_lidar", weight: 1.0}
+      #
+      # If "pointLayerMatches" is not defined, layers will be matched against
+      # those with the same name in both maps:
+      #pointLayerMatches:
+      #  - {global: "2d_lidar", local: "2d_lidar", weight: 1.0}
 
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio

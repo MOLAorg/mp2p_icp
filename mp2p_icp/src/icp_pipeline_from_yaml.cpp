@@ -29,6 +29,14 @@ std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters>
             "Could not instantiate ICP algorithm named '%s'",
             icpClassName.c_str());
 
+    // Special derived-classes for library wrappers:
+    bool isDerived = false;
+    if (icpParams.has("derived"))
+    {
+        icp->initialize_derived(icpParams["derived"]);
+        isDerived = true;
+    }
+
     // ICP solver class:
     if (icpParams.has("solvers")) icp->initialize_solvers(icpParams["solvers"]);
 
@@ -41,9 +49,12 @@ std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters>
     icp->initialize_quality_evaluators(icpParams["quality"]);
 
     // ICP parameters:
-    ASSERT_(icpParams.has("params"));
     Parameters params;
-    params.load_from(icpParams["params"]);
+    if (!isDerived)
+    {
+        ASSERT_(icpParams.has("params"));
+        params.load_from(icpParams["params"]);
+    }
 
     return {icp, params};
     MRPT_END

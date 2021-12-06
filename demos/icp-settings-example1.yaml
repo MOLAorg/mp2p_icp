@@ -10,7 +10,7 @@ params:
   minAbsStep_rot: 1e-4
 
   debugPrintIterationProgress: true  # Print progress
-  generateDebugFiles: true
+  #generateDebugFiles: true
   #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
 
 solvers:
