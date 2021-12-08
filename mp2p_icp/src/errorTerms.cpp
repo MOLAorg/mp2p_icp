@@ -59,13 +59,13 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2point(
     MRPT_END
 }
 
-mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
+mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2line(
     const mp2p_icp::point_line_pair_t&                          pairing,
     const mrpt::poses::CPose3D&                                 relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 1, 12>> jacobian)
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     MRPT_START
-    mrpt::math::CVectorFixedDouble<1> error;
+    mrpt::math::CVectorFixedDouble<3> error;
     const auto&                       p      = pairing.pt_local;
     const auto&                       ln_aux = pairing.ln_global;
     const mrpt::math::TPoint3D        l      = TPoint3D(p.x, p.y, p.z);
@@ -84,7 +84,7 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
             .finished();
 
     // OPTION A
-    // error[0] = mrpt::square(pairing.ln_global.distance(g));
+    /* error[0] = mrpt::square(pairing.ln_global.distance(g));
     if (0)
     {
         // Eval Jacobian:
@@ -114,14 +114,14 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
 
         J_aux = J1 * J2;
     }
-
+    */
     // OPTION B
     const Eigen::Matrix<double, 1, 3> q =
         (Eigen::Matrix<double, 1, 3>() << g.x - ln_aux.pBase.x,
          g.y - ln_aux.pBase.y, g.z - ln_aux.pBase.z)
             .finished(); // q[0] = x; q[1] = y; q[2] = z
 
-    // error[0] = mrpt::square(q[1]*ln_aux.director[2]-q[2]*ln_aux.director[1])+mrpt::square(q[2]*ln_aux.director[0]-q[0]*ln_aux.director[2])+mrpt::square(q[0]*ln_aux.director[1]-q[1]*ln_aux.director[0])/mod_ru;
+    /* error[0] = mrpt::square(q[1]*ln_aux.director[2]-q[2]*ln_aux.director[1])+mrpt::square(q[2]*ln_aux.director[0]-q[0]*ln_aux.director[2])+mrpt::square(q[0]*ln_aux.director[1]-q[1]*ln_aux.director[0])/mod_ru;
     if (0)
     {
         // J1
@@ -144,28 +144,22 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
 
         J_aux = J1 * J2;
     }
-
+    */
     // OPTION C
-    double ex = q[0]-(u[0]/mod_ru)*u*q.transpose();
-    double ey = q[1]-(u[1]/mod_ru)*u*q.transpose();
-    double ez = q[2]-(u[2]/mod_ru)*u*q.transpose();
 
     // error[0] = mrpt::square(ex)+mrpt::square(ey)+mrpt::square(ez);
-    error[0] = mrpt::square(ex);
-    error[1] = mrpt::square(ey);
-    error[2] = mrpt::square(ez);
+    error[0] = q[0]-(u[0]/mod_ru)*u*q.transpose();
+    error[1] = q[1]-(u[1]/mod_ru)*u*q.transpose();
+    error[2] = q[2]-(u[2]/mod_ru)*u*q.transpose();
     if (jacobian)
     {
         // J1
-        double J1x = 2 * ( ex*(mod_ru - mrpt::square(u[0])) - ey*u[1]*u[0]                     - ex*u[2]*u[0])/mod_ru;
-        double J1y = 2 * (-ex*u[0]*u[1]                     + ey*(mod_ru - mrpt::square(u[1])) - ez*u[2]*u[1])/mod_ru;
-        double J1z = 2 * (-ex*u[0]*u[2]                     - ey*u[1]*u[2]                     + ez*(mod_ru - mrpt::square(u[2])))/mod_ru;
         const Eigen::Matrix<double, 3, 3> J1 =
             (Eigen::Matrix<double, 3, 3>() <<
-              2*ex*(1-mrpt::square(u[0])/mod_ru),             -2*ex*u[0]*u[1]/mod_ru,             -2*ex*u[0]*u[2]/mod_ru,
-                          -2*ey*u[1]*u[0]/mod_ru, 2*ey*(1-mrpt::square(u[1])/mod_ru),             -2*ey*u[1]*u[2]/mod_ru,
-                          -2*ez*u[2]*u[0]/mod_ru,             -2*ez*u[2]*u[1]/mod_ru, 2*ez*(1-mrpt::square(u[2])/mod_ru))
-                .finished();
+              1-mrpt::square(u[0])/mod_ru,           -u[0]*u[1]/mod_ru,           -u[0]*u[2]/mod_ru,
+                        -u[1]*u[0]/mod_ru, 1-mrpt::square(u[1])/mod_ru,           -u[1]*u[2]/mod_ru,
+                        -u[2]*u[0]/mod_ru,           -u[2]*u[1]/mod_ru, 1-mrpt::square(u[2])/mod_ru)
+            .finished();
         // J2
         // clang-format off
         Eigen::Matrix<double, 3, 12> J2 =
@@ -175,7 +169,7 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
                0,   0, l.x,   0,   0,  l.y,   0,   0, l.z,  0,  0,  1
              ).finished();
         // clang-format on
-        mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
+        mrpt::math::CMatrixFixed<double, 3, 12>& J_aux = jacobian.value().get();
 
         J_aux = J1 * J2;
     }

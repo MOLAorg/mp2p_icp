@@ -31,10 +31,10 @@ mrpt::math::CVectorFixedDouble<3> error_point2point(
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian =
         std::nullopt);
 
-mrpt::math::CVectorFixedDouble<1> error_point2line(
+mrpt::math::CVectorFixedDouble<3> error_point2line(
     const mp2p_icp::point_line_pair_t&                          pairing,
     const mrpt::poses::CPose3D&                                 relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 1, 12>> jacobian =
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian =
         std::nullopt);
 
 mrpt::math::CVectorFixedDouble<1> error_point2plane(
