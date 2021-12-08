@@ -62,7 +62,7 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         const auto nLn2Ln = in.paired_ln2ln.size();
 
         const auto nErrorTerms =
-            (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln + nLn2Ln * 4;
+            (nPt2Pt + nPl2Pl + nPt2Ln + nPt2Pl) * 3 + nLn2Ln * 4;
         ASSERT_(nErrorTerms > 0);
         err.resize(nErrorTerms);
 
@@ -82,11 +82,11 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         {
             // Error
             const auto&                       p = in.paired_pt2ln[idx_pt];
-            mrpt::math::CVectorFixedDouble<1> ret =
+            mrpt::math::CVectorFixedDouble<3> ret =
                 mp2p_icp::error_point2line(p, pose);
-            err.block<1, 1>(base_idx + idx_pt, 0) = ret.asEigen();
+            err.block<3, 1>(base_idx + idx_pt * 3, 0) = ret.asEigen();
         }
-        base_idx += nPt2Ln;
+        base_idx += nPt2Ln * 3;
 
         // Line-to-Line
         // Minimum angle to approach zero
@@ -104,11 +104,11 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         {
             // Error:
             const auto&                       p = in.paired_pt2pl[idx_pl];
-            mrpt::math::CVectorFixedDouble<1> ret =
+            mrpt::math::CVectorFixedDouble<3> ret =
                 mp2p_icp::error_point2plane(p, pose);
-            err.block<1, 1>(idx_pl + base_idx, 0) = ret.asEigen();
+            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
         }
-        base_idx += nPt2Pl * 1;
+        base_idx += nPt2Pl * 3;
 
         // Plane-to-plane (only direction of normal vectors):
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)

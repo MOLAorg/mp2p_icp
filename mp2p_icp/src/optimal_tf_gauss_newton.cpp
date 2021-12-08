@@ -42,7 +42,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     const auto nLn2Ln = in.paired_ln2ln.size();
 
     const auto nErrorTerms =
-        (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln + nLn2Ln * 4;
+        (nPt2Pt + nPl2Pl + nPt2Ln + nPt2Pl) * 3  + nLn2Ln * 4;
 
     Eigen::VectorXd                          err(nErrorTerms);
     Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
@@ -95,19 +95,19 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         {
             // Error
             const auto&                             p = in.paired_pt2ln[idx_pt];
-            mrpt::math::CMatrixFixed<double, 1, 12> J1;
-            mrpt::math::CVectorFixedDouble<1>       ret =
+            mrpt::math::CMatrixFixed<double, 3, 12> J1;
+            mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_point2line(p, result.optimalPose, J1);
-            err.block<1, 1>(base_idx + idx_pt, 0) = ret.asEigen();
+            err.block<3, 1>(base_idx + idx_pt * 3, 0) = ret.asEigen();
 
             // Get weight
             // ...
 
             // Build Jacobian
-            J.block<1, 6>(base_idx + idx_pt, 0) =
+            J.block<3, 6>(base_idx + idx_pt * 3, 0) =
                 w.pt2ln * J1.asEigen() * dDexpe_de.asEigen();
         }
-        base_idx += nPt2Ln;
+        base_idx += nPt2Ln * 3;
 
         // Line-to-Line
         // Minimum angle to approach zero
@@ -130,15 +130,15 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         {
             // Error:
             const auto&                             p = in.paired_pt2pl[idx_pl];
-            mrpt::math::CMatrixFixed<double, 1, 12> J1;
-            mrpt::math::CVectorFixedDouble<1>       ret =
+            mrpt::math::CMatrixFixed<double, 3, 12> J1;
+            mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_point2plane(p, result.optimalPose, J1);
-            err.block<1, 1>(idx_pl + base_idx, 0) = ret.asEigen();
+            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
 
-            J.block<1, 6>(idx_pl + base_idx, 0) =
+            J.block<3, 6>(idx_pl * 3 + base_idx, 0) =
                 w.pt2pl * J1.asEigen() * dDexpe_de.asEigen();
         }
-        base_idx += nPt2Pl * 1;
+        base_idx += nPt2Pl * 3;
 
         // Plane-to-plane (only direction of normal vectors):
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
