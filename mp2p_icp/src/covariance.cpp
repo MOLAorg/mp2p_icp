@@ -106,7 +106,7 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
             const auto&                       p = in.paired_pt2pl[idx_pl];
             mrpt::math::CVectorFixedDouble<3> ret =
                 mp2p_icp::error_point2plane(p, pose);
-            err.block<3, 1>(idx_pl + base_idx, 0) = ret.asEigen();
+            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
         }
         base_idx += nPt2Pl * 3;
 

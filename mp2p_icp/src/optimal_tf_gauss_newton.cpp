@@ -42,7 +42,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     const auto nLn2Ln = in.paired_ln2ln.size();
 
     const auto nErrorTerms =
-        (nPt2Pt + nPl2Pl + nPt2Ln) * 3 + nPt2Pl + nLn2Ln * 4;
+        (nPt2Pt + nPl2Pl + nPt2Ln + nPt2Pl) * 3  + nLn2Ln * 4;
 
     Eigen::VectorXd                          err(nErrorTerms);
     Eigen::Matrix<double, Eigen::Dynamic, 6> J(nErrorTerms, 6);
