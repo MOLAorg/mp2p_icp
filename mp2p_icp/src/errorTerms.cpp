@@ -31,15 +31,13 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2point(
 {
     MRPT_START
     mrpt::math::CVectorFixedDouble<3> error;
-    const mrpt::math::TPoint3D        l =
-        TPoint3D(pairing.other_x, pairing.other_y, pairing.other_z);
-    mrpt::math::TPoint3D g;
+    const mrpt::math::TPoint3D&       l = pairing.local;
 
-    relativePose.composePoint(l, g);
+    const mrpt::math::TPoint3D g = relativePose.composePoint(l);
 
-    error[0] = g.x - pairing.this_x;
-    error[1] = g.y - pairing.this_y;
-    error[2] = g.z - pairing.this_z;
+    error[0] = g.x - pairing.global.x;
+    error[1] = g.y - pairing.global.y;
+    error[2] = g.z - pairing.global.z;
 
     // It's possible change the error to scalar with the function
     // g.DistanceTo(l) Eval Jacobian:
@@ -77,7 +75,7 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2line(
         (Eigen::Matrix<double, 1, 3>() << ln_aux.director[0],
          ln_aux.director[1], ln_aux.director[2])
             .finished();
-    double mod_ru = ru * ru.transpose();
+    double                            mod_ru = ru * ru.transpose();
     const Eigen::Matrix<double, 1, 3> u =
         (Eigen::Matrix<double, 1, 3>() << ln_aux.director[0],
          ln_aux.director[1], ln_aux.director[2])
@@ -86,20 +84,21 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2line(
     const Eigen::Matrix<double, 1, 3> q =
         (Eigen::Matrix<double, 1, 3>() << g.x - ln_aux.pBase.x,
          g.y - ln_aux.pBase.y, g.z - ln_aux.pBase.z)
-            .finished(); // q[0] = x; q[1] = y; q[2] = z
+            .finished();  // q[0] = x; q[1] = y; q[2] = z
 
-    error[0] = q[0]-(u[0]/mod_ru)*u*q.transpose();
-    error[1] = q[1]-(u[1]/mod_ru)*u*q.transpose();
-    error[2] = q[2]-(u[2]/mod_ru)*u*q.transpose();
+    error[0] = q[0] - (u[0] / mod_ru) * u * q.transpose();
+    error[1] = q[1] - (u[1] / mod_ru) * u * q.transpose();
+    error[2] = q[2] - (u[2] / mod_ru) * u * q.transpose();
     if (jacobian)
     {
         // J1
         const Eigen::Matrix<double, 3, 3> J1 =
-            (Eigen::Matrix<double, 3, 3>() <<
-              1-mrpt::square(u[0])/mod_ru,           -u[0]*u[1]/mod_ru,           -u[0]*u[2]/mod_ru,
-                        -u[1]*u[0]/mod_ru, 1-mrpt::square(u[1])/mod_ru,           -u[1]*u[2]/mod_ru,
-                        -u[2]*u[0]/mod_ru,           -u[2]*u[1]/mod_ru, 1-mrpt::square(u[2])/mod_ru)
-            .finished();
+            (Eigen::Matrix<double, 3, 3>() << 1 - mrpt::square(u[0]) / mod_ru,
+             -u[0] * u[1] / mod_ru, -u[0] * u[2] / mod_ru,
+             -u[1] * u[0] / mod_ru, 1 - mrpt::square(u[1]) / mod_ru,
+             -u[1] * u[2] / mod_ru, -u[2] * u[0] / mod_ru,
+             -u[2] * u[1] / mod_ru, 1 - mrpt::square(u[2]) / mod_ru)
+                .finished();
         // J2
         // clang-format off
         Eigen::Matrix<double, 3, 12> J2 =
@@ -129,21 +128,35 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2plane(
     const mrpt::math::TPoint3D        l      = TPoint3D(p.x, p.y, p.z);
     mrpt::math::TPoint3D              g;
     relativePose.composePoint(l, g);
-    double mod_n = mrpt::square(pl_aux.coefs[0]) + mrpt::square(pl_aux.coefs[1]) + mrpt::square(pl_aux.coefs[2]);
+    double mod_n = mrpt::square(pl_aux.coefs[0]) +
+                   mrpt::square(pl_aux.coefs[1]) +
+                   mrpt::square(pl_aux.coefs[2]);
 
-    error[0] = - (pl_aux.coefs[0]/mod_n) * (pl_aux.coefs[0]*g.x + pl_aux.coefs[1]*g.y + pl_aux.coefs[2]*g.z + pl_aux.coefs[3]);
-    error[1] = - (pl_aux.coefs[1]/mod_n) * (pl_aux.coefs[0]*g.x + pl_aux.coefs[1]*g.y + pl_aux.coefs[2]*g.z + pl_aux.coefs[3]);
-    error[2] = - (pl_aux.coefs[2]/mod_n) * (pl_aux.coefs[0]*g.x + pl_aux.coefs[1]*g.y + pl_aux.coefs[2]*g.z + pl_aux.coefs[3]);
+    error[0] = -(pl_aux.coefs[0] / mod_n) *
+               (pl_aux.coefs[0] * g.x + pl_aux.coefs[1] * g.y +
+                pl_aux.coefs[2] * g.z + pl_aux.coefs[3]);
+    error[1] = -(pl_aux.coefs[1] / mod_n) *
+               (pl_aux.coefs[0] * g.x + pl_aux.coefs[1] * g.y +
+                pl_aux.coefs[2] * g.z + pl_aux.coefs[3]);
+    error[2] = -(pl_aux.coefs[2] / mod_n) *
+               (pl_aux.coefs[0] * g.x + pl_aux.coefs[1] * g.y +
+                pl_aux.coefs[2] * g.z + pl_aux.coefs[3]);
     if (jacobian)
     {
         // Eval Jacobian:
         // J1
         const Eigen::Matrix<double, 3, 3> J1 =
-            (Eigen::Matrix<double, 3, 3>() <<
-                    - mrpt::square(pl_aux.coefs[0])/mod_n, - pl_aux.coefs[0] * pl_aux.coefs[1] / mod_n, - pl_aux.coefs[0] * pl_aux.coefs[2] / mod_n,
-              - pl_aux.coefs[1] * pl_aux.coefs[0] / mod_n,       - mrpt::square(pl_aux.coefs[1])/mod_n, - pl_aux.coefs[1] * pl_aux.coefs[2] / mod_n,
-              - pl_aux.coefs[2] * pl_aux.coefs[0] / mod_n, - pl_aux.coefs[2] * pl_aux.coefs[1] / mod_n,       - mrpt::square(pl_aux.coefs[2])/mod_n)
-            .finished();
+            (Eigen::Matrix<double, 3, 3>()
+                 << -mrpt::square(pl_aux.coefs[0]) / mod_n,
+             -pl_aux.coefs[0] * pl_aux.coefs[1] / mod_n,
+             -pl_aux.coefs[0] * pl_aux.coefs[2] / mod_n,
+             -pl_aux.coefs[1] * pl_aux.coefs[0] / mod_n,
+             -mrpt::square(pl_aux.coefs[1]) / mod_n,
+             -pl_aux.coefs[1] * pl_aux.coefs[2] / mod_n,
+             -pl_aux.coefs[2] * pl_aux.coefs[0] / mod_n,
+             -pl_aux.coefs[2] * pl_aux.coefs[1] / mod_n,
+             -mrpt::square(pl_aux.coefs[2]) / mod_n)
+                .finished();
         // J2
         // clang-format off
         const Eigen::Matrix<double, 3, 12> J2 =

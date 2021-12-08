@@ -200,7 +200,7 @@ struct OutlierIndices
     }
 };
 
-/** Evaluates the centroids [ct_other, ct_this] for point-to-point
+/** Evaluates the centroids [ct_local, ct_global] for point-to-point
  * correspondences only, taking into account the current guess for outliers
  */
 std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D> eval_centroids_robust(

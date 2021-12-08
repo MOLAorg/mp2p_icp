@@ -56,7 +56,7 @@ struct OLAE_LinearSystems
 /** Core of the OLAE algorithm  */
 static OLAE_LinearSystems olae_build_linear_system(
     const Pairings& in, const WeightParameters& wp,
-    const mrpt::math::TPoint3D& ct_other, const mrpt::math::TPoint3D& ct_this,
+    const mrpt::math::TPoint3D& ct_local, const mrpt::math::TPoint3D& ct_global,
     OutlierIndices& in_out_outliers)
 {
     MRPT_START
@@ -166,7 +166,7 @@ static OLAE_LinearSystems olae_build_linear_system(
     };
 
     visit_correspondences(
-        in, wp, ct_other, ct_this, in_out_outliers, lambda_each_pair,
+        in, wp, ct_local, ct_global, in_out_outliers, lambda_each_pair,
         lambda_final, true /* DO make unit point vectors for OLAE */);
 
     // Now, compute the other three sets of linear systems, corresponding
@@ -254,26 +254,26 @@ bool mp2p_icp::optimal_tf_olae(
     ASSERT_(wp.pair_weights.pl2pl >= .0);
 
     // Compute the centroids:
-    auto [ct_other, ct_this] =
+    auto [ct_local, ct_global] =
         eval_centroids_robust(in, result.outliers /* empty for now  */);
 
     // Build the linear system: M g = v
     OLAE_LinearSystems linsys = olae_build_linear_system(
-        in, wp, ct_other, ct_this, result.outliers /* empty for now  */);
+        in, wp, ct_local, ct_global, result.outliers /* empty for now  */);
 
     // Re-evaluate the centroids, now that we have a guess on outliers.
     if (!result.outliers.empty())
     {
         // Re-evaluate the centroids:
-        const auto [new_ct_other, new_ct_this] =
+        const auto [new_ct_local, new_ct_global] =
             eval_centroids_robust(in, result.outliers);
 
-        ct_other = new_ct_other;
-        ct_this  = new_ct_this;
+        ct_local = new_ct_local;
+        ct_global  = new_ct_global;
 
         // And rebuild the linear system with the new values:
         linsys = olae_build_linear_system(
-            in, wp, ct_other, ct_this, result.outliers);
+            in, wp, ct_local, ct_global, result.outliers);
     }
 
     // We are finding the optimal rotation "g", as a Gibbs vector.
@@ -348,12 +348,12 @@ bool mp2p_icp::optimal_tf_olae(
     // Use centroids to solve for optimal translation:
     mrpt::math::TPoint3D pp;
     result.optimalPose.composePoint(
-        ct_other.x, ct_other.y, ct_other.z, pp.x, pp.y, pp.z);
+        ct_local.x, ct_local.y, ct_local.z, pp.x, pp.y, pp.z);
     // Scale, if used, was: pp *= s;
 
-    result.optimalPose.x(ct_this.x - pp.x);
-    result.optimalPose.y(ct_this.y - pp.y);
-    result.optimalPose.z(ct_this.z - pp.z);
+    result.optimalPose.x(ct_global.x - pp.x);
+    result.optimalPose.y(ct_global.y - pp.y);
+    result.optimalPose.z(ct_global.z - pp.z);
 
     return true;
 

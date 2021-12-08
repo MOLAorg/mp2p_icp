@@ -71,8 +71,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 mp2p_icp::MatchState ms(pcGlobal, pcLocal);
                 m.match(pcGlobal, pcLocal, {0, 5, 0, 0, 0, 0}, {}, ms, pairs);
                 ASSERT_EQUAL_(pairs.size(), 1);
-                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).other_idx, 0);
-                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).this_idx, 0);
+                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).localIdx, 0);
+                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).globalIdx, 0);
             }
 
             {
@@ -81,8 +81,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 mp2p_icp::MatchState ms(pcGlobal, pcLocal);
                 m.match(pcGlobal, pcLocal, {-2, 5, 0, 0, 0, 0}, {}, ms, pairs);
                 ASSERT_EQUAL_(pairs.size(), 1);
-                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).this_idx, 0);
-                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).other_idx, 1);
+                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).globalIdx, 0);
+                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).localIdx, 1);
             }
 
             {
@@ -93,8 +93,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                     pcGlobal, pcLocal,
                     {8.5, -1.0, 1, mrpt::DEG2RAD(45.0f), 0, 0}, {}, ms, pairs);
                 ASSERT_EQUAL_(pairs.size(), 1);
-                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).other_idx, 1);
-                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).this_idx, 19);
+                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).localIdx, 1);
+                ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).globalIdx, 19);
             }
         }
     }

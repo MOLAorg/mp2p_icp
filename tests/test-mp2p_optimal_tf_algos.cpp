@@ -83,9 +83,8 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
         const TPoints& pA, TPoints& pB,
         mrpt::tfest::TMatchingPairList& pointsPairs, const TPlanes& plA,
         TPlanes& plB, std::vector<mp2p_icp::matched_plane_t>& planePairs,
-        mp2p_icp::MatchedPointPlaneList& pt2plPairs,
-        const double xyz_noise_std, const double n_err_std /* normals noise*/,
-        const double outliers_ratio)
+        mp2p_icp::MatchedPointPlaneList& pt2plPairs, const double xyz_noise_std,
+        const double n_err_std /* normals noise*/, const double outliers_ratio)
 {
     const double             outliers_bbox = 50.0;
     std::vector<std::size_t> gt_outlier_indices;
@@ -144,15 +143,10 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
 
         // Add pairing:
         mrpt::tfest::TMatchingPair pair;
-        pair.this_idx = pair.other_idx = i;
+        pair.localIdx = pair.globalIdx = i;
 
-        pair.this_x = pA[i][0];
-        pair.this_y = pA[i][1];
-        pair.this_z = pA[i][2];
-
-        pair.other_x = pB[i][0];
-        pair.other_y = pB[i][1];
-        pair.other_z = pB[i][2];
+        pair.global = pA[i];
+        pair.local  = pB[i];
 
         pointsPairs.push_back(pair);
     }
@@ -245,14 +239,14 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
 
         // Add plane-plane pairing:
         mp2p_icp::matched_plane_t pair;
-        pair.p_global  = plA[i];
-        pair.p_local = plB[i];
+        pair.p_global = plA[i];
+        pair.p_local  = plB[i];
         planePairs.push_back(pair);
 
         // Add point-plane pairing:
         mp2p_icp::point_plane_pair_t pt2pl;
-        pt2pl.pl_global  = plA[i];
-        pt2pl.pt_local = mrpt::math::TPoint3Df(
+        pt2pl.pl_global = plA[i];
+        pt2pl.pt_local  = mrpt::math::TPoint3Df(
             plB[i].centroid.x, plB[i].centroid.y, plB[i].centroid.z);
 
         pt2plPairs.push_back(pt2pl);
@@ -305,7 +299,7 @@ bool test_icp_algos(
         TPoints pB;
         TPlanes plB;
 
-        mrpt::tfest::TMatchingPairList   pointPairs;
+        mrpt::tfest::TMatchingPairList  pointPairs;
         mp2p_icp::MatchedPlaneList      planePairs;
         mp2p_icp::MatchedPointPlaneList pt2plPairs;
 

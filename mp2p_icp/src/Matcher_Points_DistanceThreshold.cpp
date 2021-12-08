@@ -97,15 +97,10 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         // Save new correspondence:
         auto& p = candidateMatchesForGlobal[globalIdx][errSqr];
 
-        p.this_idx = globalIdx;
-        p.this_x   = gxs[globalIdx];
-        p.this_y   = gys[globalIdx];
-        p.this_z   = gzs[globalIdx];
-
-        p.other_idx = localIdx;
-        p.other_x   = lxs[localIdx];
-        p.other_y   = lys[localIdx];
-        p.other_z   = lzs[localIdx];
+        p.globalIdx = globalIdx;
+        p.localIdx  = localIdx;
+        p.global    = {gxs[globalIdx], gys[globalIdx], gzs[globalIdx]};
+        p.local     = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
 
         p.errorSquareAfterTransformation = errSqr;
     };
@@ -177,7 +172,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         out.paired_pt2pt.emplace_back(bestPair);
 
         // Mark local & global points as already paired:
-        const auto localIdx = bestPair.other_idx;
+        const auto localIdx = bestPair.localIdx;
         ms.localPairedBitField.point_layers[localName].at(localIdx)    = true;
         ms.globalPairedBitField.point_layers[globalName].at(globalIdx) = true;
     }

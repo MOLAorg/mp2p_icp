@@ -72,7 +72,7 @@ std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
 
     // Add global coordinate of points for now, we'll convert them later to
     // unit vectors relative to the centroids:
-    TPoint3D ct_other(0, 0, 0), ct_this(0, 0, 0);
+    TPoint3D ct_local(0, 0, 0), ct_global(0, 0, 0);
     {
         std::size_t cnt             = 0;
         auto        it_next_outlier = outliers.point2point.begin();
@@ -87,18 +87,18 @@ std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
             }
             const auto& pair = in.paired_pt2pt[i];
 
-            ct_this += TPoint3D(pair.this_x, pair.this_y, pair.this_z);
-            ct_other += TPoint3D(pair.other_x, pair.other_y, pair.other_z);
+            ct_global += pair.global;
+            ct_local += pair.local;
             cnt++;
         }
         // Sanity check:
         ASSERT_EQUAL_(cnt, nPt2Pt - outliers.point2point.size());
 
-        ct_other *= wcPoints;
-        ct_this *= wcPoints;
+        ct_local *= wcPoints;
+        ct_global *= wcPoints;
     }
 
-    return {ct_other, ct_this};
+    return {ct_local, ct_global};
 }
 
 template <typename T>
@@ -193,13 +193,8 @@ void Pairings::get_visualization_pt2pt(
     // this: global, other: local
     for (const auto& pair : paired_pt2pt)
     {
-        const auto ptGlobal =
-            mrpt::math::TPoint3Df(pair.this_x, pair.this_y, pair.this_z);
-        const auto ptLocal =
-            mrpt::math::TPoint3Df(pair.other_x, pair.other_y, pair.other_z);
-        const auto ptLocalTf = localWrtGlobal.composePoint(ptLocal);
-
-        lns->appendLine(ptLocalTf, ptGlobal);
+        const auto ptLocalTf = localWrtGlobal.composePoint(pair.local);
+        lns->appendLine(ptLocalTf, pair.global);
     }
 
     o.insert(lns);

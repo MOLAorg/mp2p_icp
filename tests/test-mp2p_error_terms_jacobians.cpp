@@ -50,13 +50,8 @@ static void test_Jacob_error_point2point()
         rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5));
 
     mrpt::tfest::TMatchingPair pair;
-
-    pair.this_x  = normalf(20);
-    pair.this_y  = normalf(20);
-    pair.this_z  = normalf(20);
-    pair.other_x = normalf(10);
-    pair.other_y = normalf(10);
-    pair.other_z = normalf(10);
+    pair.global = {normalf(20), normalf(20), normalf(20)};
+    pair.local  = {normalf(20), normalf(20), normalf(20)};
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 3, 12> J1;

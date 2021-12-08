@@ -99,15 +99,12 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
             );
 
             mrpt::tfest::TMatchingPair p;
-            p.this_idx = tentativeGlobalIdx;
-            p.this_x   = gxs[tentativeGlobalIdx];
-            p.this_y   = gys[tentativeGlobalIdx];
-            p.this_z   = gzs[tentativeGlobalIdx];
-
-            p.other_idx = localIdx;
-            p.other_x   = lxs[localIdx];
-            p.other_y   = lys[localIdx];
-            p.other_z   = lzs[localIdx];
+            p.globalIdx = tentativeGlobalIdx;
+            p.localIdx  = localIdx;
+            p.global    = {
+                gxs[tentativeGlobalIdx], gys[tentativeGlobalIdx],
+                gzs[tentativeGlobalIdx]};
+            p.local = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
 
             p.errorSquareAfterTransformation = tentativeErrSqr;
 
@@ -130,8 +127,8 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
 
     for (auto it = sortedPairings.begin(); it != itEnd; ++it)
     {
-        const auto localIdx  = it->second.other_idx;
-        const auto globalIdx = it->second.this_idx;
+        const auto localIdx  = it->second.localIdx;
+        const auto globalIdx = it->second.globalIdx;
 
         // Filter out if global alread assigned:
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&

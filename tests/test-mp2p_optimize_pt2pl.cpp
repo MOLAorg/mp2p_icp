@@ -48,15 +48,10 @@ static void test_opt_pt2pl(const mrpt::poses::CPose3D& groundTruth)
         pp.pt_local = groundTruth.inverseComposePoint({0, 0, 0.3});
     }
     {
-        auto& pp = p.paired_pt2pt.emplace_back();
-        // this=global, other=local
-        pp.this_x      = 0;
-        pp.this_y      = 0;
-        pp.this_z      = 0;
+        auto& pp       = p.paired_pt2pt.emplace_back();
+        pp.global      = {0, 0, 0};
         const auto loc = groundTruth.inverseComposePoint({0, 0, 0});
-        pp.other_x     = loc.x;
-        pp.other_y     = loc.y;
-        pp.other_z     = loc.z;
+        pp.local       = loc;
     }
 
     std::cout << "Input pairings: " << p.contents_summary() << std::endl;

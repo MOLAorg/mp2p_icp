@@ -31,12 +31,12 @@ using namespace mp2p_icp;
 //		pRi = { pRix, pRiy, pRiz }
 // -------------------------------------------------------
 // 1. Find the centroids of the two sets of measurements:
-//		ct_others = (1/n)*sum{i}( pLi )		ct_others = { cLx, cLy, cLz }
-//		ct_this = (1/n)*sum{i}( pRi )		ct_this = { cRx, cRy, cRz }
+//		ct_locals = (1/n)*sum{i}( pLi )		ct_locals = { cLx, cLy, cLz }
+//		ct_global = (1/n)*sum{i}( pRi )		ct_global = { cRx, cRy, cRz }
 //
 // 2. Substract centroids from the point coordinates:
-//		pLi' = pLi - ct_others					pLi' = { pLix', pLiy', pLiz' }
-//		pRi' = pRi - ct_this					pRi' = { pRix', pRiy', pRiz' }
+//		pLi' = pLi - ct_locals					pLi' = { pLix', pLiy', pLiz' }
+//		pRi' = pRi - ct_global					pRi' = { pRix', pRiy', pRiz' }
 //
 // 3. For each pair of coordinates (correspondences) compute the nine possible
 // products:
@@ -63,12 +63,12 @@ using namespace mp2p_icp;
 //
 // 8. Translation computation (distance between the Right centroid and the
 // scaled and rotated Left centroid)
-//		t = ct_this-sR(ct_others)
+//		t = ct_global-sR(ct_locals)
 
 // Returns false if the number of pairings is not >=3
 static bool se3_l2_internal(
     const mp2p_icp::Pairings& in, const WeightParameters& wp,
-    const mrpt::math::TPoint3D& ct_other, const mrpt::math::TPoint3D& ct_this,
+    const mrpt::math::TPoint3D& ct_local, const mrpt::math::TPoint3D& ct_global,
     mrpt::math::CQuaternionDouble& out_attitude,
     OutlierIndices&                in_out_outliers)
 {
@@ -118,7 +118,7 @@ static bool se3_l2_internal(
     };
 
     visit_correspondences(
-        in, wp, ct_other, ct_this, in_out_outliers /*in/out*/,
+        in, wp, ct_local, ct_global, in_out_outliers /*in/out*/,
         // Operations to run on pairs:
         lambda_each_pair, lambda_final,
         false /* do not make unit point vectors for Horn */);
@@ -211,29 +211,29 @@ bool mp2p_icp::optimal_tf_horn(
     ASSERT_(wp.pair_weights.pl2pl >= .0);
 
     // Compute the centroids:
-    auto [ct_other, ct_this] =
+    auto [ct_local, ct_global] =
         eval_centroids_robust(in, result.outliers /* in: empty for now  */);
 
     mrpt::math::CQuaternionDouble optimal_q;
 
     // Build the linear system & solves for optimal quaternion:
     if (!se3_l2_internal(
-            in, wp, ct_other, ct_this, optimal_q, result.outliers /* in/out */))
+            in, wp, ct_local, ct_global, optimal_q, result.outliers /* in/out */))
         return false;
 
     // Re-evaluate the centroids, now that we have a guess on outliers.
     if (wp.use_scale_outlier_detector && !result.outliers.empty())
     {
         // Re-evaluate the centroids:
-        const auto [new_ct_other, new_ct_this] =
+        const auto [new_ct_local, new_ct_global] =
             eval_centroids_robust(in, result.outliers);
 
-        ct_other = new_ct_other;
-        ct_this  = new_ct_this;
+        ct_local = new_ct_local;
+        ct_global  = new_ct_global;
 
         // And rebuild the linear system with the new values:
         if (!se3_l2_internal(
-                in, wp, ct_other, ct_this, optimal_q,
+                in, wp, ct_local, ct_global, optimal_q,
                 result.outliers /* in/out */))
             return false;
     }
@@ -244,12 +244,12 @@ bool mp2p_icp::optimal_tf_horn(
     // Use centroids to solve for optimal translation:
     mrpt::math::TPoint3D pp;
     result.optimalPose.composePoint(
-        ct_other.x, ct_other.y, ct_other.z, pp.x, pp.y, pp.z);
+        ct_local.x, ct_local.y, ct_local.z, pp.x, pp.y, pp.z);
     // Scale, if used, was: pp *= s;
 
-    result.optimalPose.x(ct_this.x - pp.x);
-    result.optimalPose.y(ct_this.y - pp.y);
-    result.optimalPose.z(ct_this.z - pp.z);
+    result.optimalPose.x(ct_global.x - pp.x);
+    result.optimalPose.y(ct_global.y - pp.y);
+    result.optimalPose.z(ct_global.z - pp.z);
 
     return true;
 

@@ -30,7 +30,7 @@ struct VisitCorrespondencesStats
 template <class LAMBDA, class LAMBDA2>
 void visit_correspondences(
     const Pairings& in, const WeightParameters& wp,
-    const mrpt::math::TPoint3D& ct_other, const mrpt::math::TPoint3D& ct_this,
+    const mrpt::math::TPoint3D& ct_local, const mrpt::math::TPoint3D& ct_global,
     OutlierIndices& in_out_outliers, LAMBDA lambda_each_pair,
     LAMBDA2 lambda_final, bool normalize_relative_point_vectors,
     const mrpt::optional_ref<VisitCorrespondencesStats>& outStats =
@@ -124,8 +124,9 @@ void visit_correspondences(
             wi *= cur_point_block_weights->second;
             // (solution will be normalized via w_sum a the end)
 
-            bi = TVector3D(p.this_x, p.this_y, p.this_z) - ct_this;
-            ri = TVector3D(p.other_x, p.other_y, p.other_z) - ct_other;
+            bi = p.global - ct_global;
+            ri = p.local - ct_local;
+
             const auto bi_n = bi.norm(), ri_n = ri.norm();
 
             if (bi_n < 1e-4 || ri_n < 1e-4)
