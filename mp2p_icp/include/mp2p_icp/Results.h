@@ -20,7 +20,7 @@ namespace mp2p_icp
 struct Results
 {
     /** The found value (mean + covariance) of the optimal transformation of
-     * m2 wrt m1. */
+     * "local" wrt "global". */
     mrpt::poses::CPose3DPDFGaussian optimal_tf;
 
     /** Found scale (if supported by the underlying algorithm) for optimal_tf */

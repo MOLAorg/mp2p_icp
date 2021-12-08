@@ -72,6 +72,13 @@ static TCLAP::ValueArg<std::string> argInitialGuess(
     "Format: \"[x y z yaw_deg pitch_deg roll_deg]\"",
     false, "[0 0 0 0 0 0]", "[0 0 0 0 0 0]", cmd);
 
+static TCLAP::SwitchArg argGenerateDebugFiles(
+    "d", "generate-debug-log",
+    "Enforces generation of the .icplog debug log files for posterior "
+    "visualization with mp2p-icp-log-viewer, overriding the "
+    "`generateDebugFiles` value in the configuration YAML file.",
+    cmd);
+
 // To avoid reading the same .rawlog file twice:
 static std::map<std::string, mrpt::obs::CRawlog::Ptr> rawlogsCache;
 
@@ -209,7 +216,9 @@ void runIcp()
     const auto cfg =
         mrpt::containers::yaml::FromFile(argYamlConfigFile.getValue());
 
-    const auto [icp, icpParams] = mp2p_icp::icp_pipeline_from_yaml(cfg);
+    auto [icp, icpParams] = mp2p_icp::icp_pipeline_from_yaml(cfg);
+
+    if (argGenerateDebugFiles.isSet()) icpParams.generateDebugFiles = true;
 
     const auto initialGuess =
         mrpt::math::TPose3D::FromString(argInitialGuess.getValue());

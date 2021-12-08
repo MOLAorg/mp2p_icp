@@ -47,11 +47,11 @@ static PointMatcher<double>::DataPoints pointsToPM(const metric_map_t& pc)
     // TODO: Convert pointclouds in a more efficient way (!)
     std::stringstream ss;
 
-    for (const auto& ly : pc.point_layers)
+    for (const auto& ly : pc.layers)
     {
         // const std::string&                 name = ly.first;
-        const mrpt::maps::CPointsMap::Ptr& pts = ly.second;
-        ASSERT_(pts);
+        auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(ly.second);
+        if (!pts) continue;  // Not a point cloud layer
 
         const auto xs = pts->getPointsBufferRef_x();
         const auto ys = pts->getPointsBufferRef_y();
@@ -64,9 +64,17 @@ static PointMatcher<double>::DataPoints pointsToPM(const metric_map_t& pc)
 }
 #endif
 
+void ICP_LibPointmatcher::initialize_derived(
+    const mrpt::containers::yaml& params)
+{
+    std::stringstream ss;
+    params.printAsYAML(ss);
+    pm_icp_yaml_settings_ = ss.str();
+}
+
 void ICP_LibPointmatcher::align(
-    [[maybe_unused]] const metric_map_t&        pcs1,
-    [[maybe_unused]] const metric_map_t&        pcs2,
+    [[maybe_unused]] const metric_map_t&        pcLocal,
+    [[maybe_unused]] const metric_map_t&        pcGlobal,
     [[maybe_unused]] const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
     [[maybe_unused]] const Parameters& p, [[maybe_unused]] Results& result,
     [[maybe_unused]] const mrpt::optional_ref<LogRecord>& outputDebugInfo)
@@ -76,12 +84,16 @@ void ICP_LibPointmatcher::align(
     MRPT_START
 #if defined(MP2P_HAS_LIBPOINTMATCHER)
 
-    ASSERT_EQUAL_(pcs1.point_layers.size(), pcs2.point_layers.size());
-    ASSERT_(
-        !pcs1.point_layers.empty() ||
-        (!pcs1.planes.empty() && !pcs2.planes.empty()));
+    ASSERT_EQUAL_(pcLocal.layers.size(), pcGlobal.layers.size());
+    ASSERT_(!pcLocal.empty() && !pcGlobal.empty());
 
-    ICP_State state(pcs1, pcs2);
+    ASSERTMSG_(
+        !pm_icp_yaml_settings_.empty(),
+        "You must call initialize_derived() first, or initialize from a YAML "
+        "file with a `derived` section with the LibPointMathcer-specific "
+        "configuration.");
+
+    ICP_State state(pcLocal, pcGlobal);
 
     state.currentSolution = OptimalTF_Result();
     state.currentSolution.optimalPose =
@@ -91,86 +103,49 @@ void ICP_LibPointmatcher::align(
     // Reset output:
     result = Results();
 
+    // Prepare output debug records:
+    std::optional<LogRecord> currentLog;
+
+    const bool generateDebugRecord =
+        outputDebugInfo.has_value() || p.generateDebugFiles;
+
+    if (generateDebugRecord)
+    {
+        currentLog.emplace();
+        currentLog->pcGlobal = pcGlobal.get_shared_from_this_or_clone();
+        currentLog->pcLocal  = pcLocal.get_shared_from_this_or_clone();
+        currentLog->initialGuessLocalWrtGlobal = initialGuessLocalWrtGlobal;
+        currentLog->icpParameters              = p;
+    }
+
     // Count of points:
-    ASSERT_(pcs1.size() > 0);
-    ASSERT_(pcs2.size() > 0);
-
-    const char* icpConfigFmt = R"XXX(
-readingDataPointsFilters:
-  - RandomSamplingDataPointsFilter:
-      prob: %f
-
-referenceDataPointsFilters:
-  - SurfaceNormalDataPointsFilter:
-      knn: %u
-
-matcher:
-  KDTreeMatcher:
-    knn: %u
-
-outlierFilters:
-  - %s:
-%s
-
-errorMinimizer:
-  %s
-
-transformationCheckers:
-  - CounterTransformationChecker:
-      maxIterationCount: %u
-  - DifferentialTransformationChecker:
-      minDiffRotErr: 0.0001
-      minDiffTransErr: 0.001
-      smoothLength: 4
-
-inspector:
-  NullInspector
-
-logger:
-  NullLogger
-)XXX";
+    ASSERT_(pcLocal.size() > 0);
+    ASSERT_(pcGlobal.size() > 0);
 
     using PM = PointMatcher<double>;
     using DP = PM::DataPoints;
 
     // Load point clouds
-    const DP ptsFrom = pointsToPM(pcs1);
-    const DP ptsTo   = pointsToPM(pcs2);
+    const DP ptsLocal  = pointsToPM(pcLocal);
+    const DP ptsGlobal = pointsToPM(pcGlobal);
 
-    ASSERT_GT_(ptsFrom.getNbPoints(), 0);
-    ASSERT_GT_(ptsTo.getNbPoints(), 0);
+    ASSERT_GT_(ptsLocal.getNbPoints(), 0);
+    ASSERT_GT_(ptsGlobal.getNbPoints(), 0);
 
     // Create the default ICP algorithm
     PM::ICP icp;
 
     {
-        const auto& plm = parametersLibpointmatcher;
-
-        std::string outlierParams;
-        for (const auto& op : plm.outlierParams)
-        {
-            outlierParams += "      ";
-            outlierParams += op.first;
-            outlierParams += ": ";
-            outlierParams += std::to_string(op.second);
-            outlierParams += "\n";
-        }
-
         // load YAML config
         std::stringstream ss;
-        ss << mrpt::format(
-            icpConfigFmt, plm.RandomSamplingDataPointsFilter_prob,
-            plm.SurfaceNormalDataPointsFilter_knn, plm.KDTreeMatcher_knn,
-            plm.outlierFilter.c_str(), outlierParams.c_str(),
-            plm.errorMinimizer.c_str(), p.maxIterations);
-
+        ss << pm_icp_yaml_settings_;
         ss.seekg(0);
         icp.loadFromYaml(ss);
     }
 
-    int cloudDimension = ptsFrom.getEuclideanDim();
+    int cloudDimension = ptsLocal.getEuclideanDim();
     ASSERT_EQUAL_(cloudDimension, 3U);
-    ASSERT_EQUAL_(ptsFrom.getEuclideanDim(), ptsTo.getEuclideanDim());
+    ASSERT_EQUAL_(ptsLocal.getEuclideanDim(), ptsGlobal.getEuclideanDim());
 
     PM::TransformationParameters initTransfo =
         initialGuessLocalWrtGlobal.getHomogeneousMatrix().asEigen();
@@ -180,18 +155,18 @@ logger:
     if (!rigidTrans.checkParameters(initTransfo))
     {
         MRPT_LOG_WARN(
-            "Initial transformation is not rigid, identity will be used");
+            "Initial transformation is not rigid, SE(3) identity will be used");
         initTransfo = PM::TransformationParameters::Identity(
             cloudDimension + 1, cloudDimension + 1);
     }
 
-    const DP initializedData = rigidTrans.compute(ptsTo, initTransfo);
+    const DP ptsLocalTf = rigidTrans.compute(ptsLocal, initTransfo);
 
     // Compute the transformation to express data in ref
     PM::TransformationParameters T;
     try
     {
-        T = icp(initializedData, ptsFrom);
+        T = icp(ptsLocalTf, ptsGlobal);
 
         // PM gives us the transformation wrt the initial transformation,
         // since we already applied that transf. to the input point cloud!
@@ -214,16 +189,10 @@ logger:
     else
         result.nIterations = 1;
 
-    // Generate some pairings for the quality evaluation:
-    mp2p_icp::Matcher_Points_DistanceThreshold pm(0.1);
-    pm.match(
-        pcs1, pcs2, state.currentSolution.optimalPose, {},
-        result.finalPairings);
-
     // Quality:
     result.quality = evaluate_quality(
-        quality_evaluators_, pcs1, pcs2, state.currentSolution.optimalPose,
-        result.finalPairings);
+        quality_evaluators_, pcGlobal, pcLocal,
+        state.currentSolution.optimalPose, result.finalPairings);
 
     result.terminationReason = IterTermReason::Stalled;
     result.optimalScale      = 1.0;
@@ -233,6 +202,20 @@ logger:
 
     result.optimal_tf.cov = mp2p_icp::covariance(
         result.finalPairings, result.optimal_tf.mean, covParams);
+
+    // ----------------------------
+    // Log records
+    // ----------------------------
+    // Store results into log struct:
+    if (currentLog) currentLog->icpResult = result;
+
+    // Save log to disk:
+    if (currentLog.has_value()) save_log_file(*currentLog, p);
+
+    // return log info:
+    if (currentLog && outputDebugInfo.has_value())
+        outputDebugInfo.value().get() = std::move(currentLog.value());
+
 #else
     THROW_EXCEPTION("This method requires MP2P built against libpointmatcher");
 #endif

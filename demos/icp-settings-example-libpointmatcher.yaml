@@ -1,0 +1,59 @@
+# YAML configuration file for use with the CLI tool mp2p-icp-run or
+# programatically from function mp2p_icp::icp_pipeline_from_yaml()
+#
+# This particular example illustrates how to call another library's wrapper,
+# in this case, libpointmatcher:
+#
+class_name: mp2p_icp::ICP_LibPointmatcher
+
+# See: mp2p_icp::Parameter
+params:
+  # None of the common parameters here: all are overriden by `derived` section.
+  ~
+  # Debug files:
+  #generateDebugFiles: true
+  #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
+
+# Derived-class specific configuration:
+derived:
+  readingDataPointsFilters:
+    - RandomSamplingDataPointsFilter:
+        prob: 1.0
+  
+  referenceDataPointsFilters:
+    - SurfaceNormalDataPointsFilter:
+        knn: 10
+  
+  matcher:
+    KDTreeMatcher:
+      knn: 1
+  
+  outlierFilters:
+    - VarTrimmedDistOutlierFilter:
+        minRatio: 0.05
+        maxRatio: 0.95
+        lambda: 2.35
+  
+  errorMinimizer:
+    PointToPointErrorMinimizer
+    #PointToPlaneErrorMinimizer
+  
+  transformationCheckers:
+    - CounterTransformationChecker:
+        maxIterationCount: 100
+    - DifferentialTransformationChecker:
+        minDiffRotErr: 0.0001
+        minDiffTransErr: 0.001
+        smoothLength: 4
+  
+  inspector:
+    NullInspector
+  
+  logger:
+    NullLogger
+
+# Quality evaluator:
+quality:
+  - class: mp2p_icp::QualityEvaluator_PairedRatio
+    params:
+     threshold: 0.15

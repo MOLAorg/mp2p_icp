@@ -19,10 +19,8 @@ using namespace mp2p_icp;
 
 void Solver::initialize(const mrpt::containers::yaml& params)
 {
-    if (params.has("runFromIteration"))
-        runFromIteration = params["runFromIteration"].as<uint32_t>();
-    if (params.has("runUpToIteration"))
-        runUpToIteration = params["runUpToIteration"].as<uint32_t>();
+    MCP_LOAD_OPT(params, runFromIteration);
+    MCP_LOAD_OPT(params, runUpToIteration);
 }
 
 bool Solver::optimal_pose(
