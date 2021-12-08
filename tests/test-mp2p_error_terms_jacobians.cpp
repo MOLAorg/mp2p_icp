@@ -212,14 +212,14 @@ static void test_Jacob_error_point2plane()
     pair.pt_local.z = normalf(10);
 
     // Implemented values:
-    mrpt::math::CMatrixFixed<double, 1, 12> J1;
+    mrpt::math::CMatrixFixed<double, 3, 12> J1;
 
     mp2p_icp::error_point2plane(pair, p, J1);
 
     // (12x6 Jacobian)
     const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);
 
-    const mrpt::math::CMatrixFixed<double, 1, 6> jacob(J1 * dDexpe_de);
+    const mrpt::math::CMatrixFixed<double, 3, 6> jacob(J1 * dDexpe_de);
 
     // Numerical Jacobian:
     CMatrixDouble numJacob;
@@ -234,11 +234,11 @@ static void test_Jacob_error_point2plane()
             /* Error function to evaluate */
             std::function<void(
                 const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                CVectorFixedDouble<1>& err)>(
+                CVectorFixedDouble<3>& err)>(
                 /* Lambda, capturing the pair data */
                 [pair](
                     const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<1>& err) {
+                    CVectorFixedDouble<3>& err) {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;

@@ -130,15 +130,15 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         {
             // Error:
             const auto&                             p = in.paired_pt2pl[idx_pl];
-            mrpt::math::CMatrixFixed<double, 1, 12> J1;
-            mrpt::math::CVectorFixedDouble<1>       ret =
+            mrpt::math::CMatrixFixed<double, 3, 12> J1;
+            mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_point2plane(p, result.optimalPose, J1);
-            err.block<1, 1>(idx_pl + base_idx, 0) = ret.asEigen();
+            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
 
-            J.block<1, 6>(idx_pl + base_idx, 0) =
+            J.block<3, 6>(idx_pl * 3 + base_idx, 0) =
                 w.pt2pl * J1.asEigen() * dDexpe_de.asEigen();
         }
-        base_idx += nPt2Pl * 1;
+        base_idx += nPt2Pl * 3;
 
         // Plane-to-plane (only direction of normal vectors):
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)

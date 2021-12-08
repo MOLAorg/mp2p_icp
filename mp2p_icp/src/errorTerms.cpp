@@ -83,71 +83,11 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2line(
          ln_aux.director[1], ln_aux.director[2])
             .finished();
 
-    // OPTION A
-    /* error[0] = mrpt::square(pairing.ln_global.distance(g));
-    if (0)
-    {
-        // Eval Jacobian:
-        // "A tutorial on SE(3) transformation parameterizations and
-        // on-manifold optimization"
-        // d(T_{A}·p)/dT_{A}. Ec.7.16
-        // Doc auxiliar: Section 4.1.2.
-        // p_r0 = (p-r_{0,r}). Ec.9
-        const Eigen::Matrix<double, 1, 3> p_r0 =
-            (Eigen::Matrix<double, 1, 3>() << g.x - ln_aux.pBase.x,
-             g.y - ln_aux.pBase.y, g.z - ln_aux.pBase.z)
-                .finished();
-
-        // J1
-        Eigen::Matrix<double, 1, 3> J1 =
-            2 * p_r0 - (2 / mod_ru) * (p_r0 * ru.transpose()) * ru;
-        // J2
-        // clang-format off
-        Eigen::Matrix<double, 3, 12> J2 =
-            (Eigen::Matrix<double, 3, 12>() <<
-             l.x,   0,   0, l.y,   0,    0, l.z,   0,   0,  1,  0,  0,
-               0, l.x,   0,   0, l.y,    0,   0, l.z,   0,  0,  1,  0,
-               0,   0, l.x,   0,   0,  l.y,   0,   0, l.z,  0,  0,  1
-             ).finished();
-        // clang-format on
-        mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
-
-        J_aux = J1 * J2;
-    }
-    */
-    // OPTION B
     const Eigen::Matrix<double, 1, 3> q =
         (Eigen::Matrix<double, 1, 3>() << g.x - ln_aux.pBase.x,
          g.y - ln_aux.pBase.y, g.z - ln_aux.pBase.z)
             .finished(); // q[0] = x; q[1] = y; q[2] = z
 
-    /* error[0] = mrpt::square(q[1]*ln_aux.director[2]-q[2]*ln_aux.director[1])+mrpt::square(q[2]*ln_aux.director[0]-q[0]*ln_aux.director[2])+mrpt::square(q[0]*ln_aux.director[1]-q[1]*ln_aux.director[0])/mod_ru;
-    if (0)
-    {
-        // J1
-        double J1x = 2 * (-u[2]*(q[2]*u[0]-q[0]*u[2])+u[1]*(q[0]*u[1]-q[1]*u[0]))/mod_ru;
-        double J1y = 2 * ( u[2]*(q[1]*u[2]-q[2]*u[1])-u[0]*(q[0]*u[1]-q[1]*u[0]))/mod_ru;
-        double J1z = 2 * (-u[1]*(q[1]*u[2]-q[2]*u[1])+u[0]*(q[2]*u[0]-q[0]*u[2]))/mod_ru;
-        const Eigen::Matrix<double, 1, 3> J1 =
-            (Eigen::Matrix<double, 1, 3>() << J1x, J1y, J1z)
-                .finished();
-        // J2
-        // clang-format off
-        Eigen::Matrix<double, 3, 12> J2 =
-            (Eigen::Matrix<double, 3, 12>() <<
-             l.x,   0,   0, l.y,   0,    0, l.z,   0,   0,  1,  0,  0,
-               0, l.x,   0,   0, l.y,    0,   0, l.z,   0,  0,  1,  0,
-               0,   0, l.x,   0,   0,  l.y,   0,   0, l.z,  0,  0,  1
-             ).finished();
-        // clang-format on
-        mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
-
-        J_aux = J1 * J2;
-    }
-    */
-    // OPTION C
-
-    // error[0] = mrpt::square(ex)+mrpt::square(ey)+mrpt::square(ez);
     error[0] = q[0]-(u[0]/mod_ru)*u*q.transpose();
     error[1] = q[1]-(u[1]/mod_ru)*u*q.transpose();
     error[2] = q[2]-(u[2]/mod_ru)*u*q.transpose();
@@ -177,25 +117,36 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2line(
     MRPT_END
 }
 
-mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
+mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2plane(
     const mp2p_icp::point_plane_pair_t&                         pairing,
     const mrpt::poses::CPose3D&                                 relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 1, 12>> jacobian)
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     MRPT_START
-    mrpt::math::CVectorFixedDouble<1> error;
+    mrpt::math::CVectorFixedDouble<3> error;
     const auto&                       p      = pairing.pt_local;
     const auto&                       pl_aux = pairing.pl_global.plane;
     const mrpt::math::TPoint3D        l      = TPoint3D(p.x, p.y, p.z);
     mrpt::math::TPoint3D              g;
     relativePose.composePoint(l, g);
+    double mod_n = mrpt::square(pl_aux.coefs[0]) + mrpt::square(pl_aux.coefs[1]) + mrpt::square(pl_aux.coefs[2]);
 
-    error[0] = pl_aux.evaluatePoint(g);
+    error[0] = - (pl_aux.coefs[0]/mod_n) * (pl_aux.coefs[0]*g.x + pl_aux.coefs[1]*g.y + pl_aux.coefs[2]*g.z + pl_aux.coefs[3]);
+    error[1] = - (pl_aux.coefs[1]/mod_n) * (pl_aux.coefs[0]*g.x + pl_aux.coefs[1]*g.y + pl_aux.coefs[2]*g.z + pl_aux.coefs[3]);
+    error[2] = - (pl_aux.coefs[2]/mod_n) * (pl_aux.coefs[0]*g.x + pl_aux.coefs[1]*g.y + pl_aux.coefs[2]*g.z + pl_aux.coefs[3]);
     if (jacobian)
     {
         // Eval Jacobian:
+        // J1
+        const Eigen::Matrix<double, 3, 3> J1 =
+            (Eigen::Matrix<double, 3, 3>() <<
+                    - mrpt::square(pl_aux.coefs[0])/mod_n, - pl_aux.coefs[0] * pl_aux.coefs[1] / mod_n, - pl_aux.coefs[0] * pl_aux.coefs[2] / mod_n,
+              - pl_aux.coefs[1] * pl_aux.coefs[0] / mod_n,       - mrpt::square(pl_aux.coefs[1])/mod_n, - pl_aux.coefs[1] * pl_aux.coefs[2] / mod_n,
+              - pl_aux.coefs[2] * pl_aux.coefs[0] / mod_n, - pl_aux.coefs[2] * pl_aux.coefs[1] / mod_n,       - mrpt::square(pl_aux.coefs[2])/mod_n)
+            .finished();
+        // J2
         // clang-format off
-        const Eigen::Matrix<double, 3, 12> J1 =
+        const Eigen::Matrix<double, 3, 12> J2 =
             (Eigen::Matrix<double, 3, 12>() <<
              l.x,   0,   0, l.y,   0,    0, l.z,   0,   0,  1,  0,  0,
                0, l.x,   0,   0, l.y,    0,   0, l.z,   0,  0,  1,  0,
@@ -203,13 +154,8 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2plane(
              ).finished();
         // clang-format on
 
-        const Eigen::Matrix<double, 1, 3> Jpl =
-            (Eigen::Matrix<double, 1, 3>() << pl_aux.coefs[0], pl_aux.coefs[1],
-             pl_aux.coefs[2])
-                .finished();
-
-        mrpt::math::CMatrixFixed<double, 1, 12>& J_aux = jacobian.value().get();
-        J_aux                                          = Jpl * J1;
+        mrpt::math::CMatrixFixed<double, 3, 12>& J_aux = jacobian.value().get();
+        J_aux                                          = J1 * J2;
     }
     return error;
     MRPT_END
