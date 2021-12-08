@@ -62,7 +62,7 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         const auto nLn2Ln = in.paired_ln2ln.size();
 
         const auto nErrorTerms =
-            (nPt2Pt + nPl2Pl) * 3 + nPt2Pl + nPt2Ln + nLn2Ln * 4;
+            (nPt2Pt + nPl2Pl + nPt2Ln) * 3 + nPt2Pl + nLn2Ln * 4;
         ASSERT_(nErrorTerms > 0);
         err.resize(nErrorTerms);
 
