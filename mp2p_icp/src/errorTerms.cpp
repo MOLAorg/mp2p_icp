@@ -150,15 +150,21 @@ mrpt::math::CVectorFixedDouble<1> mp2p_icp::error_point2line(
     double ey = q[1]-(u[1]/mod_ru)*u*q.transpose();
     double ez = q[2]-(u[2]/mod_ru)*u*q.transpose();
 
-    error[0] = mrpt::square(ex)+mrpt::square(ey)+mrpt::square(ez);
+    // error[0] = mrpt::square(ex)+mrpt::square(ey)+mrpt::square(ez);
+    error[0] = mrpt::square(ex);
+    error[1] = mrpt::square(ey);
+    error[2] = mrpt::square(ez);
     if (jacobian)
     {
         // J1
         double J1x = 2 * ( ex*(mod_ru - mrpt::square(u[0])) - ey*u[1]*u[0]                     - ex*u[2]*u[0])/mod_ru;
         double J1y = 2 * (-ex*u[0]*u[1]                     + ey*(mod_ru - mrpt::square(u[1])) - ez*u[2]*u[1])/mod_ru;
         double J1z = 2 * (-ex*u[0]*u[2]                     - ey*u[1]*u[2]                     + ez*(mod_ru - mrpt::square(u[2])))/mod_ru;
-        const Eigen::Matrix<double, 1, 3> J1 =
-            (Eigen::Matrix<double, 1, 3>() << J1x, J1y, J1z)
+        const Eigen::Matrix<double, 3, 3> J1 =
+            (Eigen::Matrix<double, 3, 3>() <<
+              2*ex*(1-mrpt::square(u[0])/mod_ru),             -2*ex*u[0]*u[1]/mod_ru,             -2*ex*u[0]*u[2]/mod_ru,
+                          -2*ey*u[1]*u[0]/mod_ru, 2*ey*(1-mrpt::square(u[1])/mod_ru),             -2*ey*u[1]*u[2]/mod_ru,
+                          -2*ez*u[2]*u[0]/mod_ru,             -2*ez*u[2]*u[1]/mod_ru, 2*ez*(1-mrpt::square(u[2])/mod_ru))
                 .finished();
         // J2
         // clang-format off
