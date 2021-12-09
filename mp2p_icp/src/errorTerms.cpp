@@ -15,6 +15,7 @@
 #include <mrpt/math/CVectorFixed.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/math/geometry.h>
+#include <mrpt/math/ops_containers.h>  // dotProduct()
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/Lie/SE.h>
 
@@ -64,40 +65,29 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2line(
 {
     MRPT_START
     mrpt::math::CVectorFixedDouble<3> error;
-    const auto&                       p      = pairing.pt_local;
-    const auto&                       ln_aux = pairing.ln_global;
-    const mrpt::math::TPoint3D        l      = TPoint3D(p.x, p.y, p.z);
-    mrpt::math::TPoint3D              g;
-    relativePose.composePoint(l, g);
+    const auto&                       lnGlob = pairing.ln_global;
+
+    // local and global point:
+    const mrpt::math::TPoint3D l = pairing.pt_local;
+    const mrpt::math::TPoint3D g = relativePose.composePoint(l);
 
     // Module of vector director of line
-    const Eigen::Matrix<double, 1, 3> ru =
-        (Eigen::Matrix<double, 1, 3>() << ln_aux.director[0],
-         ln_aux.director[1], ln_aux.director[2])
-            .finished();
-    double                            mod_ru = ru * ru.transpose();
-    const Eigen::Matrix<double, 1, 3> u =
-        (Eigen::Matrix<double, 1, 3>() << ln_aux.director[0],
-         ln_aux.director[1], ln_aux.director[2])
-            .finished();
+    const auto& u = lnGlob.director;
+    const auto  q = (g - lnGlob.pBase);
 
-    const Eigen::Matrix<double, 1, 3> q =
-        (Eigen::Matrix<double, 1, 3>() << g.x - ln_aux.pBase.x,
-         g.y - ln_aux.pBase.y, g.z - ln_aux.pBase.z)
-            .finished();  // q[0] = x; q[1] = y; q[2] = z
+    const auto uq = mrpt::math::dotProduct<3, double>(u, q);
 
-    error[0] = q[0] - (u[0] / mod_ru) * u * q.transpose();
-    error[1] = q[1] - (u[1] / mod_ru) * u * q.transpose();
-    error[2] = q[2] - (u[2] / mod_ru) * u * q.transpose();
+    error[0] = q[0] - u.x * uq;
+    error[1] = q[1] - u.y * uq;
+    error[2] = q[2] - u.z * uq;
+
     if (jacobian)
     {
         // J1
         const Eigen::Matrix<double, 3, 3> J1 =
-            (Eigen::Matrix<double, 3, 3>() << 1 - mrpt::square(u[0]) / mod_ru,
-             -u[0] * u[1] / mod_ru, -u[0] * u[2] / mod_ru,
-             -u[1] * u[0] / mod_ru, 1 - mrpt::square(u[1]) / mod_ru,
-             -u[1] * u[2] / mod_ru, -u[2] * u[0] / mod_ru,
-             -u[2] * u[1] / mod_ru, 1 - mrpt::square(u[2]) / mod_ru)
+            (Eigen::Matrix<double, 3, 3>() << 1 - mrpt::square(u.x), -u.x * u.y,
+             -u.x * u.z, -u.y * u.x, 1 - mrpt::square(u.y), -u.y * u.z,
+             -u.z * u.x, -u.z * u.y, 1 - mrpt::square(u.z))
                 .finished();
         // J2
         // clang-format off
