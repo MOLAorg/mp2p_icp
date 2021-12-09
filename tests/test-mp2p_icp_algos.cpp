@@ -265,8 +265,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         // clang-format on
 
         // Optional methods:
+#if 0  // Disabled for now: we now need to initialize from a YAML file:
         if (mp2p_icp::ICP_LibPointmatcher::methodAvailable())
             lst_algos.push_back({"mp2p_icp::ICP_LibPointmatcher", "", "", 1});
+#endif
 
         for (const auto& algo : lst_algos)
             for (const auto& fil : lst_files)
