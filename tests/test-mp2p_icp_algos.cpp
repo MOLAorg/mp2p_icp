@@ -81,7 +81,7 @@ static void test_icp(
 
     const double max_dim = mrpt::max3(bbox_size.x, bbox_size.y, bbox_size.z);
 
-    const double f = 0.25;
+    const double f = 0.15;
 
     mrpt::system::CTicTac timer;
 
@@ -95,9 +95,9 @@ static void test_icp(
         const double Dx    = rnd.drawUniform(-f * bbox_size.x, f * bbox_size.x);
         const double Dy    = rnd.drawUniform(-f * bbox_size.y, f * bbox_size.y);
         const double Dz    = rnd.drawUniform(-f * bbox_size.z, f * bbox_size.z);
-        const double yaw   = mrpt::DEG2RAD(rnd.drawUniform(-20.0, 20.0));
-        const double pitch = mrpt::DEG2RAD(rnd.drawUniform(-20.0, 20.0));
-        const double roll  = mrpt::DEG2RAD(rnd.drawUniform(-20.0, 20.0));
+        const double yaw   = mrpt::DEG2RAD(rnd.drawUniform(-10.0, 10.0));
+        const double pitch = mrpt::DEG2RAD(rnd.drawUniform(-10.0, 10.0));
+        const double roll  = mrpt::DEG2RAD(rnd.drawUniform(-10.0, 10.0));
 
         const auto gt_pose = mrpt::poses::CPose3D(Dx, Dy, Dz, yaw, pitch, roll);
 
@@ -162,7 +162,7 @@ static void test_icp(
                 m)
             {
                 mrpt::containers::yaml ps;
-                ps["threshold"] = 0.15 * max_dim;
+                ps["threshold"] = 0.40 * max_dim;
                 m->initialize(ps);
             }
 
@@ -172,7 +172,7 @@ static void test_icp(
                 m)
             {
                 mrpt::containers::yaml ps;
-                ps["distanceThreshold"]   = 0.15 * max_dim;
+                ps["distanceThreshold"]   = 0.20 * max_dim;
                 ps["planeEigenThreshold"] = 10.0;
                 ps["minimumPlanePoints"]  = 5;
                 ps["knn"]                 = 5;
@@ -198,8 +198,6 @@ static void test_icp(
         const auto err_xyz   = pos_error.norm();
         const auto err_se3   = SE<3>::log(pos_error).norm();
 
-        ASSERT_LT_(err_se3, 0.1);
-
         stats(rep, 2 + 0) = err_log_n;
         stats(rep, 2 + 1) = err_xyz;
         stats(rep, 2 + 2) = dt;
@@ -221,6 +219,7 @@ static void test_icp(
             std::cout << "ICP quality    : " << icp_results.quality << "\n";
             std::cout << "ICP iterations : " << icp_results.nIterations << "\n";
         }
+        ASSERT_LT_(err_se3, 0.1);
 
     }  // for reps
 
@@ -247,16 +246,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             const char*, const char*, const char*, int /*decimation*/>>;
         // clang-format off
         lst_algos_t lst_algos = {
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_DistanceThreshold", 1},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_DistanceThreshold", 10},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_InlierRatio", 10},
-             // Horn method cannot handle pt-to-plane.
-             //{"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Point2Plane", 10},
-             
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Point2Plane", 10},
              
              {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_DistanceThreshold", 10},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_InlierRatio", 10},
-             // OLAE method cannot handle pt-to-plane only.
-             //{"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Point2Plane", 10},
+             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Point2Plane", 10},
              
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_DistanceThreshold", 10},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_InlierRatio", 10},

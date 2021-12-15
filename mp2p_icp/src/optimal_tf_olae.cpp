@@ -268,8 +268,8 @@ bool mp2p_icp::optimal_tf_olae(
         const auto [new_ct_local, new_ct_global] =
             eval_centroids_robust(in, result.outliers);
 
-        ct_local = new_ct_local;
-        ct_global  = new_ct_global;
+        ct_local  = new_ct_local;
+        ct_global = new_ct_global;
 
         // And rebuild the linear system with the new values:
         linsys = olae_build_linear_system(

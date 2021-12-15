@@ -12,6 +12,7 @@
 
 #include <mp2p_icp/Solver_OLAE.h>
 #include <mp2p_icp/optimal_tf_olae.h>
+#include <mp2p_icp/pt2ln_pl_to_pt2pt.h>
 
 #include <iostream>
 
@@ -41,8 +42,17 @@ bool Solver_OLAE::impl_optimal_pose(
 
     out = OptimalTF_Result();
 
+    const Pairings*         effectivePairings = &pairings;
+    std::optional<Pairings> altPairings;
+
+    if (!pairings.paired_pt2ln.empty() || !pairings.paired_pt2pl.empty())
+    {
+        altPairings       = pt2ln_pl_to_pt2pt(pairings, sc);
+        effectivePairings = &altPairings.value();
+    }
+
     // Compute the optimal pose, and return its validity:
-    return optimal_tf_olae(pairings, pairingsWeightParameters, out);
+    return optimal_tf_olae(*effectivePairings, pairingsWeightParameters, out);
 
     MRPT_END
 }

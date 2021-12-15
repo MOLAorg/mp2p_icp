@@ -19,6 +19,8 @@ namespace mp2p_icp
 {
 /** Classic Horn's solution for optimal SE(3) transformation, modified to
  * accept point-to-point, line-to-line, plane-to-plane pairings.
+ * If you need point-to-line or point-to-plane pairings, use the wrapper
+ * mp2p_icp::Solver_Horn.
  *
  * \note On MRPT naming convention: "this"=global; "other"=local.
  * \return false If the number of pairings is too small for a unique
