@@ -35,8 +35,9 @@ static TCLAP::ValueArg<std::string> argInputLocal(
     "It is interpreted as a rawlog entry if using the "
     "format `<RAWLOG_FILE.rawlog>:<N>` to select the N-th entry in the "
     "rawlog; otherwise, if the file extension is `.mm` it is loaded as a "
-    "serialized metric_map_t object; in any other case, the file is assumed to "
-    "be a 3D pointcloud stored as a Nx3 ASCII matrix file.",
+    "serialized metric_map_t object; if it is a `.icplog` file, the local map "
+    "from that icp log is taken as input; in any other case, the file is "
+    "assumed to be a 3D pointcloud stored as a Nx3 ASCII matrix file.",
     true, "pointcloud1.txt", "pointcloud1.txt", cmd);
 
 static TCLAP::ValueArg<std::string> argInputGlobal(
@@ -149,7 +150,8 @@ static mp2p_icp::metric_map_t::Ptr pc_from_rawlog(
     return pc;
 }
 
-static mp2p_icp::metric_map_t::Ptr load_input_pc(const std::string& filename)
+static mp2p_icp::metric_map_t::Ptr load_input_pc(
+    const std::string& filename, bool local)
 {
     // rawlog?
     if (auto extPos = filename.find(".rawlog:"); extPos != std::string::npos)
@@ -171,6 +173,18 @@ static mp2p_icp::metric_map_t::Ptr load_input_pc(const std::string& filename)
         bool readOk = r->load_from_file(filename);
         ASSERT_(readOk);
 
+        return r;
+    }
+
+    // icplog?
+    if (auto extPos = filename.find(".icplog"); extPos != std::string::npos)
+    {
+        mp2p_icp::LogRecord lr;
+        bool                icplogFileReadOK = lr.load_from_file(filename);
+        ASSERT_(icplogFileReadOK);
+
+        auto r = mp2p_icp::metric_map_t::Create();
+        *r     = local ? *lr.pcLocal : *lr.pcGlobal;
         return r;
     }
 
@@ -202,8 +216,8 @@ void runIcp()
     // ------------------------------
     // Original input point clouds
     // ------------------------------
-    auto pcLocal  = load_input_pc(argInputLocal.getValue());
-    auto pcGlobal = load_input_pc(argInputGlobal.getValue());
+    auto pcLocal  = load_input_pc(argInputLocal.getValue(), true);
+    auto pcGlobal = load_input_pc(argInputGlobal.getValue(), false);
 
     std::cout << "Input point cloud #1: " << pcLocal->contents_summary()
               << std::endl;
