@@ -99,7 +99,7 @@ class Matcher_Points_Base : public Matcher
         const uint64_t                localPointsSampleSeed = 0);
 
    protected:
-    void impl_match(
+    bool impl_match(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
         MatchState& ms, Pairings& out) const override final;

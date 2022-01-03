@@ -23,14 +23,15 @@ void Matcher::initialize(const mrpt::containers::yaml& params)
     runUpToIteration = params.getOrDefault<uint32_t>("runUpToIteration", 0);
 }
 
-void Matcher::match(
+bool Matcher::match(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
     MatchState& ms, Pairings& out) const
 {
-    if (mc.icpIteration < runFromIteration) return;
-    if (runUpToIteration > 0 && mc.icpIteration > runUpToIteration) return;
-    impl_match(pcGlobal, pcLocal, localPose, mc, ms, out);
+    if (mc.icpIteration < runFromIteration) return false;
+    if (runUpToIteration > 0 && mc.icpIteration > runUpToIteration)
+        return false;
+    return impl_match(pcGlobal, pcLocal, localPose, mc, ms, out);
 }
 
 Pairings mp2p_icp::run_matchers(
@@ -57,12 +58,24 @@ Pairings mp2p_icp::run_matchers(
         ms = &localMS.value();
     }
 
+    bool anyRun = false;
+
     for (const auto& matcher : matchers)
     {
         ASSERT_(matcher);
         Pairings pc;
-        matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, *ms, pc);
+        bool     hasRun =
+            matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, *ms, pc);
+        anyRun = anyRun || hasRun;
         pairings.push_back(pc);
     }
+
+    if (!anyRun)
+    {
+        std::cerr << "[mp2p_icp::run_matchers] WARNING: No active matcher "
+                     "actually ran on the two maps."
+                  << std::endl;
+    }
+
     return pairings;
 }

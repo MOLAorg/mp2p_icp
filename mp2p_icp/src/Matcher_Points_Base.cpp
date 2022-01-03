@@ -19,7 +19,7 @@
 
 using namespace mp2p_icp;
 
-void Matcher_Points_Base::impl_match(
+bool Matcher_Points_Base::impl_match(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D&          localPose,
     [[maybe_unused]] const MatchContext& mc, MatchState& ms,
@@ -99,6 +99,7 @@ void Matcher_Points_Base::impl_match(
             }
         }
     }
+    return true;
     MRPT_END
 }
 

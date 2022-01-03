@@ -77,8 +77,9 @@ class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     /** Finds correspondences between the two point clouds.
      * "out" is not cleared, but new pairings added to it.
+     * \return false if the matcher is disabled and was not actually run.
      */
-    virtual void match(
+    virtual bool match(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
         MatchState& ms, Pairings& out) const;
@@ -87,7 +88,8 @@ class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     uint32_t runUpToIteration = 0;  //!< 0: no limit
 
    protected:
-    virtual void impl_match(
+    /// \return true if the mather is actually invoked, false if disabled.
+    virtual bool impl_match(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
         MatchState& ms, Pairings& out) const = 0;
