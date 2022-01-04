@@ -31,6 +31,13 @@ static TCLAP::ValueArg<std::string> argLayer(
     "l", "layer", "Target layer name (Default: \"raw\").", false, "raw", "raw",
     cmd);
 
+static TCLAP::ValueArg<uint64_t> argID(
+    "", "id", "Metric map numeric ID (Default: none).", false, 0, "[ID]", cmd);
+
+static TCLAP::ValueArg<std::string> argLabel(
+    "", "label", "Metric map label string (Default: none).", false, "label",
+    "[label]", cmd);
+
 int main(int argc, char** argv)
 {
     try
@@ -52,6 +59,9 @@ int main(int argc, char** argv)
         // Save as mm file:
         mp2p_icp::metric_map_t mm;
         mm.layers["raw"] = std::move(obs->pointcloud);
+
+        if (argID.isSet()) mm.id = argID.getValue();
+        if (argLabel.isSet()) mm.label = argLabel.getValue();
 
         if (!mm.save_to_file(argOutput.getValue()))
             THROW_EXCEPTION_FMT(
