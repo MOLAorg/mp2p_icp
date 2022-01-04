@@ -55,6 +55,9 @@ class Matcher_Points_Base : public Matcher
      * point. */
     bool allowMatchAlreadyMatchedGlobalPoints_ = false;
 
+    /** Maximum number of points per tree node. Not set: nanoflann default. */
+    std::optional<std::size_t> kdtree_leaf_max_points_;
+
     /** Common parameters to all derived classes:
      *
      * - `maxLocalPointsPerLayer`: Maximum number of local points to consider

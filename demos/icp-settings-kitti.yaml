@@ -27,6 +27,7 @@ solvers:
 matchers:
   - class: mp2p_icp::Matcher_Point2Plane
     params:
+      kdtree_leaf_max_points: 20
       #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       distanceThreshold: 1.5
       planeEigenThreshold: 0.05

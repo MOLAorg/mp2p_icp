@@ -86,6 +86,23 @@ bool Matcher_Points_Base::impl_match(
 
             const size_t nBefore = out.paired_pt2pt.size();
 
+            // Ensure we have the KD-tree parameters desired by the user:
+            if (kdtree_leaf_max_points_.has_value())
+            {
+                if (const auto glLayerPts =
+                        std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+                            glLayer);
+                    glLayerPts &&
+                    glLayerPts->kdtree_search_params.leaf_max_size !=
+                        *kdtree_leaf_max_points_)
+                {
+                    glLayerPts->kdtree_search_params.leaf_max_size =
+                        *kdtree_leaf_max_points_;
+                    glLayerPts->mark_as_modified();  // rebuild kd-tree index
+                }
+            }
+
+            // matcher implementation:
             implMatchOneLayer(
                 *glLayer, *lcLayer, localPose, ms, glLayerName, localLayerName,
                 out);
@@ -147,6 +164,9 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
     allowMatchAlreadyMatchedGlobalPoints_ = params.getOrDefault(
         "allowMatchAlreadyMatchedGlobalPoints",
         allowMatchAlreadyMatchedGlobalPoints_);
+
+    if (auto val = params.getOrDefault("kdtree_leaf_max_points", 0); val > 0)
+        kdtree_leaf_max_points_ = val;
 }
 
 Matcher_Points_Base::TransformedLocalPointCloud
