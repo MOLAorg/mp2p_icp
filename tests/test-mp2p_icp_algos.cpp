@@ -172,7 +172,8 @@ static void test_icp(
                 m)
             {
                 mrpt::containers::yaml ps;
-                ps["distanceThreshold"]   = 0.20 * max_dim;
+                ps["distanceThreshold"]   = 0.05 * max_dim;
+                ps["searchRadius"]        = 0.20 * max_dim;
                 ps["planeEigenThreshold"] = 10.0;
                 ps["minimumPlanePoints"]  = 5;
                 ps["knn"]                 = 5;

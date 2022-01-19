@@ -30,6 +30,7 @@ void Matcher_Point2Plane::initialize(const mrpt::containers::yaml& params)
     Matcher_Points_Base::initialize(params);
 
     MCP_LOAD_REQ(params, distanceThreshold);
+    MCP_LOAD_REQ(params, searchRadius);
     MCP_LOAD_REQ(params, knn);
     MCP_LOAD_REQ(params, planeEigenThreshold);
     MCP_LOAD_REQ(params, minimumPlanePoints);
@@ -69,8 +70,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
 
     // Loop for each point in local map:
     // --------------------------------------------------
-    const float maxDistForCorrespondenceSquared =
-        mrpt::square(distanceThreshold);
+    const float maxDistForCorrespondenceSquared = mrpt::square(searchRadius);
 
     const auto& gxs = pcGlobal.getPointsBufferRef_x();
     const auto& gys = pcGlobal.getPointsBufferRef_y();
@@ -148,13 +148,20 @@ void Matcher_Point2Plane::implMatchOneLayer(
         // e0/e2 must be < planeEigenThreshold:
         if (eig.eigVals[0] > planeEigenThreshold * eig.eigVals[2]) continue;
 
-        auto& p              = out.paired_pt2pl.emplace_back();
-        p.pt_local           = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
-        p.pl_global.centroid = {
+        const auto&                normal        = eig.eigVectors[0];
+        const mrpt::math::TPoint3D planeCentroid = {
             eig.meanCov.mean.x(), eig.meanCov.mean.y(), eig.meanCov.mean.z()};
 
-        const auto& normal = eig.eigVectors[0];
-        p.pl_global.plane  = mrpt::math::TPlane(p.pl_global.centroid, normal);
+        const auto   thePlane    = mrpt::math::TPlane(planeCentroid, normal);
+        const double ptPlaneDist = std::abs(thePlane.distance({lx, ly, lz}));
+
+        if (ptPlaneDist > distanceThreshold) continue;  // plane is too distant
+
+        auto& p              = out.paired_pt2pl.emplace_back();
+        p.pt_local           = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
+        p.pl_global.centroid = planeCentroid;
+
+        p.pl_global.plane = thePlane;
 
         // Mark local point as already paired:
         ms.localPairedBitField.point_layers[localName].at(localIdx) = true;

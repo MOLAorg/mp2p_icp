@@ -66,6 +66,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
             mrpt::containers::yaml p;
             p["distanceThreshold"]   = 0.1;
+            p["searchRadius"]        = 0.1;
             p["minimumPlanePoints"]  = 5.0;
             p["knn"]                 = 5;
             p["planeEigenThreshold"] = 0.1;
