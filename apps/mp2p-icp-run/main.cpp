@@ -288,7 +288,7 @@ void runIcp()
 
     std::cout
         << "ICP result:\n"
-           " optimalPose_1_to_2: "
+           " optimalPoseLocalWrtGlobal: "
         << icpResults.optimal_tf.mean
         << "\n"
            " quality: "
