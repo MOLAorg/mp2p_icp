@@ -15,7 +15,9 @@
 using namespace mp2p_icp;
 
 std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters>
-    mp2p_icp::icp_pipeline_from_yaml(const mrpt::containers::yaml& icpParams)
+    mp2p_icp::icp_pipeline_from_yaml(
+        const mrpt::containers::yaml&       icpParams,
+        const mrpt::system::VerbosityLevel& vLevel)
 {
     MRPT_START
 
@@ -28,6 +30,8 @@ std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters>
         THROW_EXCEPTION_FMT(
             "Could not instantiate ICP algorithm named '%s'",
             icpClassName.c_str());
+
+    icp->setVerbosityLevel(vLevel);
 
     // Special derived-classes for library wrappers:
     bool isDerived = false;
