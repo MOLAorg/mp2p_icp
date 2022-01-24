@@ -7,6 +7,8 @@
 #include <mp2p_icp/Results.h>
 #include <mrpt/serialization/CArchive.h>
 
+#include <ostream>
+
 using namespace mp2p_icp;
 
 static const uint8_t SERIALIZATION_VERSION = 0;
@@ -43,4 +45,21 @@ mrpt::serialization::CArchive& mp2p_icp::operator>>(
 {
     obj.serializeFrom(in);
     return in;
+}
+
+void Results::print(std::ostream& o) const
+{
+    o << "- optimalPoseLocalWrtGlobal: " << optimal_tf.mean
+      << "\n"
+         "- quality: "
+      << 100 * quality
+      << " %\n"
+         "- iterations: "
+      << nIterations
+      << "\n"
+         "- terminationReason: "
+      << mrpt::typemeta::TEnumType<mp2p_icp::IterTermReason>::value2name(
+             terminationReason)
+      << "\n"
+      << "- finalPairings: " << finalPairings.contents_summary() << "\n";
 }

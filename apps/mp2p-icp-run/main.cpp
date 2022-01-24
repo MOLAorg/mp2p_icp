@@ -286,25 +286,11 @@ void runIcp()
 
     const double t_end = mrpt::Clock::nowDouble();
 
-    std::cout
-        << "ICP result:\n"
-           " optimalPoseLocalWrtGlobal: "
-        << icpResults.optimal_tf.mean
-        << "\n"
-           " quality: "
-        << 100 * icpResults.quality
-        << " %\n"
-           " iterations: "
-        << icpResults.nIterations
-        << "\n"
-           " terminationReason: "
-        << mrpt::typemeta::TEnumType<mp2p_icp::IterTermReason>::value2name(
-               icpResults.terminationReason)
-        << "\n"
-           " time to solve: "
-        << mrpt::system::formatTimeInterval(t_end - t_ini) << "\n"
-        << " finalPairings: " << icpResults.finalPairings.contents_summary()
-        << "\n";
+    std::cout << "ICP result:\n";
+    icpResults.print(std::cout);
+
+    std::cout << "- time to solve: "
+              << mrpt::system::formatTimeInterval(t_end - t_ini) << "\n";
 }
 
 int main(int argc, char** argv)

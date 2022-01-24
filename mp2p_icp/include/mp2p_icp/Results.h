@@ -9,6 +9,7 @@
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 
 #include <cstdint>
+#include <iosfwd>
 
 #include "IterTermReason.h"
 
@@ -41,6 +42,11 @@ struct Results
 
     void serializeTo(mrpt::serialization::CArchive& out) const;
     void serializeFrom(mrpt::serialization::CArchive& in);
+
+    /** Print all results in human-friendly format to the given output, for
+     * example, use `std::cout`.
+     */
+    void print(std::ostream& o) const;
 };
 
 mrpt::serialization::CArchive& operator<<(
