@@ -35,6 +35,34 @@ void Matcher_Point2Plane::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_REQ(params, planeEigenThreshold);
     MCP_LOAD_REQ(params, minimumPlanePoints);
     ASSERT_ABOVEEQ_(minimumPlanePoints, 3UL);
+
+    MCP_LOAD_OPT(params, localPointMustFitPlaneToo);
+    MCP_LOAD_OPT(params, localToGlobalPlaneMinAbsCosine);
+}
+
+// Filter the list of neighbors by maximum distance threshold:
+static void filterListByMaxDist(
+    std::vector<size_t>& kddIdxs, std::vector<float>& kddSqrDist,
+    const float maxDistForCorrespondenceSquared)
+{
+    // Faster common case: all points are valid:
+    if (!kddSqrDist.empty() &&
+        kddSqrDist.back() < maxDistForCorrespondenceSquared)
+    {
+        // Nothing to do: all knn points are within the range.
+    }
+    else
+    {
+        for (size_t j = 0; j < kddSqrDist.size(); j++)
+        {
+            if (kddSqrDist[j] > maxDistForCorrespondenceSquared)
+            {
+                kddIdxs.resize(j);
+                kddSqrDist.resize(j);
+                break;
+            }
+        }
+    }
 }
 
 void Matcher_Point2Plane::implMatchOneLayer(
@@ -80,8 +108,8 @@ void Matcher_Point2Plane::implMatchOneLayer(
     const auto& lys = pcLocal.getPointsBufferRef_y();
     const auto& lzs = pcLocal.getPointsBufferRef_z();
 
-    std::vector<float>  kddSqrDist;
-    std::vector<size_t> kddIdxs;
+    std::vector<float>  kddSqrDist, kddSqrDistLocal;
+    std::vector<size_t> kddIdxs, kddIdxsLocal;
 
     for (size_t i = 0; i < tl.x_locals.size(); i++)
     {
@@ -110,25 +138,8 @@ void Matcher_Point2Plane::implMatchOneLayer(
             kddIdxs, kddSqrDist);
 
         // Filter the list of neighbors by maximum distance threshold:
-
-        // Faster common case: all points are valid:
-        if (!kddSqrDist.empty() &&
-            kddSqrDist.back() < maxDistForCorrespondenceSquared)
-        {
-            // Nothing to do: all knn points are within the range.
-        }
-        else
-        {
-            for (size_t j = 0; j < kddSqrDist.size(); j++)
-            {
-                if (kddSqrDist[j] > maxDistForCorrespondenceSquared)
-                {
-                    kddIdxs.resize(j);
-                    kddSqrDist.resize(j);
-                    break;
-                }
-            }
-        }
+        filterListByMaxDist(
+            kddIdxs, kddSqrDist, maxDistForCorrespondenceSquared);
 
         // minimum: 3 points to be able to fit a plane
         if (kddIdxs.size() < minimumPlanePoints) continue;
@@ -157,6 +168,41 @@ void Matcher_Point2Plane::implMatchOneLayer(
 
         if (ptPlaneDist > distanceThreshold) continue;  // plane is too distant
 
+        // Next, check plane-to-plane angle:
+        if (localPointMustFitPlaneToo)
+        {
+            pcLocal.kdTreeNClosestPoint3DIdx(
+                // Look closest to this guy
+                lxs[localIdx], lys[localIdx], lzs[localIdx],
+                // This max number of matches
+                knn, kddIdxsLocal, kddSqrDistLocal);
+
+            filterListByMaxDist(
+                kddIdxsLocal, kddSqrDistLocal, maxDistForCorrespondenceSquared);
+
+            // minimum: 3 points to be able to fit a plane
+            if (kddIdxsLocal.size() < minimumPlanePoints) continue;
+
+            const PointCloudEigen& eigLocal = mp2p_icp::estimate_points_eigen(
+                tl.x_locals.data(), tl.y_locals.data(), tl.z_locals.data(),
+                kddIdxsLocal);
+
+            // Do these points look like a plane?
+            // e0/e2 must be < planeEigenThreshold:
+            if (eigLocal.eigVals[0] > planeEigenThreshold * eigLocal.eigVals[2])
+                continue;
+
+            const auto& normalLocal = eigLocal.eigVectors[0];
+
+            const float dotProd = normalLocal.x * normal.x +
+                                  normalLocal.y * normal.y +
+                                  normalLocal.z * normal.z;
+
+            // Angle too large?
+            if (std::abs(dotProd) < localToGlobalPlaneMinAbsCosine) continue;
+        }
+
+        // OK, all conditions pass: add the new pairing:
         auto& p              = out.paired_pt2pl.emplace_back();
         p.pt_local           = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
         p.pl_global.centroid = planeCentroid;
