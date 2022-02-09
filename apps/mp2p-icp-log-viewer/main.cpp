@@ -653,9 +653,11 @@ void rebuild_3d_view()
     // GLOBAL PC:
     mp2p_icp::render_params_t rpGlobal;
 
+    rpGlobal.points.visible = false;
     for (const auto& cbPL : cbPointLayers_global)
     {
         if (!cbPL->checked()) continue;  // hidden
+        rpGlobal.points.visible = true;
 
         auto& rpL     = rpGlobal.points.perLayer[cbPL->caption()];
         rpL.pointSize = slPointSize->value();
@@ -678,9 +680,11 @@ void rebuild_3d_view()
     // LOCAL PC:
     mp2p_icp::render_params_t rpLocal;
 
+    rpLocal.points.visible = false;
     for (const auto& cbPL : cbPointLayers_local)
     {
         if (!cbPL->checked()) continue;  // hidden
+        rpLocal.points.visible = true;
 
         auto& rpL     = rpLocal.points.perLayer[cbPL->caption()];
         rpL.pointSize = slPointSize->value();
