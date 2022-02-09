@@ -411,8 +411,8 @@ std::string metric_map_t::contents_summary() const
         {
             ret +=
                 "\""s + layer.first + "\":"s + layer.second->asString() + " "s;
-            ret += ")";
         }
+        ret += ")";
     }
 
     return ret;
