@@ -24,14 +24,15 @@
 
 namespace mp2p_icp_filters
 {
+/** \addtogroup mp2p_icp_filters_grp
+ *  @{ */
+
 /** Pure virtual base class of filters, modifying an input/output metric_map_t.
  *
  * Filters can be used to remove noisy points from a point cloud, decimate it,
  * or to detect planes, lines, or split points into different layers.
  *
  * \sa Generator
- *
- * \ingroup mp2p_icp_filters_grp
  */
 class FilterBase : public mrpt::rtti::CObject,  // RTTI support
                    public mrpt::system::COutputLogger  // Logging support
@@ -56,20 +57,17 @@ class FilterBase : public mrpt::rtti::CObject,  // RTTI support
     /** @} */
 };
 
-/** A sequence of filters.
- * \ingroup mp2p_icp_filters_grp
- */
+/** A sequence of filters */
 using FilterPipeline = std::vector<FilterBase::Ptr>;
 
-/** Applies a pipeline of filters to a given metric_map_t.
- * \ingroup mp2p_icp_filters_grp
- */
+/** Applies a pipeline of filters to a given metric_map_t  */
 void apply_filter_pipeline(
     const FilterPipeline& filters, mp2p_icp::metric_map_t& inOut);
 
 /** Creates a pipeline of filters from a YAML configuration block (a sequence).
  *  Refer to YAML file examples. Returns an empty pipeline for an empty or null
- * yaml node. \ingroup mp2p_icp_filters_grp
+ * yaml node.
+ * Returned filters are already initialize()'d.
  */
 FilterPipeline filter_pipeline_from_yaml(
     const mrpt::containers::yaml&       c,
@@ -80,10 +78,12 @@ FilterPipeline filter_pipeline_from_yaml(
  *  filter descriptors.
  *  Returns an empty pipeline for an empty or null yaml node.
  *  Refer to YAML file examples.
- * \ingroup mp2p_icp_filters_grp
+ * Returned filters are already initialize()'d.
  */
 FilterPipeline filter_pipeline_from_yaml_file(
     const std::string&                  filename,
     const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
+
+/** @} */
 
 }  // namespace mp2p_icp_filters

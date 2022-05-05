@@ -179,6 +179,7 @@ mp2p_icp::metric_map_t apply_generators(
 /** Creates a set of generators from a YAML configuration block (a sequence).
  *  Returns an empty generators set for an empty or null yaml node.
  *  Refer to YAML file examples.
+ *  Returned generators are already initialize()'d.
  */
 GeneratorSet generators_from_yaml(
     const mrpt::containers::yaml&       c,
@@ -189,6 +190,7 @@ GeneratorSet generators_from_yaml(
  *  of generator descriptors.
  *  Returns an empty generators set for an empty or null yaml node.
  *  Refer to YAML file examples.
+ *  Returned generators are already initialize()'d.
  */
 GeneratorSet generators_from_yaml_file(
     const std::string&                  filename,
