@@ -46,25 +46,47 @@ static TCLAP::ValueArg<std::string> argInputGlobal(
     "pointcloud2.txt", "pointcloud2.txt", cmd);
 
 static TCLAP::ValueArg<std::string> argYamlConfigFile(
-    "c", "config", "YAML config file describing the ICP pipeline", true,
-    "icp-config.yaml", "icp-config.yaml", cmd);
+    "c", "config",
+    "YAML config file describing the ICP pipeline. See docs:\n"
+    " https://docs.mola-slam.org/latest/"
+    "module-mp2p-icp.html#yaml-pipeline-definition-files",
+    true, "icp-config.yaml", "icp-config.yaml", cmd);
 
 static TCLAP::ValueArg<std::string> argYamlConfigFileGenerators(
     "", "config-generators",
-    "YAML config file describing the Generators. "
+    "YAML config file describing the Generators. Can be also defined via an "
+    "entry `generators` in the main `--config` yaml file. "
     "Can be used when processing a rawlog as input; if not present, a default "
     "Generator object will be used.",
     false, "generators-config.yaml", "generators-config.yaml", cmd);
 
 static TCLAP::ValueArg<std::string> argYamlConfigFileFiltersLocal(
     "", "config-filters-local",
-    "YAML config file describing a filtering pipeline for local map. ", false,
-    "filters-config.yaml", "filters-config.yaml", cmd);
+    "YAML config file describing a filtering pipeline for local map."
+    "If not provided, and the main --config yaml file contains a "
+    "`filters` entry (can be overriden with --entry-name-filters-local), it "
+    "will be used instead.",
+    false, "filters-config.yaml", "filters-config.yaml", cmd);
 
 static TCLAP::ValueArg<std::string> argYamlConfigFileFiltersGlobal(
     "", "config-filters-global",
-    "YAML config file describing a filtering pipeline for global map. ", false,
-    "filters-config.yaml", "filters-config.yaml", cmd);
+    "YAML config file describing a filtering pipeline for global map."
+    "If not provided, and the main --config yaml file contains a"
+    "`filters` entry (can be overriden with --entry-name-filters-global), it "
+    "will be used instead.",
+    false, "filters-config.yaml", "filters-config.yaml", cmd);
+
+static TCLAP::ValueArg<std::string> argCfgNameFiltersGlobal(
+    "", "entry-name-filters-global",
+    "Overrides the map name in the YAML configuration file for global map "
+    "filter.",
+    false, "filters", "filters", cmd);
+
+static TCLAP::ValueArg<std::string> argCfgNameFiltersLocal(
+    "", "entry-name-filters-local",
+    "Overrides the map name in the YAML configuration file for local map "
+    "filter.",
+    false, "filters", "filters", cmd);
 
 static TCLAP::ValueArg<std::string> argInitialGuess(
     "", "guess",
@@ -200,6 +222,9 @@ static mp2p_icp::metric_map_t::Ptr load_input_pc(
 
 void runIcp()
 {
+    const auto cfg =
+        mrpt::containers::yaml::FromFile(argYamlConfigFile.getValue());
+
     // ------------------------------
     // Generators set
     // ------------------------------
@@ -211,6 +236,10 @@ void runIcp()
 
         std::cout << "Created " << generators.size()
                   << " generators from: " << f << std::endl;
+    }
+    else if (cfg.has("generators"))
+    {
+        generators = mp2p_icp_filters::generators_from_yaml(cfg["generators"]);
     }
 
     // ------------------------------
@@ -227,9 +256,6 @@ void runIcp()
     // ------------------------------
     // Build ICP pipeline:
     // ------------------------------
-    const auto cfg =
-        mrpt::containers::yaml::FromFile(argYamlConfigFile.getValue());
-
     auto [icp, icpParams] = mp2p_icp::icp_pipeline_from_yaml(cfg);
 
     if (argGenerateDebugFiles.isSet()) icpParams.generateDebugFiles = true;
@@ -247,10 +273,10 @@ void runIcp()
             filtersLocal = mp2p_icp_filters::filter_pipeline_from_yaml_file(
                 argYamlConfigFileFiltersLocal.getValue());
         }
-        else if (cfg.has("filters_local_map"))
+        else if (cfg.has(argCfgNameFiltersLocal.getValue()))
         {
             filtersLocal = mp2p_icp_filters::filter_pipeline_from_yaml(
-                cfg["filters_local_map"]);
+                cfg[argCfgNameFiltersLocal.getValue()]);
         }
         if (!filtersLocal.empty())
         {
@@ -266,10 +292,10 @@ void runIcp()
             filtersGlobal = mp2p_icp_filters::filter_pipeline_from_yaml_file(
                 argYamlConfigFileFiltersGlobal.getValue());
         }
-        else if (cfg.has("filters_global_map"))
+        else if (cfg.has(argCfgNameFiltersGlobal.getValue()))
         {
             filtersGlobal = mp2p_icp_filters::filter_pipeline_from_yaml(
-                cfg["filters_global_map"]);
+                cfg[argCfgNameFiltersGlobal.getValue()]);
         }
         if (!filtersGlobal.empty())
         {
