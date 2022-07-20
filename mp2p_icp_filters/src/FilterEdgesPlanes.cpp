@@ -175,7 +175,7 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
             // given in vehicle-frame coordinates.
             {
                 // Unit vector: vehicle -> plane centroid:
-                ASSERT_ABOVE_(pl_c.norm(), 1e-3);
+                ASSERT_GT_(pl_c.norm(), 1e-3);
                 const auto u = pl_c * (1.0 / pl_c.norm());
                 const auto dot_prod =
                     mrpt::math::dotProduct<3, double>(u, pl_n);

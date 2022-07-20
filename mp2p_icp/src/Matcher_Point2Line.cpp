@@ -33,7 +33,7 @@ void Matcher_Point2Line::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_REQ(params, knn);
     MCP_LOAD_REQ(params, lineEigenThreshold);
     MCP_LOAD_REQ(params, minimumLinePoints);
-    ASSERT_ABOVEEQ_(minimumLinePoints, 2UL);
+    ASSERT_GE_(minimumLinePoints, 2UL);
 }
 
 void Matcher_Point2Line::implMatchOneLayer(

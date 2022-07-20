@@ -34,7 +34,7 @@ void Matcher_Point2Plane::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_REQ(params, knn);
     MCP_LOAD_REQ(params, planeEigenThreshold);
     MCP_LOAD_REQ(params, minimumPlanePoints);
-    ASSERT_ABOVEEQ_(minimumPlanePoints, 3UL);
+    ASSERT_GE_(minimumPlanePoints, 3UL);
 
     MCP_LOAD_OPT(params, localPointMustFitPlaneToo);
     MCP_LOAD_OPT(params, localToGlobalPlaneMinAbsCosine);
