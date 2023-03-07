@@ -22,6 +22,7 @@
 #include <mrpt/core/round.h>
 #include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
+#include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/opengl/stock_objects.h>
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/poses/Lie/SO.h>
