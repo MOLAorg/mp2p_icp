@@ -1,30 +1,5 @@
 version: 2
 jobs:
-  gcc-u18.04-mrpt-dev:
-    docker:
-      - image: mrpt/mrpt-build-env:full-bionic
-    steps:
-      - run:
-          name: "Install dependencies"
-          command: |
-            apt-get update
-            apt-get install software-properties-common -y
-            add-apt-repository ppa:joseluisblancoc/mrpt -y
-            apt-get install libmrpt-dev -y
-      - checkout
-      - run:
-          name: "Pull Submodules"
-          command: |
-            git submodule init
-            git submodule update --remote
-      - run:
-          name: Generate cmake files
-          command: cmake -H. -Bbuild
-      - run: make -C build
-      - run: make CTEST_OUTPUT_ON_FAILURE=1 test -C build
-#      - run: make gcov -C build
-#      - run: make -C build
-#      - run: bash <(curl -s https://codecov.io/bash) -X gcov -y .codecov.yml -s build
   gcc-u20.04-mrpt-dev:
     docker:
       - image: mrpt/mrpt-build-env:full-focal
@@ -47,6 +22,9 @@ jobs:
           command: cmake -H. -Bbuild
       - run: make -C build
       - run: make CTEST_OUTPUT_ON_FAILURE=1 test -C build
+#      - run: make gcov -C build
+#      - run: make -C build
+#      - run: bash <(curl -s https://codecov.io/bash) -X gcov -y .codecov.yml -s build
   gcc-u20.04-mrpt-stable:
     docker:
       - image: mrpt/mrpt-build-env:full-focal
@@ -69,9 +47,9 @@ jobs:
           command: cmake -H. -Bbuild
       - run: make -C build
       - run: make CTEST_OUTPUT_ON_FAILURE=1 test -C build
-  clang-u18.04-mrpt-dev:
+  clang-u20.04-mrpt-dev:
     docker:
-      - image: mrpt/mrpt-build-env:full-bionic
+      - image: mrpt/mrpt-build-env:full-focal
     steps:
       - run:
           name: "Install dependencies"
@@ -90,18 +68,14 @@ jobs:
           name: Generate cmake files
           command: cmake -H. -Bbuild
           environment:
-            CC: /usr/bin/clang-6.0
-            CXX: /usr/bin/clang++-6.0
+            CC: /usr/bin/clang
+            CXX: /usr/bin/clang++
       - run: make -C build
       - run: make CTEST_OUTPUT_ON_FAILURE=1 test -C build
-#      - run: make gcov -C build
-#      - run: make -C build
-#      - run: bash <(curl -s https://codecov.io/bash) -X gcov -y .codecov.yml -s build
 workflows:
   version: 2
   build:
     jobs:
-      - gcc-u18.04-mrpt-dev
       - gcc-u20.04-mrpt-dev
       - gcc-u20.04-mrpt-stable
-      - clang-u18.04-mrpt-dev
+      - clang-u20.04-mrpt-dev
