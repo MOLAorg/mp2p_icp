@@ -68,8 +68,8 @@ jobs:
           name: Generate cmake files
           command: cmake -H. -Bbuild
           environment:
-            CC: /usr/bin/clang
-            CXX: /usr/bin/clang++
+            CC: /usr/bin/clang-9
+            CXX: /usr/bin/clang++-9
       - run: make -C build
       - run: make CTEST_OUTPUT_ON_FAILURE=1 test -C build
 workflows:
