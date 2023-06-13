@@ -22,7 +22,7 @@ features with the optimal linear attitude estimator", Arxiv 2019.
 ## Introduction
 
 This library provides:
- * [`mp2p_icp::pointcloud_t`](https://docs.mola-slam.org/latest/): A generic
+ * [`mp2p_icp::metricmap_t`](https://docs.mola-slam.org/latest/class_mp2p_icp_metric_map_t.html#doxid-classmp2p-icp-1-1metric-map-t): A generic
    data type to store raw or processed point clouds, e.g. segmented, discrete
    extracted features. Note that filtering point clouds is intentionally left
    outside of the scope of this library.
