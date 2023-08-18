@@ -5,5 +5,7 @@
 	path = 3rdparty/libnabo
 	url = https://github.com/ethz-asl/libnabo.git
 [submodule "3rdparty/mola-common"]
-	path = 3rdparty/mola-common
+	path = 3rdparty/mola_common
 	url = https://github.com/MOLAorg/mola-common.git
+[submodule "3rdparty/mola_common"]
+	url = https://github.com/MOLAorg/mola_common.git

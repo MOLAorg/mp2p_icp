@@ -20,15 +20,15 @@ find_package(MRPT 2.4.0 REQUIRED COMPONENTS containers tfest maps gui)
 
 # MOLA CMake scripts: "mola_xxx()"
 # to allow stand-along builds outside of MOLA, use local copy instead:
-find_package(mola-common QUIET)
-if (NOT mola-common_FOUND)
-	message(STATUS "Standalone ${PROJECT_NAME} build: using mola-common from submodule.")
-	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mola-common-build")
-	execute_process(COMMAND "${CMAKE_COMMAND}" "${PROJECT_SOURCE_DIR}/3rdparty/mola-common"
-	                WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mola-common-build")
+find_package(mola_common QUIET)
+if (NOT mola_common_FOUND)
+	message(STATUS "Standalone ${PROJECT_NAME} build: using mola_common from submodule.")
+	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mola_common-build")
+	execute_process(COMMAND "${CMAKE_COMMAND}" "${PROJECT_SOURCE_DIR}/3rdparty/mola_common"
+	                WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mola_common-build")
 	# 2nd attempt:
-	set(mola-common_DIR "${CMAKE_BINARY_DIR}/mola-common-build")
-	find_package(mola-common REQUIRED)
+	set(mola_common_DIR "${CMAKE_BINARY_DIR}/mola_common-build")
+	find_package(mola_common REQUIRED)
 endif()
 
 # -----------------------

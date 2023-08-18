@@ -17,6 +17,7 @@
 
   <!-- Deps required by user code (they are in public headers or built as ROS (vs system) packages -->
   <depend>mrpt2</depend>
+  <depend>mola_common</depend>
 
   <doc_depend>doxygen</doc_depend>
 
