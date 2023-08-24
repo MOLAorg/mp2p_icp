@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2023-08-24)
+------------------
 * First release as MOLA submodule.
 
 0.1.0 (2023-06-14)
