@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2021 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2023 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -53,7 +53,8 @@ class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
     void initialize(const mrpt::containers::yaml& params) override;
 
     /** See base class.
-     * This implementation does NOT use `pairingsFromICP` at all, it can be empty.
+     * This implementation does NOT use `pairingsFromICP` at all, it can be
+     * empty.
      */
     double evaluate(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,

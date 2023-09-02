@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2021 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2023 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -367,7 +367,9 @@ size_t metric_map_t::size_points_only() const
         if (auto pts =
                 std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(layer.second);
             pts)
-        { n += pts->size(); }
+        {
+            n += pts->size();
+        }
     }
     return n;
 }
@@ -398,7 +400,9 @@ std::string metric_map_t::contents_summary() const
         if (auto pts =
                 std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(layer.second);
             pts)
-        { nPts += pts->size(); }
+        {
+            nPts += pts->size();
+        }
     }
 
     if (nPts != 0)

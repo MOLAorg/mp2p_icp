@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2021 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2023 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -205,8 +205,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
         const auto        value = mrpt::format(
             "%05u", static_cast<unsigned int>(
                         (log.pcGlobal && log.pcGlobal->id.has_value())
-                            ? log.pcGlobal->id.value()
-                            : 0));
+                                   ? log.pcGlobal->id.value()
+                                   : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
 
@@ -222,16 +222,16 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
         const auto        value = mrpt::format(
             "%05u", static_cast<unsigned int>(
                         (log.pcLocal && log.pcLocal->id.has_value())
-                            ? log.pcLocal->id.value()
-                            : 0));
+                                   ? log.pcLocal->id.value()
+                                   : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
 
     {
         const std::string expr = "\\$LOCAL_LABEL";
         const auto value       = (log.pcLocal && log.pcLocal->label.has_value())
-                               ? log.pcLocal->label.value()
-                               : ""s;
+                                     ? log.pcLocal->label.value()
+                                     : ""s;
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
 

@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2021 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2023 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -218,7 +218,8 @@ bool mp2p_icp::optimal_tf_horn(
 
     // Build the linear system & solves for optimal quaternion:
     if (!se3_l2_internal(
-            in, wp, ct_local, ct_global, optimal_q, result.outliers /* in/out */))
+            in, wp, ct_local, ct_global, optimal_q,
+            result.outliers /* in/out */))
         return false;
 
     // Re-evaluate the centroids, now that we have a guess on outliers.
@@ -228,8 +229,8 @@ bool mp2p_icp::optimal_tf_horn(
         const auto [new_ct_local, new_ct_global] =
             eval_centroids_robust(in, result.outliers);
 
-        ct_local = new_ct_local;
-        ct_global  = new_ct_global;
+        ct_local  = new_ct_local;
+        ct_global = new_ct_global;
 
         // And rebuild the linear system with the new values:
         if (!se3_l2_internal(

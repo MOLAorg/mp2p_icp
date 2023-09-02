@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2021 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2023 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -197,14 +197,14 @@ class metric_map_t : public mrpt::serialization::CSerializable,
 
    protected:
     /** Implement in derived classes if new data fields are required */
-    virtual void derivedSerializeTo([
-        [maybe_unused]] mrpt::serialization::CArchive& out) const
+    virtual void derivedSerializeTo(
+        [[maybe_unused]] mrpt::serialization::CArchive& out) const
     {
     }
 
     /** Implement in derived classes if new data fields are required */
-    virtual void derivedSerializeFrom([
-        [maybe_unused]] mrpt::serialization::CArchive& in)
+    virtual void derivedSerializeFrom(
+        [[maybe_unused]] mrpt::serialization::CArchive& in)
     {
     }
 };
