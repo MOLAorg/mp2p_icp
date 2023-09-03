@@ -35,6 +35,9 @@ endif()
 # define library targets:
 # -----------------------
 
+# Metric map container library:
+add_subdirectory(mp2p_icp_map)
+
 # Main mp2p_icp library:
 add_subdirectory(mp2p_icp)
 

@@ -4,7 +4,7 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   pointcloud.cpp
+ * @file   metric_map.cpp
  * @brief  Generic representation of pointcloud(s) and/or extracted features.
  * @author Jose Luis Blanco Claraco
  * @date   Jun 10, 2019

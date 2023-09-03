@@ -33,9 +33,7 @@ namespace mp2p_icp
  */
 
 /**
- * @brief Generic container of pointcloud(s), extracted features and other maps.
- *
- * Refer to
+ * @brief Generic container of pointcloud(s), extracted features and other maps
  *
  * This class could be derived by users to define custom point cloud features,
  * for use in custom alignment algorithms.

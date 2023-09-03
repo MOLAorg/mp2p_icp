@@ -31,8 +31,6 @@ MRPT_INITIALIZER(register_mp2p_icp)
 {
     using mrpt::rtti::registerClass;
 
-    registerClass(CLASS_ID(mp2p_icp::metric_map_t));
-
     registerClass(CLASS_ID(mp2p_icp::ICP));
     registerClass(CLASS_ID(mp2p_icp::ICP_LibPointmatcher));
 

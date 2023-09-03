@@ -1,4 +1,4 @@
-project(mp2p_icp_filters LANGUAGES CXX)
+project(mp2p_icp_map LANGUAGES CXX)
 
 # -----------------------
 # define lib:
@@ -9,5 +9,6 @@ mola_add_library(
 	TARGET ${PROJECT_NAME}
 	SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
 	PUBLIC_LINK_LIBRARIES
-		mp2p_icp_map
+		mrpt::maps
+		mrpt::opengl
 )
