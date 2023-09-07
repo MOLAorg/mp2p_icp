@@ -14,6 +14,8 @@ mola_add_library(
 		mrpt::tfest
 		mrpt::maps
 		mrpt::gui
+	CMAKE_DEPENDENCIES
+		mp2p_icp_map
 )
 
 if (MP2PICP_BUILD_POINTMATCHER)
