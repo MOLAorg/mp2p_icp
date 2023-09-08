@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.2 (2023-09-08)
+------------------
 * Fix missing cmake dependencies between libraries
 * Update mola_common
 * Refactor into a new small library mp2p_icp_map with just the metricmap_t class
