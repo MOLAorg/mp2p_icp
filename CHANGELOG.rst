@@ -2,6 +2,17 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix missing cmake dependencies between libraries
+* Update mola_common
+* Refactor into a new small library mp2p_icp_map with just the metricmap_t class
+* sync mola_common submodule
+* Update submodule mola_common
+* Remove redundant section
+* Update ROS badges
+* Contributors: Jose Luis Blanco-Claraco
+
 0.2.1 (2023-09-02)
 ------------------
 
