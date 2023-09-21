@@ -84,7 +84,7 @@ static bool se3_l2_internal(
     ASSERTMSG_(
         nPt2Ln == 0, "This solver cannot handle point-to-line pairings.");
     ASSERTMSG_(
-        nPt2Pl == 0, "This solver cannot handle point-to-plane pairings yet.");
+        nPt2Pl == 0, "This solver cannot handle point-to-plane pairings.");
     const auto nAllMatches = nPt2Pt + nLn2Ln + nPl2Pl;
 
     // Horn method needs at least 3 references
@@ -255,4 +255,12 @@ bool mp2p_icp::optimal_tf_horn(
     return true;
 
     MRPT_END
+}
+
+bool mp2p_icp::optimal_tf_horn_se2(
+    const mp2p_icp::Pairings& in, const WeightParameters& wp,
+    OptimalTF_Result& result)
+{
+    xx;
+    return true;
 }

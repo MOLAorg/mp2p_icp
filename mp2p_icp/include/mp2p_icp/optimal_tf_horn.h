@@ -30,6 +30,14 @@ namespace mp2p_icp
     const mp2p_icp::Pairings& in, const WeightParameters& wp,
     OptimalTF_Result& result);
 
+/** Exactly like optimal_tf_horn(), but for SE(2) transformations only.
+ * Note that 3D entity pairings can be used as input, but its "z" coordinate
+ * will be ignored.
+ */
+[[nodiscard]] bool optimal_tf_horn_se2(
+    const mp2p_icp::Pairings& in, const WeightParameters& wp,
+    OptimalTF_Result& result);
+
 /** @} */
 
 }  // namespace mp2p_icp

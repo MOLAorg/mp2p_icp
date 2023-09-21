@@ -38,6 +38,7 @@ bool Solver_Horn::impl_optimal_pose(
 
     out = OptimalTF_Result();
 
+    // Handle non pt-to-pt pairings too, at least in an approximate way:
     const Pairings*         effectivePairings = &pairings;
     std::optional<Pairings> altPairings;
 
