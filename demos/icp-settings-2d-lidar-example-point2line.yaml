@@ -1,5 +1,5 @@
 # YAML configuration file for use with the CLI tool mp2p-icp-run or
-# programatically from function mp2p_icp::icp_pipeline_from_yaml()
+# programmatically from function mp2p_icp::icp_pipeline_from_yaml()
 #
 class_name: mp2p_icp::ICP
 
