@@ -41,23 +41,22 @@ struct NotImplementedError : public std::runtime_error
 
 /** Generic base class providing process(), converting a generic
  *  mrpt::obs::CObservation into a metric_map_t with just a point cloud layer
- (named `raw`).
+ *  (named `raw`).
  *
- * This pointcloud-t can optionally then be passed through one or more
- FilterBase
- * implementations to detect features, decimate it, etc.
+ * This pointcloud_t can optionally then be passed through one or more
+ * FilterBase implementations to detect features, decimate it, etc.
  *
  * Specializations of Generator may exist and could be implemented to exploit
  * the structured information in the original CObservation data to be more
  * efficient in detecting features (e.g. corners, etc.).
 
- * Internally, fifferent signatures exists for:
+ * Internally, different signatures exists for:
  * - 2D LiDAR range scans (mrpt::obs::CObservation2DRangeScan)
  * - 3D Velodyne scans (mrpt::obs::CObservationVelodyneScan)
  * - 3D RGBD camera images (mrpt::obs::CObservation3DRangeScan)
  * - Generic 2D/3D point clouds (mrpt::obs::CObservationPointCloud)
  * - Generic multi-beam rotating (or flash) Lidars
- (mrpt::obs::CObservationRotatingScan)
+ *   (mrpt::obs::CObservationRotatingScan)
  *
  * Derived classes may implement all or only one of those methods. An
  * exception NotImplementedError will be thrown if an non-implemented method is
