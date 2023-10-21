@@ -54,7 +54,7 @@ quality:
 #
 # One filter object will be created for each entry, instancing the given class,
 # and with the given parameters. Filters are run in definition order on the
-# input pointcloud_t object.
+# input metric_map_t object.
 #
 filters_local_map:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels

@@ -43,7 +43,7 @@ struct NotImplementedError : public std::runtime_error
  *  mrpt::obs::CObservation into a metric_map_t with just a point cloud layer
  *  (named `raw`).
  *
- * This pointcloud_t can optionally then be passed through one or more
+ * This metric_map_t can optionally then be passed through one or more
  * FilterBase implementations to detect features, decimate it, etc.
  *
  * Specializations of Generator may exist and could be implemented to exploit
