@@ -124,12 +124,7 @@ void Generator::process(
         else
         {
             // General case:
-#if MRPT_VERSION >= 0x240
-            auto& thePc = *outPc;
-#else
-            auto* thePc = outPc.get();
-#endif
-            const bool insertDone = o.insertObservationInto(thePc);
+            const bool insertDone = o.insertObservationInto(*outPc);
 
             if (!insertDone && params_.throw_on_unhandled_observation_class)
             {
@@ -142,12 +137,7 @@ void Generator::process(
             }
         }
 
-#if MRPT_VERSION >= 0x233
         o.unload();
-#else
-        // workaround to mrpt const correctness problem in <= v2.3.2
-        const_cast<mrpt::obs::CObservation&>(o).unload();
-#endif
     }
 
     MRPT_END
