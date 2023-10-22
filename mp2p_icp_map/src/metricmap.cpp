@@ -22,6 +22,11 @@
 #include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/serialization/stl_serialization.h>
 #include <mrpt/version.h>
+// voxelmaps?
+#if MRPT_VERSION >= 0x020b00
+#include <mrpt/maps/CVoxelMap.h>
+#include <mrpt/maps/CVoxelMapRGB.h>
+#endif
 
 #include <algorithm>
 #include <iterator>
@@ -174,10 +179,7 @@ void metric_map_t::get_visualization_points(
                     "exist in this metric_map_t object",
                     kv.first.c_str());
 
-            get_visualization_point_layer(
-                o, kv.second,
-                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
-                    itPts->second));
+            get_visualization_map_layer(o, kv.second, itPts->second);
         }
     }
     else
@@ -185,23 +187,38 @@ void metric_map_t::get_visualization_points(
         // render all layers with the same params:
         for (const auto& kv : layers)
         {
-            auto pts =
-                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(kv.second);
-            if (!pts) continue;  // not a point cloud.
-
-            get_visualization_point_layer(o, p.allLayers, pts);
+            get_visualization_map_layer(o, p.allLayers, kv.second);
         }
     }
 
     MRPT_END
 }
 
-void metric_map_t::get_visualization_point_layer(
+void metric_map_t::get_visualization_map_layer(
     mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
-    const mrpt::maps::CPointsMap::Ptr& pts)
+    const mrpt::maps::CMetricMap::Ptr& map)
 {
-    ASSERT_(pts);
-    if (pts->empty()) return;
+    auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
+
+#if MRPT_VERSION >= 0x020b00
+    auto voxelMap    = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(map);
+    auto voxelRGBMap = std::dynamic_pointer_cast<mrpt::maps::CVoxelMapRGB>(map);
+
+    if (p.render_voxelmaps_as_points && (voxelMap || voxelRGBMap))
+    {
+        // get occupied voxel XYZ coordinates only:
+        if (voxelMap) pts = voxelMap->getOccupiedVoxels();
+        if (voxelRGBMap) pts = voxelRGBMap->getOccupiedVoxels();
+    }
+    else
+    {
+        // Render as real voxelmaps:
+        map->getVisualizationInto(o);
+        return;
+    }
+#endif
+
+    if (pts && pts->empty()) return;  // quick return if empty point cloud
 
     if (p.colorMode.has_value())
     {
@@ -515,4 +532,46 @@ mrpt::maps::CPointsMap::Ptr metric_map_t::point_layer(
             name.c_str(), ptr->GetRuntimeClass()->className);
 
     return ret;
+}
+
+const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(
+    const mrpt::maps::CMetricMap& map)
+{
+    if (auto ptsMap = dynamic_cast<const mrpt::maps::CPointsMap*>(&map); ptsMap)
+    {
+        return ptsMap;
+    }
+#if MRPT_VERSION >= 0x020b00
+    if (auto voxelMap = dynamic_cast<const mrpt::maps::CVoxelMap*>(&map);
+        voxelMap)
+    {
+        return voxelMap->getOccupiedVoxels().get();
+    }
+    if (auto voxelRGBMap = dynamic_cast<const mrpt::maps::CVoxelMapRGB*>(&map);
+        voxelRGBMap)
+    {
+        return voxelRGBMap->getOccupiedVoxels().get();
+    }
+#endif
+    return {};
+}
+
+mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(mrpt::maps::CMetricMap& map)
+{
+    if (auto ptsMap = dynamic_cast<mrpt::maps::CPointsMap*>(&map); ptsMap)
+    {
+        return ptsMap;
+    }
+#if MRPT_VERSION >= 0x020b00
+    if (auto voxelMap = dynamic_cast<mrpt::maps::CVoxelMap*>(&map); voxelMap)
+    {
+        return voxelMap->getOccupiedVoxels().get();
+    }
+    if (auto voxelRGBMap = dynamic_cast<mrpt::maps::CVoxelMapRGB*>(&map);
+        voxelRGBMap)
+    {
+        return voxelRGBMap->getOccupiedVoxels().get();
+    }
+#endif
+    return {};
 }

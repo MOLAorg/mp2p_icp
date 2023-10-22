@@ -91,6 +91,8 @@ struct render_params_point_layer_t
     /** If set, it overrides `color` and defines a "recolorize by coordinate"
      * mode. */
     std::optional<color_mode_t> colorMode;
+
+    bool render_voxelmaps_as_points = false;
 };
 
 /** Used in metric_map_t::get_visualization() */

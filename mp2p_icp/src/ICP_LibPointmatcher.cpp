@@ -50,7 +50,7 @@ static PointMatcher<double>::DataPoints pointsToPM(const metric_map_t& pc)
     for (const auto& ly : pc.layers)
     {
         // const std::string&                 name = ly.first;
-        auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(ly.second);
+        auto pts = mp2p_icp::MapToPointsMap(*ly.second);
         if (!pts) continue;  // Not a point cloud layer
 
         const auto xs = pts->getPointsBufferRef_x();

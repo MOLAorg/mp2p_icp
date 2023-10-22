@@ -80,15 +80,13 @@ double QualityEvaluator_Voxels::evaluate(
             return 0;
         }
 
-        auto ptsG =
-            std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itG->second);
-        auto ptsL =
-            std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second);
+        auto ptsG = mp2p_icp::MapToPointsMap(*itG->second);
+        auto ptsL = mp2p_icp::MapToPointsMap(*itL->second);
         ASSERT_(ptsG);
         ASSERT_(ptsL);
 
         mrpt::maps::CSimplePointsMap localTransformed;
-        localTransformed.insertAnotherMap(ptsL.get(), localPose);
+        localTransformed.insertAnotherMap(ptsL, localPose);
 
         // resize voxel grids?
         MRPT_TODO("Check against current size too, for many layers");
