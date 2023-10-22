@@ -21,9 +21,15 @@
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/serialization/stl_serialization.h>
+#include <mrpt/version.h>
 
 #include <algorithm>
 #include <iterator>
+
+//
+#if MRPT_VERSION >= 0x020B00
+#include <mrpt/maps/CVoxelMap.h>
+#endif
 
 IMPLEMENTS_MRPT_OBJECT(
     metric_map_t, mrpt::serialization::CSerializable, mp2p_icp)
@@ -393,7 +399,7 @@ std::string metric_map_t::contents_summary() const
     if (!lines.empty()) retAppend(std::to_string(lines.size()) + " lines"s);
     if (!planes.empty()) retAppend(std::to_string(planes.size()) + " planes"s);
 
-    size_t nPts = 0;
+    size_t nPts = 0, nVoxels = 0;
     for (const auto& layer : layers)
     {
         ASSERT_(layer.second);
@@ -403,13 +409,21 @@ std::string metric_map_t::contents_summary() const
         {
             nPts += pts->size();
         }
+#if MRPT_VERSION >= 0x020B00
+        else if (auto vxs = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(
+                     layer.second);
+                 vxs)
+        {
+            nVoxels += vxs->grid().activeCellsCount();
+        }
+#endif
     }
 
-    if (nPts != 0)
+    if (nPts != 0 || nVoxels != 0)
     {
         retAppend(
-            std::to_string(nPts) + " points in "s +
-            std::to_string(layers.size()) + " layers ("s);
+            std::to_string(nPts) + " points, "s + std::to_string(nVoxels) +
+            " voxels in "s + std::to_string(layers.size()) + " layers ("s);
 
         for (const auto& layer : layers)
         {

@@ -98,10 +98,22 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     {
         void load_from_yaml(const mrpt::containers::yaml& c);
 
-        /** The point cloud points layer name where the observation will be
-         * loaded. Default: "raw" */
-        std::string target_pointcloud_layer =
-            mp2p_icp::metric_map_t::PT_LAYER_RAW;
+        /** The map layer name where the observation will be loaded into.
+         *  Default: "raw" */
+        std::string target_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
+
+        /** If empty (default), a point cloud layer will be generated of type
+         *  mrpt::maps::CSimplePointCloud.
+         *
+         * Alternatively, a path to a .INI file can be provided here, with
+         * a custom metric map class can be defined via a
+         * mrpt::maps::CMultiMetricMap initializer list.
+         * If the CMultiMetricMap defines multiple metric maps, the first one
+         * only will be taken to generate the new layer.
+         *
+         * Refer to example files.
+         */
+        std::string metric_map_definition_ini_file;
 
         /** Sensor observation class names to process. Default = ".*" (any).
          *  Example: use "mrpt::obs::CObservation2DRangeScan" if you only want

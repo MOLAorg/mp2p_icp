@@ -11,7 +11,9 @@
  */
 
 #include <mp2p_icp_filters/Generator.h>
+#include <mrpt/config/CConfigFile.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservation3DRangeScan.h>
@@ -19,7 +21,7 @@
 #include <mrpt/obs/CObservationRotatingScan.h>
 #include <mrpt/obs/CObservationVelodyneScan.h>
 #include <mrpt/obs/CSensoryFrame.h>
-#include <mrpt/version.h>
+#include <mrpt/system/filesystem.h>
 
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
@@ -29,7 +31,8 @@ Generator::Generator() : mrpt::system::COutputLogger("Generator") {}
 
 void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
-    MCP_LOAD_OPT(c, target_pointcloud_layer);
+    MCP_LOAD_OPT(c, target_layer);
+    MCP_LOAD_OPT(c, metric_map_definition_ini_file);
     MCP_LOAD_OPT(c, process_class_names_regex);
     MCP_LOAD_OPT(c, process_sensor_labels_regex);
     MCP_LOAD_OPT(c, throw_on_unhandled_observation_class);
@@ -66,26 +69,30 @@ void Generator::process(
     if (!std::regex_match(obsClassName, process_class_names_regex_)) return;
     if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_)) return;
 
-    bool processed = false;
-
-    if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
+    // default: use point clouds:
+    if (params_.metric_map_definition_ini_file.empty())
     {
-        ASSERT_(o0->pointcloud);
-        processed = filterPointCloud(*o0->pointcloud, out);
-    }
-    else if (auto o1 = dynamic_cast<const CObservation2DRangeScan*>(&o); o1)
-        processed = filterScan2D(*o1, out);
-    else if (auto o2 = dynamic_cast<const CObservation3DRangeScan*>(&o); o2)
-        processed = filterScan3D(*o2, out);
-    else if (auto o3 = dynamic_cast<const CObservationVelodyneScan*>(&o); o3)
-        processed = filterVelodyneScan(*o3, out);
+        bool processed = false;
 
-    // done?
-    if (!processed)
-    {
+        if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
+        {
+            ASSERT_(o0->pointcloud);
+            processed = filterPointCloud(*o0->pointcloud, out);
+        }
+        else if (auto o1 = dynamic_cast<const CObservation2DRangeScan*>(&o); o1)
+            processed = filterScan2D(*o1, out);
+        else if (auto o2 = dynamic_cast<const CObservation3DRangeScan*>(&o); o2)
+            processed = filterScan3D(*o2, out);
+        else if (auto o3 = dynamic_cast<const CObservationVelodyneScan*>(&o);
+                 o3)
+            processed = filterVelodyneScan(*o3, out);
+
+        // done?
+        if (processed) return;  // we are done.
+
         // Create if new: Append to existing layer, if already existed.
         mrpt::maps::CPointsMap::Ptr outPc;
-        if (auto itLy = out.layers.find(params_.target_pointcloud_layer);
+        if (auto itLy = out.layers.find(params_.target_layer);
             itLy != out.layers.end())
         {
             outPc =
@@ -93,12 +100,12 @@ void Generator::process(
             if (!outPc)
                 THROW_EXCEPTION_FMT(
                     "Layer '%s' must be of point cloud type.",
-                    params_.target_pointcloud_layer.c_str());
+                    params_.target_layer.c_str());
         }
         else
         {
             outPc = mrpt::maps::CSimplePointsMap::Create();
-            out.layers[params_.target_pointcloud_layer] = outPc;
+            out.layers[params_.target_layer] = outPc;
         }
 
         if (!outPc) outPc = mrpt::maps::CSimplePointsMap::Create();
@@ -139,6 +146,64 @@ void Generator::process(
 
         o.unload();
     }
+    else
+    {
+        // Use a user-defined custom map type:
+        ASSERT_FILE_EXISTS_(params_.metric_map_definition_ini_file);
+
+        mrpt::config::CConfigFile cfg(params_.metric_map_definition_ini_file);
+        mrpt::maps::TSetOfMetricMapInitializers mapInits;
+        mapInits.loadFromConfigFile(cfg, "map");
+
+        mrpt::maps::CMultiMetricMap theMap;
+        theMap.setListOfMaps(mapInits);
+
+        ASSERT_(theMap.maps.size() >= 1);
+
+        // Create if new: Append to existing layer, if already existed.
+        mrpt::maps::CMetricMap::Ptr outMap = theMap.maps.at(0);
+
+        if (auto itLy = out.layers.find(params_.target_layer);
+            itLy != out.layers.end())
+        {
+            if (!outMap->GetRuntimeClass()->derivedFrom(
+                    itLy->second->GetRuntimeClass()))
+            {
+                THROW_EXCEPTION_FMT(
+                    "Layer '%s' already existed, but it has class '%s' while "
+                    "it was expected to be '%s'.",
+                    params_.target_layer.c_str(),
+                    itLy->second->GetRuntimeClass()->className,
+                    outMap->GetRuntimeClass()->className);
+            }
+
+            outMap = itLy->second;
+        }
+        else
+        {
+            // insert new layer:
+            out.layers[params_.target_layer] = outMap;
+        }
+
+        ASSERT_(outMap);
+
+        // Observation format:
+        o.load();
+
+        // General case:
+        const bool insertDone = o.insertObservationInto(*outMap);
+
+        if (!insertDone && params_.throw_on_unhandled_observation_class)
+        {
+            THROW_EXCEPTION_FMT(
+                "Observation of type '%s' could not be converted into a "
+                "map of type '%s', and none of the specializations handled it, "
+                "so I do not know what to do with this observation!",
+                obsClassName, outMap->GetRuntimeClass()->className);
+        }
+
+        o.unload();
+    }
 
     MRPT_END
 }
@@ -169,19 +234,19 @@ bool Generator::filterPointCloud(  //
 {
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc;
-    if (auto itLy = out.layers.find(params_.target_pointcloud_layer);
+    if (auto itLy = out.layers.find(params_.target_layer);
         itLy != out.layers.end())
     {
         outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
         if (!outPc)
             THROW_EXCEPTION_FMT(
                 "Layer '%s' must be of point cloud type.",
-                params_.target_pointcloud_layer.c_str());
+                params_.target_layer.c_str());
     }
     else
     {
         outPc = mrpt::maps::CSimplePointsMap::Create();
-        out.layers[params_.target_pointcloud_layer] = outPc;
+        out.layers[params_.target_layer] = outPc;
     }
 
     outPc->insertAnotherMap(&pc, mrpt::poses::CPose3D::Identity());
