@@ -44,12 +44,11 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
     ASSERT_GT_(inliersRatio, 0.0);
     ASSERT_LT_(inliersRatio, 1.0);
 
-    const auto* pcGlobalPtr =
-        dynamic_cast<const mrpt::maps::CPointsMap*>(&pcGlobalMap);
+    const auto* pcGlobalPtr = mp2p_icp::MapToPointsMap(pcGlobalMap);
     if (!pcGlobalPtr)
         THROW_EXCEPTION_FMT(
-            "This class only supports global maps of point cloud types, but "
-            "found type '%s'",
+            "This class only supports global maps of types convertible to "
+            "point cloud types, but found type '%s'",
             pcGlobalMap.GetRuntimeClass()->className);
     const auto& pcGlobal = *pcGlobalPtr;
 

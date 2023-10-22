@@ -74,11 +74,11 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(!params_.output_pointcloud_layer.empty());
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap::Ptr outPc;
+    mrpt::maps::CPointsMap* outPc = nullptr;
     if (auto itLy = inOut.layers.find(params_.output_pointcloud_layer);
         itLy != inOut.layers.end())
     {
-        outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
+        outPc = mp2p_icp::MapToPointsMap(*itLy->second);
         if (!outPc)
             THROW_EXCEPTION_FMT(
                 "Layer '%s' must be of point cloud type.",
@@ -86,16 +86,18 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     }
     else
     {
-        outPc = mrpt::maps::CSimplePointsMap::Create();
-        inOut.layers[params_.output_pointcloud_layer] = outPc;
+        auto newMap = mrpt::maps::CSimplePointsMap::Create();
+        inOut.layers[params_.output_pointcloud_layer] = newMap;
+
+        outPc = newMap.get();
     }
 
     // In:
-    mrpt::maps::CPointsMap::Ptr pcPtr;
+    mrpt::maps::CPointsMap* pcPtr = nullptr;
     if (auto itLy = inOut.layers.find(params_.input_pointcloud_layer);
         itLy != inOut.layers.end())
     {
-        pcPtr = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
+        pcPtr = mp2p_icp::MapToPointsMap(*itLy->second);
         if (!pcPtr)
             THROW_EXCEPTION_FMT(
                 "Layer '%s' must be of point cloud type.",

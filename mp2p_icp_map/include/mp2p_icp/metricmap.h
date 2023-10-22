@@ -207,6 +207,24 @@ class metric_map_t : public mrpt::serialization::CSerializable,
     }
 };
 
+/** Function to extract the CPointsMap for any kind of
+ * CMetricMap, if there exists a conversion that makes sense for matching
+ * against it.
+ * Typically:
+ *  - Any derived type of mrpt::maps::CPointsMap: just does a dynamic_cast.
+ *  - An mrpt::maps::CVoxelMap: gets the equivalent points map with cached
+ *    occupied voxels (requires MRPT >=2.11.0).
+ *
+ * Returns an empty shared_ptr if conversion is not possible.
+ *
+ * \note The use of raw pointers here imply the lifetime of the input "map"
+ *       must be longer than that of its use within the Matcher.
+ */
+const mrpt::maps::CPointsMap* MapToPointsMap(const mrpt::maps::CMetricMap& map);
+
+/// \overload for non-const input maps.
+mrpt::maps::CPointsMap* MapToPointsMap(mrpt::maps::CMetricMap& map);
+
 /** A bit field with a bool for each metric_map_t entity.
  *  Useful, for example, to keep track of which elements have already been
  * matched during the matching pipeline.
@@ -230,8 +248,7 @@ struct pointcloud_bitfield_t
         for (const auto& kv : pc.layers)
         {
             ASSERT_(kv.second);
-            auto pts =
-                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(kv.second);
+            auto pts = mp2p_icp::MapToPointsMap(*kv.second);
             if (!pts) continue;
             point_layers[kv.first].assign(pts->size(), initBoolValue);
         }

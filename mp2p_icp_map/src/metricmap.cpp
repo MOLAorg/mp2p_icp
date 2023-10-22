@@ -22,6 +22,11 @@
 #include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/serialization/stl_serialization.h>
 #include <mrpt/version.h>
+// voxelmaps?
+#if MRPT_VERSION >= 0x020b00
+#include <mrpt/maps/CVoxelMap.h>
+#include <mrpt/maps/CVoxelMapRGB.h>
+#endif
 
 #include <algorithm>
 #include <iterator>
@@ -515,4 +520,46 @@ mrpt::maps::CPointsMap::Ptr metric_map_t::point_layer(
             name.c_str(), ptr->GetRuntimeClass()->className);
 
     return ret;
+}
+
+const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(
+    const mrpt::maps::CMetricMap& map)
+{
+    if (auto ptsMap = dynamic_cast<const mrpt::maps::CPointsMap*>(&map); ptsMap)
+    {
+        return ptsMap;
+    }
+#if MRPT_VERSION >= 0x020b00
+    if (auto voxelMap = dynamic_cast<const mrpt::maps::CVoxelMap*>(&map);
+        voxelMap)
+    {
+        return voxelMap->getOccupiedVoxels().get();
+    }
+    if (auto voxelRGBMap = dynamic_cast<const mrpt::maps::CVoxelMapRGB*>(&map);
+        voxelRGBMap)
+    {
+        return voxelRGBMap->getOccupiedVoxels().get();
+    }
+#endif
+    return {};
+}
+
+mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(mrpt::maps::CMetricMap& map)
+{
+    if (auto ptsMap = dynamic_cast<mrpt::maps::CPointsMap*>(&map); ptsMap)
+    {
+        return ptsMap;
+    }
+#if MRPT_VERSION >= 0x020b00
+    if (auto voxelMap = dynamic_cast<mrpt::maps::CVoxelMap*>(&map); voxelMap)
+    {
+        return voxelMap->getOccupiedVoxels().get();
+    }
+    if (auto voxelRGBMap = dynamic_cast<mrpt::maps::CVoxelMapRGB*>(&map);
+        voxelRGBMap)
+    {
+        return voxelRGBMap->getOccupiedVoxels().get();
+    }
+#endif
+    return {};
 }

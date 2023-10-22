@@ -76,8 +76,7 @@ bool Matcher_Points_Base::impl_match(
 
             const mrpt::maps::CMetricMap::Ptr& lcLayerMap = itLocal->second;
             ASSERT_(lcLayerMap);
-            const auto lcLayer =
-                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(lcLayerMap);
+            const auto lcLayer = mp2p_icp::MapToPointsMap(*lcLayerMap);
             if (!lcLayer)
                 THROW_EXCEPTION_FMT(
                     "Local layer map must be a point cloud, but found type "
@@ -89,9 +88,7 @@ bool Matcher_Points_Base::impl_match(
             // Ensure we have the KD-tree parameters desired by the user:
             if (kdtree_leaf_max_points_.has_value())
             {
-                if (const auto glLayerPts =
-                        std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
-                            glLayer);
+                if (auto glLayerPts = mp2p_icp::MapToPointsMap(*glLayer);
                     glLayerPts &&
                     glLayerPts->kdtree_search_params.leaf_max_size !=
                         *kdtree_leaf_max_points_)
