@@ -173,9 +173,9 @@ class metric_map_t : public mrpt::serialization::CSerializable,
         mrpt::opengl::CSetOfObjects& o, const render_params_points_t& p) const;
 
     /** Used inside get_visualization_points(), renders points only. */
-    static void get_visualization_point_layer(
+    static void get_visualization_map_layer(
         mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
-        const mrpt::maps::CPointsMap::Ptr& pts);
+        const mrpt::maps::CMetricMap::Ptr& map);
 
     /** Returns a shared_ptr to this object, if it was already created initially
      * as a shared_ptr, or an empty pointer otherwise.
