@@ -6,7 +6,7 @@ Changelog for package mp2p_icp
 ------------------
 * Fix missing cmake dependencies between libraries
 * Update mola_common
-* Refactor into a new small library mp2p_icp_map with just the metricmap_t class
+* Refactor into a new small library mp2p_icp_map with just the metric_map_t class
 * sync mola_common submodule
 * Update submodule mola_common
 * Remove redundant section
