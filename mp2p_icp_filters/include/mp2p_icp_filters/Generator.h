@@ -149,7 +149,9 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
         mp2p_icp::metric_map_t&                    out) const;
     /** Process a 2D/3D point-cloud. \return false if not implemented  */
     virtual bool filterPointCloud(
-        const mrpt::maps::CPointsMap& pc, mp2p_icp::metric_map_t& out) const;
+        const mrpt::maps::CPointsMap& pc,
+        const mrpt::poses::CPose3D&   sensorPose,
+        mp2p_icp::metric_map_t&       out) const;
     /** Process a 3D lidar scan. \return false if not implemented   */
     virtual bool filterRotatingScan(
         const mrpt::obs::CObservationRotatingScan& pc,

@@ -77,7 +77,7 @@ void Generator::process(
         if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
         {
             ASSERT_(o0->pointcloud);
-            processed = filterPointCloud(*o0->pointcloud, out);
+            processed = filterPointCloud(*o0->pointcloud, o0->sensorPose, out);
         }
         else if (auto o1 = dynamic_cast<const CObservation2DRangeScan*>(&o); o1)
             processed = filterScan2D(*o1, out);
@@ -230,7 +230,8 @@ bool Generator::filterScan3D(  //
 }
 
 bool Generator::filterPointCloud(  //
-    const mrpt::maps::CPointsMap& pc, mp2p_icp::metric_map_t& out) const
+    const mrpt::maps::CPointsMap& pc, const mrpt::poses::CPose3D& sensorPose,
+    mp2p_icp::metric_map_t& out) const
 {
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc;
@@ -249,7 +250,7 @@ bool Generator::filterPointCloud(  //
         out.layers[params_.target_layer] = outPc;
     }
 
-    outPc->insertAnotherMap(&pc, mrpt::poses::CPose3D::Identity());
+    outPc->insertAnotherMap(&pc, sensorPose);
 
     return true;
 }
