@@ -164,6 +164,10 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
 
     if (auto val = params.getOrDefault("kdtree_leaf_max_points", 0); val > 0)
         kdtree_leaf_max_points_ = val;
+
+    bounding_box_intersection_check_epsilon_ = params.getOrDefault(
+        "bounding_box_intersection_check_epsilon",
+        bounding_box_intersection_check_epsilon_);
 }
 
 Matcher_Points_Base::TransformedLocalPointCloud

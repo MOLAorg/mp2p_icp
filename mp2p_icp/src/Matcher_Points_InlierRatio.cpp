@@ -59,7 +59,9 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
         pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
 
     // Try to do matching only if the bounding boxes have some overlap:
-    if (!pcGlobal.boundingBox().intersection({tl.localMin, tl.localMax}))
+    if (!pcGlobal.boundingBox().intersection(
+            {tl.localMin, tl.localMax},
+            bounding_box_intersection_check_epsilon_))
         return;
 
     // Loop for each point in local map:

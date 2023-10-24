@@ -58,6 +58,10 @@ class Matcher_Points_Base : public Matcher
     /** Maximum number of points per tree node. Not set: nanoflann default. */
     std::optional<std::size_t> kdtree_leaf_max_points_;
 
+    /** The additional "margin" in all axes (x,y,z) that bounding box is
+     * enlarged for checking the feasibility of pairings to exist. */
+    double bounding_box_intersection_check_epsilon_ = 0.20;
+
     /** Common parameters to all derived classes:
      *
      * - `maxLocalPointsPerLayer`: Maximum number of local points to consider
@@ -75,6 +79,10 @@ class Matcher_Points_Base : public Matcher
      * - `allowMatchAlreadyMatchedPoints`: Optional (Default=false). Whether to
      * find matches for local points which were already paired by other matcher
      * in an earlier stage in the matchers pipeline.
+     *
+     * - `bounding_box_intersection_check_epsilon`: Optional (Default=0.20). The
+     * additional "margin" in all axes (x,y,z) that bounding box is enlarged for
+     * checking the feasibility of pairings to exist.
      */
     void initialize(const mrpt::containers::yaml& params) override;
 

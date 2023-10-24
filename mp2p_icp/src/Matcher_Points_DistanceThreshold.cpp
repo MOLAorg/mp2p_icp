@@ -60,7 +60,9 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
 
     // Try to do matching only if the bounding boxes have some overlap:
-    if (!pcGlobal.boundingBox().intersection({tl.localMin, tl.localMax}))
+    if (!pcGlobal.boundingBox().intersection(
+            {tl.localMin, tl.localMax},
+            bounding_box_intersection_check_epsilon_))
         return;
 
     // Prepare output: no correspondences initially:
