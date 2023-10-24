@@ -5,12 +5,18 @@
  * ------------------------------------------------------------------------- */
 
 #include <mp2p_icp/Parameters.h>
+#include <mrpt/core/get_env.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/stl_serialization.h>
 
 IMPLEMENTS_MRPT_OBJECT(Parameters, mrpt::serialization::CSerializable, mp2p_icp)
 
 using namespace mp2p_icp;
+
+// this env var can be used to enforce generating files despite the actual
+// parameter files.
+const bool MP2P_ICP_GENERATE_DEBUG_FILES =
+    mrpt::get_env<bool>("MP2P_ICP_GENERATE_DEBUG_FILES", false);
 
 // Implementation of the CSerializable virtual interface:
 uint8_t Parameters::serializeGetVersion() const { return 0; }
@@ -37,6 +43,8 @@ void Parameters::serializeFrom(
         default:
             MRPT_THROW_UNKNOWN_SERIALIZATION_VERSION(version);
     };
+
+    generateDebugFiles = generateDebugFiles || MP2P_ICP_GENERATE_DEBUG_FILES;
 }
 
 void Parameters::load_from(const mrpt::containers::yaml& p)
@@ -47,7 +55,10 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
     MCP_LOAD_OPT(p, generateDebugFiles);
     MCP_LOAD_OPT(p, debugFileNameFormat);
     MCP_LOAD_OPT(p, debugPrintIterationProgress);
+
+    generateDebugFiles = generateDebugFiles || MP2P_ICP_GENERATE_DEBUG_FILES;
 }
+
 void Parameters::save_to(mrpt::containers::yaml& p) const
 {
     MCP_SAVE(p, maxIterations);
