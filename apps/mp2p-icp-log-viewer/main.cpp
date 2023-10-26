@@ -66,8 +66,12 @@ nanogui::Button *btnSelectorBack = nullptr, *btnSelectorForw = nullptr;
 
 std::array<nanogui::Label*, 4> lbICPStats = {
     nullptr, nullptr, nullptr, nullptr};
-nanogui::CheckBox* cbShowInitialPose      = nullptr;
-nanogui::CheckBox* cbViewOrtho            = nullptr;
+nanogui::CheckBox* cbShowInitialPose    = nullptr;
+nanogui::CheckBox* cbViewOrtho          = nullptr;
+nanogui::CheckBox* cbViewVoxelsAsPoints = nullptr;
+nanogui::CheckBox* cbColorizeLocalMap   = nullptr;
+nanogui::CheckBox* cbColorizeGlobalMap  = nullptr;
+
 nanogui::CheckBox* cbViewFinalPairings    = nullptr;
 nanogui::CheckBox* cbViewPairingEvolution = nullptr;
 
@@ -474,6 +478,19 @@ static void main_show_gui()
         cbViewOrtho = tab5->add<nanogui::CheckBox>("Orthogonal view");
         cbViewOrtho->setCallback([&](bool) { rebuild_3d_view(); });
 
+        cbViewVoxelsAsPoints =
+            tab5->add<nanogui::CheckBox>("Render voxel maps as point clouds");
+        cbViewVoxelsAsPoints->setChecked(true);
+        cbViewVoxelsAsPoints->setCallback([&](bool) { rebuild_3d_view(); });
+
+        cbColorizeLocalMap =
+            tab5->add<nanogui::CheckBox>("Recolorize local map");
+        cbColorizeLocalMap->setCallback([&](bool) { rebuild_3d_view(); });
+
+        cbColorizeGlobalMap =
+            tab5->add<nanogui::CheckBox>("Recolorize global map");
+        cbColorizeGlobalMap->setCallback([&](bool) { rebuild_3d_view(); });
+
         // ----
         w->add<nanogui::Label>(" ");  // separator
         w->add<nanogui::Button>("Quit", ENTYPO_ICON_ARROW_BOLD_LEFT)
@@ -662,6 +679,14 @@ void rebuild_3d_view()
 
         auto& rpL     = rpGlobal.points.perLayer[cbPL->caption()];
         rpL.pointSize = slPointSize->value();
+        rpL.render_voxelmaps_as_points = cbViewVoxelsAsPoints->checked();
+
+        if (cbColorizeGlobalMap->checked())
+        {
+            auto& cm                  = rpL.colorMode.emplace();
+            cm.colorMap               = mrpt::img::TColormap::cmHOT;
+            cm.recolorizeByCoordinate = mp2p_icp::Coordinate::Z;
+        }
     }
 
     {
@@ -689,6 +714,13 @@ void rebuild_3d_view()
 
         auto& rpL     = rpLocal.points.perLayer[cbPL->caption()];
         rpL.pointSize = slPointSize->value();
+        rpL.render_voxelmaps_as_points = cbViewVoxelsAsPoints->checked();
+        if (cbColorizeLocalMap->checked())
+        {
+            auto& cm                  = rpL.colorMode.emplace();
+            cm.colorMap               = mrpt::img::TColormap::cmHOT;
+            cm.recolorizeByCoordinate = mp2p_icp::Coordinate::Z;
+        }
     }
 
     {
