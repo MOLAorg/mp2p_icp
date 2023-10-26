@@ -470,7 +470,7 @@ static void main_show_gui()
         lbDepthFieldThickness =
             tab5->add<nanogui::Label>("Max-Min depth thickness:");
         slThicknessDepthField = tab5->add<nanogui::Slider>();
-        slThicknessDepthField->setRange({-2.0, 3.0});
+        slThicknessDepthField->setRange({-2.0, 4.0});
         slThicknessDepthField->setValue(3.0);
         slThicknessDepthField->setCallback([&](float) { rebuild_3d_view(); });
         lbDepthFieldValues = tab5->add<nanogui::Label>(" ");
