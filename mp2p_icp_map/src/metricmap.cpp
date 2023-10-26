@@ -204,17 +204,20 @@ void metric_map_t::get_visualization_map_layer(
     auto voxelMap    = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(map);
     auto voxelRGBMap = std::dynamic_pointer_cast<mrpt::maps::CVoxelMapRGB>(map);
 
-    if (p.render_voxelmaps_as_points && (voxelMap || voxelRGBMap))
+    if (voxelMap || voxelRGBMap)
     {
-        // get occupied voxel XYZ coordinates only:
-        if (voxelMap) pts = voxelMap->getOccupiedVoxels();
-        if (voxelRGBMap) pts = voxelRGBMap->getOccupiedVoxels();
-    }
-    else
-    {
-        // Render as real voxelmaps:
-        map->getVisualizationInto(o);
-        return;
+        if (p.render_voxelmaps_as_points)
+        {
+            // get occupied voxel XYZ coordinates only:
+            if (voxelMap) pts = voxelMap->getOccupiedVoxels();
+            if (voxelRGBMap) pts = voxelRGBMap->getOccupiedVoxels();
+        }
+        else
+        {
+            // Render as real voxelmaps:
+            map->getVisualizationInto(o);
+            return;
+        }
     }
 #endif
 
