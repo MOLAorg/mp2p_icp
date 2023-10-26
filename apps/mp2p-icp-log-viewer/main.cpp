@@ -46,6 +46,10 @@ static TCLAP::ValueArg<std::string> argSearchDir(
     "d", "directory", "Directory in which to search for *.icplog files.", false,
     ".", ".", cmd);
 
+static TCLAP::ValueArg<std::string> argSingleFile(
+    "f", "file", "Load just this one single log *.icplog file.", false,
+    "log.icplog", "log.icplog", cmd);
+
 static TCLAP::ValueArg<std::string> argVerbosity(
     "v", "verbose", "Verbosity level", false, "DEBUG", "DEBUG", cmd);
 
@@ -105,21 +109,34 @@ static void main_show_gui()
 {
     using namespace std::string_literals;
 
-    const std::string searchDir = argSearchDir.getValue();
-    ASSERT_DIRECTORY_EXISTS_(searchDir);
-
-    std::cout << "Searching in: '" << searchDir
-              << "' for files with extension '" << argExtension.getValue()
-              << "'" << std::endl;
-
     mrpt::system::CDirectoryExplorer::TFileInfoList files;
-    mrpt::system::CDirectoryExplorer::explore(
-        searchDir, FILE_ATTRIB_ARCHIVE, files);
-    mrpt::system::CDirectoryExplorer::filterByExtension(
-        files, argExtension.getValue());
-    mrpt::system::CDirectoryExplorer::sortByName(files);
 
-    std::cout << "Found " << files.size() << " ICP records." << std::endl;
+    if (!argSingleFile.isSet())
+    {
+        const std::string searchDir = argSearchDir.getValue();
+        ASSERT_DIRECTORY_EXISTS_(searchDir);
+
+        std::cout << "Searching in: '" << searchDir
+                  << "' for files with extension '" << argExtension.getValue()
+                  << "'" << std::endl;
+
+        mrpt::system::CDirectoryExplorer::explore(
+            searchDir, FILE_ATTRIB_ARCHIVE, files);
+        mrpt::system::CDirectoryExplorer::filterByExtension(
+            files, argExtension.getValue());
+        mrpt::system::CDirectoryExplorer::sortByName(files);
+
+        std::cout << "Found " << files.size() << " ICP records." << std::endl;
+    }
+    else
+    {
+        // Load one single file:
+        std::cout << "Loading one single log file: " << argSingleFile.getValue()
+                  << std::endl;
+
+        files.resize(1);
+        files[0].wholePath = argSingleFile.getValue();
+    }
 
     // load files:
     size_t filesLoaded = 0, filesFilteredOut = 0;
