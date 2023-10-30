@@ -47,6 +47,8 @@ This project provides:
  * The library exposes both, complete iterative ICP algorithms, and the
  underlying optimal transformation estimators which are run at each ICP iteration.
 
+`mp2p_icp` is used in the [MOLA lidar-inertial odometry system](https://github.com/MOLAorg/mola_lidar_odometry).
+
 ## Implemented Optimal Transformation methods
  * `optimal_tf_olae()`: A novel algorithm that can recover the optimal attitude from a set
     of point-to-point, line-to-line, and plane-to-plane pairings.
