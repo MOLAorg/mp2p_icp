@@ -67,16 +67,6 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
         /** If enabled, the mean of each voxel is taken instead of any of
          *  the original points. */
         bool use_voxel_average = false;
-
-        /**
-         * YAML loading format:
-         * \code
-         * bounding_box_min: [-10, -10, -5]
-         * bounding_box_max: [ 10,  10,  5]
-         * \endcode
-         */
-        mrpt::math::TBoundingBoxf bounding_box = {
-            {-10.0f, -10.0f, -5.0f}, {10.0f, 10.0f, 5.0f}};
     };
 
     /** Algorithm parameters */

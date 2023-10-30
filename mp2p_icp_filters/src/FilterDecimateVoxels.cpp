@@ -32,22 +32,6 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
 
     MCP_LOAD_REQ(c, voxel_filter_resolution);
     MCP_LOAD_REQ(c, use_voxel_average);
-
-    ASSERT_(
-        c.has("bounding_box_min") && c["bounding_box_min"].isSequence() &&
-        c["bounding_box_min"].asSequence().size() == 3);
-    ASSERT_(
-        c.has("bounding_box_max") && c["bounding_box_max"].isSequence() &&
-        c["bounding_box_max"].asSequence().size() == 3);
-
-    const auto bboxMin = c["bounding_box_min"].toStdVector<double>();
-    const auto bboxMax = c["bounding_box_max"].toStdVector<double>();
-
-    for (int i = 0; i < 3; i++)
-    {
-        bounding_box.min[i] = bboxMin.at(i);
-        bounding_box.max[i] = bboxMax.at(i);
-    }
 }
 
 FilterDecimateVoxels::FilterDecimateVoxels() = default;
@@ -59,9 +43,7 @@ void FilterDecimateVoxels::initialize(const mrpt::containers::yaml& c)
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params_.load_from_yaml(c);
 
-    filter_grid_.resize(
-        params_.bounding_box.min, params_.bounding_box.max,
-        params_.voxel_filter_resolution);
+    filter_grid_.setResolution(params_.voxel_filter_resolution);
 
     MRPT_END
 }
@@ -137,7 +119,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     size_t nonEmptyVoxels = 0;
     for (const auto& vxl_pts : filter_grid_.pts_voxels)
     {
-        if (vxl_pts.indices.empty()) continue;
+        if (vxl_pts.second.indices.empty()) continue;
 
         nonEmptyVoxels++;
 
@@ -145,10 +127,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         {
             // Analyze the voxel contents:
             auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
-            const float inv_n = (1.0f / vxl_pts.indices.size());
-            for (size_t i = 0; i < vxl_pts.indices.size(); i++)
+            const float inv_n = (1.0f / vxl_pts.second.indices.size());
+            for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
             {
-                const auto pt_idx = vxl_pts.indices[i];
+                const auto pt_idx = vxl_pts.second.indices[i];
                 mean.x += xs[pt_idx];
                 mean.y += ys[pt_idx];
                 mean.z += zs[pt_idx];
@@ -162,9 +144,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         {
             // Insert a randomly-picked point:
             const auto idxInVoxel =
-                rng.drawUniform64bit() % vxl_pts.indices.size();
+                rng.drawUniform64bit() % vxl_pts.second.indices.size();
 
-            const auto pt_idx = vxl_pts.indices.at(idxInVoxel);
+            const auto pt_idx = vxl_pts.second.indices.at(idxInVoxel);
             outPc->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
         }
     }

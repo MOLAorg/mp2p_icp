@@ -57,13 +57,6 @@ class FilterEdgesPlanes : public mp2p_icp_filters::FilterBase
         float        voxel_filter_min_e2_e0  = 100.f;
         float        voxel_filter_min_e1_e0  = 100.f;
         float        voxel_filter_min_e1     = .0f;
-
-        float init_extension_min_x = -10.0f;
-        float init_extension_min_y = -10.0f;
-        float init_extension_min_z = -10.0f;
-        float init_extension_max_x = 10.0f;
-        float init_extension_max_y = 10.0f;
-        float init_extension_max_z = 10.0f;
     };
 
     /** Algorithm parameters */

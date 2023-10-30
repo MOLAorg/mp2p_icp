@@ -34,13 +34,6 @@ void FilterEdgesPlanes::Parameters::load_from_yaml(
     MCP_LOAD_REQ(c, voxel_filter_min_e2_e0);
     MCP_LOAD_REQ(c, voxel_filter_min_e1_e0);
     MCP_LOAD_OPT(c, voxel_filter_min_e1);
-
-    MCP_LOAD_OPT(c, init_extension_min_x);
-    MCP_LOAD_OPT(c, init_extension_min_y);
-    MCP_LOAD_OPT(c, init_extension_min_z);
-    MCP_LOAD_OPT(c, init_extension_max_x);
-    MCP_LOAD_OPT(c, init_extension_max_y);
-    MCP_LOAD_OPT(c, init_extension_max_z);
 }
 
 FilterEdgesPlanes::FilterEdgesPlanes() = default;
@@ -52,12 +45,7 @@ void FilterEdgesPlanes::initialize(const mrpt::containers::yaml& c)
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params_.load_from_yaml(c);
 
-    filter_grid_.resize(
-        {params_.init_extension_min_x, params_.init_extension_min_y,
-         params_.init_extension_min_z},
-        {params_.init_extension_max_x, params_.init_extension_max_y,
-         params_.init_extension_max_z},
-        params_.voxel_filter_resolution);
+    filter_grid_.setResolution(params_.voxel_filter_resolution);
 
     MRPT_END
 }
@@ -107,15 +95,15 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     std::size_t nEdgeVoxels = 0, nPlaneVoxels = 0, nTotalVoxels = 0;
     for (const auto& vxl_pts : filter_grid_.pts_voxels)
     {
-        if (!vxl_pts.indices.empty()) nTotalVoxels++;
-        if (vxl_pts.indices.size() < 5) continue;
+        if (!vxl_pts.second.indices.empty()) nTotalVoxels++;
+        if (vxl_pts.second.indices.size() < 5) continue;
 
         // Analyze the voxel contents:
         mrpt::math::TPoint3Df mean{0, 0, 0};
-        const float           inv_n = (1.0f / vxl_pts.indices.size());
-        for (size_t i = 0; i < vxl_pts.indices.size(); i++)
+        const float           inv_n = (1.0f / vxl_pts.second.indices.size());
+        for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
         {
-            const auto pt_idx = vxl_pts.indices[i];
+            const auto pt_idx = vxl_pts.second.indices[i];
             mean.x += xs[pt_idx];
             mean.y += ys[pt_idx];
             mean.z += zs[pt_idx];
@@ -126,9 +114,9 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
 
         mrpt::math::CMatrixFixed<double, 3, 3> mat_a;
         mat_a.setZero();
-        for (size_t i = 0; i < vxl_pts.indices.size(); i++)
+        for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
         {
-            const auto                  pt_idx = vxl_pts.indices[i];
+            const auto                  pt_idx = vxl_pts.second.indices[i];
             const mrpt::math::TPoint3Df a(
                 xs[pt_idx] - mean.x, ys[pt_idx] - mean.y, zs[pt_idx] - mean.z);
             mat_a(0, 0) += a.x * a.x;
@@ -199,20 +187,20 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
         }
         if (dest != nullptr)
         {
-            for (size_t i = 0; i < vxl_pts.indices.size();
+            for (size_t i = 0; i < vxl_pts.second.indices.size();
                  i += params_.voxel_filter_decimation)
             {
-                const auto pt_idx = vxl_pts.indices[i];
+                const auto pt_idx = vxl_pts.second.indices[i];
                 dest->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
             }
         }
         // full_pointcloud_decimation=0 means dont use this layer
         if (params_.full_pointcloud_decimation > 0)
         {
-            for (size_t i = 0; i < vxl_pts.indices.size();
+            for (size_t i = 0; i < vxl_pts.second.indices.size();
                  i += params_.full_pointcloud_decimation)
             {
-                const auto pt_idx = vxl_pts.indices[i];
+                const auto pt_idx = vxl_pts.second.indices[i];
                 pc_full_decim->insertPointFast(
                     xs[pt_idx], ys[pt_idx], zs[pt_idx]);
             }

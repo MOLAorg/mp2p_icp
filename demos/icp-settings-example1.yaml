@@ -62,8 +62,6 @@ filters_local_map:
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.01  # [m]
       use_voxel_average: true
-      bounding_box_min: [-1, -1, -1]
-      bounding_box_max: [ 1,  1,  1]
 
 filters_global_map:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
@@ -71,5 +69,3 @@ filters_global_map:
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.01  # [m]
       use_voxel_average: true
-      bounding_box_min: [-1, -1, -1]
-      bounding_box_max: [ 1,  1,  1]

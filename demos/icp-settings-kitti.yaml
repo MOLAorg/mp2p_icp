@@ -64,5 +64,3 @@ filters:
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.50  # [m]
       use_voxel_average: true
-      bounding_box_min: [-100, -100, -10]
-      bounding_box_max: [ 100,  100,  10]
