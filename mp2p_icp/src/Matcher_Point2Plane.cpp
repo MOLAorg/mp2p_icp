@@ -74,22 +74,17 @@ void Matcher_Point2Plane::implMatchOneLayer(
 {
     MRPT_START
 
-    const auto* pcGlobalPtr = mp2p_icp::MapToPointsMap(pcGlobalMap);
-    if (!pcGlobalPtr)
-        THROW_EXCEPTION_FMT(
-            "This class only supports global maps of types convertible to "
-            "point cloud types, but found type '%s'",
-            pcGlobalMap.GetRuntimeClass()->className);
-    const auto& pcGlobal = *pcGlobalPtr;
+    const mrpt::maps::NearestNeighborsCapable& nnGlobal =
+        *mp2p_icp::MapToNN(pcGlobalMap, true /*throw if cannot convert*/);
 
     // Empty maps?  Nothing to do
-    if (pcGlobal.empty() || pcLocal.empty()) return;
+    if (pcGlobalMap.isEmpty() || pcLocal.empty()) return;
 
     const TransformedLocalPointCloud tl = transform_local_to_global(
         pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
 
     // Try to do matching only if the bounding boxes have some overlap:
-    if (!pcGlobal.boundingBox().intersection(
+    if (!pcGlobalMap.boundingBox().intersection(
             {tl.localMin, tl.localMax},
             bounding_box_intersection_check_epsilon_))
         return;
@@ -101,23 +96,21 @@ void Matcher_Point2Plane::implMatchOneLayer(
     // --------------------------------------------------
     const float maxDistForCorrespondenceSquared = mrpt::square(searchRadius);
 
-    const auto& gxs = pcGlobal.getPointsBufferRef_x();
-    const auto& gys = pcGlobal.getPointsBufferRef_y();
-    const auto& gzs = pcGlobal.getPointsBufferRef_z();
-
     const auto& lxs = pcLocal.getPointsBufferRef_x();
     const auto& lys = pcLocal.getPointsBufferRef_y();
     const auto& lzs = pcLocal.getPointsBufferRef_z();
 
-    std::vector<float>  kddSqrDist, kddSqrDistLocal;
-    std::vector<size_t> kddIdxs, kddIdxsLocal;
+    std::vector<float>                 kddSqrDist, kddSqrDistLocal;
+    std::vector<size_t>                kddIdxs, kddIdxsLocal;
+    std::vector<mrpt::math::TPoint3Df> kddPts, kddPtsLocal;
+    std::vector<float>                 kddXs, kddYs, kddZs;
 
     for (size_t i = 0; i < tl.x_locals.size(); i++)
     {
         const size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
 
         if (!allowMatchAlreadyMatchedPoints_ &&
-            ms.localPairedBitField.point_layers.at(localName).at(localIdx))
+            ms.localPairedBitField.point_layers.at(localName)[localIdx])
             continue;  // skip, already paired.
 
         // Don't discard **global** map points if already used by another
@@ -129,14 +122,11 @@ void Matcher_Point2Plane::implMatchOneLayer(
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],
                     lz = tl.z_locals[i];
 
-        // Use a KD-tree to look for the nearnest neighbor of:
-        //   (x_local, y_local, z_local)
-        // In "this" (global/reference) points map.
-
-        pcGlobal.kdTreeNClosestPoint3DIdx(
-            lx, ly, lz,  // Look closest to this guy
-            knn,  // This max number of matches
-            kddIdxs, kddSqrDist);
+        // Use a KD-tree to look for the nearnest neighbor(s) of
+        // (x_local, y_local, z_local) in the global map.
+        nnGlobal.nn_multiple_search(
+            {lx, ly, lz},  // Look closest to this guy
+            knn, kddPts, kddSqrDist, kddIdxs);
 
         // Filter the list of neighbors by maximum distance threshold:
         filterListByMaxDist(
@@ -145,8 +135,11 @@ void Matcher_Point2Plane::implMatchOneLayer(
         // minimum: 3 points to be able to fit a plane
         if (kddIdxs.size() < minimumPlanePoints) continue;
 
+        mp2p_icp::vector_of_points_to_xyz(kddPts, kddXs, kddYs, kddZs);
+
         const PointCloudEigen& eig = mp2p_icp::estimate_points_eigen(
-            gxs.data(), gys.data(), gzs.data(), kddIdxs);
+            kddXs.data(), kddYs.data(), kddZs.data(), std::nullopt,
+            kddPts.size());
 
         // Do these points look like a plane?
 #if 0
@@ -211,7 +204,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
         p.pl_global.plane = thePlane;
 
         // Mark local point as already paired:
-        ms.localPairedBitField.point_layers[localName].at(localIdx) = true;
+        ms.localPairedBitField.point_layers[localName].mark_as_set(localIdx);
 
     }  // For each local point
 

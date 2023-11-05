@@ -40,27 +40,22 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     const mrpt::maps::CMetricMap& pcGlobalMap,
     const mrpt::maps::CPointsMap& pcLocal,
     const mrpt::poses::CPose3D& localPose, MatchState& ms,
-    [[maybe_unused]] const layer_name_t& globalName,
-    const layer_name_t& localName, Pairings& out) const
+    const layer_name_t& globalName, const layer_name_t& localName,
+    Pairings& out) const
 {
     MRPT_START
 
-    const auto* pcGlobalPtr = mp2p_icp::MapToPointsMap(pcGlobalMap);
-    if (!pcGlobalPtr)
-        THROW_EXCEPTION_FMT(
-            "This class only supports global maps of types convertible to "
-            "point cloud types, but found type '%s'",
-            pcGlobalMap.GetRuntimeClass()->className);
-    const auto& pcGlobal = *pcGlobalPtr;
+    const mrpt::maps::NearestNeighborsCapable& nnGlobal =
+        *mp2p_icp::MapToNN(pcGlobalMap, true /*throw if cannot convert*/);
 
     // Empty maps?  Nothing to do
-    if (pcGlobal.empty() || pcLocal.empty()) return;
+    if (pcGlobalMap.isEmpty() || pcLocal.empty()) return;
 
     const TransformedLocalPointCloud tl = transform_local_to_global(
         pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
 
     // Try to do matching only if the bounding boxes have some overlap:
-    if (!pcGlobal.boundingBox().intersection(
+    if (!pcGlobalMap.boundingBox().intersection(
             {tl.localMin, tl.localMax},
             bounding_box_intersection_check_epsilon_))
         return;
@@ -72,10 +67,6 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     // --------------------------------------------------
     const float maxDistForCorrespondenceSquared = mrpt::square(threshold);
 
-    const auto& gxs = pcGlobal.getPointsBufferRef_x();
-    const auto& gys = pcGlobal.getPointsBufferRef_y();
-    const auto& gzs = pcGlobal.getPointsBufferRef_z();
-
     const auto& lxs = pcLocal.getPointsBufferRef_x();
     const auto& lys = pcLocal.getPointsBufferRef_y();
     const auto& lzs = pcLocal.getPointsBufferRef_z();
@@ -83,76 +74,67 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     // In order to find the closest association for each global point, we must
     // first build this temporary list of *potential* associations, indexed by
     // global point indices, and sorted by errSqr:
-    std::map<size_t, std::map<float, mrpt::tfest::TMatchingPair>>
+    std::map<uint64_t, std::map<float, mrpt::tfest::TMatchingPair>>
         candidateMatchesForGlobal;
 
     const auto lambdaAddPair = [this, &candidateMatchesForGlobal, &lxs, &lys,
-                                &lzs, &gxs, &gys, &gzs, &ms, &globalName](
-                                   const size_t localIdx,
-                                   const size_t globalIdx, const float errSqr) {
-        // Filter out if global alread assigned:
+                                &lzs, &ms, &globalName](
+                                   const size_t                 localIdx,
+                                   const mrpt::math::TPoint3Df& globalPt,
+                                   const uint64_t               globalIdxOrID,
+                                   const float                  errSqr) {
+        // Filter out if global alread assigned, in another matcher up the
+        // pipeline, for example.
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
-            ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
+            ms.globalPairedBitField.point_layers.at(globalName)[globalIdxOrID])
             return;  // skip, global point already paired.
 
         // Save new correspondence:
-        auto& p = candidateMatchesForGlobal[globalIdx][errSqr];
+        auto& p = candidateMatchesForGlobal[globalIdxOrID][errSqr];
 
-        p.globalIdx = globalIdx;
+        p.globalIdx = globalIdxOrID;
         p.localIdx  = localIdx;
-        p.global    = {gxs[globalIdx], gys[globalIdx], gzs[globalIdx]};
+        p.global    = globalPt;
         p.local     = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
 
         p.errorSquareAfterTransformation = errSqr;
     };
 
     // Declared out of the loop to avoid memory reallocations (!)
-    std::vector<size_t> neighborIndices;
-    std::vector<float>  neighborSqrDists;
+    std::vector<size_t>                neighborIndices;
+    std::vector<float>                 neighborSqrDists;
+    std::vector<mrpt::math::TPoint3Df> neighborPts;
 
     for (size_t i = 0; i < tl.x_locals.size(); i++)
     {
         const size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
 
         if (!allowMatchAlreadyMatchedPoints_ &&
-            ms.localPairedBitField.point_layers.at(localName).at(localIdx))
+            ms.localPairedBitField.point_layers.at(localName)[localIdx])
             continue;  // skip, already paired.
 
         // For speed-up:
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],
                     lz = tl.z_locals[i];
 
-        // Use a KD-tree to look for the nearnest neighbor(s) of:
-        //   (x_local, y_local, z_local)
-        // In "this" (global/reference) points map.
-        if (pairingsPerPoint == 1)
+        // Use a KD-tree to look for the nearnest neighbor(s) of
+        // (x_local, y_local, z_local) in the global map.
+        nnGlobal.nn_multiple_search(
+            {lx, ly, lz},  // Look closest to this guy
+            pairingsPerPoint, neighborPts, neighborSqrDists, neighborIndices);
+
+        // Distance below the threshold??
+        for (size_t k = 0; k < neighborIndices.size(); k++)
         {
-            float        tentativeErrSqr;
-            const size_t tentativeGlobalIdx = pcGlobal.kdTreeClosestPoint3D(
-                lx, ly, lz,  // Look closest to this guy
-                tentativeErrSqr  // save here the min. distance squared
-            );
+            const auto tentativeErrSqr = neighborSqrDists.at(k);
+            if (tentativeErrSqr >= maxDistForCorrespondenceSquared)
+                break;  // skip this and the rest.
 
-            // Distance below the threshold??
-            if (tentativeErrSqr < maxDistForCorrespondenceSquared)
-                lambdaAddPair(localIdx, tentativeGlobalIdx, tentativeErrSqr);
-        }  // End of test_match
-        else
-        {
-            pcGlobal.kdTreeNClosestPoint3DIdx(
-                lx, ly, lz, pairingsPerPoint, neighborIndices,
-                neighborSqrDists);
-
-            // Distance below the threshold??
-            for (size_t k = 0; k < neighborIndices.size(); k++)
-            {
-                const auto tentativeErrSqr = neighborSqrDists.at(k);
-                if (tentativeErrSqr >= maxDistForCorrespondenceSquared)
-                    break;  // skip this and the rest.
-
-                lambdaAddPair(localIdx, neighborIndices.at(k), tentativeErrSqr);
-            }
+            lambdaAddPair(
+                localIdx, neighborPts.at(k), neighborIndices.at(k),
+                tentativeErrSqr);
         }
+
     }  // For each local point
 
     // Now, process candidates pairing and store them in `out.paired_pt2pt`:
@@ -161,7 +143,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         const auto globalIdx = kv.first;
 
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
-            ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
+            ms.globalPairedBitField.point_layers.at(globalName)[globalIdx])
             continue;  // skip, global point already paired.
 
         const auto& pairs = kv.second;
@@ -174,8 +156,8 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 
         // Mark local & global points as already paired:
         const auto localIdx = bestPair.localIdx;
-        ms.localPairedBitField.point_layers[localName].at(localIdx)    = true;
-        ms.globalPairedBitField.point_layers[globalName].at(globalIdx) = true;
+        ms.localPairedBitField.point_layers[localName].mark_as_set(localIdx);
+        ms.globalPairedBitField.point_layers[globalName].mark_as_set(globalIdx);
     }
 
     MRPT_END

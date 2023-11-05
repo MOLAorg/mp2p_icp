@@ -13,6 +13,7 @@
 
 #include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp/pointcloud_bitfield.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>

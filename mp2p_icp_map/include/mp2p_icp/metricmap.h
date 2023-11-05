@@ -15,6 +15,7 @@
 #include <mp2p_icp/plane_patch.h>
 #include <mp2p_icp/render_params.h>
 #include <mrpt/maps/CPointsMap.h>
+#include <mrpt/maps/NearestNeighborsCapable.h>
 #include <mrpt/math/TLine3D.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/math/geometry.h>
@@ -225,47 +226,13 @@ const mrpt::maps::CPointsMap* MapToPointsMap(const mrpt::maps::CMetricMap& map);
 /// \overload for non-const input maps.
 mrpt::maps::CPointsMap* MapToPointsMap(mrpt::maps::CMetricMap& map);
 
-/** A bit field with a bool for each metric_map_t entity.
- *  Useful, for example, to keep track of which elements have already been
- * matched during the matching pipeline.
+/** Returns the dynamic_cast<> of the metric map as a
+ * mrpt::maps::NearestNeighborsCapable.
+ * If the interface is not implemented it returns nullptr, or throws
+ * an exception if it `throwIfNotImplemented` is `true`.
  */
-struct pointcloud_bitfield_t
-{
-    pointcloud_bitfield_t()  = default;
-    ~pointcloud_bitfield_t() = default;
-
-    /** @name Data fields
-     * @{ */
-    std::map<layer_name_t, std::vector<bool>> point_layers;
-    std::vector<bool>                         lines;
-    std::vector<bool>                         planes;
-    /** @} */
-
-    void initialize_from(const metric_map_t& pc, bool initBoolValue = false)
-    {
-        // Points:
-        // Done in this way to avoid avoidable memory reallocations.
-        for (const auto& kv : pc.layers)
-        {
-            ASSERT_(kv.second);
-            auto pts = mp2p_icp::MapToPointsMap(*kv.second);
-            if (!pts) continue;
-            point_layers[kv.first].assign(pts->size(), initBoolValue);
-        }
-        std::set<layer_name_t> layersToRemove;
-        for (auto& kv : point_layers)
-        {
-            if (pc.layers.count(kv.first) == 0) layersToRemove.insert(kv.first);
-        }
-        for (const auto& ly : layersToRemove) point_layers.erase(ly);
-
-        // Lines:
-        lines.assign(pc.lines.size(), initBoolValue);
-
-        // planes:
-        planes.assign(pc.planes.size(), initBoolValue);
-    }
-};
+const mrpt::maps::NearestNeighborsCapable* MapToNN(
+    const mrpt::maps::CMetricMap& map, bool throwIfNotImplemented);
 
 /** @} */
 

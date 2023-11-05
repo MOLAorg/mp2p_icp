@@ -112,3 +112,19 @@ mp2p_icp::PointCloudEigen mp2p_icp::estimate_points_eigen(
 
     MRPT_END
 }
+
+void mp2p_icp::vector_of_points_to_xyz(
+    const std::vector<mrpt::math::TPoint3Df>& pts, std::vector<float>& xs,
+    std::vector<float>& ys, std::vector<float>& zs)
+{
+    const auto N = pts.size();
+    xs.resize(N);
+    ys.resize(N);
+    zs.resize(N);
+    for (size_t i = 0; i < N; i++)
+    {
+        xs[i] = pts[i].x;
+        ys[i] = pts[i].y;
+        zs[i] = pts[i].z;
+    }
+}

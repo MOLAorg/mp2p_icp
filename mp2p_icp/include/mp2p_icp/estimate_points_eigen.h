@@ -58,4 +58,10 @@ PointCloudEigen estimate_points_eigen(
     mrpt::optional_ref<const std::vector<size_t>> indices,
     std::optional<size_t>                         totalCount = std::nullopt);
 
+/** Auxiliary function that can be used to convert a vector of TPoint3Df into
+ * the format expected by estimate_points_eigen() */
+void vector_of_points_to_xyz(
+    const std::vector<mrpt::math::TPoint3Df>& pts, std::vector<float>& xs,
+    std::vector<float>& ys, std::vector<float>& zs);
+
 }  // namespace mp2p_icp

@@ -44,32 +44,23 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
     ASSERT_GT_(inliersRatio, 0.0);
     ASSERT_LT_(inliersRatio, 1.0);
 
-    const auto* pcGlobalPtr = mp2p_icp::MapToPointsMap(pcGlobalMap);
-    if (!pcGlobalPtr)
-        THROW_EXCEPTION_FMT(
-            "This class only supports global maps of types convertible to "
-            "point cloud types, but found type '%s'",
-            pcGlobalMap.GetRuntimeClass()->className);
-    const auto& pcGlobal = *pcGlobalPtr;
+    const mrpt::maps::NearestNeighborsCapable& nnGlobal =
+        *mp2p_icp::MapToNN(pcGlobalMap, true /*throw if cannot convert*/);
 
     // Empty maps?  Nothing to do
-    if (pcGlobal.empty() || pcLocal.empty()) return;
+    if (pcGlobalMap.isEmpty() || pcLocal.empty()) return;
 
     const TransformedLocalPointCloud tl = transform_local_to_global(
         pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
 
     // Try to do matching only if the bounding boxes have some overlap:
-    if (!pcGlobal.boundingBox().intersection(
+    if (!pcGlobalMap.boundingBox().intersection(
             {tl.localMin, tl.localMax},
             bounding_box_intersection_check_epsilon_))
         return;
 
     // Loop for each point in local map:
     // --------------------------------------------------
-    const auto& gxs = pcGlobal.getPointsBufferRef_x();
-    const auto& gys = pcGlobal.getPointsBufferRef_y();
-    const auto& gzs = pcGlobal.getPointsBufferRef_z();
-
     const auto& lxs = pcLocal.getPointsBufferRef_x();
     const auto& lys = pcLocal.getPointsBufferRef_y();
     const auto& lzs = pcLocal.getPointsBufferRef_z();
@@ -81,38 +72,38 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
         size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
 
         if (!allowMatchAlreadyMatchedPoints_ &&
-            ms.localPairedBitField.point_layers.at(localName).at(localIdx))
+            ms.localPairedBitField.point_layers.at(localName)[localIdx])
             continue;  // skip, already paired.
 
         // For speed-up:
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],
                     lz = tl.z_locals[i];
 
+        // Use a KD-tree to look for the nearnest neighbor of:
+        //   (x_local, y_local, z_local)
+        // In "this" (global/reference) points map.
+        uint64_t              tentativeGlobalIdx = 0;
+        float                 tentativeErrSqr    = 0;
+        mrpt::math::TPoint3Df neighborPt;
+
+        const bool searchOk = nnGlobal.nn_single_search(
+            {lx, ly, lz},  // Look closest to this guy
+            neighborPt, tentativeErrSqr, tentativeGlobalIdx);
+
+        if (searchOk)
         {
-            // Use a KD-tree to look for the nearnest neighbor of:
-            //   (x_local, y_local, z_local)
-            // In "this" (global/reference) points map.
-
-            float        tentativeErrSqr;
-            const size_t tentativeGlobalIdx = pcGlobal.kdTreeClosestPoint3D(
-                lx, ly, lz,  // Look closest to this guy
-                tentativeErrSqr  // save here the min. distance squared
-            );
-
             mrpt::tfest::TMatchingPair p;
             p.globalIdx = tentativeGlobalIdx;
             p.localIdx  = localIdx;
-            p.global    = {
-                gxs[tentativeGlobalIdx], gys[tentativeGlobalIdx],
-                gzs[tentativeGlobalIdx]};
-            p.local = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
+            p.global    = neighborPt;
+            p.local     = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
 
             p.errorSquareAfterTransformation = tentativeErrSqr;
 
             // Sort by distance:
             sortedPairings.emplace_hint(
                 sortedPairings.begin(), tentativeErrSqr, p);
-        }  // End of test_match
+        }
     }  // For each local point
 
     // Now, keep the fraction of potential pairings according to the parameter
@@ -133,15 +124,14 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
 
         // Filter out if global alread assigned:
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
-            ms.globalPairedBitField.point_layers.at(globalName).at(globalIdx))
+            ms.globalPairedBitField.point_layers.at(globalName)[globalIdx])
             continue;  // skip, global point already paired.
 
         out.paired_pt2pt.push_back(it->second);
 
         // Mark local & global points as already paired:
-        ms.localPairedBitField.point_layers[localName].at(localIdx) = true;
-
-        ms.globalPairedBitField.point_layers[globalName].at(globalIdx) = true;
+        ms.localPairedBitField.point_layers[localName].mark_as_set(localIdx);
+        ms.globalPairedBitField.point_layers[globalName].mark_as_set(globalIdx);
     }
 
     MRPT_END

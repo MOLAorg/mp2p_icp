@@ -13,6 +13,8 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/io/CFileGZOutputStream.h>
+#include <mrpt/maps/CVoxelMap.h>
+#include <mrpt/maps/CVoxelMapRGB.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/opengl/CPointCloudColoured.h>
@@ -21,20 +23,9 @@
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/serialization/stl_serialization.h>
-#include <mrpt/version.h>
-// voxelmaps?
-#if MRPT_VERSION >= 0x020b00
-#include <mrpt/maps/CVoxelMap.h>
-#include <mrpt/maps/CVoxelMapRGB.h>
-#endif
 
 #include <algorithm>
 #include <iterator>
-
-//
-#if MRPT_VERSION >= 0x020B00
-#include <mrpt/maps/CVoxelMap.h>
-#endif
 
 IMPLEMENTS_MRPT_OBJECT(
     metric_map_t, mrpt::serialization::CSerializable, mp2p_icp)
@@ -200,7 +191,6 @@ void metric_map_t::get_visualization_map_layer(
 {
     auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
 
-#if MRPT_VERSION >= 0x020b00
     auto voxelMap    = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(map);
     auto voxelRGBMap = std::dynamic_pointer_cast<mrpt::maps::CVoxelMapRGB>(map);
 
@@ -219,7 +209,6 @@ void metric_map_t::get_visualization_map_layer(
             return;
         }
     }
-#endif
 
     if (pts && pts->empty()) return;  // quick return if empty point cloud
 
@@ -429,14 +418,12 @@ std::string metric_map_t::contents_summary() const
         {
             nPts += pts->size();
         }
-#if MRPT_VERSION >= 0x020B00
         else if (auto vxs = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(
                      layer.second);
                  vxs)
         {
             nVoxels += vxs->grid().activeCellsCount();
         }
-#endif
     }
 
     if (nPts != 0 || nVoxels != 0)
@@ -544,7 +531,6 @@ const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(
     {
         return ptsMap;
     }
-#if MRPT_VERSION >= 0x020b00
     if (auto voxelMap = dynamic_cast<const mrpt::maps::CVoxelMap*>(&map);
         voxelMap)
     {
@@ -555,7 +541,6 @@ const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(
     {
         return voxelRGBMap->getOccupiedVoxels().get();
     }
-#endif
     return {};
 }
 
@@ -565,7 +550,6 @@ mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(mrpt::maps::CMetricMap& map)
     {
         return ptsMap;
     }
-#if MRPT_VERSION >= 0x020b00
     if (auto voxelMap = dynamic_cast<mrpt::maps::CVoxelMap*>(&map); voxelMap)
     {
         return voxelMap->getOccupiedVoxels().get();
@@ -575,6 +559,20 @@ mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(mrpt::maps::CMetricMap& map)
     {
         return voxelRGBMap->getOccupiedVoxels().get();
     }
-#endif
     return {};
+}
+
+const mrpt::maps::NearestNeighborsCapable* mp2p_icp::MapToNN(
+    const mrpt::maps::CMetricMap& map, bool throwIfNotImplemented)
+{
+    const auto* ptr =
+        dynamic_cast<const mrpt::maps::NearestNeighborsCapable*>(&map);
+
+    if (ptr) return ptr;
+    if (!throwIfNotImplemented) return nullptr;
+
+    THROW_EXCEPTION_FMT(
+        "The map of type '%s' does not implement the expected interface "
+        "mrpt::maps::NearestNeighborsCapable",
+        map.GetRuntimeClass()->className);
 }

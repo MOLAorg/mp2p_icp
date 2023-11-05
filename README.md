@@ -69,7 +69,7 @@ This project provides:
  * A C++17 compiler. Tested with gcc-7, MSVC 2017.
  * Eigen3
  * CMake >= 3.4
- * MRPT >=2.4.0
+ * MRPT >=2.11.3 (If you **need** to use an older version of MRPT, use mp2p_icp<=0.2.2)
 
 Install all the dependencies in Ubuntu with:
 
