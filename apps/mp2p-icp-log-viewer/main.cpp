@@ -28,6 +28,7 @@
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/system/CDirectoryExplorer.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/os.h>
 #include <mrpt/system/progress.h>
 
 #include <iostream>
@@ -58,6 +59,11 @@ static TCLAP::ValueArg<double> argMinQuality(
     "Minimum quality (range [0,1]) for a log files to be loaded and shown in "
     "the list. Default=0 so all log files are visible.",
     false, 0.0, "Quality[0,1]", cmd);
+
+static TCLAP::ValueArg<std::string> arg_plugins(
+    "l", "load-plugins",
+    "One or more (comma separated) *.so files to load as plugins", false,
+    "foobar.so", "foobar.so", cmd);
 
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
@@ -831,6 +837,19 @@ int main(int argc, char** argv)
     {
         // Parse arguments:
         if (!cmd.parse(argc, argv)) return 1;  // should exit.
+
+        // Load plugins:
+        if (arg_plugins.isSet())
+        {
+            std::string errMsg;
+            const auto  plugins = arg_plugins.getValue();
+            std::cout << "Loading plugin(s): " << plugins << std::endl;
+            if (!mrpt::system::loadPluginModules(plugins, errMsg))
+            {
+                std::cerr << errMsg << std::endl;
+                return 1;
+            }
+        }
 
         main_show_gui();
         return 0;

@@ -189,11 +189,10 @@ void metric_map_t::get_visualization_map_layer(
     mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
     const mrpt::maps::CMetricMap::Ptr& map)
 {
-    auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
+    mrpt::maps::CPointsMap::Ptr pts;
 
     auto voxelMap    = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(map);
     auto voxelRGBMap = std::dynamic_pointer_cast<mrpt::maps::CVoxelMapRGB>(map);
-
     if (voxelMap || voxelRGBMap)
     {
         if (p.render_voxelmaps_as_points)
@@ -208,6 +207,17 @@ void metric_map_t::get_visualization_map_layer(
             map->getVisualizationInto(o);
             return;
         }
+    }
+    else
+    {
+        pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
+    }
+
+    if (!pts)
+    {
+        // Not convertible to point maps: use its own default renderer:
+        map->getVisualizationInto(o);
+        return;
     }
 
     if (pts && pts->empty()) return;  // quick return if empty point cloud
