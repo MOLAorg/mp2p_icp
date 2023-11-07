@@ -13,6 +13,7 @@
 #include <mp2p_icp/ICP.h>
 #include <mp2p_icp/covariance.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/core/lock_helper.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/tfest/se3.h>
 
@@ -187,9 +188,13 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     static std::mutex   counterMtx;
     unsigned int        RECORD_UNIQUE_ID;
     {
-        counterMtx.lock();
+        auto lck = mrpt::lockHelper(counterMtx);
+
         RECORD_UNIQUE_ID = logFileCounter++;
-        counterMtx.unlock();
+
+        if (p.decimationDebugFiles > 1 &&
+            (RECORD_UNIQUE_ID % p.decimationDebugFiles) != 0)
+            return;  // skip due to decimation
     }
 
     std::string filename = p.debugFileNameFormat;

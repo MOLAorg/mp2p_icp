@@ -19,12 +19,13 @@ const bool MP2P_ICP_GENERATE_DEBUG_FILES =
     mrpt::get_env<bool>("MP2P_ICP_GENERATE_DEBUG_FILES", false);
 
 // Implementation of the CSerializable virtual interface:
-uint8_t Parameters::serializeGetVersion() const { return 0; }
+uint8_t Parameters::serializeGetVersion() const { return 1; }
 void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << maxIterations << minAbsStep_trans << minAbsStep_rot;
     out << generateDebugFiles << debugFileNameFormat;
     out << debugPrintIterationProgress;
+    out << decimationDebugFiles;
 }
 void Parameters::serializeFrom(
     mrpt::serialization::CArchive& in, uint8_t version)
@@ -34,10 +35,12 @@ void Parameters::serializeFrom(
     switch (version)
     {
         case 0:
+        case 1:
         {
             in >> maxIterations >> minAbsStep_trans >> minAbsStep_rot;
             in >> generateDebugFiles >> debugFileNameFormat;
             in >> debugPrintIterationProgress;
+            if (version >= 1) in >> decimationDebugFiles;
         }
         break;
         default:
@@ -55,6 +58,7 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
     MCP_LOAD_OPT(p, generateDebugFiles);
     MCP_LOAD_OPT(p, debugFileNameFormat);
     MCP_LOAD_OPT(p, debugPrintIterationProgress);
+    MCP_LOAD_OPT(p, decimationDebugFiles);
 
     generateDebugFiles = generateDebugFiles || MP2P_ICP_GENERATE_DEBUG_FILES;
 }
@@ -67,4 +71,5 @@ void Parameters::save_to(mrpt::containers::yaml& p) const
     MCP_SAVE(p, generateDebugFiles);
     MCP_SAVE(p, debugFileNameFormat);
     MCP_SAVE(p, debugPrintIterationProgress);
+    MCP_SAVE(p, decimationDebugFiles);
 }

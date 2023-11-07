@@ -56,6 +56,11 @@ struct Parameters : public mrpt::serialization::CSerializable
      */
     bool generateDebugFiles = false;
 
+    /** If set to N>1, only 1 out of N log files will be actually generated.
+     *  Useful to save tons of disk space for large datasets (!).
+     */
+    uint32_t decimationDebugFiles = 1;
+
     /** Generated files format, if generateDebugFiles is true. */
     std::string debugFileNameFormat =
         "icp-run-$UNIQUE_ID-local-$LOCAL_ID$LOCAL_LABEL-"
