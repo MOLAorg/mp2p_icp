@@ -32,6 +32,8 @@ void ICP::align(
 
     MRPT_START
 
+    mrpt::system::CTimeLoggerEntry tle(profiler_, "align");
+
     // ----------------------------
     // Initial sanity checks
     // ----------------------------
@@ -45,6 +47,7 @@ void ICP::align(
     // ----------------------------
     // Preparation
     // ----------------------------
+    mrpt::system::CTimeLoggerEntry tle1(profiler_, "align.1_prepare");
     // Reset output:
     result = Results();
 
@@ -63,11 +66,17 @@ void ICP::align(
         currentLog->icpParameters              = p;
     }
 
+    tle1.stop();
+
     // ------------------------------------------------------
     // Main ICP loop
     // ------------------------------------------------------
+    mrpt::system::CTimeLoggerEntry tle2(profiler_, "align.2_create_state");
+
     ICP_State state(pcGlobal, pcLocal);
     if (currentLog) state.log = &currentLog.value();
+
+    tle2.stop();
 
     state.currentSolution.optimalPose =
         mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
@@ -78,6 +87,8 @@ void ICP::align(
     for (result.nIterations = 0; result.nIterations < p.maxIterations;
          result.nIterations++)
     {
+        mrpt::system::CTimeLoggerEntry tle3(profiler_, "align.3_iter");
+
         state.currentIteration = result.nIterations;
 
         // Matchings
@@ -85,9 +96,13 @@ void ICP::align(
         MatchContext mc;
         mc.icpIteration = state.currentIteration;
 
+        mrpt::system::CTimeLoggerEntry tle4(profiler_, "align.3.1_matchers");
+
         state.currentPairings = run_matchers(
             matchers_, state.pcGlobal, state.pcLocal,
             state.currentSolution.optimalPose, mc);
+
+        tle4.stop();
 
         if (state.currentPairings.empty())
         {
@@ -97,6 +112,8 @@ void ICP::align(
 
         // Optimal relative pose:
         // ---------------------------------------
+        mrpt::system::CTimeLoggerEntry tle5(profiler_, "align.3.2_solvers");
+
         SolverContext sc;
         sc.icpIteration = state.currentIteration;
         sc.guessRelativePose.emplace(state.currentSolution.optimalPose);
@@ -105,6 +122,8 @@ void ICP::align(
         const bool solvedOk = run_solvers(
             solvers_, state.currentPairings, state.currentSolution, sc);
 
+        tle5.stop();
+
         if (!solvedOk)
         {
             result.terminationReason = IterTermReason::SolverError;
@@ -112,6 +131,8 @@ void ICP::align(
         }
 
         // Updated solution is already in "state.currentSolution".
+        mrpt::system::CTimeLoggerEntry tle6(
+            profiler_, "align.3.3_end_criterions");
 
         // Termination criterion: small delta:
         auto lambdaCalcIncrs =
@@ -170,9 +191,13 @@ void ICP::align(
         result.terminationReason = IterTermReason::MaxIterations;
 
     // Quality:
+    mrpt::system::CTimeLoggerEntry tle7(profiler_, "align.4_quality");
+
     result.quality = evaluate_quality(
         quality_evaluators_, pcGlobal, pcLocal,
         state.currentSolution.optimalPose, state.currentPairings);
+
+    tle7.stop();
 
     // Store output:
     result.optimal_tf.mean = state.currentSolution.optimalPose;
@@ -188,6 +213,8 @@ void ICP::align(
     // ----------------------------
     // Log records
     // ----------------------------
+    mrpt::system::CTimeLoggerEntry tle8(profiler_, "align.5_save_log");
+
     // Store results into log struct:
     if (currentLog) currentLog->icpResult = result;
 

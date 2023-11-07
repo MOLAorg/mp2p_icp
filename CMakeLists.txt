@@ -17,6 +17,7 @@ add_subdirectory(3rdparty)
 
 # find dependencies:
 find_package(MRPT 2.11.3 REQUIRED COMPONENTS containers tfest maps gui)
+find_package(Threads REQUIRED)
 
 # MOLA CMake scripts: "mola_xxx()"
 # to allow stand-along builds outside of MOLA, use local copy instead:

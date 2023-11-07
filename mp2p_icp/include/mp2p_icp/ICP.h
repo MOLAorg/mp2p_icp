@@ -25,6 +25,7 @@
 #include <mrpt/math/TPose3D.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
+#include <mrpt/system/CTimeLogger.h>
 
 #include <cstdint>
 #include <functional>  //reference_wrapper
@@ -192,11 +193,16 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         // Default: do nothing
     }
 
+    const mrpt::system::CTimeLogger& profiler() const { return profiler_; }
+    mrpt::system::CTimeLogger&       profiler() { return profiler_; }
+
    protected:
     solver_list_t       solvers_;
     matcher_list_t      matchers_;
     quality_eval_list_t quality_evaluators_ = {
         {QualityEvaluator_PairedRatio::Create(), 1.0}};
+
+    mrpt::system::CTimeLogger profiler_{false /*disabled*/, "mp2p_icp::ICP"};
 
     static void save_log_file(const LogRecord& log, const Parameters& p);
 
