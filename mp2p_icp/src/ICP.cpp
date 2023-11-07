@@ -71,7 +71,9 @@ void ICP::align(
 
     state.currentSolution.optimalPose =
         mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
-    auto prev_solution = state.currentSolution.optimalPose;
+
+    mrpt::poses::CPose3D prev_solution = state.currentSolution.optimalPose;
+    std::optional<mrpt::poses::CPose3D> prev2_solution;  // 2 steps ago
 
     for (result.nIterations = 0; result.nIterations < p.maxIterations;
          result.nIterations++)
@@ -112,11 +114,32 @@ void ICP::align(
         // Updated solution is already in "state.currentSolution".
 
         // Termination criterion: small delta:
-        const auto deltaSol = state.currentSolution.optimalPose - prev_solution;
-        const mrpt::math::CVectorFixed<double, 6> dSol =
-            mrpt::poses::Lie::SE<3>::log(deltaSol);
-        const double delta_xyz = dSol.blockCopy<3, 1>(0, 0).norm();
-        const double delta_rot = dSol.blockCopy<3, 1>(3, 0).norm();
+        auto lambdaCalcIncrs =
+            [](const mrpt::poses::CPose3D& now,
+               const mrpt::poses::CPose3D& past) -> std::tuple<double, double> {
+            const auto deltaSol = now - past;
+
+            const mrpt::math::CVectorFixed<double, 6> dSol =
+                mrpt::poses::Lie::SE<3>::log(deltaSol);
+            const double delta_xyz = dSol.blockCopy<3, 1>(0, 0).norm();
+            const double delta_rot = dSol.blockCopy<3, 1>(3, 0).norm();
+            return {delta_xyz, delta_rot};
+        };
+
+        // Keep the minimum step between the current increment, and the
+        // increment from current solution to two timesteps ago. This is to
+        // detect bistable, oscillating solutions.
+        auto [delta_xyz, delta_rot] =
+            lambdaCalcIncrs(state.currentSolution.optimalPose, prev_solution);
+
+        if (prev2_solution.has_value())
+        {
+            auto [delta_xyz2, delta_rot2] = lambdaCalcIncrs(
+                state.currentSolution.optimalPose, *prev2_solution);
+
+            mrpt::keep_min(delta_xyz, delta_xyz2);
+            mrpt::keep_min(delta_rot, delta_rot2);
+        }
 
         if (p.debugPrintIterationProgress)
         {
@@ -136,7 +159,8 @@ void ICP::align(
             break;
         }
 
-        prev_solution = state.currentSolution.optimalPose;
+        prev2_solution = prev_solution;
+        prev_solution  = state.currentSolution.optimalPose;
     }
 
     // ----------------------------
