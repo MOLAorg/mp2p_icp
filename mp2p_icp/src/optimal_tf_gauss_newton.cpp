@@ -12,6 +12,7 @@
 
 #include <mp2p_icp/errorTerms.h>
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
+#include <mp2p_icp/robust_kernels.h>
 #include <mrpt/poses/Lie/SE.h>
 
 #include <Eigen/Dense>
@@ -35,6 +36,9 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
     result.optimalPose = gnParams.linearizationPoint.value();
 
+    const robust_sqrt_weight_func_t robustSqrtWeightFunc =
+        mp2p_icp::create_robust_kernel(gnParams.kernel, gnParams.kernelParam);
+
     const auto nPt2Pt = in.paired_pt2pt.size();
     const auto nPt2Ln = in.paired_pt2ln.size();
     const auto nPt2Pl = in.paired_pt2pl.size();
@@ -53,8 +57,6 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     auto        cur_point_block_weights = in.point_weights.begin();
     std::size_t cur_point_block_start   = 0;
 
-    MRPT_TODO("Implement robust Kernel in this solver");
-
     for (size_t iter = 0; iter < gnParams.maxInnerLoopIterations; iter++)
     {
         // (12x6 Jacobian)
@@ -69,9 +71,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
             mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_point2point(p, result.optimalPose, J1);
-            err.block<3, 1>(idx_pt * 3, 0) = ret.asEigen();
 
-            // Get weight:
+            // Get point weight:
             if (has_per_pt_weight)
             {
                 if (idx_pt >=
@@ -84,9 +85,15 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 w.pt2pt = cur_point_block_weights->second;
             }
 
-            // Build Jacobian:
+            // Apply robust kernel?
+            double weight = w.pt2pt;
+            if (robustSqrtWeightFunc)
+                weight *= robustSqrtWeightFunc(ret.asEigen().squaredNorm());
+
+            // Error and Jacobian:
+            err.block<3, 1>(idx_pt * 3, 0) = weight * ret.asEigen();
             J.block<3, 6>(idx_pt * 3, 0) =
-                w.pt2pt * J1.asEigen() * dDexpe_de.asEigen();
+                weight * J1.asEigen() * dDexpe_de.asEigen();
         }
         auto base_idx = nPt2Pt * 3;
 
@@ -98,14 +105,16 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
             mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_point2line(p, result.optimalPose, J1);
-            err.block<3, 1>(base_idx + idx_pt * 3, 0) = ret.asEigen();
 
-            // Get weight
-            // ...
+            // Apply robust kernel?
+            double weight = w.pt2ln;
+            if (robustSqrtWeightFunc)
+                weight *= robustSqrtWeightFunc(ret.asEigen().squaredNorm());
 
-            // Build Jacobian
+            // Error and Jacobian:
+            err.block<3, 1>(base_idx + idx_pt * 3, 0) = weight * ret.asEigen();
             J.block<3, 6>(base_idx + idx_pt * 3, 0) =
-                w.pt2ln * J1.asEigen() * dDexpe_de.asEigen();
+                weight * J1.asEigen() * dDexpe_de.asEigen();
         }
         base_idx += nPt2Ln * 3;
 
@@ -117,11 +126,16 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CMatrixFixed<double, 4, 12> J1;
             mrpt::math::CVectorFixedDouble<4>       ret =
                 mp2p_icp::error_line2line(p, result.optimalPose, J1);
-            err.block<4, 1>(base_idx + idx_ln * 4, 0) = ret.asEigen();
 
-            // Build Jacobian
+            // Apply robust kernel?
+            double weight = w.ln2ln;
+            if (robustSqrtWeightFunc)
+                weight *= robustSqrtWeightFunc(ret.asEigen().squaredNorm());
+
+            // Error and Jacobian:
+            err.block<4, 1>(base_idx + idx_ln * 4, 0) = weight * ret.asEigen();
             J.block<4, 6>(base_idx + idx_ln, 0) =
-                J1.asEigen() * dDexpe_de.asEigen();
+                weight * J1.asEigen() * dDexpe_de.asEigen();
         }
         base_idx += nLn2Ln;
 
@@ -133,10 +147,16 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
             mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_point2plane(p, result.optimalPose, J1);
-            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
 
+            // Apply robust kernel?
+            double weight = w.pt2pl;
+            if (robustSqrtWeightFunc)
+                weight *= robustSqrtWeightFunc(ret.asEigen().squaredNorm());
+
+            // Error and Jacobian:
+            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = weight * ret.asEigen();
             J.block<3, 6>(idx_pl * 3 + base_idx, 0) =
-                w.pt2pl * J1.asEigen() * dDexpe_de.asEigen();
+                weight * J1.asEigen() * dDexpe_de.asEigen();
         }
         base_idx += nPt2Pl * 3;
 
@@ -148,10 +168,16 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
             mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_plane2plane(p, result.optimalPose, J1);
-            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
+
+            // Apply robust kernel?
+            double weight = w.pl2pl;
+            if (robustSqrtWeightFunc)
+                weight *= robustSqrtWeightFunc(ret.asEigen().squaredNorm());
+
+            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = weight * ret.asEigen();
 
             J.block<3, 6>(3 * idx_pl + base_idx, 0) =
-                w.pl2pl * J1.asEigen() * dDexpe_de.asEigen();
+                weight * J1.asEigen() * dDexpe_de.asEigen();
         }
 
         // Target error?

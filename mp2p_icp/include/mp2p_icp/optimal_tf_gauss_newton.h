@@ -14,18 +14,18 @@
 #include <mp2p_icp/OptimalTF_Result.h>
 #include <mp2p_icp/PairWeights.h>
 #include <mp2p_icp/Pairings.h>
+#include <mp2p_icp/robust_kernels.h>
 
 namespace mp2p_icp
 {
 /** \addtogroup  mp2p_icp_grp
  * @{ */
-
 struct OptimalTF_GN_Parameters
 {
-    bool verbose = false;
+    OptimalTF_GN_Parameters() = default;
 
-    /** Maximum number of iterations trying to solve for the optimal pose */
-    uint32_t maxInnerLoopIterations = 6;
+    /** The linerization point (the current relative pose guess) */
+    std::optional<mrpt::poses::CPose3D> linearizationPoint;
 
     /** Minimum SE(3) change to stop iterating. */
     double minDelta = 1e-7;
@@ -33,10 +33,15 @@ struct OptimalTF_GN_Parameters
     /** Maximum cost function; when reached, stop iterating. */
     double maxCost = 0;
 
-    /** The linerization point (the current relative pose guess) */
-    std::optional<mrpt::poses::CPose3D> linearizationPoint;
-
     PairWeights pairWeights;
+
+    /** Maximum number of iterations trying to solve for the optimal pose */
+    uint32_t maxInnerLoopIterations = 6;
+
+    RobustKernel kernel      = RobustKernel::None;
+    double       kernelParam = 1.0;
+
+    bool verbose = false;
 };
 
 /** Gauss-Newton non-linear, iterative optimizer to find the SE(3) optimal
