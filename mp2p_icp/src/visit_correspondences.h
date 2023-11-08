@@ -85,6 +85,10 @@ void visit_correspondences(
     // to normalize the final linear equation at the end:
     double w_sum = .0;
 
+    const robust_sqrt_weight_func_t robustSqrtWeightFunc =
+        mp2p_icp::create_robust_kernel(
+            wp.robust_kernel, wp.robust_kernel_param);
+
     OutlierIndices new_outliers;
     new_outliers.point2point.reserve(in_out_outliers.point2point.size());
 
@@ -189,21 +193,16 @@ void visit_correspondences(
         // If we are about to apply a robust kernel, we need a reference
         // attitude wrt which apply such kernel, i.e. the "current SE(3)
         // estimation" inside a caller ICP loop.
-        if (wp.use_robust_kernel)
+        if (robustSqrtWeightFunc)
         {
             ASSERT_(wp.currentEstimateForRobust.has_value());
             const TVector3D ri2 = wp.currentEstimateForRobust->composePoint(ri);
 
-            // mismatch angle between the two vectors:
-            const double ang =
-                std::acos(ri2.x * bi.x + ri2.y * bi.y + ri2.z * bi.z);
-            const double A = wp.robust_kernel_param;
-            const double B = wp.robust_kernel_scale;
-            if (ang > A)
-            {
-                const auto f = 1.0 / (1.0 + B * mrpt::square(ang - A));
-                wi *= f;
-            }
+            // mismatch between the two vectors:
+            const double errorSqr = mrpt::square(ri2.x - bi.x) +
+                                    mrpt::square(ri2.y - bi.y) +
+                                    mrpt::square(ri2.z - bi.z);
+            wi *= robustSqrtWeightFunc(errorSqr);
         }
 
         ASSERT_(wi > .0);

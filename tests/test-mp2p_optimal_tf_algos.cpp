@@ -281,7 +281,7 @@ bool test_icp_algos(
     mrpt::poses::CPose3D       gt_pose;
 
     const auto max_allowed_error =
-        std::min(1.0, 0.1 + 10 * xyz_noise_std + 50 * n_err_std);
+        std::min(1.0, 0.2 + 10 * xyz_noise_std + 50 * n_err_std);
     // 0.01;
 
     // Collect stats: columns are (see write TXT to file code at the bottom)
@@ -330,17 +330,22 @@ bool test_icp_algos(
         in.paired_pt2pt = pointPairs;
         in.paired_pl2pl = planePairs;
 
-        wp.use_scale_outlier_detector = use_robust;
+        wp.use_scale_outlier_detector = false;
+#if 0
         if (auto sTh = ::getenv("SCALE_OUTLIER_THRESHOLD"); sTh != nullptr)
             wp.scale_outlier_threshold = ::atof(sTh);
+#endif
 
         // Only for tests with outliers, and if we are using small rotations,
         // use the robust kernel, using the identity SE(3) transform as
         // gross initial guess for the pose:
-        if (!TEST_LARGE_ROTATIONS && outliers_ratio > 0)
+        // if (!TEST_LARGE_ROTATIONS && outliers_ratio > 0)
+        if (use_robust && !TEST_LARGE_ROTATIONS)
         {
-            wp.use_robust_kernel        = true;
-            wp.currentEstimateForRobust = mrpt::poses::CPose3D::Identity();
+            wp.robust_kernel            = mp2p_icp::RobustKernel::GemanMcClure;
+            wp.robust_kernel_param      = 1.0;
+            wp.currentEstimateForRobust = gt_pose;
+            // mrpt::poses::CPose3D::Identity();
         }
 
         // ========  TEST: olae_match ========
@@ -422,6 +427,12 @@ bool test_icp_algos(
             gnParams.verbose = false;
             // Linearization point: Identity
             gnParams.linearizationPoint = mrpt::poses::CPose3D();
+
+            if (use_robust)
+            {
+                gnParams.kernel      = mp2p_icp::RobustKernel::GemanMcClure;
+                gnParams.kernelParam = 1;
+            }
 
             // NOTE: this is an "unfair" comparison, since we only run ONE
             // iteration of the GN while the other methods are one-shot

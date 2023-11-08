@@ -12,6 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/PairWeights.h>
+#include <mp2p_icp/robust_kernels.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/serialization/CSerializable.h>
@@ -44,15 +45,15 @@ struct WeightParameters : public mrpt::serialization::CSerializable
     /// See docs for PairWeights
     PairWeights pair_weights;
 
-    /** @name An optional "a priori" term.
+    /** @name Robust kernel
      * @{ */
-    bool use_robust_kernel = false;
+    RobustKernel robust_kernel = RobustKernel::None;
 
     /** The current guess for the sought transformation. Must be supplied if
      * use_robust_kernel==true. */
     std::optional<mrpt::poses::CPose3D> currentEstimateForRobust;
 
-    double robust_kernel_param{mrpt::DEG2RAD(0.1)}, robust_kernel_scale{400.0};
+    double robust_kernel_param = 1.0;
 
     /** @} */
 

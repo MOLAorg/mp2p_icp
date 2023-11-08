@@ -12,12 +12,16 @@
 #pragma once
 
 #include <mrpt/core/bits_math.h>
+#include <mrpt/typemeta/TEnumType.h>
 
 #include <cstdint>
 #include <functional>
 
 namespace mp2p_icp
 {
+/** Type to select a robust kernel. Support mrpt::typemeta::TEnumType
+ *  to get/set from strings.
+ */
 enum class RobustKernel : uint8_t
 {
     /// None: plain least-squares
@@ -68,3 +72,9 @@ inline robust_sqrt_weight_func_t create_robust_kernel(
 };
 
 }  // namespace mp2p_icp
+
+// This allows reading/writing the enum type to strings, e.g. in YAML files.
+MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp, mp2p_icp::RobustKernel)
+MRPT_FILL_ENUM(RobustKernel::None);
+MRPT_FILL_ENUM(RobustKernel::GemanMcClure);
+MRPT_ENUM_TYPE_END()
