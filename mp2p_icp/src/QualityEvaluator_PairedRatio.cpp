@@ -28,7 +28,9 @@ void QualityEvaluator_PairedRatio::initialize(
 
     MCP_LOAD_OPT(params, reuse_icp_pairings);
 
-    if (!reuse_icp_pairings) { matcher_.initialize(p); }
+    // Even if reuse_icp_pairings==true, we need the matcher to check its
+    // weight_pt2pt_layers:
+    matcher_.initialize(p);
 }
 
 double QualityEvaluator_PairedRatio::evaluate(
