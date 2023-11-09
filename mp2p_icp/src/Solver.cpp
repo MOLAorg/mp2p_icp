@@ -21,12 +21,15 @@ void Solver::initialize(const mrpt::containers::yaml& params)
 {
     MCP_LOAD_OPT(params, runFromIteration);
     MCP_LOAD_OPT(params, runUpToIteration);
+    MCP_LOAD_OPT(params, enabled);
 }
 
 bool Solver::optimal_pose(
     const Pairings& pairings, OptimalTF_Result& out,
     const SolverContext& sc) const
 {
+    if (!enabled) return false;
+
     const auto iter = sc.icpIteration;
     if (iter.has_value() && *iter < runFromIteration) return false;
     if (iter.has_value() && runUpToIteration > 0 && *iter > runUpToIteration)

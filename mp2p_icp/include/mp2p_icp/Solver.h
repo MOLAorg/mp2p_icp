@@ -64,6 +64,9 @@ class Solver : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     uint32_t runFromIteration = 0;
     uint32_t runUpToIteration = 0;  //!< 0: no limit
 
+    /** Can be used to disable one of a set of solvers in a pipeline */
+    bool enabled = true;
+
    protected:
     virtual bool impl_optimal_pose(
         const Pairings& pairings, OptimalTF_Result& out,
