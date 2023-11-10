@@ -87,6 +87,7 @@ class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     uint32_t runFromIteration = 0;
     uint32_t runUpToIteration = 0;  //!< 0: no limit
+    bool     enabled          = true;
 
    protected:
     /// \return true if the mather is actually invoked, false if disabled.

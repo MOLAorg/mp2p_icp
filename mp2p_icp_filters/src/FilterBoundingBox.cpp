@@ -15,7 +15,6 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
 #include <mrpt/obs/CObservation2DRangeScan.h>
-#include <mrpt/random/RandomGenerators.h>
 
 IMPLEMENTS_MRPT_OBJECT(
     FilterBoundingBox, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
