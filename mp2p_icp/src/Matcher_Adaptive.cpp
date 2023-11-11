@@ -122,11 +122,14 @@ void Matcher_Adaptive::implMatchOneLayer(
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],
                     lz = tl.z_locals[i];
 
+        constexpr size_t maxNNPoints = 2;
+
         // Use a KD-tree to look for the nearnest neighbor(s) of
         // (x_local, y_local, z_local) in the global map:
         nnGlobal.nn_radius_search(
             {lx, ly, lz},  // Look closest to this guy
-            absoluteMaxDistSqr, neighborPts, neighborSqrDists, neighborIndices);
+            absoluteMaxDistSqr, neighborPts, neighborSqrDists, neighborIndices,
+            maxNNPoints);
 
         for (size_t k = 0; k < neighborIndices.size(); k++)
         {
