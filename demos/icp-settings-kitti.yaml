@@ -1,11 +1,15 @@
 # YAML configuration file for use with the CLI tool mp2p-icp-run or
 # programatically from function mp2p_icp::icp_pipeline_from_yaml()
 #
+# Example command line:
+#  
+# build-Release/bin/mp2p-icp-run   --input-local /mnt/storage/kitti-odometry-slam-mm/00/001478.mm  --input-global /mnt/storage/kitti-odometry-slam-mm/00/001477.mm  -c demos/icp-settings-kitti.yaml --generate-debug-log
+#
 class_name: mp2p_icp::ICP
 
 # See: mp2p_icp::Parameter
 params:
-  maxIterations: 50
+  maxIterations: 200
   minAbsStep_trans: 1e-4
   minAbsStep_rot: 1e-4
 
@@ -14,35 +18,43 @@ params:
   #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
 
 solvers:
+  - class: mp2p_icp::Solver_Horn
+    params:
+      enabled: true
+      runFromIteration: 0
+      runUpToIteration: 5
+
   - class: mp2p_icp::Solver_GaussNewton
     params:
-     maxIterations: 3
+      enabled: true
+      runFromIteration: 6
+      runUpToIteration: 0
+      maxIterations: 3
+      robustKernel: 'RobustKernel::GemanMcClure'
+      robustKernelParam: 0.15
 
-#  - class: mp2p_icp::Solver_Horn
-#    params:
-#      ~
 
 # Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
 # instances to pair geometric entities between pointclouds.
 matchers:
-  - class: mp2p_icp::Matcher_Point2Plane
-    params:
-      kdtree_leaf_max_points: 20
-      #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
-      distanceThreshold: 1.5
-      planeEigenThreshold: 0.05
-      minimumPlanePoints: 20
-      knn: 20
-      runFromIteration: 0  # "from 0 to 0" means "all"
-      runUpToIteration: 0
-      pointLayerMatches:
-        - {global: "raw", local: "decimated", weight: 1.0}
   - class: mp2p_icp::Matcher_Points_DistanceThreshold
     params:
-      threshold: 0.25
+      threshold: 2.00
       #pairingsPerPoint: 3
       #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
+      enabled: true
       runFromIteration: 0  # "from 0 to 0" means "all"
+      runUpToIteration: 5
+      pointLayerMatches:
+        - {global: "raw", local: "decimated", weight: 1.0}
+
+  - class: mp2p_icp::Matcher_Adaptive
+    params:
+      confidenceInterval: 0.75
+      firstToSecondDistanceMax: 1.2
+      absoluteMaxSearchDistance: 2.0  # m
+      #enabled: false
+      runFromIteration: 6  # "from 0 to 0" means "all"
       runUpToIteration: 0
       pointLayerMatches:
         - {global: "raw", local: "decimated", weight: 1.0}
@@ -50,7 +62,10 @@ matchers:
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio
     params:
+     reuse_icp_pairings: true
      threshold: 0.25
+     pointLayerMatches:
+       - {global: "raw", local: "decimated", weight: 1.0}
 
 # Filters for local and global point clouds:
 #
@@ -62,5 +77,5 @@ filters:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: 0.50  # [m]
-      use_voxel_average: true
+      voxel_filter_resolution: 2.00  # [m]
+      use_voxel_average: false

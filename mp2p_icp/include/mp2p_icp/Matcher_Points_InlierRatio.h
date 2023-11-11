@@ -21,7 +21,7 @@ namespace mp2p_icp
  * maps.
  *
  * By default, each `local` point layer is matched against the layer with the
- * same name in the `global` map, unless especified otherwise in the base class
+ * same name in the `global` map, unless specified otherwise in the base class
  * member `weight_pt2pt_layers`. Refer to example configuration YAML files for
  * example configurations.
  *

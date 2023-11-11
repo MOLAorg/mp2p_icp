@@ -4,10 +4,10 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   Matcher_Point2Line.h
- * @brief  Pointcloud matcher: point to line-fit of nearby points
+ * @file   Matcher_Adaptive.h
+ * @brief  Pointcloud matcher: smart adaptive matcher
  * @author Jose Luis Blanco Claraco
- * @date   Nov 29, 2021
+ * @date   Nov 11, 2023
  */
 #pragma once
 
@@ -15,10 +15,10 @@
 
 namespace mp2p_icp
 {
-/** Pointcloud matcher: point to plane-fit of nearby points
+/** Pointcloud matcher: adaptive algorithm automatically discarding outliers,
+ *  and creating point-to-plane, point-to-line, or point-to-point pairings.
  *
- * Finds point-to-line pairings between `local` point layers and points fitting
- * a line in layers of the `global` input metric map.
+ * Finds pairings between the `local` and `global` input metric maps.
  *
  * By default, each `local` point layer is matched against the layer with the
  * same name in the `global` map, unless specified otherwise in the base class
@@ -27,32 +27,36 @@ namespace mp2p_icp
  *
  * \ingroup mp2p_icp_grp
  */
-class Matcher_Point2Line : public Matcher_Points_Base
+class Matcher_Adaptive : public Matcher_Points_Base
 {
-    DEFINE_MRPT_OBJECT(Matcher_Point2Line, mp2p_icp)
+    DEFINE_MRPT_OBJECT(Matcher_Adaptive, mp2p_icp)
 
    public:
-    Matcher_Point2Line();
+    Matcher_Adaptive() = default;
+
+    Matcher_Adaptive(
+        double ConfidenceInterval, double FirstToSecondDistanceMax,
+        double AbsoluteMaxSearchDistance)
+        : Matcher_Points_Base(),
+          confidenceInterval(ConfidenceInterval),
+          firstToSecondDistanceMax(FirstToSecondDistanceMax),
+          absoluteMaxSearchDistance(AbsoluteMaxSearchDistance)
+    {
+    }
 
     /** Parameters:
-     * - `distanceThreshold`: Inliers distance threshold [meters][mandatory]
-     * - `knn`: Number of neighbors to look for [mandatory]
-     * - `minimumLinePoints`: Minimum number of found points [mandatory]
-     * - `lineEigenThreshold`: maximum e0/e2 and e1/e2 ratio [mandatory]
-     *
-     * Where [e0, e1, e2] are the smallest to largest eigenvalues of the
-     * Gaussian covariance fitting the knn closest global points for each local
-     * point.
+     * - `confidenceInterval`: Inliers top-confidence interval. (0-1)
+     * - `firstToSecondDistanceMax`:
+     * - `absoluteMaxSearchDistance`:
      *
      * Plus: the parameters of Matcher_Points_Base::initialize()
      */
     void initialize(const mrpt::containers::yaml& params) override;
 
    private:
-    double   distanceThreshold  = 0.50;
-    uint32_t knn                = 4;
-    uint32_t minimumLinePoints  = 4;
-    double   lineEigenThreshold = 0.01;
+    double confidenceInterval        = 0.80;
+    double firstToSecondDistanceMax  = 1.2;
+    double absoluteMaxSearchDistance = 5.0;  // m
 
     void implMatchOneLayer(
         const mrpt::maps::CMetricMap& pcGlobal,

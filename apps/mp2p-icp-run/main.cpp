@@ -102,6 +102,9 @@ static TCLAP::SwitchArg argGenerateDebugFiles(
     "`generateDebugFiles` value in the configuration YAML file.",
     cmd);
 
+static TCLAP::SwitchArg argProfile(
+    "", "profiler", "Enables the ICP profiler.", cmd);
+
 // To avoid reading the same .rawlog file twice:
 static std::map<std::string, mrpt::obs::CRawlog::Ptr> rawlogsCache;
 
@@ -304,6 +307,8 @@ void runIcp()
                       << std::endl;
         }
     }
+
+    if (argProfile.isSet()) icp->profiler().enable(true);
 
     const double t_ini = mrpt::Clock::nowDouble();
 
