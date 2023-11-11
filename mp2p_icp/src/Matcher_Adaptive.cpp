@@ -178,13 +178,15 @@ void Matcher_Adaptive::implMatchOneLayer(
     for (auto v : histValues) printf("%.02f ", v);
     printf("\n");
 #endif
-#if 1
+#if 0
     printf("CI_HIGH: %.03f => %.03f meters\n", ci_high, std::sqrt(ci_high));
 #endif
 
     // Take the confidence interval limit as the definitive maximum squared
     // distance for correspondences:
     const double maxCorrDistSqr = ci_high;
+
+    const float maxSqr1to2 = mrpt::square(firstToSecondDistanceMax);
 
     // Now, process candidates pairing and store them in `out.paired_pt2pt`:
     for (const auto& mspl : matchesPerLocal)
@@ -200,6 +202,13 @@ void Matcher_Adaptive::implMatchOneLayer(
 
             // too large error for the adaptive threshold?
             if (p.errorSquareAfterTransformation >= maxCorrDistSqr) continue;
+
+            if (i == 1 &&
+                mspl[i].errorSquareAfterTransformation >
+                    mspl[0].errorSquareAfterTransformation * maxSqr1to2)
+            {
+                break;
+            }
 
             out.paired_pt2pt.emplace_back(p);
 
