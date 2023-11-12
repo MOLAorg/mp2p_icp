@@ -156,9 +156,14 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         out.paired_pt2pt.emplace_back(bestPair);
 
         // Mark local & global points as already paired:
-        const auto localIdx = bestPair.localIdx;
-        ms.localPairedBitField.point_layers[localName].mark_as_set(localIdx);
-        ms.globalPairedBitField.point_layers[globalName].mark_as_set(globalIdx);
+        if (!allowMatchAlreadyMatchedGlobalPoints_)
+        {
+            const auto localIdx = bestPair.localIdx;
+            ms.localPairedBitField.point_layers[localName].mark_as_set(
+                localIdx);
+            ms.globalPairedBitField.point_layers[globalName].mark_as_set(
+                globalIdx);
+        }
     }
 
     MRPT_END
