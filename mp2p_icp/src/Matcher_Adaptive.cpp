@@ -216,9 +216,12 @@ void Matcher_Adaptive::implMatchOneLayer(
             out.paired_pt2pt.emplace_back(p);
 
             // Mark local & global points as already paired:
-            const auto localIdx = p.localIdx;
-            ms.localPairedBitField.point_layers[localName].mark_as_set(
-                localIdx);
+            if (!allowMatchAlreadyMatchedGlobalPoints_)
+            {
+                const auto localIdx = p.localIdx;
+                ms.localPairedBitField.point_layers[localName].mark_as_set(
+                    localIdx);
+            }
         }
     }
 
