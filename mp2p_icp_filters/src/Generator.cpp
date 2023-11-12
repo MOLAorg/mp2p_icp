@@ -65,14 +65,15 @@ void Generator::process(
 
     const auto obsClassName = o.GetRuntimeClass()->className;
 
-    // user-given filters:
-    if (!std::regex_match(obsClassName, process_class_names_regex_)) return;
-    if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_)) return;
-
     // default: use point clouds:
     if (params_.metric_map_definition_ini_file.empty())
     {
         bool processed = false;
+
+        // user-given filters: Done *AFTER* creating the map, if needed.
+        if (!std::regex_match(obsClassName, process_class_names_regex_)) return;
+        if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
+            return;
 
         if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
         {
@@ -186,6 +187,11 @@ void Generator::process(
         }
 
         ASSERT_(outMap);
+
+        // user-given filters: Done *AFTER* creating the map, if needed.
+        if (!std::regex_match(obsClassName, process_class_names_regex_)) return;
+        if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
+            return;
 
         // Observation format:
         o.load();
