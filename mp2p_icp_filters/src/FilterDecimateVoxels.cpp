@@ -33,6 +33,7 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
 
     MCP_LOAD_REQ(c, voxel_filter_resolution);
     MCP_LOAD_REQ(c, use_voxel_average);
+    MCP_LOAD_REQ(c, use_closest_to_voxel_average);
 }
 
 FilterDecimateVoxels::FilterDecimateVoxels() = default;
@@ -124,7 +125,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
         nonEmptyVoxels++;
 
-        if (params_.use_voxel_average)
+        if (params_.use_voxel_average || params_.use_closest_to_voxel_average)
         {
             // Analyze the voxel contents:
             auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
@@ -138,8 +139,33 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             }
             mean *= inv_n;
 
-            // Insert the mean:
-            outPc->insertPointFast(mean.x, mean.y, mean.z);
+            if (params_.use_closest_to_voxel_average)
+            {
+                std::optional<float>  minSqrErr;
+                std::optional<size_t> bestIdx;
+
+                for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
+                {
+                    const auto  pt_idx = vxl_pts.second.indices[i];
+                    const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
+                                         mrpt::square(ys[pt_idx] - mean.y) +
+                                         mrpt::square(zs[pt_idx] - mean.z);
+
+                    if (!minSqrErr.has_value() || sqrErr < *minSqrErr)
+                    {
+                        minSqrErr = sqrErr;
+                        bestIdx   = pt_idx;
+                    }
+                }
+                // Insert the closest to the mean:
+                outPc->insertPointFast(
+                    xs[*bestIdx], ys[*bestIdx], zs[*bestIdx]);
+            }
+            else
+            {
+                // Insert the mean:
+                outPc->insertPointFast(mean.x, mean.y, mean.z);
+            }
         }
         else
         {
