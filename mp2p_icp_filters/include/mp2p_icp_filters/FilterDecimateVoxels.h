@@ -67,6 +67,10 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
         /** If enabled, the mean of each voxel is taken instead of any of
          *  the original points. */
         bool use_voxel_average = false;
+
+        /** If false (default), the first point in each voxel will be returned
+         * as voxel representative. Otherwise, one picked at random. */
+        bool use_random_point_within_voxel = false;
     };
 
     /** Algorithm parameters */

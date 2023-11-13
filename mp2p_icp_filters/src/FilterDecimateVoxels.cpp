@@ -27,6 +27,7 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
 {
     MCP_LOAD_OPT(c, input_pointcloud_layer);
     MCP_LOAD_OPT(c, error_on_missing_input_layer);
+    MCP_LOAD_OPT(c, use_random_point_within_voxel);
 
     MCP_LOAD_REQ(c, output_pointcloud_layer);
 
@@ -144,7 +145,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         {
             // Insert a randomly-picked point:
             const auto idxInVoxel =
-                rng.drawUniform64bit() % vxl_pts.second.indices.size();
+                params_.use_random_point_within_voxel
+                    ? (rng.drawUniform64bit() % vxl_pts.second.indices.size())
+                    : 0UL;
 
             const auto pt_idx = vxl_pts.second.indices.at(idxInVoxel);
             outPc->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
