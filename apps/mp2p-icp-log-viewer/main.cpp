@@ -78,6 +78,7 @@ std::array<nanogui::Label*, 4> lbICPStats = {
     nullptr, nullptr, nullptr, nullptr};
 nanogui::CheckBox* cbShowInitialPose    = nullptr;
 nanogui::CheckBox* cbViewOrtho          = nullptr;
+nanogui::CheckBox* cbCameraFollowsLocal = nullptr;
 nanogui::CheckBox* cbViewVoxelsAsPoints = nullptr;
 nanogui::CheckBox* cbColorizeLocalMap   = nullptr;
 nanogui::CheckBox* cbColorizeGlobalMap  = nullptr;
@@ -501,6 +502,10 @@ static void main_show_gui()
         cbViewOrtho = tab5->add<nanogui::CheckBox>("Orthogonal view");
         cbViewOrtho->setCallback([&](bool) { rebuild_3d_view(); });
 
+        cbCameraFollowsLocal =
+            tab5->add<nanogui::CheckBox>("Camera follows 'local'");
+        cbCameraFollowsLocal->setCallback([&](bool) { rebuild_3d_view(); });
+
         cbViewVoxelsAsPoints =
             tab5->add<nanogui::CheckBox>("Render voxel maps as point clouds");
         cbViewVoxelsAsPoints->setChecked(true);
@@ -761,6 +766,13 @@ void rebuild_3d_view()
     {
         std::lock_guard<std::mutex> lck(win->background_scene_mtx);
         win->camera().setCameraProjective(!cbViewOrtho->checked());
+
+        if (cbCameraFollowsLocal->checked())
+        {
+            win->camera().setCameraPointing(
+                relativePose.mean.x(), relativePose.mean.y(),
+                relativePose.mean.z());
+        }
 
         // clip planes:
         const auto depthFieldMid = std::pow(10.0, slMidDepthField->value());
