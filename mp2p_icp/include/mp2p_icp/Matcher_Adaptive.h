@@ -59,6 +59,7 @@ class Matcher_Adaptive : public Matcher_Points_Base
     double   firstToSecondDistanceMax  = 1.2;
     double   absoluteMaxSearchDistance = 5.0;  // m
     bool     enableDetectPlanes        = false;
+    uint32_t maxPt2PtCorrespondences   = 1;
     uint32_t planeSearchPoints         = 8;
     uint32_t planeMinimumFoundPoints   = 4;
     double   planeEigenThreshold       = 0.01;

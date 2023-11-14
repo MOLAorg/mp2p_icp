@@ -22,6 +22,8 @@ IMPLEMENTS_MRPT_OBJECT(
 
 using namespace mp2p_icp_filters;
 
+MRPT_TODO("Define enum type for selected operation?");
+
 void FilterDecimateVoxels::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c)
 {

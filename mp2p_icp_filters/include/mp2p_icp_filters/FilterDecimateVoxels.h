@@ -64,6 +64,8 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
         /** Size of each voxel edge [meters] */
         double voxel_filter_resolution = .20;  // [m]
 
+        // TODO: Convert into an enum !!
+
         /** If enabled, the mean of each voxel is taken instead of any of
          *  the original points. */
         bool use_voxel_average = false;

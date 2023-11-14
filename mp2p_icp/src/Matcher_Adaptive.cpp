@@ -34,6 +34,7 @@ void Matcher_Adaptive::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_OPT(params, planeSearchPoints);
     MCP_LOAD_OPT(params, planeMinimumFoundPoints);
     MCP_LOAD_OPT(params, planeEigenThreshold);
+    MCP_LOAD_OPT(params, maxPt2PtCorrespondences);
 
     ASSERT_LT_(confidenceInterval, 1.0);
     ASSERT_GT_(confidenceInterval, 0.0);
@@ -108,7 +109,7 @@ void Matcher_Adaptive::implMatchOneLayer(
         };
 
     const uint32_t nn_search_max_points =
-        enableDetectPlanes ? planeSearchPoints : 2;
+        enableDetectPlanes ? planeSearchPoints : maxPt2PtCorrespondences;
 
     for (size_t i = 0; i < tl.x_locals.size(); i++)
     {
@@ -246,7 +247,8 @@ void Matcher_Adaptive::implMatchOneLayer(
             }
         }
 
-        for (size_t i = 0; i < std::min(mspl.size(), 2UL); i++)
+        for (size_t i = 0;
+             i < std::min<size_t>(mspl.size(), maxPt2PtCorrespondences); i++)
         {
             const auto& p         = mspl.at(i);
             const auto  globalIdx = p.globalIdx;
@@ -258,7 +260,7 @@ void Matcher_Adaptive::implMatchOneLayer(
             // too large error for the adaptive threshold?
             if (p.errorSquareAfterTransformation >= maxCorrDistSqr) continue;
 
-            if (i == 1 &&
+            if (i != 0 &&
                 mspl[i].errorSquareAfterTransformation >
                     mspl[0].errorSquareAfterTransformation * maxSqr1to2)
             {

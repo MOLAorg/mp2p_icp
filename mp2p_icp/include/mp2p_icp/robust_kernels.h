@@ -31,7 +31,7 @@ enum class RobustKernel : uint8_t
     GemanMcClure,
 };
 
-using robust_sqrt_weight_func_t = std::function<double(double)>;
+using robust_sqrt_weight_func_t = std::function<double(double /*errSqr*/)>;
 
 /**
  * Creates a functor with the sqrt of the weight function of a given
@@ -58,13 +58,12 @@ inline robust_sqrt_weight_func_t create_robust_kernel(
             /**
              * We must return the sqrt of the weight function:
              *
-             *   sqrt(w(x))=( ∂ρ(x)/∂x )/x = c²/(e²+c²)
+             *   sqrt(w(x))=( ∂ρ(x)/∂x )/x = c²/(e²+c)²
              *
              * with the loss function ρ(x) = (x²/2)/(c²+x²)
              */
-            return [kernelParamSqr](double error) -> double {
-                return (kernelParamSqr) /
-                       (mrpt::square(error) + kernelParamSqr);
+            return [kernelParamSqr, kernelParam](double errorSqr) -> double {
+                return (kernelParamSqr) / mrpt::square(errorSqr + kernelParam);
             };
         default:
             throw std::invalid_argument("Unknown kernel type");
