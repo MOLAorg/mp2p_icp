@@ -12,6 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/Matcher_Points_Base.h>
+#include <mrpt/containers/vector_with_small_size_optimization.h>
 
 namespace mp2p_icp
 {
@@ -54,9 +55,25 @@ class Matcher_Adaptive : public Matcher_Points_Base
     void initialize(const mrpt::containers::yaml& params) override;
 
    private:
-    double confidenceInterval        = 0.80;
-    double firstToSecondDistanceMax  = 1.2;
-    double absoluteMaxSearchDistance = 5.0;  // m
+    double   confidenceInterval        = 0.80;
+    double   firstToSecondDistanceMax  = 1.2;
+    double   absoluteMaxSearchDistance = 5.0;  // m
+    bool     enableDetectPlanes        = false;
+    uint32_t planeSearchPoints         = 8;
+    uint32_t planeMinimumFoundPoints   = 4;
+    double   planeEigenThreshold       = 0.01;
+
+    // Declared here to avoid memory reallocations:
+    mutable std::vector<size_t>                neighborIndices_;
+    mutable std::vector<float>                 neighborSqrDists_;
+    mutable std::vector<mrpt::math::TPoint3Df> neighborPts_;
+    mutable std::vector<float>                 kddXs, kddYs, kddZs;
+
+    constexpr static size_t MAX_CORRS_PER_LOCAL = 10;
+
+    mutable std::vector<mrpt::containers::vector_with_small_size_optimization<
+        mrpt::tfest::TMatchingPair, MAX_CORRS_PER_LOCAL>>
+        matchesPerLocal_;
 
     void implMatchOneLayer(
         const mrpt::maps::CMetricMap& pcGlobal,
