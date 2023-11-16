@@ -119,10 +119,35 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 
         // Use a KD-tree to look for the nearnest neighbor(s) of
         // (x_local, y_local, z_local) in the global map.
-        nnGlobal.nn_radius_search(
-            {lx, ly, lz},  // Look closest to this guy
-            maxDistForCorrespondenceSquared, neighborPts, neighborSqrDists,
-            neighborIndices, pairingsPerPoint);
+        if (pairingsPerPoint == 1)
+        {
+            neighborIndices.resize(1);
+            neighborSqrDists.resize(1);
+            neighborPts.resize(1);
+
+            if (!nnGlobal.nn_single_search(
+                    {lx, ly, lz},  // Look closest to this guy
+                    neighborPts[0], neighborSqrDists[0], neighborIndices[0]))
+            {
+                neighborIndices.clear();
+                neighborSqrDists.clear();
+                neighborPts.clear();
+            }
+        }
+        else
+        {
+#if 0
+            nnGlobal.nn_radius_search(
+                {lx, ly, lz},  // Look closest to this guy
+                maxDistForCorrespondenceSquared, , neighborSqrDists,
+                neighborIndices, pairingsPerPoint);
+#else
+            nnGlobal.nn_multiple_search(
+                {lx, ly, lz},  // Look closest to this guy
+                pairingsPerPoint, neighborPts, neighborSqrDists,
+                neighborIndices);
+#endif
+        }
 
         // Distance below the threshold??
         for (size_t k = 0; k < neighborIndices.size(); k++)

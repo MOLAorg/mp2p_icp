@@ -128,10 +128,35 @@ void Matcher_Adaptive::implMatchOneLayer(
 
         // Use a KD-tree to look for the nearnest neighbor(s) of
         // (x_local, y_local, z_local) in the global map:
-        nnGlobal.nn_radius_search(
-            {lx, ly, lz},  // Look closest to this guy
-            absoluteMaxDistSqr, neighborPts_, neighborSqrDists_,
-            neighborIndices_, nn_search_max_points);
+        if (nn_search_max_points == 1)
+        {
+            neighborSqrDists_.resize(1);
+            neighborIndices_.resize(1);
+            neighborPts_.resize(1);
+
+            if (!nnGlobal.nn_single_search(
+                    {lx, ly, lz},  // Look closest to this guy
+                    neighborPts_[0], neighborSqrDists_[0], neighborIndices_[0]))
+            {
+                neighborPts_.clear();
+                neighborSqrDists_.clear();
+                neighborIndices_.clear();
+            }
+        }
+        else
+        {
+#if 0
+            nnGlobal.nn_radius_search(
+                {lx, ly, lz},  // Look closest to this guy
+                absoluteMaxDistSqr, neighborPts_, neighborSqrDists_,
+                neighborIndices_, nn_search_max_points);
+#else
+            nnGlobal.nn_multiple_search(
+                {lx, ly, lz},  // Look closest to this guy
+                nn_search_max_points, neighborPts_, neighborSqrDists_,
+                neighborIndices_);
+#endif
+        }
 
         for (size_t k = 0; k < neighborIndices_.size(); k++)
         {
@@ -184,14 +209,14 @@ void Matcher_Adaptive::implMatchOneLayer(
     printf("\n");
 #endif
 #if 0
-        printf(
-            "[MatcherAdaptive] CI_HIGH: %.03f => threshold=%.03f meters\n",
-            ci_high, std::sqrt(ci_high));
+    printf(
+        "[MatcherAdaptive] CI_HIGH: %.03f => threshold=%.03f meters\n", ci_high,
+        std::sqrt(ci_high));
 #endif
 
     // Take the confidence interval limit as the definitive maximum squared
     // distance for correspondences:
-    const double maxCorrDistSqr = ci_high;
+    const double maxCorrDistSqr = std::min(0.6 * 0.6, ci_high);
 
     const float maxSqr1to2 = mrpt::square(firstToSecondDistanceMax);
 
