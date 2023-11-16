@@ -145,17 +145,10 @@ void Matcher_Adaptive::implMatchOneLayer(
         }
         else
         {
-#if 0
             nnGlobal.nn_radius_search(
                 {lx, ly, lz},  // Look closest to this guy
                 absoluteMaxDistSqr, neighborPts_, neighborSqrDists_,
                 neighborIndices_, nn_search_max_points);
-#else
-            nnGlobal.nn_multiple_search(
-                {lx, ly, lz},  // Look closest to this guy
-                nn_search_max_points, neighborPts_, neighborSqrDists_,
-                neighborIndices_);
-#endif
         }
 
         for (size_t k = 0; k < neighborIndices_.size(); k++)
@@ -207,8 +200,6 @@ void Matcher_Adaptive::implMatchOneLayer(
     printf("\n");
     for (auto v : histValues) printf("%.02f ", v);
     printf("\n");
-#endif
-#if 0
     printf(
         "[MatcherAdaptive] CI_HIGH: %.03f => threshold=%.03f meters\n", ci_high,
         std::sqrt(ci_high));
