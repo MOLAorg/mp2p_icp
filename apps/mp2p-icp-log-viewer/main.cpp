@@ -105,8 +105,10 @@ nanogui::Label * lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
 nanogui::Slider* slGTPose[6] = {nullptr, nullptr, nullptr,
                                 nullptr, nullptr, nullptr};
 
-std::vector<std::string>        layerNames_global, layerNames_local;
-std::vector<nanogui::CheckBox*> cbPointLayers_global, cbPointLayers_local;
+std::vector<std::string> layerNames_global, layerNames_local;
+
+std::map<std::string, nanogui::CheckBox*> cbLayersByName_global;
+std::map<std::string, nanogui::CheckBox*> cbLayersByName_local;
 
 std::vector<mp2p_icp::LogRecord> logRecords;
 
@@ -314,23 +316,24 @@ static void main_show_gui()
         tab1->add<nanogui::Label>(
             "ICP result pose [x y z yaw(deg) pitch(deg) roll(deg)]:");
         tbLogPose = tab1->add<nanogui::TextBox>();
-        tbLogPose->setFontSize(16);
+        tbLogPose->setFontSize(14);
         tbLogPose->setEditable(true);
+        tbLogPose->setAlignment(nanogui::TextBox::Alignment::Left);
 
         tab1->add<nanogui::Label>("Initial -> final pose change:");
         tbInit2Final = tab1->add<nanogui::TextBox>();
-        tbInit2Final->setFontSize(16);
+        tbInit2Final->setFontSize(14);
         tbInit2Final->setEditable(false);
 
         tab2->add<nanogui::Label>(
             "Uncertainty: diagonal sigmas (x y z yaw pitch roll)");
         tbCovariance = tab2->add<nanogui::TextBox>();
-        tbCovariance->setFontSize(16);
+        tbCovariance->setFontSize(14);
         tbCovariance->setEditable(false);
 
         tab2->add<nanogui::Label>("Uncertainty: Covariance condition numbers");
         tbConditionNumber = tab2->add<nanogui::TextBox>();
-        tbConditionNumber->setFontSize(16);
+        tbConditionNumber->setFontSize(14);
         tbConditionNumber->setEditable(false);
 
         const float handTunedRange[6] = {4.0,        4.0,         10.0,
@@ -356,7 +359,7 @@ static void main_show_gui()
 
         tab1->add<nanogui::Label>("Initial guess pose:");
         tbInitialGuess = tab1->add<nanogui::TextBox>();
-        tbInitialGuess->setFontSize(16);
+        tbInitialGuess->setFontSize(14);
         tbInitialGuess->setEditable(true);
 
         // Save map buttons:
@@ -373,7 +376,7 @@ static void main_show_gui()
         {
             auto pn = tab3->add<nanogui::Widget>();
             pn->setLayout(new nanogui::BoxLayout(
-                nanogui::Orientation::Horizontal, nanogui::Alignment::Middle));
+                nanogui::Orientation::Horizontal, nanogui::Alignment::Fill));
             pn->add<nanogui::Button>("Export 'local' map...")
                 ->setCallback([&]() {
                     const size_t idx = mrpt::round(slSelectorICP->value());
@@ -390,26 +393,27 @@ static void main_show_gui()
                 });
         }
 
-        tab3->add<nanogui::Label>("[GLOBAL point cloud] Show point layers:");
-        cbPointLayers_global.resize(layerNames_global.size());
+        tab3->add<nanogui::Label>("[GLOBAL map] Visible layers:");
+
         for (size_t i = 0; i < layerNames_global.size(); i++)
         {
-            cbPointLayers_global[i] =
-                tab3->add<nanogui::CheckBox>(layerNames_global.at(i));
-            cbPointLayers_global[i]->setChecked(true);
-            cbPointLayers_global[i]->setCallback(
-                [](bool) { rebuild_3d_view(); });
+            auto cb = tab3->add<nanogui::CheckBox>(layerNames_global.at(i));
+            cb->setChecked(true);
+            cb->setCallback([](bool) { rebuild_3d_view(); });
+            cb->setFontSize(13);
+
+            cbLayersByName_global[layerNames_global.at(i)] = cb;
         }
 
-        tab3->add<nanogui::Label>("[LOCAL point cloud] Show point layers:");
-        cbPointLayers_local.resize(layerNames_local.size());
+        tab3->add<nanogui::Label>("[LOCAL map] Visible layers:");
         for (size_t i = 0; i < layerNames_local.size(); i++)
         {
-            cbPointLayers_local[i] =
-                tab3->add<nanogui::CheckBox>(layerNames_local.at(i));
-            cbPointLayers_local[i]->setChecked(true);
-            cbPointLayers_local[i]->setCallback(
-                [](bool) { rebuild_3d_view(); });
+            auto cb = tab3->add<nanogui::CheckBox>(layerNames_local.at(i));
+            cb->setChecked(true);
+            cb->setCallback([](bool) { rebuild_3d_view(); });
+            cb->setFontSize(13);
+
+            cbLayersByName_local[layerNames_local.at(i)] = cb;
         }
 
         // tab4: pairings:
@@ -700,13 +704,35 @@ void rebuild_3d_view()
     mp2p_icp::render_params_t rpGlobal;
 
     rpGlobal.points.visible = false;
-    for (const auto& cbPL : cbPointLayers_global)
+    for (const auto& [lyName, cb] : cbLayersByName_global)
     {
-        if (!cbPL->checked()) continue;  // hidden
+        // Update stats in the cb label:
+        cb->setCaption(lyName);  // default
+        if (auto itL = lr.pcGlobal->layers.find(lyName);
+            itL != lr.pcGlobal->layers.end())
+        {
+            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+                    itL->second);
+                pc)
+            {
+                cb->setCaption(
+                    lyName + " | "s + std::to_string(pc->size()) + " points"s +
+                    " | class="s + pc->GetRuntimeClass()->className);
+            }
+            else
+            {
+                cb->setCaption(
+                    lyName + " | class="s +
+                    itL->second->GetRuntimeClass()->className);
+            }
+        }
+
+        // show/hide:
+        if (!cb->checked()) continue;  // hidden
         rpGlobal.points.visible = true;
 
-        auto& rpL     = rpGlobal.points.perLayer[cbPL->caption()];
-        rpL.pointSize = slPointSize->value();
+        auto& rpL                      = rpGlobal.points.perLayer[lyName];
+        rpL.pointSize                  = slPointSize->value();
         rpL.render_voxelmaps_as_points = cbViewVoxelsAsPoints->checked();
 
         if (cbColorizeGlobalMap->checked())
@@ -735,13 +761,35 @@ void rebuild_3d_view()
     mp2p_icp::render_params_t rpLocal;
 
     rpLocal.points.visible = false;
-    for (const auto& cbPL : cbPointLayers_local)
+    for (const auto& [lyName, cb] : cbLayersByName_local)
     {
-        if (!cbPL->checked()) continue;  // hidden
+        // Update stats in the cb label:
+        cb->setCaption(lyName);  // default
+        if (auto itL = lr.pcLocal->layers.find(lyName);
+            itL != lr.pcLocal->layers.end())
+        {
+            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+                    itL->second);
+                pc)
+            {
+                cb->setCaption(
+                    lyName + " | "s + std::to_string(pc->size()) + " points"s +
+                    " | class="s + pc->GetRuntimeClass()->className);
+            }
+            else
+            {
+                cb->setCaption(
+                    lyName + " | class="s +
+                    itL->second->GetRuntimeClass()->className);
+            }
+        }
+
+        // show/hide:
+        if (!cb->checked()) continue;  // hidden
         rpLocal.points.visible = true;
 
-        auto& rpL     = rpLocal.points.perLayer[cbPL->caption()];
-        rpL.pointSize = slPointSize->value();
+        auto& rpL                      = rpLocal.points.perLayer[lyName];
+        rpL.pointSize                  = slPointSize->value();
         rpL.render_voxelmaps_as_points = cbViewVoxelsAsPoints->checked();
         if (cbColorizeLocalMap->checked())
         {
