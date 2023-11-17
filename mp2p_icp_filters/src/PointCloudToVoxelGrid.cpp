@@ -56,7 +56,7 @@ void PointCloudToVoxelGrid::processPointCloud(const mrpt::maps::CPointsMap& p)
         y0 = ys[i];
         z0 = zs[i];
 
-        const indices_t vxl_idx = {x2idx(x0), y2idx(y0), z2idx(z0)};
+        const indices_t vxl_idx = {coord2idx(x0), coord2idx(y0), coord2idx(z0)};
 
         auto& cell = pts_voxels[vxl_idx];
         cell.indices.push_back(i);  // only if not out of grid range

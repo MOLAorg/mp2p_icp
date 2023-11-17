@@ -12,9 +12,7 @@
 
 #pragma once
 
-#include <mrpt/core/round.h>
 #include <mrpt/maps/CPointsMap.h>
-#include <mrpt/math/TPoint3D.h>
 
 #include <unordered_map>
 #include <vector>
@@ -63,9 +61,12 @@ class PointCloudToVoxelGrid
 
     struct indices_t
     {
-        indices_t(int cx, int cy, int cz) : cx_(cx), cy_(cy), cz_(cz) {}
+        indices_t(int32_t cx, int32_t cy, int32_t cz)
+            : cx_(cx), cy_(cy), cz_(cz)
+        {
+        }
 
-        int cx_ = 0, cy_ = 0, cz_ = 0;
+        int32_t cx_ = 0, cy_ = 0, cz_ = 0;
 
         bool operator==(const indices_t& o) const
         {
@@ -73,22 +74,29 @@ class PointCloudToVoxelGrid
         }
     };
 
+    /** This implements the optimized hash from this paper:
+     *
+     *  Teschner, M., Heidelberger, B., Müller, M., Pomerantes, D., & Gross, M.
+     * H. (2003, November). Optimized spatial hashing for collision detection of
+     * deformable objects. In Vmv (Vol. 3, pp. 47-54).
+     *
+     */
     struct IndicesHash
     {
+        /// Hash operator for unordered maps:
         std::size_t operator()(const indices_t& k) const noexcept
         {
-            using std::hash;
-            using std::size_t;
-            using std::string;
+            // These are the implicit assumptions of the reinterpret cast below:
+            static_assert(sizeof(indices_t::cx_) == sizeof(uint32_t));
+            static_assert(offsetof(indices_t, cx_) == 0 * sizeof(uint32_t));
+            static_assert(offsetof(indices_t, cy_) == 1 * sizeof(uint32_t));
+            static_assert(offsetof(indices_t, cz_) == 2 * sizeof(uint32_t));
 
-            std::size_t res = 17;
-
-            res = res * 31 + hash<int>()(k.cx_);
-            res = res * 31 + hash<int>()(k.cy_);
-            res = res * 31 + hash<int>()(k.cz_);
-
-            return res;
+            const uint32_t* vec = reinterpret_cast<const uint32_t*>(&k);
+            return ((1 << 20) - 1) &
+                   (vec[0] * 73856093 ^ vec[1] * 19349663 ^ vec[2] * 83492791);
         }
+
         // k1 < k2?
         bool operator()(const indices_t& k1, const indices_t& k2) const noexcept
         {
@@ -102,9 +110,10 @@ class PointCloudToVoxelGrid
      * use its iterator, etc. */
     std::unordered_map<indices_t, voxel_t, IndicesHash> pts_voxels;
 
-    inline int x2idx(float x) const { return mrpt::round(x / resolution_); }
-    inline int y2idx(float y) const { return mrpt::round(y / resolution_); }
-    inline int z2idx(float z) const { return mrpt::round(z / resolution_); }
+    inline int32_t coord2idx(float xyz) const
+    {
+        return static_cast<int32_t>(xyz / resolution_);
+    }
 
    private:
     /** Voxel size (meters) or resolution. */
