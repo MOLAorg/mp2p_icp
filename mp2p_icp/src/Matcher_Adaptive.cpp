@@ -28,13 +28,17 @@ void Matcher_Adaptive::initialize(const mrpt::containers::yaml& params)
 
     MCP_LOAD_REQ(params, confidenceInterval);
     MCP_LOAD_REQ(params, firstToSecondDistanceMax);
+
     MCP_LOAD_REQ(params, absoluteMaxSearchDistance);
+    MCP_LOAD_OPT(params, minimumCorrDist);
+
     MCP_LOAD_REQ(params, enableDetectPlanes);
 
     MCP_LOAD_OPT(params, planeSearchPoints);
     MCP_LOAD_OPT(params, planeMinimumFoundPoints);
     MCP_LOAD_OPT(params, planeEigenThreshold);
     MCP_LOAD_OPT(params, maxPt2PtCorrespondences);
+    MCP_LOAD_OPT(params, planeMinimumDistance);
 
     ASSERT_LT_(confidenceInterval, 1.0);
     ASSERT_GT_(confidenceInterval, 0.0);
@@ -155,6 +159,8 @@ void Matcher_Adaptive::implMatchOneLayer(
         {
             const auto tentativeErrSqr = neighborSqrDists_.at(k);
 
+            if (tentativeErrSqr > absoluteMaxDistSqr) continue;
+
             if (k <= 1)
             {
                 // keep max of 1st and 2nd closest point errors for the
@@ -187,27 +193,27 @@ void Matcher_Adaptive::implMatchOneLayer(
         for (size_t i = 0; i < std::min(mspl.size(), 2UL); i++)
             hist.add(mspl[i].errorSquareAfterTransformation);
 
-    std::vector<double> histXs, histValues;
-    hist.getHistogramNormalized(histXs, histValues);
+    hist.getHistogramNormalized(histXs_, histValues_);
 
     double ci_low = 0, ci_high = 0;
     mrpt::math::confidenceIntervalsFromHistogram(
-        histXs, histValues, ci_low, ci_high, 1.0 - confidenceInterval);
+        histXs_, histValues_, ci_low, ci_high, 1.0 - confidenceInterval);
 
 #if 0
     printf("Histograms:\n");
-    for (auto v : histXs) printf("%.02f ", v);
+    for (auto v : histXs_) printf("%.02f ", v);
     printf("\n");
-    for (auto v : histValues) printf("%.02f ", v);
+    for (auto v : histValues_) printf("%.02f ", v);
     printf("\n");
     printf(
-        "[MatcherAdaptive] CI_HIGH: %.03f => threshold=%.03f meters\n", ci_high,
-        std::sqrt(ci_high));
+        "[MatcherAdaptive] CI_HIGH: %.03f => threshold=%.03f m nCorrs=%zu\n",
+        ci_high, std::sqrt(ci_high), matchesPerLocal_.size());
 #endif
 
     // Take the confidence interval limit as the definitive maximum squared
     // distance for correspondences:
-    const double maxCorrDistSqr = std::min(0.6 * 0.6, ci_high);
+    const double maxCorrDistSqr =
+        std::max(mrpt::square(minimumCorrDist), ci_high);
 
     const float maxSqr1to2 = mrpt::square(firstToSecondDistanceMax);
 
@@ -242,24 +248,27 @@ void Matcher_Adaptive::implMatchOneLayer(
                     eig.meanCov.mean.z()};
 
                 const auto thePlane = mrpt::math::TPlane(planeCentroid, normal);
-                // const double ptPlaneDist =
-                // std::abs(thePlane.distance(mspl.at(0).local));
+                const double ptPlaneDist =
+                    std::abs(thePlane.distance(mspl.at(0).local));
 
-                const auto localIdx = mspl.at(0).localIdx;
+                if (ptPlaneDist < planeMinimumDistance)
+                {
+                    const auto localIdx = mspl.at(0).localIdx;
 
-                // OK, all conditions pass: add the new pairing:
-                auto& p    = out.paired_pt2pl.emplace_back();
-                p.pt_local = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
-                p.pl_global.centroid = planeCentroid;
+                    // OK, all conditions pass: add the new pairing:
+                    auto& p    = out.paired_pt2pl.emplace_back();
+                    p.pt_local = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
+                    p.pl_global.centroid = planeCentroid;
 
-                p.pl_global.plane = thePlane;
+                    p.pl_global.plane = thePlane;
 
-                // Mark local point as already paired:
-                ms.localPairedBitField.point_layers[localName].mark_as_set(
-                    localIdx);
+                    // Mark local point as already paired:
+                    ms.localPairedBitField.point_layers[localName].mark_as_set(
+                        localIdx);
 
-                // all good with this local point:
-                continue;
+                    // all good with this local point:
+                    continue;
+                }
             }
         }
 
@@ -294,6 +303,9 @@ void Matcher_Adaptive::implMatchOneLayer(
             }
         }
     }
+
+    // Update adaptive maximum range:
+    // absoluteMaxSearchDistance = std::sqrt(ci_high) + minimumCorrDist;
 
 // Now, mark global idxs as used. It's done after the loop above
 // to allow multiple local -> global pairs with the same global.

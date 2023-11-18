@@ -14,6 +14,8 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/round.h>
 #include <mrpt/version.h>
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_reduce.h>
 
 IMPLEMENTS_MRPT_OBJECT(Matcher_Points_DistanceThreshold, Matcher, mp2p_icp)
 
@@ -31,6 +33,7 @@ void Matcher_Points_DistanceThreshold::initialize(
     Matcher_Points_Base::initialize(params);
 
     MCP_LOAD_REQ(params, threshold);
+    MCP_LOAD_REQ(params, thresholdAngularDeg);
     MCP_LOAD_OPT(params, pairingsPerPoint);
 
     ASSERT_(pairingsPerPoint >= 1);
@@ -66,6 +69,8 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     // Loop for each point in local map:
     // --------------------------------------------------
     const float maxDistForCorrespondenceSquared = mrpt::square(threshold);
+    const float angularThresholdFactorSquared =
+        mrpt::square(mrpt::DEG2RAD(thresholdAngularDeg));
 
     const auto& lxs = pcLocal.getPointsBufferRef_x();
     const auto& lys = pcLocal.getPointsBufferRef_y();
@@ -117,6 +122,9 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         const float lx = tl.x_locals[i], ly = tl.y_locals[i],
                     lz = tl.z_locals[i];
 
+        const float localNormSqr =
+            mrpt::square(lx) + mrpt::square(ly) + mrpt::square(lz);
+
         // Use a KD-tree to look for the nearnest neighbor(s) of
         // (x_local, y_local, z_local) in the global map.
         if (pairingsPerPoint == 1)
@@ -136,24 +144,22 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         }
         else
         {
-#if 0
-            nnGlobal.nn_radius_search(
-                {lx, ly, lz},  // Look closest to this guy
-                maxDistForCorrespondenceSquared, , neighborSqrDists,
-                neighborIndices, pairingsPerPoint);
-#else
             nnGlobal.nn_multiple_search(
                 {lx, ly, lz},  // Look closest to this guy
                 pairingsPerPoint, neighborPts, neighborSqrDists,
                 neighborIndices);
-#endif
         }
 
         // Distance below the threshold??
         for (size_t k = 0; k < neighborIndices.size(); k++)
         {
             const auto tentativeErrSqr = neighborSqrDists.at(k);
-            if (tentativeErrSqr >= maxDistForCorrespondenceSquared)
+
+            const float finalThresSqr =
+                maxDistForCorrespondenceSquared +
+                angularThresholdFactorSquared * localNormSqr;
+
+            if (tentativeErrSqr >= finalThresSqr)
                 break;  // skip this and the rest.
 
             lambdaAddPair(

@@ -51,8 +51,9 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
     void initialize(const mrpt::containers::yaml& params) override;
 
    private:
-    double       threshold        = 0.50;
-    unsigned int pairingsPerPoint = 1;
+    double       threshold           = 0.50;  // m
+    double       thresholdAngularDeg = 0.50;  // deg
+    unsigned int pairingsPerPoint    = 1;
 
     void implMatchOneLayer(
         const mrpt::maps::CMetricMap& pcGlobal,
