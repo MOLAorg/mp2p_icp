@@ -18,6 +18,11 @@
 #include <Eigen/Dense>
 #include <iostream>
 
+#if defined(MP2P_HAS_TBB)
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_reduce.h>
+#endif
+
 using namespace mp2p_icp;
 
 bool mp2p_icp::optimal_tf_gauss_newton(
@@ -62,6 +67,82 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
         double errNormSqr = 0;
 
+#if defined(MP2P_HAS_TBB)
+        // For the TBB lambdas:
+        // TBB call structure based on the beautiful implementation in KISS-ICP.
+        struct Result
+        {
+            Result()
+            {
+                H.setZero();
+                g.setZero();
+            }
+
+            Result operator+(const Result& other)
+            {
+                H += other.H;
+                g += other.g;
+                return *this;
+            }
+
+            Eigen::Matrix<double, 6, 6> H;
+            Eigen::Vector<double, 6>    g;
+        };
+
+        const auto& [H_tbb, g_tbb] = tbb::parallel_reduce(
+            // Range
+            tbb::blocked_range<size_t>{0, nPt2Pt},
+            // Identity
+            Result(),
+            // 1st lambda: Parallel computation
+            [&](const tbb::blocked_range<size_t>& r, Result res) -> Result {
+                auto& [H_local, g_local] = res;
+                for (size_t idx_pt = r.begin(); idx_pt < r.end(); idx_pt++)
+                {
+                    // Error:
+                    const auto& p = in.paired_pt2pt[idx_pt];
+                    mrpt::math::CMatrixFixed<double, 3, 12> J1;
+                    mrpt::math::CVectorFixedDouble<3>       ret =
+                        mp2p_icp::error_point2point(p, result.optimalPose, J1);
+
+                    // Get point weight:
+                    if (has_per_pt_weight)
+                    {
+                        if (idx_pt >= cur_point_block_start +
+                                          cur_point_block_weights->first)
+                        {
+                            ASSERT_(
+                                cur_point_block_weights !=
+                                in.point_weights.end());
+                            ++cur_point_block_weights;  // move to next block
+                            cur_point_block_start = idx_pt;
+                        }
+                        w.pt2pt = cur_point_block_weights->second;
+                    }
+
+                    // Apply robust kernel?
+                    double weight     = w.pt2pt,
+                           retSqrNorm = ret.asEigen().squaredNorm();
+                    if (robustSqrtWeightFunc)
+                        weight *= robustSqrtWeightFunc(retSqrNorm);
+
+                    // Error and Jacobian:
+                    const Eigen::Vector3d err_i = weight * ret.asEigen();
+                    errNormSqr += weight * retSqrNorm;
+
+                    const Eigen::Matrix<double, 3, 6> Ji =
+                        J1.asEigen() * dDexpe_de.asEigen();
+                    g_local.noalias() += weight * Ji.transpose() * err_i;
+                    H_local.noalias() += weight * Ji.transpose() * Ji;
+                }
+                return res;
+            },
+            // 2nd lambda: Parallel reduction
+            [](Result a, const Result& b) -> Result { return a + b; });
+
+        H = std::move(H_tbb);
+        g = std::move(g_tbb);
+#else
         // Point-to-point:
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
         {
@@ -98,6 +179,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             g.noalias() += weight * Ji.transpose() * err_i;
             H.noalias() += weight * Ji.transpose() * Ji;
         }
+#endif
 
         // Point-to-line
         for (size_t idx_pt = 0; idx_pt < nPt2Ln; idx_pt++)

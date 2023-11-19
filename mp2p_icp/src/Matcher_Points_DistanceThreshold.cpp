@@ -14,8 +14,11 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/round.h>
 #include <mrpt/version.h>
+
+#if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_reduce.h>
+#endif
 
 IMPLEMENTS_MRPT_OBJECT(Matcher_Points_DistanceThreshold, Matcher, mp2p_icp)
 
@@ -72,22 +75,22 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     const float angularThresholdFactorSquared =
         mrpt::square(mrpt::DEG2RAD(thresholdAngularDeg));
 
-    const auto& lxs = pcLocal.getPointsBufferRef_x();
-    const auto& lys = pcLocal.getPointsBufferRef_y();
-    const auto& lzs = pcLocal.getPointsBufferRef_z();
+    const auto&  lxs       = pcLocal.getPointsBufferRef_x();
+    const auto&  lys       = pcLocal.getPointsBufferRef_y();
+    const auto&  lzs       = pcLocal.getPointsBufferRef_z();
+    const size_t nLocalPts = lxs.size();
 
-    // In order to find the closest association for each global point, we must
-    // first build this temporary list of *potential* associations, indexed by
-    // global point indices, and sorted by errSqr:
-    std::map<uint64_t, std::map<float, mrpt::tfest::TMatchingPair>>
-        candidateMatchesForGlobal;
+    // Make sure the 3D kd-trees (if used internally) are up to date, from this
+    // single-thread call before entering into parallelization:
+    nnGlobal.nn_prepare_for_3d_queries();
 
-    const auto lambdaAddPair = [this, &candidateMatchesForGlobal, &lxs, &lys,
-                                &lzs, &ms, &globalName](
-                                   const size_t                 localIdx,
-                                   const mrpt::math::TPoint3Df& globalPt,
-                                   const uint64_t               globalIdxOrID,
-                                   const float                  errSqr) {
+    const auto lambdaAddPair = [this, &ms, &globalName, &localName, &lxs, &lys,
+                                &lzs](
+                                   mrpt::tfest::TMatchingPairList& outPairs,
+                                   const size_t                    localIdx,
+                                   const mrpt::math::TPoint3Df&    globalPt,
+                                   const uint64_t globalIdxOrID,
+                                   const float    errSqr) {
         // Filter out if global alread assigned, in another matcher up the
         // pipeline, for example.
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
@@ -95,7 +98,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
             return;  // skip, global point already paired.
 
         // Save new correspondence:
-        auto& p = candidateMatchesForGlobal[globalIdxOrID][errSqr];
+        auto& p = outPairs.emplace_back();
 
         p.globalIdx = globalIdxOrID;
         p.localIdx  = localIdx;
@@ -103,14 +106,109 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         p.local     = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
 
         p.errorSquareAfterTransformation = errSqr;
+
+        // Mark local & global points as already paired:
+        if (!allowMatchAlreadyMatchedGlobalPoints_)
+        {
+            ms.localPairedBitField.point_layers[localName].mark_as_set(
+                localIdx);
+            ms.globalPairedBitField.point_layers[globalName].mark_as_set(
+                globalIdxOrID);
+        }
     };
 
-    // Declared out of the loop to avoid memory reallocations (!)
+#if defined(MP2P_HAS_TBB)
+    // For the TBB lambdas:
+    // TBB call structure based on the beautiful implementation in KISS-ICP.
+    using Result = mrpt::tfest::TMatchingPairList;
+
+    out.paired_pt2pt = tbb::parallel_reduce(
+        // Range
+        tbb::blocked_range<size_t>{0, nLocalPts},
+        // Identity
+        Result(),
+        // 1st lambda: Parallel computation
+        [&](const tbb::blocked_range<size_t>& r, Result res) -> Result {
+            res.reserve(r.size());
+            std::vector<size_t>                neighborIndices;
+            std::vector<float>                 neighborSqrDists;
+            std::vector<mrpt::math::TPoint3Df> neighborPts;
+            for (size_t i = r.begin(); i < r.end(); i++)
+            {
+                const size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
+
+                if (!allowMatchAlreadyMatchedPoints_ &&
+                    ms.localPairedBitField.point_layers.at(localName)[localIdx])
+                    continue;  // skip, already paired.
+
+                // For speed-up:
+                const float lx = tl.x_locals[i], ly = tl.y_locals[i],
+                            lz = tl.z_locals[i];
+
+                const float localNormSqr =
+                    mrpt::square(lx) + mrpt::square(ly) + mrpt::square(lz);
+
+                // Use a KD-tree to look for the nearnest neighbor(s) of
+                // (x_local, y_local, z_local) in the global map.
+                if (pairingsPerPoint == 1)
+                {
+                    neighborIndices.resize(1);
+                    neighborSqrDists.resize(1);
+                    neighborPts.resize(1);
+
+                    if (!nnGlobal.nn_single_search(
+                            {lx, ly, lz},  // Look closest to this guy
+                            neighborPts[0], neighborSqrDists[0],
+                            neighborIndices[0]))
+                    {
+                        neighborIndices.clear();
+                        neighborSqrDists.clear();
+                        neighborPts.clear();
+                    }
+                }
+                else
+                {
+                    nnGlobal.nn_multiple_search(
+                        {lx, ly, lz},  // Look closest to this guy
+                        pairingsPerPoint, neighborPts, neighborSqrDists,
+                        neighborIndices);
+                }
+
+                // Distance below the threshold??
+                for (size_t k = 0; k < neighborIndices.size(); k++)
+                {
+                    const auto tentativeErrSqr = neighborSqrDists.at(k);
+
+                    const float finalThresSqr =
+                        maxDistForCorrespondenceSquared +
+                        angularThresholdFactorSquared * localNormSqr;
+
+                    if (tentativeErrSqr >= finalThresSqr)
+                        break;  // skip this and the rest.
+
+                    lambdaAddPair(
+                        res, localIdx, neighborPts.at(k), neighborIndices.at(k),
+                        tentativeErrSqr);
+                }
+            }
+            return res;
+        },
+        // 2nd lambda: Parallel reduction
+        [](Result a, const Result& b) -> Result {
+            a.insert(
+                a.end(), std::make_move_iterator(b.begin()),
+                std::make_move_iterator(b.end()));
+            return a;
+        });
+#else
+
+    out.paired_pt2pt.reserve(nLocalPts);
+
     std::vector<size_t>                neighborIndices;
     std::vector<float>                 neighborSqrDists;
     std::vector<mrpt::math::TPoint3Df> neighborPts;
 
-    for (size_t i = 0; i < tl.x_locals.size(); i++)
+    for (size_t i = 0; i < nLocalPts; i++)
     {
         const size_t localIdx = tl.idxs.has_value() ? (*tl.idxs)[i] : i;
 
@@ -163,39 +261,11 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
                 break;  // skip this and the rest.
 
             lambdaAddPair(
-                localIdx, neighborPts.at(k), neighborIndices.at(k),
-                tentativeErrSqr);
-        }
-
-    }  // For each local point
-
-    // Now, process candidates pairing and store them in `out.paired_pt2pt`:
-    for (const auto& kv : candidateMatchesForGlobal)
-    {
-        const auto globalIdx = kv.first;
-
-        if (!allowMatchAlreadyMatchedGlobalPoints_ &&
-            ms.globalPairedBitField.point_layers.at(globalName)[globalIdx])
-            continue;  // skip, global point already paired.
-
-        const auto& pairs = kv.second;
-        ASSERT_(!pairs.empty());
-
-        // take the one with the smallest error (std::map sorts them by sqrErr):
-        const auto& bestPair = pairs.begin()->second;
-
-        out.paired_pt2pt.emplace_back(bestPair);
-
-        // Mark local & global points as already paired:
-        if (!allowMatchAlreadyMatchedGlobalPoints_)
-        {
-            const auto localIdx = bestPair.localIdx;
-            ms.localPairedBitField.point_layers[localName].mark_as_set(
-                localIdx);
-            ms.globalPairedBitField.point_layers[globalName].mark_as_set(
-                globalIdx);
+                out.paired_pt2pt, localIdx, neighborPts.at(k),
+                neighborIndices.at(k), tentativeErrSqr);
         }
     }
 
+#endif
     MRPT_END
 }

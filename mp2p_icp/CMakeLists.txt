@@ -22,3 +22,8 @@ if (MP2PICP_BUILD_POINTMATCHER)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_LIBPOINTMATCHER)
 	target_link_libraries(${PROJECT_NAME} PRIVATE libpointmatcher::libpointmatcher)
 endif()
+
+if (TBB_FOUND AND MP2PICP_USE_TBB)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_TBB)
+	target_link_libraries(${PROJECT_NAME} PRIVATE TBB::tbb)
+endif()

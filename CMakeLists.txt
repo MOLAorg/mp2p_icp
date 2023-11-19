@@ -18,6 +18,11 @@ add_subdirectory(3rdparty)
 # find dependencies:
 find_package(MRPT 2.11.3 REQUIRED COMPONENTS containers tfest maps gui)
 find_package(Threads REQUIRED)
+find_package(TBB) # optional
+
+if (TBB_FOUND)
+	option(MP2PICP_USE_TBB "If found TBB, this option controls whether to use it or not" ON)
+endif()
 
 # MOLA CMake scripts: "mola_xxx()"
 # to allow stand-along builds outside of MOLA, use local copy instead:
