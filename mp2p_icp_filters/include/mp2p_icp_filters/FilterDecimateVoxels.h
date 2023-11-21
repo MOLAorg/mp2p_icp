@@ -15,6 +15,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
+#include <mp2p_icp_filters/PointCloudToVoxelGridSingle.h>
 #include <mrpt/maps/CPointsMap.h>
 
 namespace mp2p_icp_filters
@@ -83,7 +84,16 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
     Parameters params_;
 
    private:
-    mutable PointCloudToVoxelGrid filter_grid_;
+    mutable std::optional<PointCloudToVoxelGrid>       filter_grid_;
+    mutable std::optional<PointCloudToVoxelGridSingle> filter_grid_single_;
+
+    bool useSingleGrid() const
+    {
+        return !(
+            params_.use_closest_to_voxel_average ||
+            params_.use_random_point_within_voxel ||  //
+            params_.use_voxel_average);
+    }
 };
 
 /** @} */

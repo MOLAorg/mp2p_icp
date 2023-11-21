@@ -38,7 +38,10 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
     MCP_LOAD_REQ(c, use_closest_to_voxel_average);
 }
 
-FilterDecimateVoxels::FilterDecimateVoxels() = default;
+FilterDecimateVoxels::FilterDecimateVoxels()
+{
+    mrpt::system::COutputLogger::setLoggerName("FilterDecimateVoxels");
+}
 
 void FilterDecimateVoxels::initialize(const mrpt::containers::yaml& c)
 {
@@ -47,7 +50,19 @@ void FilterDecimateVoxels::initialize(const mrpt::containers::yaml& c)
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params_.load_from_yaml(c);
 
-    filter_grid_.setResolution(params_.voxel_filter_resolution);
+    filter_grid_single_.reset();
+    filter_grid_.reset();
+
+    if (useSingleGrid())
+    {
+        auto& grid = filter_grid_single_.emplace();
+        grid.setResolution(params_.voxel_filter_resolution);
+    }
+    else
+    {
+        auto& grid = filter_grid_.emplace();
+        grid.setResolution(params_.voxel_filter_resolution);
+    }
 
     MRPT_END
 }
@@ -110,78 +125,116 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     // Do filter:
     outPc->reserve(outPc->size() + pc.size() / 10);
 
-    filter_grid_.clear();
-    filter_grid_.processPointCloud(pc);
-
-    const auto& xs = pc.getPointsBufferRef_x();
-    const auto& ys = pc.getPointsBufferRef_y();
-    const auto& zs = pc.getPointsBufferRef_z();
-
-    auto rng = mrpt::random::CRandomGenerator();
-    // TODO?: rng.randomize(seed);
-
     size_t nonEmptyVoxels = 0;
-    for (const auto& vxl_pts : filter_grid_.pts_voxels)
+
+    if (useSingleGrid())
     {
-        if (vxl_pts.second.indices.empty()) continue;
+        ASSERTMSG_(
+            filter_grid_single_.has_value(),
+            "Has you called initialize() after updating/loading parameters?");
 
-        nonEmptyVoxels++;
+        auto& grid = filter_grid_single_.value();
+        grid.clear();
+        grid.processPointCloud(pc);
 
-        if (params_.use_voxel_average || params_.use_closest_to_voxel_average)
+        const auto& xs = pc.getPointsBufferRef_x();
+        const auto& ys = pc.getPointsBufferRef_y();
+        const auto& zs = pc.getPointsBufferRef_z();
+
+        for (const auto& vxl_pts : grid.pts_voxels)
         {
-            // Analyze the voxel contents:
-            auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
-            const float inv_n = (1.0f / vxl_pts.second.indices.size());
-            for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
-            {
-                const auto pt_idx = vxl_pts.second.indices[i];
-                mean.x += xs[pt_idx];
-                mean.y += ys[pt_idx];
-                mean.z += zs[pt_idx];
-            }
-            mean *= inv_n;
+            if (!vxl_pts.second.index.has_value()) continue;
 
-            if (params_.use_closest_to_voxel_average)
-            {
-                std::optional<float>  minSqrErr;
-                std::optional<size_t> bestIdx;
+            nonEmptyVoxels++;
 
-                for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
-                {
-                    const auto  pt_idx = vxl_pts.second.indices[i];
-                    const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
-                                         mrpt::square(ys[pt_idx] - mean.y) +
-                                         mrpt::square(zs[pt_idx] - mean.z);
-
-                    if (!minSqrErr.has_value() || sqrErr < *minSqrErr)
-                    {
-                        minSqrErr = sqrErr;
-                        bestIdx   = pt_idx;
-                    }
-                }
-                // Insert the closest to the mean:
-                outPc->insertPointFast(
-                    xs[*bestIdx], ys[*bestIdx], zs[*bestIdx]);
-            }
-            else
-            {
-                // Insert the mean:
-                outPc->insertPointFast(mean.x, mean.y, mean.z);
-            }
-        }
-        else
-        {
-            // Insert a randomly-picked point:
-            const auto idxInVoxel =
-                params_.use_random_point_within_voxel
-                    ? (rng.drawUniform64bit() % vxl_pts.second.indices.size())
-                    : 0UL;
-
-            const auto pt_idx = vxl_pts.second.indices.at(idxInVoxel);
+            const auto pt_idx = vxl_pts.second.index.value();
             outPc->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
         }
     }
-    MRPT_LOG_DEBUG_STREAM("Voxel counts: total=" << nonEmptyVoxels);
+    else
+    {
+        ASSERTMSG_(
+            filter_grid_.has_value(),
+            "Has you called initialize() after updating/loading parameters?");
+
+        auto& grid = filter_grid_.value();
+        grid.clear();
+        grid.processPointCloud(pc);
+
+        const auto& xs = pc.getPointsBufferRef_x();
+        const auto& ys = pc.getPointsBufferRef_y();
+        const auto& zs = pc.getPointsBufferRef_z();
+
+        auto rng = mrpt::random::CRandomGenerator();
+        // TODO?: rng.randomize(seed);
+
+        for (const auto& vxl_pts : grid.pts_voxels)
+        {
+            if (vxl_pts.second.indices.empty()) continue;
+
+            nonEmptyVoxels++;
+
+            if (params_.use_voxel_average ||
+                params_.use_closest_to_voxel_average)
+            {
+                // Analyze the voxel contents:
+                auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
+                const float inv_n = (1.0f / vxl_pts.second.indices.size());
+                for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
+                {
+                    const auto pt_idx = vxl_pts.second.indices[i];
+                    mean.x += xs[pt_idx];
+                    mean.y += ys[pt_idx];
+                    mean.z += zs[pt_idx];
+                }
+                mean *= inv_n;
+
+                if (params_.use_closest_to_voxel_average)
+                {
+                    std::optional<float>  minSqrErr;
+                    std::optional<size_t> bestIdx;
+
+                    for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
+                    {
+                        const auto  pt_idx = vxl_pts.second.indices[i];
+                        const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
+                                             mrpt::square(ys[pt_idx] - mean.y) +
+                                             mrpt::square(zs[pt_idx] - mean.z);
+
+                        if (!minSqrErr.has_value() || sqrErr < *minSqrErr)
+                        {
+                            minSqrErr = sqrErr;
+                            bestIdx   = pt_idx;
+                        }
+                    }
+                    // Insert the closest to the mean:
+                    outPc->insertPointFast(
+                        xs[*bestIdx], ys[*bestIdx], zs[*bestIdx]);
+                }
+                else
+                {
+                    // Insert the mean:
+                    outPc->insertPointFast(mean.x, mean.y, mean.z);
+                }
+            }
+            else
+            {
+                // Insert a randomly-picked point:
+                const auto idxInVoxel = params_.use_random_point_within_voxel
+                                            ? (rng.drawUniform64bit() %
+                                               vxl_pts.second.indices.size())
+                                            : 0UL;
+
+                const auto pt_idx = vxl_pts.second.indices.at(idxInVoxel);
+                outPc->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
+            }
+        }
+    }  // end: non-single grid
+    MRPT_LOG_DEBUG_STREAM(
+        "Voxel count=" << nonEmptyVoxels
+                       << ", input_layer=" << params_.input_pointcloud_layer
+                       << " (" << pc.size() << " points)"
+                       << ", output_layer=" << params_.output_pointcloud_layer);
 
     MRPT_END
 }
