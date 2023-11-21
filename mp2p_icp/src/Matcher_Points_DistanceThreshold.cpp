@@ -122,7 +122,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     // TBB call structure based on the beautiful implementation in KISS-ICP.
     using Result = mrpt::tfest::TMatchingPairList;
 
-    out.paired_pt2pt = tbb::parallel_reduce(
+    auto newPairs = tbb::parallel_reduce(
         // Range
         tbb::blocked_range<size_t>{0, nLocalPts},
         // Identity
@@ -200,6 +200,10 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
                 std::make_move_iterator(b.end()));
             return a;
         });
+
+    out.paired_pt2pt.insert(
+        out.paired_pt2pt.end(), std::make_move_iterator(newPairs.begin()),
+        std::make_move_iterator(newPairs.end()));
 #else
 
     out.paired_pt2pt.reserve(nLocalPts);
