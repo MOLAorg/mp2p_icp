@@ -29,6 +29,9 @@ enum class RobustKernel : uint8_t
 
     /// Generalized GemanMcClure kernel (Zhang97ivc, Agarwal15phd).
     GemanMcClure,
+
+    /// Cauchy kernel (Lee2013IROS).
+    Cauchy,
 };
 
 using robust_sqrt_weight_func_t = std::function<double(double /*errSqr*/)>;
@@ -65,6 +68,20 @@ inline robust_sqrt_weight_func_t create_robust_kernel(
             return [kernelParamSqr, kernelParam](double errorSqr) -> double {
                 return (kernelParamSqr) / mrpt::square(errorSqr + kernelParam);
             };
+
+        case RobustKernel::Cauchy:
+            /**
+             * We must return the sqrt of the weight function:
+             *
+             *   sqrt(w(x))=( ∂ρ(x)/∂x )/x = c²/(e²+c²)
+             *
+             * with the loss function ρ(x) = 0.5 c² log(1+x²/c²)
+             *
+             */
+            return [kernelParamSqr, kernelParam](double errorSqr) -> double {
+                return (kernelParamSqr) / (errorSqr + kernelParamSqr);
+            };
+
         default:
             throw std::invalid_argument("Unknown kernel type");
     };
@@ -76,4 +93,5 @@ inline robust_sqrt_weight_func_t create_robust_kernel(
 MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp, mp2p_icp::RobustKernel)
 MRPT_FILL_ENUM(RobustKernel::None);
 MRPT_FILL_ENUM(RobustKernel::GemanMcClure);
+MRPT_FILL_ENUM(RobustKernel::Cauchy);
 MRPT_ENUM_TYPE_END()
