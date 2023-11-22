@@ -177,7 +177,7 @@ void apply_generators(
     mp2p_icp::metric_map_t& output);
 
 /// \overload (functional version returning the metric_map_t)
-mp2p_icp::metric_map_t apply_generators(
+[[nodiscard]] mp2p_icp::metric_map_t apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs);
 
 /// \overload (version with an input CSensoryFrame)
@@ -186,7 +186,7 @@ void apply_generators(
     mp2p_icp::metric_map_t& output);
 
 /// \overload (functional version returning the metric_map_t)
-mp2p_icp::metric_map_t apply_generators(
+[[nodiscard]] mp2p_icp::metric_map_t apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf);
 
 /** Creates a set of generators from a YAML configuration block (a sequence).
@@ -194,7 +194,7 @@ mp2p_icp::metric_map_t apply_generators(
  *  Refer to YAML file examples.
  *  Returned generators are already initialize()'d.
  */
-GeneratorSet generators_from_yaml(
+[[nodiscard]] GeneratorSet generators_from_yaml(
     const mrpt::containers::yaml&       c,
     const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 
@@ -205,7 +205,7 @@ GeneratorSet generators_from_yaml(
  *  Refer to YAML file examples.
  *  Returned generators are already initialize()'d.
  */
-GeneratorSet generators_from_yaml_file(
+[[nodiscard]] GeneratorSet generators_from_yaml_file(
     const std::string&                  filename,
     const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 
