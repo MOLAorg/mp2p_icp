@@ -19,11 +19,14 @@
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
 
+#include <any>
 #include <optional>
 
 namespace mp2p_icp
 {
-/** Defines the context of a match operation.
+class Solver;
+
+/** Defines the context of a solver within the successive ICP iterations.
  *
  * \ingroup mp2p_icp_grp
  */
@@ -31,8 +34,14 @@ struct SolverContext
 {
     SolverContext() = default;
 
-    std::optional<uint32_t>             icpIteration;
     std::optional<mrpt::poses::CPose3D> guessRelativePose;
+    std::optional<mrpt::poses::CPose3D> currentCorrectionFromInitialGuess;
+    std::optional<mrpt::poses::CPose3D> lastIcpStepIncrement;
+    // room for optional solver-specific context:
+    mutable std::map<const Solver*, std::map<std::string, std::any>>
+        perSolverPersistentData;
+
+    std::optional<uint32_t> icpIteration;
 };
 
 /** Virtual base class for optimal alignment solvers (one step in ICP).
@@ -63,6 +72,8 @@ class Solver : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     uint32_t runFromIteration = 0;
     uint32_t runUpToIteration = 0;  //!< 0: no limit
+
+    double runUntilTranslationCorrectionSmallerThan = 0;
 
     /** Can be used to disable one of a set of solvers in a pipeline */
     bool enabled = true;

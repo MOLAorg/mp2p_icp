@@ -78,11 +78,14 @@ void ICP::align(
 
     tle2.stop();
 
-    state.currentSolution.optimalPose =
-        mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
+    const auto initGuess = mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
+
+    state.currentSolution.optimalPose = initGuess;
 
     mrpt::poses::CPose3D prev_solution = state.currentSolution.optimalPose;
     std::optional<mrpt::poses::CPose3D> prev2_solution;  // 2 steps ago
+    std::optional<mrpt::poses::CPose3D> lastCorrection;
+    SolverContext                       sc;
 
     for (result.nIterations = 0; result.nIterations < p.maxIterations;
          result.nIterations++)
@@ -107,6 +110,12 @@ void ICP::align(
         if (state.currentPairings.empty())
         {
             result.terminationReason = IterTermReason::NoPairings;
+            if (p.debugPrintIterationProgress)
+            {
+                printf(
+                    "[ICP] Iter=%3u No pairings!\n",
+                    static_cast<unsigned int>(state.currentIteration));
+            }
             break;
         }
 
@@ -114,9 +123,11 @@ void ICP::align(
         // ---------------------------------------
         mrpt::system::CTimeLoggerEntry tle5(profiler_, "align.3.2_solvers");
 
-        SolverContext sc;
         sc.icpIteration = state.currentIteration;
         sc.guessRelativePose.emplace(state.currentSolution.optimalPose);
+        sc.currentCorrectionFromInitialGuess =
+            state.currentSolution.optimalPose - initGuess;
+        sc.lastIcpStepIncrement = lastCorrection;
 
         // Compute the optimal pose:
         const bool solvedOk = run_solvers(
@@ -127,6 +138,12 @@ void ICP::align(
         if (!solvedOk)
         {
             result.terminationReason = IterTermReason::SolverError;
+            if (p.debugPrintIterationProgress)
+            {
+                printf(
+                    "[ICP] Iter=%3u Solver returned false\n",
+                    static_cast<unsigned int>(state.currentIteration));
+            }
             break;
         }
 
@@ -135,11 +152,8 @@ void ICP::align(
             profiler_, "align.3.3_end_criterions");
 
         // Termination criterion: small delta:
-        auto lambdaCalcIncrs =
-            [](const mrpt::poses::CPose3D& now,
-               const mrpt::poses::CPose3D& past) -> std::tuple<double, double> {
-            const auto deltaSol = now - past;
-
+        auto lambdaCalcIncrs = [](const mrpt::poses::CPose3D& deltaSol)
+            -> std::tuple<double, double> {
             const mrpt::math::CVectorFixed<double, 6> dSol =
                 mrpt::poses::Lie::SE<3>::log(deltaSol);
             const double delta_xyz = dSol.blockCopy<3, 1>(0, 0).norm();
@@ -150,13 +164,15 @@ void ICP::align(
         // Keep the minimum step between the current increment, and the
         // increment from current solution to two timesteps ago. This is to
         // detect bistable, oscillating solutions.
-        auto [delta_xyz, delta_rot] =
-            lambdaCalcIncrs(state.currentSolution.optimalPose, prev_solution);
+        const auto deltaSol = state.currentSolution.optimalPose - prev_solution;
+        lastCorrection      = deltaSol;  // save for the next solver context
+
+        auto [delta_xyz, delta_rot] = lambdaCalcIncrs(deltaSol);
 
         if (prev2_solution.has_value())
         {
             auto [delta_xyz2, delta_rot2] = lambdaCalcIncrs(
-                state.currentSolution.optimalPose, *prev2_solution);
+                state.currentSolution.optimalPose - *prev2_solution);
 
             mrpt::keep_min(delta_xyz, delta_xyz2);
             mrpt::keep_min(delta_rot, delta_rot2);
@@ -165,7 +181,7 @@ void ICP::align(
         if (p.debugPrintIterationProgress)
         {
             printf(
-                "[ICP] Iter=%3u Delta_xyz=%9.02e, Delta_rot=%6.03f deg, "
+                "[ICP] Iter=%3u Δt=%9.02e, ΔR=%6.03f deg, "
                 "(xyzypr)=%s pairs=%s\n",
                 static_cast<unsigned int>(state.currentIteration),
                 std::abs(delta_xyz), mrpt::RAD2DEG(std::abs(delta_rot)),
@@ -177,6 +193,14 @@ void ICP::align(
             std::abs(delta_rot) < p.minAbsStep_rot)
         {
             result.terminationReason = IterTermReason::Stalled;
+
+            if (p.debugPrintIterationProgress)
+            {
+                printf(
+                    "[ICP] Iter=%3u Solver stalled.\n",
+                    static_cast<unsigned int>(state.currentIteration));
+            }
+
             break;
         }
 

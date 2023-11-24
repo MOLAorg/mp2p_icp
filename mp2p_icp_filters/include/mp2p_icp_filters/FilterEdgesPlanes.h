@@ -21,6 +21,10 @@ namespace mp2p_icp_filters
 {
 /** Accepts as input a point cloud, and classifies points into edges and planes.
  *
+ * Based on the LOAM paper (Zhang, Ji, and Sanjiv Singh. "LOAM: Lidar odometry
+ * and mapping in real-time." Robotics: Science and systems. Vol. 2. No. 9.
+ * 2014.).
+ *
  * Not compatible with calling from different threads simultaneously for
  * different input point clouds. Use independent instances for each thread if
  * needed.
