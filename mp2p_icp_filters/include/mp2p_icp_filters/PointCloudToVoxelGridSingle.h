@@ -44,6 +44,9 @@ class PointCloudToVoxelGridSingle
     struct voxel_t
     {
         std::optional<std::size_t> index;
+
+        /** Even if we keep the first point only, count them all. */
+        uint32_t pointCount = 0;
     };
 
     struct indices_t

@@ -45,9 +45,14 @@ void PointCloudToVoxelGridSingle::processPointCloud(
 
         auto itVoxel = pts_voxels.find(vxl_idx);
         if (itVoxel != pts_voxels.end())
+        {
+            itVoxel->second.pointCount++;
             continue;  // already existed, do nothing
+        }
         else
-            pts_voxels[vxl_idx].index = i;  // insert new
+        {
+            pts_voxels[vxl_idx] = {i, 0};  // insert new
+        }
     }
 }
 

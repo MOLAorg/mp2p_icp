@@ -120,6 +120,7 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
         pc.insertPointFast(
             real2grid(xs[i]), real2grid(ys[i]), real2grid(zs[i]));
     }
+    pc.mark_as_modified();
 
     // Do filter:
     outPc->reserve(outPc->size() + pc.size() / 10);
@@ -135,8 +136,7 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
     // TODO?: rng.randomize(seed);
 
     // Inverse nonlinear transformation:
-    auto lambdaInsertPt = [&outPc, this](float x, float y, float z) {
-        // outPc->insertPointFast(grid2real(x), grid2real(y), grid2real(z));
+    auto lambdaInsertPt = [&outPc](float x, float y, float z) {
         outPc->insertPointFast(x, y, z);
     };
 
@@ -200,6 +200,8 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
             lambdaInsertPt(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
         }
     }
+    outPc->mark_as_modified();
+
     MRPT_LOG_DEBUG_STREAM("Voxel counts: total=" << nonEmptyVoxels);
 
     MRPT_END

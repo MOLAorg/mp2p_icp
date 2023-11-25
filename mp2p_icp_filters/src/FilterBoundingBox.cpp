@@ -109,6 +109,7 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
         // Otherwise, add it:
         outPc->insertPointFast(xs[i], ys[i], zs[i]);
     }
+    outPc->mark_as_modified();
 
     MRPT_END
 }

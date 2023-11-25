@@ -230,6 +230,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             }
         }
     }  // end: non-single grid
+
+    outPc->mark_as_modified();
+
     MRPT_LOG_DEBUG_STREAM(
         "Voxel count=" << nonEmptyVoxels
                        << ", input_layer=" << params_.input_pointcloud_layer

@@ -118,8 +118,8 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     std::size_t nTotalVoxels = 0;
     for (const auto& [idx, data] : filter_grid_.pts_voxels)
     {
-        if (!data.indices.empty()) nTotalVoxels++;
-        if (data.indices.size() < _.minimum_input_points_per_voxel) continue;
+        if (!data.pointCount) nTotalVoxels++;
+        if (data.pointCount < _.minimum_input_points_per_voxel) continue;
 
 #if 0
         // Analyze the voxel contents:
@@ -147,7 +147,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         }
 #endif
 
-        weightedPointIndices.push_back(data.indices.front());
+        weightedPointIndices.push_back(data.index.value());
     }
 
     // Perform uniform weighted resampling:
@@ -171,6 +171,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     {
         outPc->insertPointFast(xs[ptIdx], ys[ptIdx], zs[ptIdx]);
     }
+    outPc->mark_as_modified();
 
     MRPT_LOG_DEBUG_STREAM(
         "voxel_size=" << voxel_size <<  //
