@@ -33,7 +33,8 @@
 
 #include <iostream>
 
-constexpr const char* APP_NAME = "mp2p-icp-log-viewer";
+constexpr const char* APP_NAME      = "mp2p-icp-log-viewer";
+constexpr int         MID_FONT_SIZE = 14;
 
 // =========== Declare supported cli switches ===========
 static TCLAP::CmdLine cmd(APP_NAME);
@@ -54,16 +55,16 @@ static TCLAP::ValueArg<std::string> argSingleFile(
 static TCLAP::ValueArg<std::string> argVerbosity(
     "v", "verbose", "Verbosity level", false, "DEBUG", "DEBUG", cmd);
 
-static TCLAP::ValueArg<double> argMinQuality(
-    "", "min-quality",
-    "Minimum quality (range [0,1]) for a log files to be loaded and shown in "
-    "the list. Default=0 so all log files are visible.",
-    false, 0.0, "Quality[0,1]", cmd);
-
 static TCLAP::ValueArg<std::string> arg_plugins(
     "l", "load-plugins",
     "One or more (comma separated) *.so files to load as plugins", false,
     "foobar.so", "foobar.so", cmd);
+
+static TCLAP::ValueArg<double> argAutoPlayPeriod(
+    "", "autoplay-period",
+    "The period (in seconds) between timestamps to load and show in autoplay "
+    "mode.",
+    false, 0.1, "period [seconds]", cmd);
 
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
@@ -73,8 +74,11 @@ mrpt::gui::CDisplayWindowGUI::Ptr win;
 
 nanogui::Slider* slSelectorICP   = nullptr;
 nanogui::Button *btnSelectorBack = nullptr, *btnSelectorForw = nullptr;
+nanogui::Button* btnSelectorAutoplay = nullptr;
+bool             isAutoPlayActive    = false;
+double           lastAutoPlayTime    = .0;
 
-std::array<nanogui::Label*, 4> lbICPStats = {
+std::array<nanogui::TextBox*, 4> lbICPStats = {
     nullptr, nullptr, nullptr, nullptr};
 nanogui::CheckBox* cbShowInitialPose    = nullptr;
 nanogui::CheckBox* cbViewOrtho          = nullptr;
@@ -110,7 +114,29 @@ std::vector<std::string> layerNames_global, layerNames_local;
 std::map<std::string, nanogui::CheckBox*> cbLayersByName_global;
 std::map<std::string, nanogui::CheckBox*> cbLayersByName_local;
 
-std::vector<mp2p_icp::LogRecord> logRecords;
+class DelayedLoadLog
+{
+   public:
+    DelayedLoadLog() = default;
+    DelayedLoadLog(const std::string& fileName) : filename_(fileName) {}
+
+    mp2p_icp::LogRecord& get()
+    {
+        if (!log_)
+        {
+            // Load now:
+            log_ = mp2p_icp::LogRecord::LoadFromFile(filename_);
+        }
+
+        return log_.value();
+    }
+
+   private:
+    std::optional<mp2p_icp::LogRecord> log_;
+    std::string                        filename_;
+};
+
+std::vector<DelayedLoadLog> logRecords;
 
 static void rebuild_3d_view();
 
@@ -148,43 +174,13 @@ static void main_show_gui()
     }
 
     // load files:
-    size_t filesLoaded = 0, filesFilteredOut = 0;
-    std::cout << std::endl;
-    for (const auto& file : files)
-    {
-        const double pc = static_cast<double>(filesLoaded) /
-                          (std::max<size_t>(1, files.size() - 1));
-        printf(
-            "\r"
-            " Loading %s %7.02f%% (%u / %u)       ",
-            mrpt::system::progress(pc, 50).c_str(), 100 * pc,
-            static_cast<unsigned int>(filesLoaded + 1),
-            static_cast<unsigned int>(files.size()));
-        fflush(stdout);
-
-        const auto& lr = logRecords.emplace_back(
-            mp2p_icp::LogRecord::LoadFromFile(file.wholePath));
-
-        filesLoaded++;
-
-        // Filter by quality:
-        if (lr.icpResult.quality < argMinQuality.getValue())
-        {
-            ++filesFilteredOut;
-            // Remove last one:
-            logRecords.erase(logRecords.rbegin().base());
-        }
-    }
-    std::cout << std::endl;
-    std::cout << "Loaded " << logRecords.size() << " ICP records ("
-              << filesLoaded << " actually loaded, " << filesFilteredOut
-              << " filtered out)" << std::endl;
+    for (const auto& file : files) logRecords.emplace_back(file.wholePath);
 
     ASSERT_(!logRecords.empty());
 
     // Obtain layer info from first entry:
     {
-        const auto& lr = logRecords.front();
+        const auto& lr = logRecords.front().get();
         if (layerNames_global.empty() && lr.pcGlobal)
         {
             for (const auto& layer : lr.pcGlobal->layers)
@@ -259,7 +255,12 @@ static void main_show_gui()
         slSelectorICP->setValue(0);
         slSelectorICP->setCallback([&](float /*v*/) { rebuild_3d_view(); });
 
-        for (auto& lb : lbICPStats) lb = w->add<nanogui::Label>("  ");
+        for (auto& lb : lbICPStats)
+        {
+            lb = w->add<nanogui::TextBox>("  ");
+            lb->setFontSize(MID_FONT_SIZE);
+            lb->setAlignment(nanogui::TextBox::Alignment::Left);
+        }
 
         // navigation panel:
         {
@@ -286,9 +287,18 @@ static void main_show_gui()
                 if (s->value() < s->range().second - 0.01f)
                 {
                     s->setValue(s->value() + 1);
-                    s->callback()(s->value());
+                    rebuild_3d_view();
                 }
             });
+
+            pn->add<nanogui::Label>(" ");  // separator
+
+            btnSelectorAutoplay =
+                pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_PLAY);
+            btnSelectorAutoplay->setFlags(nanogui::Button::ToggleButton);
+
+            btnSelectorAutoplay->setChangeCallback(
+                [&](bool active) { isAutoPlayActive = active; });
         }
 
         //
@@ -316,24 +326,24 @@ static void main_show_gui()
         tab1->add<nanogui::Label>(
             "ICP result pose [x y z yaw(deg) pitch(deg) roll(deg)]:");
         tbLogPose = tab1->add<nanogui::TextBox>();
-        tbLogPose->setFontSize(14);
+        tbLogPose->setFontSize(MID_FONT_SIZE);
         tbLogPose->setEditable(true);
         tbLogPose->setAlignment(nanogui::TextBox::Alignment::Left);
 
         tab1->add<nanogui::Label>("Initial -> final pose change:");
         tbInit2Final = tab1->add<nanogui::TextBox>();
-        tbInit2Final->setFontSize(14);
+        tbInit2Final->setFontSize(MID_FONT_SIZE);
         tbInit2Final->setEditable(false);
 
         tab2->add<nanogui::Label>(
             "Uncertainty: diagonal sigmas (x y z yaw pitch roll)");
         tbCovariance = tab2->add<nanogui::TextBox>();
-        tbCovariance->setFontSize(14);
+        tbCovariance->setFontSize(MID_FONT_SIZE);
         tbCovariance->setEditable(false);
 
         tab2->add<nanogui::Label>("Uncertainty: Covariance condition numbers");
         tbConditionNumber = tab2->add<nanogui::TextBox>();
-        tbConditionNumber->setFontSize(14);
+        tbConditionNumber->setFontSize(MID_FONT_SIZE);
         tbConditionNumber->setEditable(false);
 
         const float handTunedRange[6] = {4.0,        4.0,         10.0,
@@ -347,7 +357,7 @@ static void main_show_gui()
 
             slGTPose[i]->setCallback([=](float v) {
                 const size_t idx = mrpt::round(slSelectorICP->value());
-                auto&        lr  = logRecords.at(idx);
+                auto&        lr  = logRecords.at(idx).get();
 
                 auto p = lr.icpResult.optimal_tf.mean.asTPose();
                 p[i]   = v;
@@ -380,14 +390,14 @@ static void main_show_gui()
             pn->add<nanogui::Button>("Export 'local' map...")
                 ->setCallback([&]() {
                     const size_t idx = mrpt::round(slSelectorICP->value());
-                    auto&        lr  = logRecords.at(idx);
+                    auto&        lr  = logRecords.at(idx).get();
                     ASSERT_(lr.pcLocal);
                     lambdaSave(*lr.pcLocal);
                 });
             pn->add<nanogui::Button>("Export 'global' map...")
                 ->setCallback([&]() {
                     const size_t idx = mrpt::round(slSelectorICP->value());
-                    auto&        lr  = logRecords.at(idx);
+                    auto&        lr  = logRecords.at(idx).get();
                     ASSERT_(lr.pcGlobal);
                     lambdaSave(*lr.pcGlobal);
                 });
@@ -576,6 +586,22 @@ static void main_show_gui()
     // ---------------------
     win->drawAll();
     win->setVisible(true);
+
+    win->addLoopCallback([&]() {
+        if (!isAutoPlayActive) return;
+
+        const double tNow = mrpt::Clock::nowDouble();
+        if (tNow - lastAutoPlayTime < argAutoPlayPeriod.getValue()) return;
+
+        lastAutoPlayTime = tNow;
+
+        if (slSelectorICP->value() < slSelectorICP->range().second - 0.01f)
+        {
+            slSelectorICP->setValue(slSelectorICP->value() + 1);
+            rebuild_3d_view();
+        }
+    });
+
     nanogui::mainloop(10 /*refresh Hz*/);
 
     nanogui::shutdown();
@@ -605,25 +631,25 @@ void rebuild_3d_view()
 
     glVizICP->clear();
 
-    const auto& lr = logRecords.at(idx);
+    // lazy load from disk happens in the "get()":
+    const auto& lr = logRecords.at(idx).get();
 
-    lbICPStats[0]->setCaption(mrpt::format(
-        "ICP pair #%u, local: ID:%u%s, global: ID:%u%s",
-        static_cast<unsigned int>(idx),
+    lbICPStats[0]->setValue(mrpt::format(
+        "ICP log #%zu | Local: ID:%u%s | Global: ID:%u%s", idx,
         static_cast<unsigned int>(lr.pcLocal->id ? lr.pcLocal->id.value() : 0),
         lr.pcLocal->label ? lr.pcLocal->label.value().c_str() : "",
         static_cast<unsigned int>(
             lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
         lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : ""));
 
-    lbICPStats[1]->setCaption(mrpt::format(
-        "Log quality: %.02f%% iters: %u Term.Reason: %s",
+    lbICPStats[1]->setValue(mrpt::format(
+        "Quality: %.02f%% | Iters: %u | Term.Reason: %s",
         100.0 * lr.icpResult.quality,
         static_cast<unsigned int>(lr.icpResult.nIterations),
         mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str()));
 
-    lbICPStats[2]->setCaption("Global: "s + lr.pcGlobal->contents_summary());
-    lbICPStats[3]->setCaption("Local: "s + lr.pcLocal->contents_summary());
+    lbICPStats[2]->setValue("Global: "s + lr.pcGlobal->contents_summary());
+    lbICPStats[3]->setValue("Local: "s + lr.pcLocal->contents_summary());
 
     tbInitialGuess->setValue(lr.initialGuessLocalWrtGlobal.asString());
 
