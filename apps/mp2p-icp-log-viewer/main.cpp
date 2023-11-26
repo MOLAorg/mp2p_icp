@@ -78,8 +78,8 @@ nanogui::Button* btnSelectorAutoplay = nullptr;
 bool             isAutoPlayActive    = false;
 double           lastAutoPlayTime    = .0;
 
-std::array<nanogui::TextBox*, 4> lbICPStats = {
-    nullptr, nullptr, nullptr, nullptr};
+std::array<nanogui::TextBox*, 5> lbICPStats = {
+    nullptr, nullptr, nullptr, nullptr, nullptr};
 nanogui::CheckBox* cbShowInitialPose    = nullptr;
 nanogui::CheckBox* cbViewOrtho          = nullptr;
 nanogui::CheckBox* cbCameraFollowsLocal = nullptr;
@@ -118,7 +118,11 @@ class DelayedLoadLog
 {
    public:
     DelayedLoadLog() = default;
-    DelayedLoadLog(const std::string& fileName) : filename_(fileName) {}
+    DelayedLoadLog(
+        const std::string& fileName, const std::string& shortFileName)
+        : filename_(fileName), shortFileName_(shortFileName)
+    {
+    }
 
     mp2p_icp::LogRecord& get()
     {
@@ -131,9 +135,14 @@ class DelayedLoadLog
         return log_.value();
     }
 
+    void dispose() { log_.reset(); }
+
+    const std::string& filename() const { return filename_; }
+    const std::string& shortFileName() const { return shortFileName_; }
+
    private:
     std::optional<mp2p_icp::LogRecord> log_;
-    std::string                        filename_;
+    std::string                        filename_, shortFileName_;
 };
 
 std::vector<DelayedLoadLog> logRecords;
@@ -174,7 +183,8 @@ static void main_show_gui()
     }
 
     // load files:
-    for (const auto& file : files) logRecords.emplace_back(file.wholePath);
+    for (const auto& file : files)
+        logRecords.emplace_back(file.wholePath, file.name);
 
     ASSERT_(!logRecords.empty());
 
@@ -558,6 +568,10 @@ static void main_show_gui()
                 case GLFW_KEY_PAGE_UP:
                     increment = -100;
                     break;
+                case GLFW_KEY_SPACE:
+                    isAutoPlayActive = !isAutoPlayActive;
+                    btnSelectorAutoplay->setPushed(isAutoPlayActive);
+                    break;
             };
 
             if (increment != 0)
@@ -631,10 +645,21 @@ void rebuild_3d_view()
 
     glVizICP->clear();
 
+    // Free memory
+    static size_t lastIdx = 0;
+
+    if (idx != lastIdx)
+    {  // free memory:
+        logRecords.at(lastIdx).dispose();
+    }
+    lastIdx = idx;
+
     // lazy load from disk happens in the "get()":
     const auto& lr = logRecords.at(idx).get();
 
-    lbICPStats[0]->setValue(mrpt::format(
+    lbICPStats[0]->setValue(logRecords.at(idx).shortFileName());
+
+    lbICPStats[1]->setValue(mrpt::format(
         "ICP log #%zu | Local: ID:%u%s | Global: ID:%u%s", idx,
         static_cast<unsigned int>(lr.pcLocal->id ? lr.pcLocal->id.value() : 0),
         lr.pcLocal->label ? lr.pcLocal->label.value().c_str() : "",
@@ -642,14 +667,14 @@ void rebuild_3d_view()
             lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
         lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : ""));
 
-    lbICPStats[1]->setValue(mrpt::format(
+    lbICPStats[2]->setValue(mrpt::format(
         "Quality: %.02f%% | Iters: %u | Term.Reason: %s",
         100.0 * lr.icpResult.quality,
         static_cast<unsigned int>(lr.icpResult.nIterations),
         mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str()));
 
-    lbICPStats[2]->setValue("Global: "s + lr.pcGlobal->contents_summary());
-    lbICPStats[3]->setValue("Local: "s + lr.pcLocal->contents_summary());
+    lbICPStats[3]->setValue("Global: "s + lr.pcGlobal->contents_summary());
+    lbICPStats[4]->setValue("Local: "s + lr.pcLocal->contents_summary());
 
     tbInitialGuess->setValue(lr.initialGuessLocalWrtGlobal.asString());
 
