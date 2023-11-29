@@ -168,10 +168,12 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
                 }
                 else
                 {
-                    nnGlobal.nn_multiple_search(
+                    // Use nn_radius_search() which provides a maximum search
+                    // distance:
+                    nnGlobal.nn_radius_search(
                         {lx, ly, lz},  // Look closest to this guy
-                        pairingsPerPoint, neighborPts, neighborSqrDists,
-                        neighborIndices);
+                        maxDistForCorrespondenceSquared, neighborPts,
+                        neighborSqrDists, neighborIndices, pairingsPerPoint);
                 }
 
                 // Distance below the threshold??

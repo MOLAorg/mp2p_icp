@@ -27,6 +27,8 @@ using namespace mp2p_icp_filters;
 void FilterDecimateAdaptive::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c)
 {
+    MCP_LOAD_OPT(c, enabled);
+
     MCP_LOAD_OPT(c, input_pointcloud_layer);
     MCP_LOAD_REQ(c, output_pointcloud_layer);
 
@@ -55,6 +57,8 @@ void FilterDecimateAdaptive::initialize(const mrpt::containers::yaml& c)
 void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
+
+    if (!params_.enabled) return;
 
     // In:
     const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
