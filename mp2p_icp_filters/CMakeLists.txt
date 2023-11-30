@@ -13,4 +13,5 @@ mola_add_library(
 		tsl::robin_map
 	CMAKE_DEPENDENCIES
 		mp2p_icp
+		robin_map
 )
