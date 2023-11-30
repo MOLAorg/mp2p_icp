@@ -12,18 +12,6 @@ cmake_minimum_required(VERSION 3.4)
 # Tell CMake we'll use C++ for use in its tests/flags
 project(mp2p_icp_all LANGUAGES CXX)
 
-# 3rd party:
-add_subdirectory(3rdparty)
-
-# find dependencies:
-find_package(MRPT 2.11.3 REQUIRED COMPONENTS containers tfest maps gui)
-find_package(Threads REQUIRED)
-find_package(TBB) # optional
-
-if (TBB_FOUND)
-	option(MP2PICP_USE_TBB "If found TBB, this option controls whether to use it or not" ON)
-endif()
-
 # MOLA CMake scripts: "mola_xxx()"
 # to allow stand-along builds outside of MOLA, use local copy instead:
 find_package(mola_common QUIET)
@@ -35,6 +23,18 @@ if (NOT mola_common_FOUND)
 	# 2nd attempt:
 	set(mola_common_DIR "${CMAKE_BINARY_DIR}/mola_common-build")
 	find_package(mola_common REQUIRED)
+endif()
+
+# 3rd party:
+add_subdirectory(3rdparty)
+
+# find dependencies:
+find_package(MRPT 2.11.3 REQUIRED COMPONENTS containers tfest maps gui)
+find_package(Threads REQUIRED)
+find_package(TBB) # optional
+
+if (TBB_FOUND)
+	option(MP2PICP_USE_TBB "If found TBB, this option controls whether to use it or not" ON)
 endif()
 
 # -----------------------

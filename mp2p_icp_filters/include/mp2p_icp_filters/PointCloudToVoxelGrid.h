@@ -13,8 +13,8 @@
 #pragma once
 
 #include <mrpt/maps/CPointsMap.h>
+#include <tsl/robin_map.h>
 
-#include <unordered_map>
 #include <vector>
 
 /** \ingroup mp2p_icp_filters_grp */
@@ -108,7 +108,7 @@ class PointCloudToVoxelGrid
 
     /** The point indices in each voxel. Directly access to each desired cell,
      * use its iterator, etc. */
-    std::unordered_map<indices_t, voxel_t, IndicesHash> pts_voxels;
+    tsl::robin_map<indices_t, voxel_t, IndicesHash> pts_voxels;
 
     inline int32_t coord2idx(float xyz) const
     {

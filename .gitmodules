@@ -7,3 +7,6 @@
 [submodule "3rdparty/mola_common"]
     path = 3rdparty/mola_common
 	url = https://github.com/MOLAorg/mola_common.git
+[submodule "3rdparty/robin-map"]
+	path = 3rdparty/robin-map
+	url = https://github.com/Tessil/robin-map.git

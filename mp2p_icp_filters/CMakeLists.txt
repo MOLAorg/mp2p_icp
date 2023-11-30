@@ -10,6 +10,7 @@ mola_add_library(
 	SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
 	PUBLIC_LINK_LIBRARIES
 		mp2p_icp_map
+		tsl::robin_map
 	CMAKE_DEPENDENCIES
 		mp2p_icp
 )

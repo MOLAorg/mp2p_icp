@@ -46,7 +46,9 @@ void PointCloudToVoxelGridSingle::processPointCloud(
         auto itVoxel = pts_voxels.find(vxl_idx);
         if (itVoxel != pts_voxels.end())
         {
-            itVoxel->second.pointCount++;
+            // (const cast: required for tsl::robin_map)
+            const_cast<voxel_t&>(itVoxel->second).pointCount++;
+
             continue;  // already existed, do nothing
         }
         else
