@@ -27,15 +27,38 @@ MRPT_TODO("Define enum type for selected operation?");
 void FilterDecimateVoxels::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c)
 {
-    MCP_LOAD_OPT(c, input_pointcloud_layer);
+    ASSERTMSG_(
+        c.has("input_pointcloud_layer"),
+        "YAML configuration must have an entry `input_pointcloud_layer` with a "
+        "scalar or sequence.");
+
+    input_pointcloud_layer.clear();
+
+    auto cfgIn = c["input_pointcloud_layer"];
+    if (cfgIn.isScalar())
+    {
+        input_pointcloud_layer.push_back(cfgIn.as<std::string>());
+    }
+    else
+    {
+        ASSERTMSG_(
+            cfgIn.isSequence(),
+            "YAML configuration must have an entry `input_pointcloud_layer` "
+            "with a scalar or sequence.");
+
+        for (const auto& s : cfgIn.asSequence())
+            input_pointcloud_layer.push_back(s.as<std::string>());
+    }
+    ASSERT_(!input_pointcloud_layer.empty());
+
     MCP_LOAD_OPT(c, error_on_missing_input_layer);
     MCP_LOAD_OPT(c, use_random_point_within_voxel);
 
     MCP_LOAD_REQ(c, output_pointcloud_layer);
 
     MCP_LOAD_REQ(c, voxel_filter_resolution);
-    MCP_LOAD_REQ(c, use_voxel_average);
-    MCP_LOAD_REQ(c, use_closest_to_voxel_average);
+    MCP_LOAD_OPT(c, use_voxel_average);
+    MCP_LOAD_OPT(c, use_closest_to_voxel_average);
 }
 
 FilterDecimateVoxels::FilterDecimateVoxels()
@@ -94,37 +117,40 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     // In:
-    mrpt::maps::CPointsMap* pcPtr = nullptr;
-    if (auto itLy = inOut.layers.find(params_.input_pointcloud_layer);
-        itLy != inOut.layers.end())
+    std::vector<mrpt::maps::CPointsMap*> pcPtrs;
+    for (const auto& inputLayer : params_.input_pointcloud_layer)
     {
-        pcPtr = mp2p_icp::MapToPointsMap(*itLy->second);
-        if (!pcPtr)
-            THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.",
-                params_.input_pointcloud_layer.c_str());
-    }
-    else
-    {
-        // Input layer doesn't exist:
-        if (params_.error_on_missing_input_layer)
+        if (auto itLy = inOut.layers.find(inputLayer);
+            itLy != inOut.layers.end())
         {
-            THROW_EXCEPTION_FMT(
-                "Input layer '%s' not found on input map.",
-                params_.input_pointcloud_layer.c_str());
+            auto pcPtr = mp2p_icp::MapToPointsMap(*itLy->second);
+            if (!pcPtr)
+                THROW_EXCEPTION_FMT(
+                    "Layer '%s' must be of point cloud type.",
+                    inputLayer.c_str());
+
+            pcPtrs.push_back(pcPtr);
+
+            outPc->reserve(outPc->size() + pcPtr->size() / 10);  // heuristic
         }
         else
         {
-            // Silently return with an unmodified output layer "outPc"
-            return;
+            // Input layer doesn't exist:
+            if (params_.error_on_missing_input_layer)
+            {
+                THROW_EXCEPTION_FMT(
+                    "Input layer '%s' not found on input map.",
+                    inputLayer.c_str());
+            }
+            else
+            {
+                // Silently return with an unmodified output layer "outPc"
+                continue;
+            }
         }
     }
 
-    const auto& pc = *pcPtr;
-
     // Do filter:
-    outPc->reserve(outPc->size() + pc.size() / 10);
-
     size_t nonEmptyVoxels = 0;
 
     if (useSingleGrid())
@@ -135,29 +161,39 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
         auto& grid = filter_grid_single_.value();
         grid.clear();
-        grid.processPointCloud(pc);
 
-        const auto& xs = pc.getPointsBufferRef_x();
-        const auto& ys = pc.getPointsBufferRef_y();
-        const auto& zs = pc.getPointsBufferRef_z();
-
-        for (const auto& vxl_pts : grid.pts_voxels)
+        // 1st) go thru all the input layers:
+        for (const auto& pcPtr : pcPtrs)
         {
-            if (!vxl_pts.second.index.has_value()) continue;
+            const auto& pc = *pcPtr;
+            grid.processPointCloud(pc);
+        }
+
+        // 2nd) collect grid results:
+        for (const auto& [idx, vxl] : grid.pts_voxels)
+        {
+            if (!vxl.point.has_value()) continue;
 
             nonEmptyVoxels++;
 
-            const auto pt_idx = vxl_pts.second.index.value();
-            outPc->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
+            outPc->insertPoint(vxl.point.value());
         }
     }
     else
     {
         ASSERTMSG_(
+            pcPtrs.size() == 1,
+            "Only one input layer allowed when requiring the non-single "
+            "decimating grid");
+
+        const auto& pc = *pcPtrs.at(0);
+
+        ASSERTMSG_(
             filter_grid_.has_value(),
             "Has you called initialize() after updating/loading parameters?");
 
         auto& grid = filter_grid_.value();
+
         grid.clear();
         grid.processPointCloud(pc);
 
@@ -235,8 +271,6 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
     MRPT_LOG_DEBUG_STREAM(
         "Voxel count=" << nonEmptyVoxels
-                       << ", input_layer=" << params_.input_pointcloud_layer
-                       << " (" << pc.size() << " points)"
                        << ", output_layer=" << params_.output_pointcloud_layer);
 
     MRPT_END

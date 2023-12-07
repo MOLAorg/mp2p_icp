@@ -103,7 +103,9 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
         std::string target_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
         /** If empty (default), a point cloud layer will be generated of type
-         *  mrpt::maps::CSimplePointCloud.
+         *  mrpt::maps::CSimplePointCloud, and the observation will be inserted
+         * via the virtual method mrpt::maps::CMetricMap::insertObservation()
+         *
          *
          * Alternatively, a path to a .INI file can be provided here, with
          * a custom metric map class can be defined via a

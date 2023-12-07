@@ -18,6 +18,8 @@
 #include <mp2p_icp_filters/FilterDeleteLayer.h>
 #include <mp2p_icp_filters/FilterEdgesPlanes.h>
 #include <mp2p_icp_filters/Generator.h>
+#include <mp2p_icp_filters/GeneratorEdgesFromCurvature.h>
+#include <mp2p_icp_filters/GeneratorEdgesFromRangeImage.h>
 #include <mrpt/core/initializer.h>
 
 MRPT_INITIALIZER(register_mola_lidar_segmentation)
@@ -26,6 +28,8 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
 
     // Generators:
     registerClass(CLASS_ID(mp2p_icp_filters::Generator));
+    registerClass(CLASS_ID(mp2p_icp_filters::GeneratorEdgesFromRangeImage));
+    registerClass(CLASS_ID(mp2p_icp_filters::GeneratorEdgesFromCurvature));
 
     // Filters:
     registerClass(CLASS_ID(mp2p_icp_filters::FilterBase));

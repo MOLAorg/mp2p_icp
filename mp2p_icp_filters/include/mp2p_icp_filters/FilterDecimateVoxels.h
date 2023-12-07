@@ -20,7 +20,8 @@
 
 namespace mp2p_icp_filters
 {
-/** Builds a new layer with a decimated version of an input layer.
+/** Builds a new layer with a decimated version of one or more input layers,
+ * merging their contents.
  *
  * This builds a voxel grid from the input point cloud, and then takes either,
  * the mean of the points in the voxel, or one of the points picked at random,
@@ -51,8 +52,10 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
     {
         void load_from_yaml(const mrpt::containers::yaml& c);
 
-        std::string input_pointcloud_layer =
-            mp2p_icp::metric_map_t::PT_LAYER_RAW;
+        /** One or more input layers, from which to read (and merge) input
+         * points */
+        std::vector<std::string> input_pointcloud_layer = {
+            mp2p_icp::metric_map_t::PT_LAYER_RAW};
 
         /** Whether to throw an exception if the input layer does not exist, or,
          * otherwise, it should be silently ignored producing an empty output.

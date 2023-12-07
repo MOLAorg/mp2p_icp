@@ -38,7 +38,8 @@ class FilterDeleteLayer : public mp2p_icp_filters::FilterBase
     {
         void load_from_yaml(const mrpt::containers::yaml& c);
 
-        std::string pointcloud_layer_to_remove;
+        /** One or more layers to remove */
+        std::vector<std::string> pointcloud_layer_to_remove;
 
         /** Whether to throw an exception if the input layer does not exist, or,
          * otherwise, it should be silently ignored producing an empty output.

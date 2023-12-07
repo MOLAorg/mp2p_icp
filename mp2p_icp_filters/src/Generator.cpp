@@ -75,7 +75,9 @@ void Generator::process(
         if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
             return;
 
-        if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
+        if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
+            processed = filterRotatingScan(*oRS, out);
+        else if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
         {
             ASSERT_(o0->pointcloud);
             processed = filterPointCloud(*o0->pointcloud, o0->sensorPose, out);
@@ -202,9 +204,10 @@ void Generator::process(
         if (!insertDone && params_.throw_on_unhandled_observation_class)
         {
             THROW_EXCEPTION_FMT(
-                "Observation of type '%s' could not be converted into a "
-                "map of type '%s', and none of the specializations handled it, "
-                "so I do not know what to do with this observation!",
+                "Observation of type '%s' could not be converted inserted into "
+                "the "
+                "map of type '%s', so I do not know what to do with this "
+                "observation!",
                 obsClassName, outMap->GetRuntimeClass()->className);
         }
 

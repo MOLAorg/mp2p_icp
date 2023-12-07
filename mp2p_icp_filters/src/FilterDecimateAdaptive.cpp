@@ -109,14 +109,10 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     filter_grid_.setResolution(voxel_size);
     filter_grid_.processPointCloud(pc);
 
-    const auto& xs = pc.getPointsBufferRef_x();
-    const auto& ys = pc.getPointsBufferRef_y();
-    const auto& zs = pc.getPointsBufferRef_z();
-
     //    std::vector<double> logWeights;
-    std::vector<size_t> weightedPointIndices;
+    std::vector<mrpt::math::TPoint3Df> weightedPoints;
 
-    weightedPointIndices.reserve(
+    weightedPoints.reserve(
         filter_grid_.pts_voxels.size() * _.minimum_input_points_per_voxel);
 
     std::size_t nTotalVoxels = 0;
@@ -151,7 +147,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         }
 #endif
 
-        weightedPointIndices.push_back(data.index.value());
+        weightedPoints.push_back(data.point.value());
     }
 
     // Perform uniform weighted resampling:
@@ -171,11 +167,10 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     {
         size_t ptIdx = pickedPointIdxs[i];
 #endif
-    for (size_t ptIdx : weightedPointIndices)
-    {
-        outPc->insertPointFast(xs[ptIdx], ys[ptIdx], zs[ptIdx]);
+    for (const auto& pt : weightedPoints)
+    {  //
+        outPc->insertPoint(pt);
     }
-    outPc->mark_as_modified();
 
     MRPT_LOG_DEBUG_STREAM(
         "voxel_size=" << voxel_size <<  //

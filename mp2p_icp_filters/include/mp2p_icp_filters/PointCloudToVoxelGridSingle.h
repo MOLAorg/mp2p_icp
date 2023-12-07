@@ -43,7 +43,7 @@ class PointCloudToVoxelGridSingle
     /** The list of point indices in each voxel */
     struct voxel_t
     {
-        std::optional<std::size_t> index;
+        std::optional<mrpt::math::TPoint3Df> point;
 
         /** Even if we keep the first point only, count them all. */
         uint32_t pointCount = 0;
