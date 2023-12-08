@@ -32,8 +32,7 @@ class Solver_GaussNewton : public Solver
 
     RobustKernel robustKernel      = RobustKernel::None;
     double       robustKernelParam = 1.0;
-
-    bool innerLoopVerbose = false;  //!< Prints GN inner loop details
+    bool         innerLoopVerbose  = false;  //!< Prints GN inner loop details
 
     void initialize(const mrpt::containers::yaml& params) override;
 
