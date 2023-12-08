@@ -273,7 +273,8 @@ bool metric_map_t::empty() const
 }
 void metric_map_t::clear() { *this = metric_map_t(); }
 
-MRPT_TODO("Write unit test for mergeWith()")
+// TODO(JLBC): Write unit test for mergeWith()
+
 void metric_map_t::merge_with(
     const metric_map_t&                       otherPc,
     const std::optional<mrpt::math::TPose3D>& otherRelativePose)
@@ -308,7 +309,8 @@ void metric_map_t::merge_with(
             std::back_inserter(planes), [&](const plane_patch_t& l) {
                 plane_patch_t g;
                 g.centroid = pose.composePoint(l.centroid);
-                MRPT_TODO("Finish rotating planes");
+
+                // TODO(JLBC): Finish rotating planes
                 // ...
                 THROW_EXCEPTION("To-do");
                 return g;

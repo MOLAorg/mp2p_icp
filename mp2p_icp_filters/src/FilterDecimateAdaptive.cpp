@@ -10,14 +10,10 @@
  * @date   Nov 24, 2023
  */
 
-#include <mp2p_icp/estimate_points_eigen.h>
 #include <mp2p_icp_filters/FilterDecimateAdaptive.h>
-#include <mrpt/bayes/CParticleFilterCapable.h>  // computeResampling()
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/round.h>
 #include <mrpt/maps/CSimplePointsMap.h>
-#include <mrpt/math/ops_containers.h>  // dotProduct
-#include <mrpt/obs/CObservation2DRangeScan.h>
-#include <mrpt/random/random_shuffle.h>
 
 IMPLEMENTS_MRPT_OBJECT(
     FilterDecimateAdaptive, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
@@ -109,67 +105,71 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     filter_grid_.setResolution(voxel_size);
     filter_grid_.processPointCloud(pc);
 
-    //    std::vector<double> logWeights;
-    std::vector<mrpt::math::TPoint3Df> weightedPoints;
+    struct DataPerVoxel
+    {
+        const PointCloudToVoxelGrid::voxel_t* voxel     = nullptr;
+        uint32_t                              nextIdx   = 0;
+        bool                                  exhausted = false;
+    };
 
-    weightedPoints.reserve(
-        filter_grid_.pts_voxels.size() * _.minimum_input_points_per_voxel);
+    // A list of all "valid" voxels:
+    std::vector<DataPerVoxel> voxels;
+    voxels.reserve(filter_grid_.pts_voxels.size());
 
     std::size_t nTotalVoxels = 0;
     for (const auto& [idx, data] : filter_grid_.pts_voxels)
     {
-        if (!data.pointCount) nTotalVoxels++;
-        if (data.pointCount < _.minimum_input_points_per_voxel) continue;
+        if (!data.indices.empty()) nTotalVoxels++;
+        if (data.indices.size() < _.minimum_input_points_per_voxel) continue;
 
-#if 0
-        // Analyze the voxel contents:
-        double logWeight = 0.0;
-        if (data.indices.size() > 3)
-        {
-            // Find eigenvalues & eigenvectors:
-            const mp2p_icp::PointCloudEigen stats =
-                mp2p_icp::estimate_points_eigen(
-                    xs.data(), ys.data(), zs.data(), data.indices);
-
-            const double e0 = stats.eigVals[0], e1 = stats.eigVals[1],
-                         e2 = stats.eigVals[2];
-
-            // w= (sqrt(e0)*sqrt(e1)*sqrt(e2))/n
-            // log(w) = - log(n)
-            logWeight = 0.5 * (std::log(e0) + std::log(e1) + std::log(e2)) -
-                        std::log(data.indices.size());
-        }
-        else
-        {
-            // Not enough information to analyze the spatial distribution of
-            // points.
-            logWeight = -20;
-        }
-#endif
-
-        weightedPoints.push_back(data.point.value());
+        voxels.emplace_back().voxel = &data;
     }
 
-    // Perform uniform weighted resampling:
-    // -----------------------------------------
-#if 0
-    std::vector<size_t> pickedPointIdxs;
-
-    mrpt::bayes::CParticleFilterCapable::computeResampling(
-        mrpt::bayes::CParticleFilter::prMultinomial, logWeights,
-        pickedPointIdxs);
-
-    mrpt::random::shuffle(pickedPointIdxs.begin(), pickedPointIdxs.end());
-
-    std::set<size_t> usedIdx;
-
-    for (size_t i = 0; i < _.desired_output_point_count; i++)
+    // Perform resampling:
+    // -------------------
+    const size_t nVoxels           = voxels.size();
+    size_t       voxelIdxIncrement = 1;
+    if (params_.desired_output_point_count < nVoxels)
     {
-        size_t ptIdx = pickedPointIdxs[i];
-#endif
-    for (const auto& pt : weightedPoints)
-    {  //
-        outPc->insertPoint(pt);
+        voxelIdxIncrement = std::max<size_t>(
+            1, mrpt::round(
+                   nVoxels /
+                   static_cast<float>(params_.desired_output_point_count)));
+    }
+
+    const auto& xs = pc.getPointsBufferRef_x();
+    const auto& ys = pc.getPointsBufferRef_y();
+    const auto& zs = pc.getPointsBufferRef_z();
+
+    bool anyInsertInTheRound = false;
+
+    for (size_t i = 0; outPc->size() < params_.desired_output_point_count;)
+    {
+        auto& ith = voxels[i];
+        if (!ith.exhausted)
+        {
+            auto ptIdx = ith.voxel->indices[ith.nextIdx++];
+            outPc->insertPoint(xs[ptIdx], ys[ptIdx], zs[ptIdx]);
+            anyInsertInTheRound = true;
+
+            if (ith.nextIdx >= ith.voxel->indices.size()) ith.exhausted = true;
+        }
+
+        i += voxelIdxIncrement;
+        if (i >= nVoxels)
+        {
+            // one round done.
+            i = (i + 123653 /*a large arbitrary prime*/) % nVoxels;
+
+            if (!anyInsertInTheRound)
+            {
+                // This means there is no more points and we must end despite
+                // we didn't reached the user's desired number of points:
+                break;
+            }
+
+            anyInsertInTheRound = false;
+        }
     }
 
     MRPT_LOG_DEBUG_STREAM(
