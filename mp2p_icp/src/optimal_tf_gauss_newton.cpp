@@ -196,8 +196,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 weight *= robustSqrtWeightFunc(retSqrNorm);
 
             // Error and Jacobian:
-            const Eigen::Vector3d err_i = weight * ret.asEigen();
-            errNormSqr += weight * retSqrNorm;
+            const Eigen::Vector3d err_i = ret.asEigen();
+            errNormSqr += weight * weight * retSqrNorm;
 
             const Eigen::Matrix<double, 3, 6> Ji =
                 J1.asEigen() * dDexpe_de.asEigen();
@@ -220,8 +220,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 weight *= robustSqrtWeightFunc(retSqrNorm);
 
             // Error and Jacobian:
-            const Eigen::Vector4d err_i = weight * ret.asEigen();
-            errNormSqr += weight * retSqrNorm;
+            const Eigen::Vector4d err_i = ret.asEigen();
+            errNormSqr += weight * weight * retSqrNorm;
 
             const Eigen::Matrix<double, 4, 6> Ji =
                 J1.asEigen() * dDexpe_de.asEigen();
@@ -244,8 +244,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 weight *= robustSqrtWeightFunc(retSqrNorm);
 
             // Error and Jacobian:
-            const Eigen::Vector3d err_i = weight * ret.asEigen();
-            errNormSqr += weight * retSqrNorm;
+            const Eigen::Vector3d err_i = ret.asEigen();
+            errNormSqr += weight * weight * retSqrNorm;
 
             const Eigen::Matrix<double, 3, 6> Ji =
                 J1.asEigen() * dDexpe_de.asEigen();
@@ -267,8 +267,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             if (robustSqrtWeightFunc)
                 weight *= robustSqrtWeightFunc(retSqrNorm);
 
-            const Eigen::Vector3d err_i = weight * ret.asEigen();
-            errNormSqr += weight * retSqrNorm;
+            const Eigen::Vector3d err_i = ret.asEigen();
+            errNormSqr += weight * weight * retSqrNorm;
 
             const Eigen::Matrix<double, 3, 6> Ji =
                 J1.asEigen() * dDexpe_de.asEigen();
