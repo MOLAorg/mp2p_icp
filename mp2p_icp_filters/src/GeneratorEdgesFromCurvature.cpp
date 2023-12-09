@@ -37,6 +37,58 @@ void GeneratorEdgesFromCurvature::initialize(const mrpt::containers::yaml& c)
     paramsEdges_.load_from_yaml(c);
 }
 
+void GeneratorEdgesFromCurvature::process(
+    const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out) const
+{
+    MRPT_START
+    using namespace mrpt::obs;
+
+    ASSERTMSG_(
+        initialized_,
+        "initialize() must be called once before using process().");
+
+    const auto obsClassName = o.GetRuntimeClass()->className;
+
+    // default: use point clouds:
+    ASSERT_(params_.metric_map_definition_ini_file.empty());
+
+    bool processed = false;
+
+    // user-given filters: Done *AFTER* creating the map, if needed.
+    if (!std::regex_match(obsClassName, process_class_names_regex_)) return;
+    if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_)) return;
+
+    if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
+        processed = filterRotatingScan(*oRS, out);
+
+    // done?
+    if (processed) return;  // we are done.
+
+    // Create if new: Append to existing layer, if already existed.
+    mrpt::maps::CPointsMap::Ptr outPc;
+    if (auto itLy = out.layers.find(params_.target_layer);
+        itLy != out.layers.end())
+    {
+        outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
+        if (!outPc)
+            THROW_EXCEPTION_FMT(
+                "Layer '%s' must be of point cloud type.",
+                params_.target_layer.c_str());
+    }
+    else
+    {
+        outPc = mrpt::maps::CSimplePointsMap::Create();
+        out.layers[params_.target_layer] = outPc;
+    }
+
+    if (!outPc) outPc = mrpt::maps::CSimplePointsMap::Create();
+
+    // Leave output point cloud empty, since it was not handled by the
+    // rotating scan handler above.
+
+    MRPT_END
+}
+
 bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
     const mrpt::obs::CObservationRotatingScan& pc,
     mp2p_icp::metric_map_t&                    out) const
