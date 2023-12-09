@@ -284,8 +284,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         // 3) Solve Gauss-Newton:
         // g = J.transpose() * err;
         // H = J.transpose() * J;
-        const Eigen::Matrix<double, 6, 1> delta =
-            -H.colPivHouseholderQr().solve(g);
+        const Eigen::Matrix<double, 6, 1> delta = -H.ldlt().solve(g);
 
         // 4) add SE(3) increment:
         const auto dE = mrpt::poses::Lie::SE<3>::exp(
