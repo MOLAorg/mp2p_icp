@@ -25,6 +25,7 @@ void FilterByRange::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
     MCP_LOAD_REQ(c, output_pointcloud_layer);
+    MCP_LOAD_OPT(c, output_deleted_pointcloud_layer);
     MCP_LOAD_REQ(c, range_min);
     MCP_LOAD_REQ(c, range_max);
     MCP_LOAD_REQ(c, keep_between);
@@ -78,6 +79,29 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
     outPc->reserve(outPc->size() + pc.size() / 10);
 
+    // Optional output layer for deleted points:
+    mrpt::maps::CPointsMap* outPcForDeleted = nullptr;
+
+    if (!params_.output_deleted_pointcloud_layer.empty())
+    {
+        if (auto itLy =
+                inOut.layers.find(params_.output_deleted_pointcloud_layer);
+            itLy != inOut.layers.end())
+        {
+            outPcForDeleted = mp2p_icp::MapToPointsMap(*itLy->second);
+            if (!outPcForDeleted)
+                THROW_EXCEPTION_FMT(
+                    "Layer '%s' must be of point cloud type.",
+                    params_.output_deleted_pointcloud_layer.c_str());
+        }
+        else
+        {
+            auto newMap     = mrpt::maps::CSimplePointsMap::Create();
+            outPcForDeleted = newMap.get();
+            inOut.layers[params_.output_deleted_pointcloud_layer] = newMap;
+        }
+    }
+
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
     const auto& zs = pc.getPointsBufferRef_z();
@@ -92,12 +116,16 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
         const bool isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
 
-        if ((isInside && !params_.keep_between) ||
-            (!isInside && params_.keep_between))
-            continue;  // remove this point.
+        auto* targetPc = ((isInside && !params_.keep_between) ||
+                          (!isInside && params_.keep_between))
+                             ?
+                             // remove this point.
+                             outPcForDeleted
+                             :
+                             // keep it:
+                             outPc;
 
-        // Otherwise, add it:
-        outPc->insertPointFast(xs[i], ys[i], zs[i]);
+        if (targetPc) targetPc->insertPointFast(xs[i], ys[i], zs[i]);
     }
     outPc->mark_as_modified();
 

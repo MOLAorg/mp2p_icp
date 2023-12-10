@@ -44,6 +44,9 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
         /** The output point cloud layer name */
         std::string output_pointcloud_layer;
 
+        /** Optional output point cloud layer name for deleted points */
+        std::string output_deleted_pointcloud_layer;
+
         /**
          * YAML loading format:
          * \code
