@@ -30,6 +30,7 @@ void FilterCurvature::Parameters::load_from_yaml(
 
     MCP_LOAD_OPT(c, output_layer_larger_curvature);
     MCP_LOAD_OPT(c, output_layer_smaller_curvature);
+    MCP_LOAD_OPT(c, output_layer_other);
 }
 
 FilterCurvature::FilterCurvature() = default;
@@ -66,6 +67,11 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     if (outPcSmaller)
         outPcSmaller->reserve(outPcSmaller->size() + pc.size() / 10);
 
+    mrpt::maps::CPointsMap* outPcOther = GetOrCreatePointLayer(
+        inOut, params_.output_layer_other,
+        true /*allow empty name for nullptr*/);
+    if (outPcOther) outPcOther->reserve(outPcOther->size() + pc.size() / 10);
+
     ASSERTMSG_(
         outPcLarger || outPcSmaller,
         "At least one 'output_layer_larger_curvature' or "
@@ -98,6 +104,10 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
             {
                 counterLarger++;
                 if (outPcLarger) outPcLarger->insertPoint(pt);
+            }
+            else
+            {
+                if (outPcOther) outPcOther->insertPoint(pt);
             }
             continue;
         }

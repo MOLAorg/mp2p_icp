@@ -54,6 +54,10 @@ class FilterCurvature : public mp2p_icp_filters::FilterBase
          * stored here. */
         std::string output_layer_smaller_curvature;
 
+        /** If non-empty, points that do no fall in any of the two categories
+         * are stored here. */
+        std::string output_layer_other;
+
         float max_cosine    = 0.5f;
         float min_clearance = 0.02f;
         float max_gap       = 1.00f;
