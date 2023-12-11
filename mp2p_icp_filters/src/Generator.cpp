@@ -75,6 +75,9 @@ void Generator::process(
         if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
             return;
 
+        // load lazy-load from disk:
+        o.load();
+
         if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
             processed = filterRotatingScan(*oRS, out);
         else if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
@@ -91,7 +94,11 @@ void Generator::process(
             processed = filterVelodyneScan(*o3, out);
 
         // done?
-        if (processed) return;  // we are done.
+        if (processed)
+        {
+            o.unload();
+            return;  // we are done.
+        }
 
         // Create if new: Append to existing layer, if already existed.
         mrpt::maps::CPointsMap::Ptr outPc;
@@ -114,7 +121,6 @@ void Generator::process(
         if (!outPc) outPc = mrpt::maps::CSimplePointsMap::Create();
 
         // Observation format:
-        o.load();
 
         // Special case:
         // unproject 3D points, if needed:
