@@ -13,7 +13,6 @@
 #include <mp2p_icp_filters/FilterDecimateAdaptive.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/round.h>
-#include <mrpt/maps/CSimplePointsMap.h>
 
 IMPLEMENTS_MRPT_OBJECT(
     FilterDecimateAdaptive, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
@@ -66,23 +65,8 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPc = nullptr;
-    if (auto itLy = inOut.layers.find(params_.output_pointcloud_layer);
-        itLy != inOut.layers.end())
-    {
-        outPc = mp2p_icp::MapToPointsMap(*itLy->second);
-        if (!outPc)
-            THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.",
-                params_.output_pointcloud_layer.c_str());
-    }
-    else
-    {
-        auto newMap = mrpt::maps::CSimplePointsMap::Create();
-        inOut.layers[params_.output_pointcloud_layer] = newMap;
-
-        outPc = newMap.get();
-    }
+    mrpt::maps::CPointsMap* outPc =
+        GetOrCreatePointLayer(inOut, params_.output_pointcloud_layer);
 
     const auto& _ = params_;  // shortcut
 

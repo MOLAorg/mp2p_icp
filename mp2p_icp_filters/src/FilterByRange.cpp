@@ -12,7 +12,6 @@
 
 #include <mp2p_icp_filters/FilterByRange.h>
 #include <mrpt/containers/yaml.h>
-#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 
@@ -60,47 +59,15 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(!params_.output_pointcloud_layer.empty());
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPc = nullptr;
-    if (auto itLy = inOut.layers.find(params_.output_pointcloud_layer);
-        itLy != inOut.layers.end())
-    {
-        outPc = mp2p_icp::MapToPointsMap(*itLy->second);
-        if (!outPc)
-            THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.",
-                params_.output_pointcloud_layer.c_str());
-    }
-    else
-    {
-        auto newMap = mrpt::maps::CSimplePointsMap::Create();
-        outPc       = newMap.get();
-        inOut.layers[params_.output_pointcloud_layer] = newMap;
-    }
+    mrpt::maps::CPointsMap* outPc =
+        GetOrCreatePointLayer(inOut, params_.output_pointcloud_layer);
 
     outPc->reserve(outPc->size() + pc.size() / 10);
 
     // Optional output layer for deleted points:
-    mrpt::maps::CPointsMap* outPcForDeleted = nullptr;
-
-    if (!params_.output_deleted_pointcloud_layer.empty())
-    {
-        if (auto itLy =
-                inOut.layers.find(params_.output_deleted_pointcloud_layer);
-            itLy != inOut.layers.end())
-        {
-            outPcForDeleted = mp2p_icp::MapToPointsMap(*itLy->second);
-            if (!outPcForDeleted)
-                THROW_EXCEPTION_FMT(
-                    "Layer '%s' must be of point cloud type.",
-                    params_.output_deleted_pointcloud_layer.c_str());
-        }
-        else
-        {
-            auto newMap     = mrpt::maps::CSimplePointsMap::Create();
-            outPcForDeleted = newMap.get();
-            inOut.layers[params_.output_deleted_pointcloud_layer] = newMap;
-        }
-    }
+    mrpt::maps::CPointsMap* outPcForDeleted = GetOrCreatePointLayer(
+        inOut, params_.output_deleted_pointcloud_layer,
+        true /*allow empty for nullptr*/);
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();

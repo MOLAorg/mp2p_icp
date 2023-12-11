@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp_filters/FilterBase.h>
+#include <mrpt/maps/CSimplePointsMap.h>
 
 IMPLEMENTS_VIRTUAL_MRPT_OBJECT(
     FilterBase, mrpt::rtti::CObject, mp2p_icp_filters)
@@ -71,4 +72,34 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml_file(
     ASSERT_(yamlContent.has("filters") && yamlContent["filters"].isSequence());
 
     return filter_pipeline_from_yaml(yamlContent["filters"], vLevel);
+}
+
+mrpt::maps::CPointsMap* FilterBase::GetOrCreatePointLayer(
+    mp2p_icp::metric_map_t& m, const std::string& layerName,
+    bool allowEmptyName)
+{
+    mrpt::maps::CPointsMap* outPc = nullptr;
+
+    if (layerName.empty())
+    {
+        if (allowEmptyName)
+            return nullptr;
+        else
+            THROW_EXCEPTION("Empty layer name was provided");
+    }
+
+    if (auto itLy = m.layers.find(layerName); itLy != m.layers.end())
+    {
+        outPc = mp2p_icp::MapToPointsMap(*itLy->second);
+        if (!outPc)
+            THROW_EXCEPTION_FMT(
+                "Layer '%s' must be of point cloud type.", layerName.c_str());
+    }
+    else
+    {
+        auto newMap         = mrpt::maps::CSimplePointsMap::Create();
+        outPc               = newMap.get();
+        m.layers[layerName] = newMap;
+    }
+    return outPc;
 }

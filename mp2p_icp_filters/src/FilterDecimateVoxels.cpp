@@ -98,23 +98,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(!params_.output_pointcloud_layer.empty());
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPc = nullptr;
-    if (auto itLy = inOut.layers.find(params_.output_pointcloud_layer);
-        itLy != inOut.layers.end())
-    {
-        outPc = mp2p_icp::MapToPointsMap(*itLy->second);
-        if (!outPc)
-            THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.",
-                params_.output_pointcloud_layer.c_str());
-    }
-    else
-    {
-        auto newMap = mrpt::maps::CSimplePointsMap::Create();
-        inOut.layers[params_.output_pointcloud_layer] = newMap;
-
-        outPc = newMap.get();
-    }
+    mrpt::maps::CPointsMap* outPc =
+        GetOrCreatePointLayer(inOut, params_.output_pointcloud_layer);
 
     // In:
     std::vector<mrpt::maps::CPointsMap*> pcPtrs;
