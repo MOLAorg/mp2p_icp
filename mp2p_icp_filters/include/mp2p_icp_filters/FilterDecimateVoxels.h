@@ -50,7 +50,8 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(const mrpt::containers::yaml& c);
+        void load_from_yaml(
+            const mrpt::containers::yaml& c, FilterDecimateVoxels& parent);
 
         /** One or more input layers, from which to read (and merge) input
          * points */

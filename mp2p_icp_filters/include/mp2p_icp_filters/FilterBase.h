@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <mp2p_icp/Parameterizable.h>
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CPointsMap.h>
@@ -35,7 +36,8 @@ namespace mp2p_icp_filters
  * \sa Generator
  */
 class FilterBase : public mrpt::rtti::CObject,  // RTTI support
-                   public mrpt::system::COutputLogger  // Logging support
+                   public mrpt::system::COutputLogger,  // Logging support
+                   public mp2p_icp::Parameterizable  // Dynamic parameters
 {
     DEFINE_VIRTUAL_MRPT_OBJECT(FilterBase)
 

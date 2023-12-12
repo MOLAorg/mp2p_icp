@@ -35,11 +35,9 @@ void Matcher_Points_DistanceThreshold::initialize(
 {
     Matcher_Points_Base::initialize(params);
 
-    MCP_LOAD_REQ(params, threshold);
-    MCP_LOAD_REQ(params, thresholdAngularDeg);
-    MCP_LOAD_OPT(params, pairingsPerPoint);
-
-    ASSERT_(pairingsPerPoint >= 1);
+    DECLARE_PARAMETER_REQ(params, threshold);
+    DECLARE_PARAMETER_REQ(params, thresholdAngularDeg);
+    DECLARE_PARAMETER_OPT(params, pairingsPerPoint);
 }
 
 void Matcher_Points_DistanceThreshold::implMatchOneLayer(
@@ -50,6 +48,10 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     Pairings& out) const
 {
     MRPT_START
+
+    ASSERT_(pairingsPerPoint >= 1);
+    ASSERT_GT_(threshold, .0);
+    ASSERT_GE_(thresholdAngularDeg, .0);
 
     const mrpt::maps::NearestNeighborsCapable& nnGlobal =
         *mp2p_icp::MapToNN(pcGlobalMap, true /*throw if cannot convert*/);

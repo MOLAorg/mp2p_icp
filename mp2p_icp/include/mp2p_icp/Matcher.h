@@ -12,6 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/Pairings.h>
+#include <mp2p_icp/Parameterizable.h>
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp/pointcloud_bitfield.h>
 #include <mrpt/containers/yaml.h>
@@ -68,7 +69,9 @@ struct MatchState
  *
  * \ingroup mp2p_icp_grp
  */
-class Matcher : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
+class Matcher : public mrpt::system::COutputLogger,
+                public mrpt::rtti::CObject,
+                public mp2p_icp::Parameterizable
 {
     DEFINE_VIRTUAL_MRPT_OBJECT(Matcher)
 

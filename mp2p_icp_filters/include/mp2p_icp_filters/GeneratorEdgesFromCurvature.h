@@ -37,7 +37,9 @@ class GeneratorEdgesFromCurvature : public mp2p_icp_filters::Generator
 
     struct ParametersEdges
     {
-        void load_from_yaml(const mrpt::containers::yaml& c);
+        void load_from_yaml(
+            const mrpt::containers::yaml& c,
+            GeneratorEdgesFromCurvature&  parent);
 
         float max_cosine          = 0.5f;
         float min_point_clearance = 0.10f;

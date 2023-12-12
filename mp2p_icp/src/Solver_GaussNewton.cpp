@@ -25,7 +25,8 @@ void Solver_GaussNewton::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_REQ(params, maxIterations);
     MCP_LOAD_OPT(params, innerLoopVerbose);
     MCP_LOAD_OPT(params, robustKernel);
-    MCP_LOAD_OPT(params, robustKernelParam);
+
+    DECLARE_PARAMETER_OPT(params, robustKernelParam);
 
     if (params.has("pair_weights"))
         pairWeights.load_from(params["pair_weights"]);

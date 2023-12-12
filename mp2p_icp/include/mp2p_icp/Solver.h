@@ -13,6 +13,7 @@
 
 #include <mp2p_icp/OptimalTF_Result.h>
 #include <mp2p_icp/Pairings.h>
+#include <mp2p_icp/Parameterizable.h>
 #include <mp2p_icp/WeightParameters.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/poses/CPose3D.h>
@@ -52,7 +53,9 @@ struct SolverContext
  *
  * \ingroup mp2p_icp_grp
  */
-class Solver : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
+class Solver : public mrpt::system::COutputLogger,
+               public mrpt::rtti::CObject,
+               public mp2p_icp::Parameterizable
 {
     DEFINE_VIRTUAL_MRPT_OBJECT(Solver)
 

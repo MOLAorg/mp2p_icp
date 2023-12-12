@@ -89,7 +89,7 @@ double QualityEvaluator_Voxels::evaluate(
         localTransformed.insertAnotherMap(ptsL, localPose);
 
         // resize voxel grids?
-        MRPT_TODO("Check against current size too, for many layers");
+        // TODO(jlbc): Check against current size too, for many layers
         {
             const auto bb = ptsG->boundingBox();
             voxelsGlo.resizeGrid(bb.min, bb.max);

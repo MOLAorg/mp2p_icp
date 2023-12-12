@@ -25,7 +25,7 @@ using namespace mp2p_icp_filters;
 MRPT_TODO("Define enum type for selected operation?");
 
 void FilterDecimateVoxels::Parameters::load_from_yaml(
-    const mrpt::containers::yaml& c)
+    const mrpt::containers::yaml& c, FilterDecimateVoxels& parent)
 {
     ASSERTMSG_(
         c.has("input_pointcloud_layer"),
@@ -56,7 +56,8 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
 
     MCP_LOAD_REQ(c, output_pointcloud_layer);
 
-    MCP_LOAD_REQ(c, voxel_filter_resolution);
+    DECLARE_PARAMETER_IN_REQ(c, voxel_filter_resolution, parent);
+
     MCP_LOAD_OPT(c, use_voxel_average);
     MCP_LOAD_OPT(c, use_closest_to_voxel_average);
 }
@@ -71,7 +72,7 @@ void FilterDecimateVoxels::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params_.load_from_yaml(c, *this);
 
     filter_grid_single_.reset();
     filter_grid_.reset();

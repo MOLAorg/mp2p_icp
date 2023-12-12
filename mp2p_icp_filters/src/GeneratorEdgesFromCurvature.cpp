@@ -23,10 +23,10 @@ IMPLEMENTS_MRPT_OBJECT(GeneratorEdgesFromCurvature, Generator, mp2p_icp_filters)
 using namespace mp2p_icp_filters;
 
 void GeneratorEdgesFromCurvature::ParametersEdges::load_from_yaml(
-    const mrpt::containers::yaml& c)
+    const mrpt::containers::yaml& c, GeneratorEdgesFromCurvature& parent)
 {
-    MCP_LOAD_REQ(c, max_cosine);
-    MCP_LOAD_OPT(c, min_point_clearance);
+    DECLARE_PARAMETER_IN_REQ(c, max_cosine, parent);
+    DECLARE_PARAMETER_IN_OPT(c, min_point_clearance, parent);
 }
 
 void GeneratorEdgesFromCurvature::initialize(const mrpt::containers::yaml& c)
@@ -34,7 +34,7 @@ void GeneratorEdgesFromCurvature::initialize(const mrpt::containers::yaml& c)
     // parent base method:
     Generator::initialize(c);
 
-    paramsEdges_.load_from_yaml(c);
+    paramsEdges_.load_from_yaml(c, *this);
 }
 
 void GeneratorEdgesFromCurvature::process(
