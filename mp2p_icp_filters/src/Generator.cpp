@@ -147,8 +147,7 @@ void Generator::process(
                 THROW_EXCEPTION_FMT(
                     "Observation of type '%s' could not be converted into a "
                     "point cloud, and none of the specializations handled it, "
-                    "so I "
-                    "do not know what to do with this observation!",
+                    "so I do not know what to do with this observation!",
                     obsClassName);
             }
         }
@@ -261,7 +260,10 @@ bool Generator::filterPointCloud(  //
     }
     else
     {
-        outPc = mrpt::maps::CSimplePointsMap::Create();
+        // Make a new layer of the same type than the input cloud:
+        outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+            pc.GetRuntimeClass()->ptrCreateObject());
+        ASSERT_(outPc);
         out.layers[params_.target_layer] = outPc;
     }
 
