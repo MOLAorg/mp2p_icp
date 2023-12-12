@@ -10,10 +10,28 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
+#include <set>
 #include <string>
+#include <variant>
+#include <vector>
 
 namespace mp2p_icp
 {
+namespace internal
+{
+struct InfoPerParam
+{
+    std::string expression;
+    /// Compiled expression
+    std::optional<mrpt::expr::CRuntimeCompiledExpression>    compiled;
+    std::variant<std::monostate, double*, float*, uint32_t*> target;
+};
+}  // namespace internal
+
+class ParameterSource;
+class Parameterizable;
+
 /** Users of derived classes must declare an instance of this type, then attach
  * instances of derived classes to it, then optionally update variables via
  * updateVariable(), then call realize() for the changes to take effect.
@@ -25,12 +43,19 @@ class ParameterSource
    public:
     ParameterSource() = default;
 
-    void updateVariable(const std::string& variable, double value);
+    void attach(Parameterizable& obj);
+
+    void updateVariable(const std::string& variable, double value)
+    {
+        variables_[variable] = value;
+    }
 
     void realize();
 
    private:
     // Attached clients.
+    std::map<std::string, double>     variables_;
+    std::set<internal::InfoPerParam*> attachedDeclParameters_;
 };
 
 /** Common base for classes allowing dynamic parameters as given by formulas,
@@ -41,7 +66,13 @@ class ParameterSource
 class Parameterizable
 {
    public:
-    void attachToParameterSource(ParameterSource& source);
+    void attachToParameterSource(ParameterSource& source)
+    {
+        source.attach(*this);
+    }
+
+    auto&       declaredParameters() { return declParameters_; }
+    const auto& declaredParameters() const { return declParameters_; }
 
    protected:
     /** To be called at initialization by derived classes that read a parameter
@@ -59,6 +90,8 @@ class Parameterizable
     void parseAndDeclareParameter(const std::string& value, uint32_t& target);
 
    private:
+    /// List of declared parameters:
+    std::vector<internal::InfoPerParam> declParameters_;
 };
 
 /** Attach a vector of objects to the given source */
