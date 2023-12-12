@@ -44,8 +44,8 @@ namespace mp2p_icp
  * \todo Add pipeline picture.
  *
  * Several solvers may exists, but the output from the first one returning
- * "true" will be used. This is by design, to enable different solver algorithms
- * depending on the ICP iteration.
+ * `true` will be used. This is by design, to enable different solver algorithms
+ * depending on the ICP iteration or the type of geometric entities.
  *
  * \ingroup mp2p_icp_grp
  */
@@ -180,6 +180,13 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         const Pairings& finalPairings);
 
     /** @} */
+
+    void attachToParameterSource(ParameterSource& source)
+    {
+        for (auto& o : matchers()) o->attachToParameterSource(source);
+        for (auto& o : solvers()) o->attachToParameterSource(source);
+        for (auto& o : quality_evaluators()) o->attachToParameterSource(source);
+    }
 
     /** For whole-ICP overriden classes (e.g. external ICP library wrappers),
      * initialize those external libraries with these parameters.

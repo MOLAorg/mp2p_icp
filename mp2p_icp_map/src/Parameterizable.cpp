@@ -25,6 +25,7 @@ void ParameterSource::realize()
     // 1) compile?
     for (auto& p : attachedDeclParameters_)
     {
+        if (p->is_constant) continue;
         if (p->compiled.has_value()) continue;  // already done:
 
         auto& expr = p->compiled.emplace();
@@ -34,6 +35,8 @@ void ParameterSource::realize()
     // 2) Evaluate and store:
     for (auto& p : attachedDeclParameters_)
     {
+        if (p->is_constant) continue;
+
         const double val = p->compiled->eval();
 
         std::visit(
@@ -70,6 +73,27 @@ void Parameterizable::parseAndDeclareParameter(
 
     ipm.expression = value;
     ipm.target     = &target;
+
+    // Try to evaluate the expression now:
+    // If it does not contain unknown variables, it will remain
+    // constant and will need not updates from "realize()":
+    try
+    {
+        mrpt::expr::CRuntimeCompiledExpression e;
+        e.compile(value);
+        // Yes, it was successful: mark as constant and store value:
+        ipm.is_constant = true;
+        using T         = std::decay_t<decltype(target)>;
+        // Store result:
+        target       = static_cast<T>(e.eval());
+        ipm.compiled = std::move(e);
+    }
+    catch (const std::exception&)
+    {
+        // We probably need variables, not defined yet.
+        // Ignore this exception at this moment. Will trigger if
+        // raised again in realize() after defining the variables.
+    }
 }
 
 void Parameterizable::parseAndDeclareParameter(

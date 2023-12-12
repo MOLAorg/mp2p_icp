@@ -26,6 +26,7 @@ struct InfoPerParam
     /// Compiled expression
     std::optional<mrpt::expr::CRuntimeCompiledExpression>    compiled;
     std::variant<std::monostate, double*, float*, uint32_t*> target;
+    bool is_constant = false;
 };
 }  // namespace internal
 

@@ -12,7 +12,6 @@
  */
 
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
-#include <mp2p_icp/Matcher_Points_InlierRatio.h>
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 
@@ -51,10 +50,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         {
             mp2p_icp::Matcher_Points_DistanceThreshold m;
             mrpt::containers::yaml                     p;
-            p["threshold"]           = 1.0;
-            p["thresholdAngularDeg"] = .0;
+            p["threshold"]           = 1.05;
+            p["thresholdAngularDeg"] = .001;
 
             m.initialize(p);
+
+            // Ensure initialize is correctly parsing the values:
+            ASSERT_NEAR_(m.threshold, 1.05, 1e-4);
+            ASSERT_NEAR_(m.thresholdAngularDeg, .001, 1e-4);
 
             {
                 // For pose: identity
