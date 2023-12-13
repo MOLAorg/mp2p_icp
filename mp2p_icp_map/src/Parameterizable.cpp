@@ -25,7 +25,7 @@ std::string ParameterSource::printVariableValues() const
     {
         s += name;
         s += "=";
-        s += value;
+        s += std::to_string(value);
         s += " ";
     }
 
