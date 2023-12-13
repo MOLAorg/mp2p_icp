@@ -38,6 +38,8 @@ bool Solver_GaussNewton::impl_optimal_pose(
 {
     MRPT_START
 
+    checkAllParametersAreRealized();
+
     out = OptimalTF_Result();
 
     OptimalTF_GN_Parameters gnParams;

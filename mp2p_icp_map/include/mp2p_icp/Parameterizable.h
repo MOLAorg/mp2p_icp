@@ -26,7 +26,8 @@ struct InfoPerParam
     /// Compiled expression
     std::optional<mrpt::expr::CRuntimeCompiledExpression>    compiled;
     std::variant<std::monostate, double*, float*, uint32_t*> target;
-    bool is_constant = false;
+    bool is_constant        = false;
+    bool has_been_evaluated = false;
 };
 }  // namespace internal
 
@@ -46,12 +47,16 @@ class ParameterSource
 
     void attach(Parameterizable& obj);
 
+    /** Updates a variable value. Remember to call realize() after updating all
+     *  variables for the changes to take effect */
     void updateVariable(const std::string& variable, double value)
     {
         variables_[variable] = value;
     }
 
     void realize();
+
+    std::string printVariableValues() const;
 
    private:
     // Attached clients.
@@ -75,6 +80,16 @@ class Parameterizable
     auto&       declaredParameters() { return declParameters_; }
     const auto& declaredParameters() const { return declParameters_; }
 
+    /** Throws if any parameter is uninitialized or realized() has not been
+     * called in the attached ParameterSource.
+     * All parameters can be reset so realize() needs to be called again
+     * by manually calling unrealizeParameters().
+     */
+    void checkAllParametersAreRealized() const;
+
+    /// Mark all non-constant parameters as non-evaluated again.
+    void unrealizeParameters();
+
    protected:
     /** To be called at initialization by derived classes that read a parameter
      *  from a YAML or any other text source.
@@ -93,6 +108,9 @@ class Parameterizable
    private:
     /// List of declared parameters:
     std::vector<internal::InfoPerParam> declParameters_;
+
+    template <typename T>
+    void parseAndDeclareParameter_impl(const std::string& value, T& target);
 };
 
 /** Attach a vector of objects to the given source */

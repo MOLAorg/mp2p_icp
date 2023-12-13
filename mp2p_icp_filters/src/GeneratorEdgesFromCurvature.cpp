@@ -48,6 +48,8 @@ void GeneratorEdgesFromCurvature::process(
         initialized_,
         "initialize() must be called once before using process().");
 
+    checkAllParametersAreRealized();
+
     const auto obsClassName = o.GetRuntimeClass()->className;
 
     // default: use point clouds:

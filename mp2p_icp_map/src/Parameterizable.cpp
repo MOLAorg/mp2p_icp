@@ -5,7 +5,9 @@
  * ------------------------------------------------------------------------- */
 
 #include <mp2p_icp/Parameterizable.h>
+#include <mrpt/core/exceptions.h>
 
+#include <sstream>
 #include <stdexcept>
 
 using namespace mp2p_icp;
@@ -14,6 +16,20 @@ void ParameterSource::attach(Parameterizable& obj)
 {
     for (auto& p : obj.declaredParameters())  //
         attachedDeclParameters_.insert(&p);
+}
+
+std::string ParameterSource::printVariableValues() const
+{
+    std::string s;
+    for (const auto& [name, value] : variables_)
+    {
+        s += name;
+        s += "=";
+        s += value;
+        s += " ";
+    }
+
+    return s;
 }
 
 void ParameterSource::realize()
@@ -63,11 +79,14 @@ void ParameterSource::realize()
                 }
             },
             p->target);
+
+        p->has_been_evaluated = true;
     }
 }
 
-void Parameterizable::parseAndDeclareParameter(
-    const std::string& value, double& target)
+template <typename T>
+void Parameterizable::parseAndDeclareParameter_impl(
+    const std::string& value, T& target)
 {
     internal::InfoPerParam& ipm = declParameters_.emplace_back();
 
@@ -82,8 +101,8 @@ void Parameterizable::parseAndDeclareParameter(
         mrpt::expr::CRuntimeCompiledExpression e;
         e.compile(value);
         // Yes, it was successful: mark as constant and store value:
-        ipm.is_constant = true;
-        using T         = std::decay_t<decltype(target)>;
+        ipm.is_constant        = true;
+        ipm.has_been_evaluated = true;
         // Store result:
         target       = static_cast<T>(e.eval());
         ipm.compiled = std::move(e);
@@ -97,19 +116,47 @@ void Parameterizable::parseAndDeclareParameter(
 }
 
 void Parameterizable::parseAndDeclareParameter(
+    const std::string& value, double& target)
+{
+    parseAndDeclareParameter_impl(value, target);
+}
+
+void Parameterizable::parseAndDeclareParameter(
     const std::string& value, float& target)
 {
-    internal::InfoPerParam& ipm = declParameters_.emplace_back();
-
-    ipm.expression = value;
-    ipm.target     = &target;
+    parseAndDeclareParameter_impl(value, target);
 }
 
 void Parameterizable::parseAndDeclareParameter(
     const std::string& value, uint32_t& target)
 {
-    internal::InfoPerParam& ipm = declParameters_.emplace_back();
+    parseAndDeclareParameter_impl(value, target);
+}
 
-    ipm.expression = value;
-    ipm.target     = &target;
+void Parameterizable::checkAllParametersAreRealized() const
+{
+    std::stringstream errors;
+    for (auto& p : declParameters_)
+    {
+        if (p.has_been_evaluated) continue;
+        errors << "- '" << p.expression << "'"
+               << "\n";
+    }
+
+    const auto sErrs = errors.str();
+    if (sErrs.empty()) return;  // all is ok.
+
+    THROW_EXCEPTION_FMT(
+        "The following parameter expressions have not been correctly "
+        "initialized:\n%s",
+        sErrs.c_str());
+}
+
+void Parameterizable::unrealizeParameters()
+{
+    for (auto& p : declParameters_)
+    {
+        if (p.is_constant) continue;
+        p.has_been_evaluated = false;
+    }
 }

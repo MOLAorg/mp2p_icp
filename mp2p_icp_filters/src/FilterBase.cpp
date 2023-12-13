@@ -11,7 +11,6 @@
  */
 
 #include <mp2p_icp_filters/FilterBase.h>
-#include <mrpt/maps/CSimplePointsMap.h>
 
 IMPLEMENTS_VIRTUAL_MRPT_OBJECT(
     FilterBase, mrpt::rtti::CObject, mp2p_icp_filters)

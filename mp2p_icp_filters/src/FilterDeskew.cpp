@@ -62,6 +62,8 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 #if MRPT_VERSION >= 0x020b04
 
+    checkAllParametersAreRealized();
+
     // Out:
     ASSERT_(!output_pointcloud_layer.empty());
 
@@ -120,7 +122,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             for (size_t i = 0; i < n; i++)
             {
                 outPc->setPointFast(n0 + i, xs[i], ys[i], zs[i]);
-                if (Is && out_Is) out_Is[n0 + i] = Is[i];
+                if (Is && out_Is) (*out_Is)[n0 + i] = (*Is)[i];
             }
         }
         else
@@ -149,24 +151,27 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 #endif
             {
                 const auto pt = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
+                if (!(pt.x == 0 && pt.y == 0 && pt.z == 0))
+                {
+                    // Forward integrate twist:
+                    const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
+                    const mrpt::math::TVector3D w_dt = w * (*Ts)[i];
 
-                // Forward integrate twist:
-                const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
-                const mrpt::math::TVector3D w_dt = w * (*Ts)[i];
+                    const auto p =
+                        mrpt::poses::CPose3D::FromRotationAndTranslation(
+                            // Rotation: From Lie group SO(3) exponential:
+                            mrpt::poses::Lie::SO<3>::exp(
+                                mrpt::math::CVectorFixedDouble<3>(w_dt)),
+                            // Translation: simple constant velocity model:
+                            v_dt);
 
-                const auto p = mrpt::poses::CPose3D::FromRotationAndTranslation(
-                    // Rotation: From Lie group SO(3) exponential:
-                    mrpt::poses::Lie::SO<3>::exp(
-                        mrpt::math::CVectorFixedDouble<3>(w_dt)),
-                    // Translation: simple constant velocity model:
-                    v_dt);
+                    const auto corrPt = p.composePoint(pt);
 
-                const auto corrPt = p.composePoint(pt);
-
-                outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
-                if (Is && out_Is) out_Is[n0 + i] = Is[i];
-                if (Rs && out_Rs) out_Rs[n0 + i] = Rs[i];
-                if (Ts && out_Ts) out_Ts[n0 + i] = Ts[i];
+                    outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
+                    if (Is && out_Is) (*out_Is)[n0 + i] = (*Is)[i];
+                    if (Rs && out_Rs) (*out_Rs)[n0 + i] = (*Rs)[i];
+                    if (Ts && out_Ts) (*out_Ts)[n0 + i] = (*Ts)[i];
+                }
             }
 #if defined(MP2P_HAS_TBB)
         );

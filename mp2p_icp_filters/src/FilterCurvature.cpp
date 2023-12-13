@@ -12,7 +12,6 @@
 
 #include <mp2p_icp_filters/FilterCurvature.h>
 #include <mrpt/containers/yaml.h>
-#include <mrpt/maps/CSimplePointsMap.h>
 
 IMPLEMENTS_MRPT_OBJECT(
     FilterCurvature, mp2p_icp_filters::FilterBase, mp2p_icp_filters)

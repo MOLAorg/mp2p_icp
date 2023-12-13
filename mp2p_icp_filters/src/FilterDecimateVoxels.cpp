@@ -12,7 +12,6 @@
 
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
 #include <mrpt/containers/yaml.h>
-#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/random/RandomGenerators.h>
@@ -94,6 +93,8 @@ void FilterDecimateVoxels::initialize(const mrpt::containers::yaml& c)
 void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
+
+    checkAllParametersAreRealized();
 
     // Out:
     ASSERT_(!params_.output_pointcloud_layer.empty());

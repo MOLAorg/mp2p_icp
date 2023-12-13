@@ -49,6 +49,8 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 {
     MRPT_START
 
+    checkAllParametersAreRealized();
+
     ASSERT_(pairingsPerPoint >= 1);
     ASSERT_GT_(threshold, .0);
     ASSERT_GE_(thresholdAngularDeg, .0);
