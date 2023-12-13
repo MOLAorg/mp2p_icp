@@ -185,7 +185,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     {
         for (auto& o : matchers()) o->attachToParameterSource(source);
         for (auto& o : solvers()) o->attachToParameterSource(source);
-        for (auto& o : quality_evaluators()) o->attachToParameterSource(source);
+        for (auto& o : quality_evaluators())
+            o.obj->attachToParameterSource(source);
     }
 
     /** For whole-ICP overriden classes (e.g. external ICP library wrappers),
