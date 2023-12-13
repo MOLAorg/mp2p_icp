@@ -15,6 +15,7 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/utils.h>  // absDiff()
 #include <mrpt/obs/CObservationRotatingScan.h>
+#include <mrpt/version.h>
 
 #include <utility>  // std::pair
 
@@ -68,6 +69,7 @@ bool GeneratorEdgesFromRangeImage::filterRotatingScan(  //
     const mrpt::obs::CObservationRotatingScan& pc,
     mp2p_icp::metric_map_t&                    out) const
 {
+#if MRPT_VERSION >= 0x020b04
     constexpr int FIXED_POINT_BITS = 8;
 
     auto outPc = mrpt::maps::CSimplePointsMap::Create();
@@ -126,4 +128,7 @@ bool GeneratorEdgesFromRangeImage::filterRotatingScan(  //
 
     out.layers[params_.target_layer] = outPc;
     return true;  // Yes, it's implemented
+#else
+    THROW_EXCEPTION("This class requires MRPT >=v2.11.4");
+#endif
 }
