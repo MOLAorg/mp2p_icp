@@ -76,7 +76,7 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml_file(
 
 mrpt::maps::CPointsMap* FilterBase::GetOrCreatePointLayer(
     mp2p_icp::metric_map_t& m, const std::string& layerName,
-    bool allowEmptyName)
+    bool allowEmptyName, const std::string& classForLayerCreation)
 {
     mrpt::maps::CPointsMap* outPc = nullptr;
 
@@ -85,7 +85,7 @@ mrpt::maps::CPointsMap* FilterBase::GetOrCreatePointLayer(
         if (allowEmptyName)
             return nullptr;
         else
-            THROW_EXCEPTION("Empty layer name was provided");
+            THROW_EXCEPTION("Layer name cannot be empty");
     }
 
     if (auto itLy = m.layers.find(layerName); itLy != m.layers.end())
@@ -97,7 +97,20 @@ mrpt::maps::CPointsMap* FilterBase::GetOrCreatePointLayer(
     }
     else
     {
-        auto newMap         = mrpt::maps::CSimplePointsMap::Create();
+        auto o = mrpt::rtti::classFactory(classForLayerCreation);
+        ASSERTMSG_(
+            o, mrpt::format(
+                   "Could not create layer of type '%s' (wrong or "
+                   "unregistered class name?)",
+                   classForLayerCreation.c_str()));
+
+        auto newMap = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(o);
+        ASSERTMSG_(
+            newMap, mrpt::format(
+                        "Provided class name '%s' seems not to be derived from "
+                        "mrpt::maps::CPointsMap",
+                        classForLayerCreation.c_str()));
+
         outPc               = newMap.get();
         m.layers[layerName] = newMap;
     }

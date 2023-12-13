@@ -15,3 +15,8 @@ mola_add_library(
 		mp2p_icp
 		robin_map
 )
+
+if (TBB_FOUND AND MP2PICP_USE_TBB)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_TBB)
+	target_link_libraries(${PROJECT_NAME} PRIVATE TBB::tbb)
+endif()
