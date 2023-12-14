@@ -20,13 +20,15 @@ IMPLEMENTS_MRPT_OBJECT(
 
 using namespace mp2p_icp_filters;
 
-void FilterByRange::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
+void FilterByRange::Parameters::load_from_yaml(
+    const mrpt::containers::yaml& c, FilterByRange& parent)
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
     MCP_LOAD_REQ(c, output_pointcloud_layer);
     MCP_LOAD_OPT(c, output_deleted_pointcloud_layer);
-    MCP_LOAD_REQ(c, range_min);
-    MCP_LOAD_REQ(c, range_max);
+    DECLARE_PARAMETER_IN_REQ(c, range_min, parent);
+    DECLARE_PARAMETER_IN_REQ(c, range_max, parent);
+
     MCP_LOAD_REQ(c, keep_between);
 }
 
@@ -37,7 +39,7 @@ void FilterByRange::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params_.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -45,6 +47,8 @@ void FilterByRange::initialize(const mrpt::containers::yaml& c)
 void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
+
+    checkAllParametersAreRealized();
 
     // In:
     const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);

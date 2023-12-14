@@ -67,7 +67,7 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
         std::string output_pointcloud_layer;
 
         /** Size of each voxel edge [meters] */
-        double voxel_filter_resolution = .20;  // [m]
+        double voxel_filter_resolution = 1.0;  // [m]
 
         // TODO: Convert into an enum !!
 

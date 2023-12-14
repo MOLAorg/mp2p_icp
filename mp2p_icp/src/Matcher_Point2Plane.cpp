@@ -29,10 +29,10 @@ void Matcher_Point2Plane::initialize(const mrpt::containers::yaml& params)
 {
     Matcher_Points_Base::initialize(params);
 
-    MCP_LOAD_REQ(params, distanceThreshold);
-    MCP_LOAD_REQ(params, searchRadius);
+    DECLARE_PARAMETER_REQ(params, distanceThreshold);
+    DECLARE_PARAMETER_REQ(params, searchRadius);
     MCP_LOAD_REQ(params, knn);
-    MCP_LOAD_REQ(params, planeEigenThreshold);
+    DECLARE_PARAMETER_REQ(params, planeEigenThreshold);
     MCP_LOAD_REQ(params, minimumPlanePoints);
     ASSERT_GE_(minimumPlanePoints, 3UL);
 
@@ -73,6 +73,8 @@ void Matcher_Point2Plane::implMatchOneLayer(
     const layer_name_t& localName, Pairings& out) const
 {
     MRPT_START
+
+    checkAllParametersAreRealized();
 
     const mrpt::maps::NearestNeighborsCapable& nnGlobal =
         *mp2p_icp::MapToNN(pcGlobalMap, true /*throw if cannot convert*/);

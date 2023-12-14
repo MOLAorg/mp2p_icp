@@ -77,14 +77,12 @@ void FilterDecimateVoxels::initialize(const mrpt::containers::yaml& c)
     filter_grid_.reset();
 
     if (useSingleGrid())
-    {
-        auto& grid = filter_grid_single_.emplace();
-        grid.setResolution(params_.voxel_filter_resolution);
+    {  // Create:
+        filter_grid_single_.emplace();
     }
     else
-    {
-        auto& grid = filter_grid_.emplace();
-        grid.setResolution(params_.voxel_filter_resolution);
+    {  // Create:
+        filter_grid_.emplace();
     }
 
     MRPT_END
@@ -147,6 +145,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             "Has you called initialize() after updating/loading parameters?");
 
         auto& grid = filter_grid_single_.value();
+        grid.setResolution(params_.voxel_filter_resolution);
         grid.clear();
 
         // 1st) go thru all the input layers:
@@ -180,8 +179,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             "Has you called initialize() after updating/loading parameters?");
 
         auto& grid = filter_grid_.value();
-
+        grid.setResolution(params_.voxel_filter_resolution);
         grid.clear();
+
         grid.processPointCloud(pc);
 
         const auto& xs = pc.getPointsBufferRef_x();

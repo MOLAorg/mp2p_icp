@@ -51,7 +51,7 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      *   silently_ignore_no_timestamps: false
      *   # These (vx,...wz) are variable names that must be defined via the
      *   # mp2p_icp::Parameterizable API to update them dynamically.
-     *   twist: [vx,vy,vz,wx,wy,wz]
+     *   twist: [VX,VY,VZ,WX,WY,WZ]
      * \endcode
      *
      */
