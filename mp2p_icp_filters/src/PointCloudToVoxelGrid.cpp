@@ -10,11 +10,6 @@
  * @date   Dec 17, 2018
  */
 
-/** \defgroup mp2p_icp_filters_grp mp2p_icp_filters library
- * 2D/3D LiDAR scan segmentation algorithms and utilities.
- *
- */
-
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
 
 using namespace mp2p_icp_filters;

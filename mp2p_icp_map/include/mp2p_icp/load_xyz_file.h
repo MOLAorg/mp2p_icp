@@ -21,7 +21,7 @@ namespace mp2p_icp
  * is a point). If the filename extension ends in ".gz", it is uncompressed
  * automatically.
  *
- * \ingroup mp2p_icp_grp
+ * \ingroup mp2p_icp_map_grp
  */
 mrpt::maps::CSimplePointsMap::Ptr load_xyz_file(const std::string& fil);
 

@@ -13,6 +13,11 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/core/initializer.h>
 
+/** \defgroup mp2p_icp_map_grp mp2p_icp_map library
+ * Core data structures and utilities for mp2p_icp
+ *
+ */
+
 MRPT_INITIALIZER(register_mp2p_icp_map)
 {
     using mrpt::rtti::registerClass;

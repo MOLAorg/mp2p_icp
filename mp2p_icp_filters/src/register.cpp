@@ -10,6 +10,11 @@
  * @date   Jun 10, 2019
  */
 
+/** \defgroup mp2p_icp_filters_grp mp2p_icp_filters library
+ * LiDAR and point cloud segmentation and filtering algorithms.
+ *
+ */
+
 #include <mp2p_icp_filters/FilterBoundingBox.h>
 #include <mp2p_icp_filters/FilterByRange.h>
 #include <mp2p_icp_filters/FilterCurvature.h>

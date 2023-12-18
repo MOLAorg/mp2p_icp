@@ -26,6 +26,8 @@ namespace mp2p_icp
  *
  * Eigen vectors and eigen values are sorted from smallest to largest
  * eigenvalue.
+ *
+ * \ingroup mp2p_icp_map_grp
  */
 struct PointCloudEigen
 {
@@ -51,7 +53,7 @@ struct PointCloudEigen
  *
  * \exception std::exception If less than 3 points are provided.
  *
- * \ingroup mp2p_icp_grp
+ * \ingroup mp2p_icp_map_grp
  */
 PointCloudEigen estimate_points_eigen(
     const float* xs, const float* ys, const float* zs,

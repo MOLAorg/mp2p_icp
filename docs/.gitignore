@@ -1,0 +1,8 @@
+html
+source/xml-dir
+source/struct_*.rst
+source/namespace_*.rst
+source/class_*.rst
+source/enum_*.rst
+source/group_*.rst
+source/page_*.rst

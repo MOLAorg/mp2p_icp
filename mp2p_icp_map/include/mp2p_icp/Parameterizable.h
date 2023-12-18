@@ -38,7 +38,7 @@ class Parameterizable;
  * instances of derived classes to it, then optionally update variables via
  * updateVariable(), then call realize() for the changes to take effect.
  *
- * \ingroup mp2p_icp_grp
+ * \ingroup mp2p_icp_map_grp
  */
 class ParameterSource
 {
@@ -75,7 +75,7 @@ class ParameterSource
 /** Common base for classes allowing dynamic parameters as given by formulas,
  * possibly as functions of externally-provided variables.
  *
- * \ingroup mp2p_icp_grp
+ * \ingroup mp2p_icp_map_grp
  */
 class Parameterizable
 {

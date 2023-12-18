@@ -29,7 +29,7 @@
 
 namespace mp2p_icp
 {
-/** \addtogroup mp2p_icp_grp
+/** \addtogroup mp2p_icp_map_grp
  * @{
  */
 

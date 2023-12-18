@@ -3,7 +3,8 @@ CMakeLists.txt.user*
 CMakeFiles
 CMakeScripts
 Testing
-build*
+build
+build-*
 Makefile
 cmake_install.cmake
 install_manifest.txt

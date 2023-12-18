@@ -28,6 +28,10 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/core/initializer.h>
 
+/** \defgroup mp2p_icp_grp mp2p_icp library
+ * Main library for ICP components and pipelines.
+ */
+
 MRPT_INITIALIZER(register_mp2p_icp)
 {
     using mrpt::rtti::registerClass;

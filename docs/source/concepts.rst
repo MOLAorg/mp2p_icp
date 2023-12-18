@@ -1,17 +1,9 @@
-.. _mp2p-icp:
+.. _concepts:
 
-.. index::
-   single: mp2p-icp
-   module: mp2p-icp
+=============
+Concepts
+=============
 
-======================
-Library: mp2p-icp
-======================
-
-A repertory of multi-primitive-to-primitive (MP2P) matchers, optimizers, and ICP-related 
-algorithms and data structures written in C++.
-
-.. contents:: :local:
 
 1. Data structures
 ####################
@@ -25,13 +17,13 @@ The basic data class is ``metric_map_t``. It comprises:
 
   - Other geometric entities: lines, planes.
 
-.. image:: ../../modules/mp2p_icp/docs/metric_map_t_with_details.png
+.. image:: imgs/metric_map_t_with_details.png
   :width: 600
 
 Pairings
 -------------
 
-.. image:: ../../modules/mp2p_icp/docs/Pairings.png
+.. image:: imgs/Pairings.png
   :width: 400
 
 
@@ -45,3 +37,4 @@ Write me!
 ###################################
 
 Write me!
+
