@@ -11,4 +11,5 @@ mola_add_executable(
     mp2p_icp
     mrpt::tclap
     mrpt::gui
+    Threads::Threads
   )

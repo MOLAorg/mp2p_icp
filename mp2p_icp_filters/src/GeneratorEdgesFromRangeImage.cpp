@@ -66,8 +66,8 @@ void GeneratorEdgesFromRangeImage::initialize(const mrpt::containers::yaml& c)
 }
 
 bool GeneratorEdgesFromRangeImage::filterRotatingScan(  //
-    const mrpt::obs::CObservationRotatingScan& pc,
-    mp2p_icp::metric_map_t&                    out) const
+    const mrpt::obs::CObservationRotatingScan& pc, mp2p_icp::metric_map_t& out,
+    const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
 #if MRPT_VERSION >= 0x020b04
     constexpr int FIXED_POINT_BITS = 8;
@@ -120,7 +120,11 @@ bool GeneratorEdgesFromRangeImage::filterRotatingScan(  //
             if (scoreSqr > paramsEdges_.score_threshold)
             {
                 // this point passes:
-                outPc->insertPoint(pc.organizedPoints(r, i));
+                if (robotPose)
+                    outPc->insertPoint(
+                        robotPose->composePoint(pc.organizedPoints(r, i)));
+                else
+                    outPc->insertPoint(pc.organizedPoints(r, i));
             }
         }
 

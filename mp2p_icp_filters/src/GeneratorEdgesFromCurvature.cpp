@@ -39,7 +39,8 @@ void GeneratorEdgesFromCurvature::initialize(const mrpt::containers::yaml& c)
 }
 
 void GeneratorEdgesFromCurvature::process(
-    const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out) const
+    const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
+    const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
     MRPT_START
     using namespace mrpt::obs;
@@ -62,7 +63,7 @@ void GeneratorEdgesFromCurvature::process(
     if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_)) return;
 
     if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
-        processed = filterRotatingScan(*oRS, out);
+        processed = filterRotatingScan(*oRS, out, robotPose);
 
     // done?
     if (processed) return;  // we are done.
@@ -93,8 +94,8 @@ void GeneratorEdgesFromCurvature::process(
 }
 
 bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
-    const mrpt::obs::CObservationRotatingScan& pc,
-    mp2p_icp::metric_map_t&                    out) const
+    const mrpt::obs::CObservationRotatingScan& pc, mp2p_icp::metric_map_t& out,
+    const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
 #if MRPT_VERSION >= 0x020b04
     auto outPc = mrpt::maps::CSimplePointsMap::Create();
@@ -139,7 +140,11 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
             if (std::abs(score) < paramsEdges_.max_cosine * v1n * v2n)
             {
                 // this point passes:
-                outPc->insertPoint(pc.organizedPoints(r, i));
+                if (robotPose)
+                    outPc->insertPoint(
+                        robotPose->composePoint(pc.organizedPoints(r, i)));
+                else
+                    outPc->insertPoint(pc.organizedPoints(r, i));
             }
         }
 

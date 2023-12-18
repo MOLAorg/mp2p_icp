@@ -54,7 +54,8 @@ void Generator::initialize(const mrpt::containers::yaml& c)
 }
 
 void Generator::process(
-    const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out) const
+    const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
+    const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
     MRPT_START
     using namespace mrpt::obs;
@@ -79,19 +80,20 @@ void Generator::process(
         o.load();
 
         if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
-            processed = filterRotatingScan(*oRS, out);
+            processed = filterRotatingScan(*oRS, out, robotPose);
         else if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
         {
             ASSERT_(o0->pointcloud);
-            processed = filterPointCloud(*o0->pointcloud, o0->sensorPose, out);
+            processed = filterPointCloud(
+                *o0->pointcloud, o0->sensorPose, out, robotPose);
         }
         else if (auto o1 = dynamic_cast<const CObservation2DRangeScan*>(&o); o1)
-            processed = filterScan2D(*o1, out);
+            processed = filterScan2D(*o1, out, robotPose);
         else if (auto o2 = dynamic_cast<const CObservation3DRangeScan*>(&o); o2)
-            processed = filterScan3D(*o2, out);
+            processed = filterScan3D(*o2, out, robotPose);
         else if (auto o3 = dynamic_cast<const CObservationVelodyneScan*>(&o);
                  o3)
-            processed = filterVelodyneScan(*o3, out);
+            processed = filterVelodyneScan(*o3, out, robotPose);
 
         // done?
         if (processed)
@@ -132,6 +134,7 @@ void Generator::process(
 
             mrpt::obs::T3DPointsProjectionParams pp;
             pp.takeIntoAccountSensorPoseOnRobot = true;
+            pp.robotPoseInTheWorld              = robotPose;
             const_cast<mrpt::obs::CObservation3DRangeScan*>(obs3D)
                 ->unprojectInto(tmpMap, pp);
 
@@ -140,7 +143,7 @@ void Generator::process(
         else
         {
             // General case:
-            const bool insertDone = o.insertObservationInto(*outPc);
+            const bool insertDone = o.insertObservationInto(*outPc, robotPose);
 
             if (!insertDone && params_.throw_on_unhandled_observation_class)
             {
@@ -204,7 +207,7 @@ void Generator::process(
         o.load();
 
         // General case:
-        const bool insertDone = o.insertObservationInto(*outMap);
+        const bool insertDone = o.insertObservationInto(*outMap, robotPose);
 
         if (!insertDone && params_.throw_on_unhandled_observation_class)
         {
@@ -223,29 +226,33 @@ void Generator::process(
 }
 
 bool Generator::filterScan2D(  //
-    [[maybe_unused]] const mrpt::obs::CObservation2DRangeScan& pc,
-    [[maybe_unused]] mp2p_icp::metric_map_t&                   out) const
+    [[maybe_unused]] const mrpt::obs::CObservation2DRangeScan&  pc,
+    [[maybe_unused]] mp2p_icp::metric_map_t&                    out,
+    [[maybe_unused]] const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
     return false;  // Not implemented
 }
 
 bool Generator::filterVelodyneScan(  //
     [[maybe_unused]] const mrpt::obs::CObservationVelodyneScan& pc,
-    [[maybe_unused]] mp2p_icp::metric_map_t&                    out) const
+    [[maybe_unused]] mp2p_icp::metric_map_t&                    out,
+    [[maybe_unused]] const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
     return false;  // Not implemented
 }
 
 bool Generator::filterScan3D(  //
-    [[maybe_unused]] const mrpt::obs::CObservation3DRangeScan& pc,
-    [[maybe_unused]] mp2p_icp::metric_map_t&                   out) const
+    [[maybe_unused]] const mrpt::obs::CObservation3DRangeScan&  pc,
+    [[maybe_unused]] mp2p_icp::metric_map_t&                    out,
+    [[maybe_unused]] const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
     return false;  // Not implemented
 }
 
 bool Generator::filterPointCloud(  //
     const mrpt::maps::CPointsMap& pc, const mrpt::poses::CPose3D& sensorPose,
-    mp2p_icp::metric_map_t& out) const
+    mp2p_icp::metric_map_t&                    out,
+    const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc;
@@ -267,49 +274,57 @@ bool Generator::filterPointCloud(  //
         out.layers[params_.target_layer] = outPc;
     }
 
-    outPc->insertAnotherMap(&pc, sensorPose);
+    const mrpt::poses::CPose3D p =
+        robotPose ? robotPose.value() + sensorPose : sensorPose;
+
+    outPc->insertAnotherMap(&pc, p);
 
     return true;
 }
 
 bool Generator::filterRotatingScan(  //
     [[maybe_unused]] const mrpt::obs::CObservationRotatingScan& pc,
-    [[maybe_unused]] mp2p_icp::metric_map_t&                    out) const
+    [[maybe_unused]] mp2p_icp::metric_map_t&                    out,
+    [[maybe_unused]] const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
     return false;  // Not implemented
 }
 
 void mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
-    mp2p_icp::metric_map_t& output)
+    mp2p_icp::metric_map_t&                    output,
+    const std::optional<mrpt::poses::CPose3D>& robotPose)
 {
     ASSERT_(!generators.empty());
     for (const auto& g : generators)
     {
         ASSERT_(g.get() != nullptr);
-        g->process(obs, output);
+        g->process(obs, output, robotPose);
     }
 }
 
 mp2p_icp::metric_map_t mp2p_icp_filters::apply_generators(
-    const GeneratorSet& generators, const mrpt::obs::CObservation& obs)
+    const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
+    const std::optional<mrpt::poses::CPose3D>& robotPose)
 {
     mp2p_icp::metric_map_t pc;
-    apply_generators(generators, obs, pc);
+    apply_generators(generators, obs, pc, robotPose);
     return pc;
 }
 
 mp2p_icp::metric_map_t mp2p_icp_filters::apply_generators(
-    const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf)
+    const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf,
+    const std::optional<mrpt::poses::CPose3D>& robotPose)
 {
     mp2p_icp::metric_map_t pc;
-    apply_generators(generators, sf, pc);
+    apply_generators(generators, sf, pc, robotPose);
     return pc;
 }
 
 void mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf,
-    mp2p_icp::metric_map_t& output)
+    mp2p_icp::metric_map_t&                    output,
+    const std::optional<mrpt::poses::CPose3D>& robotPose)
 {
     ASSERT_(!generators.empty());
     for (const auto& g : generators)
@@ -318,7 +333,7 @@ void mp2p_icp_filters::apply_generators(
         for (const auto& obs : sf)
         {
             if (!obs) continue;
-            g->process(*obs, output);
+            g->process(*obs, output, robotPose);
         }
     }
 }

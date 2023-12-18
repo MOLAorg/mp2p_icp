@@ -48,8 +48,9 @@ class GeneratorEdgesFromCurvature : public mp2p_icp_filters::Generator
     ParametersEdges paramsEdges_;
 
     void process(
-        const mrpt::obs::CObservation& input_raw,
-        mp2p_icp::metric_map_t&        inOut) const override;
+        const mrpt::obs::CObservation& input_raw, mp2p_icp::metric_map_t& inOut,
+        const std::optional<mrpt::poses::CPose3D>& robotPose =
+            std::nullopt) const override;
 
     /** @} */
 
@@ -57,7 +58,9 @@ class GeneratorEdgesFromCurvature : public mp2p_icp_filters::Generator
     // To be overrided in derived classes, if implemented:
     bool filterRotatingScan(
         const mrpt::obs::CObservationRotatingScan& pc,
-        mp2p_icp::metric_map_t&                    out) const override;
+        mp2p_icp::metric_map_t&                    out,
+        const std::optional<mrpt::poses::CPose3D>& robotPose =
+            std::nullopt) const override;
 };
 
 /** @} */

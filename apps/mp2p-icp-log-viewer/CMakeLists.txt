@@ -9,7 +9,6 @@ mola_add_executable(
     main.cpp
   LINK_LIBRARIES
     mp2p_icp
-#    mp2p_icp_filters
     mrpt::tclap
     mrpt::gui
     Threads::Threads

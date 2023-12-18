@@ -103,12 +103,14 @@ void mp2p_icp_filters::simplemap_to_metricmap(
 #endif
         ASSERT_(pose);
         ASSERT_(sf);
+        const mrpt::poses::CPose3D robotPose = pose->getMeanVal();
+
         for (const auto& obs : *sf)
         {
             ASSERT_(obs);
             obs->load();
 
-            mp2p_icp_filters::apply_generators(generators, *obs, mm);
+            mp2p_icp_filters::apply_generators(generators, *obs, mm, robotPose);
             mp2p_icp_filters::apply_filter_pipeline(filters, mm);
 
             obs->unload();
