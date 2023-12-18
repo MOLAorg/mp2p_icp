@@ -14,6 +14,7 @@
 
 #include <mp2p_icp/Parameterizable.h>
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/obs/obs_frwds.h>
@@ -77,7 +78,7 @@ void apply_filter_pipeline(
  * yaml node.
  * Returned filters are already initialize()'d.
  */
-FilterPipeline filter_pipeline_from_yaml(
+[[nodiscard]] FilterPipeline filter_pipeline_from_yaml(
     const mrpt::containers::yaml&       c,
     const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 
@@ -88,7 +89,7 @@ FilterPipeline filter_pipeline_from_yaml(
  *  Refer to YAML file examples.
  * Returned filters are already initialize()'d.
  */
-FilterPipeline filter_pipeline_from_yaml_file(
+[[nodiscard]] FilterPipeline filter_pipeline_from_yaml_file(
     const std::string&                  filename,
     const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 

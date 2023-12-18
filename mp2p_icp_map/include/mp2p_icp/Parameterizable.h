@@ -54,6 +54,14 @@ class ParameterSource
         variables_[variable] = value;
     }
 
+    /** Like updateVariable(), accepting several pairs of names-values */
+    void updateVariables(
+        const std::vector<std::pair<std::string, double>>& nameValuePairs)
+    {
+        for (const auto& [name, value] : nameValuePairs)
+            updateVariable(name, value);
+    }
+
     void realize();
 
     std::string printVariableValues() const;

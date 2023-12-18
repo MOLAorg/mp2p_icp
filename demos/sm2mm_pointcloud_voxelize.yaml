@@ -1,0 +1,22 @@
+# -----------------------------------------------------------------------------
+# Pipeline definition file for sm2mm (simplemap-to-metricmap)
+#
+# See: https://github.com/MOLAorg/mp2p_icp/tree/master/apps/sm2mm
+#
+# Explanation of this particular pipeline:
+#  - Generators: empty, so the default generator is used (everything in one 
+#                layer named 'raw' with all points).
+#  - Filters: Just one downsampling filter.
+# -----------------------------------------------------------------------------
+
+filters:
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      input_pointcloud_layer: 'raw'
+      output_pointcloud_layer: 'decimated'
+      voxel_filter_resolution: 0.10  # [m]
+
+  - class_name: mp2p_icp_filters::FilterDeleteLayer
+    params:
+      # one or more layers to remove
+      pointcloud_layer_to_remove: ['raw']
