@@ -15,6 +15,7 @@
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/system/COutputLogger.h>
 #include <mrpt/system/filesystem.h>
 
 // CLI flags:
@@ -44,6 +45,16 @@ static TCLAP::ValueArg<std::string> argPipeline(
     "https://github.com/MOLAorg/mp2p_icp/tree/master/apps/sm2mm",
     false, "pipeline.yaml", "pipeline.yaml", cmd);
 
+static TCLAP::ValueArg<std::string> arg_verbosity_level(
+    "v", "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)",
+    false, "", "INFO", cmd);
+
+static TCLAP::SwitchArg argNoProgressBar(
+    "", "no-progress-bar",
+    "Disables the progress bar. Useful for cleaner output when using DEBUG "
+    "verbosity level.",
+    cmd);
+
 void run_sm_to_mm()
 {
     const auto& filSM = argInput.getValue();
@@ -72,8 +83,15 @@ void run_sm_to_mm()
 
     mp2p_icp::metric_map_t mm;
 
+    mrpt::system::VerbosityLevel logLevel;
+    {
+        using vl = mrpt::typemeta::TEnumType<mrpt::system::VerbosityLevel>;
+        logLevel = vl::name2value(arg_verbosity_level.getValue());
+    }
+
     mp2p_icp_filters::simplemap_to_metricmap(
-        sm, mm, yamlData, true /* show progress bar */);
+        sm, mm, yamlData, !argNoProgressBar.isSet(), {} /*custom vars*/,
+        logLevel);
 
     // Save as mm file:
     const auto filOut = argOutput.getValue();

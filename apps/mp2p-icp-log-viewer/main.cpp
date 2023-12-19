@@ -53,9 +53,6 @@ static TCLAP::ValueArg<std::string> argSingleFile(
     "f", "file", "Load just this one single log *.icplog file.", false,
     "log.icplog", "log.icplog", cmd);
 
-static TCLAP::ValueArg<std::string> argVerbosity(
-    "v", "verbose", "Verbosity level", false, "DEBUG", "DEBUG", cmd);
-
 static TCLAP::ValueArg<std::string> arg_plugins(
     "l", "load-plugins",
     "One or more (comma separated) *.so files to load as plugins", false,

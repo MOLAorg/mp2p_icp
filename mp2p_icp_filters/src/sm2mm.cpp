@@ -22,7 +22,8 @@
 void mp2p_icp_filters::simplemap_to_metricmap(
     const mrpt::maps::CSimpleMap& sm, mp2p_icp::metric_map_t& mm,
     const mrpt::containers::yaml& yamlData, bool showProgressBar,
-    const std::vector<std::pair<std::string, double>>& customVariables)
+    const std::vector<std::pair<std::string, double>>& customVariables,
+    const mrpt::system::VerbosityLevel                 verbosity)
 {
     mm.clear();
 
@@ -30,8 +31,8 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     mp2p_icp_filters::GeneratorSet generators;
     if (yamlData.has("generators"))
     {
-        generators =
-            mp2p_icp_filters::generators_from_yaml(yamlData["generators"]);
+        generators = mp2p_icp_filters::generators_from_yaml(
+            yamlData["generators"], verbosity);
     }
     else
     {
@@ -40,6 +41,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                   << std::endl;
 
         auto defaultGen = mp2p_icp_filters::Generator::Create();
+        defaultGen->setMinLoggingLevel(verbosity);
         defaultGen->initialize({});
         generators.push_back(defaultGen);
     }
@@ -48,8 +50,8 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     mp2p_icp_filters::FilterPipeline filters;
     if (yamlData.has("filters"))
     {
-        filters =
-            mp2p_icp_filters::filter_pipeline_from_yaml(yamlData["filters"]);
+        filters = mp2p_icp_filters::filter_pipeline_from_yaml(
+            yamlData["filters"], verbosity);
     }
     else
     {

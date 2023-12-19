@@ -15,6 +15,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CSimpleMap.h>
+#include <mrpt/system/COutputLogger.h>
 
 #include <string>
 #include <utility>
@@ -37,7 +38,8 @@ namespace mp2p_icp_filters
 void simplemap_to_metricmap(
     const mrpt::maps::CSimpleMap& sm, mp2p_icp::metric_map_t& outMap,
     const mrpt::containers::yaml& pipeline, bool showProgressBar = false,
-    const std::vector<std::pair<std::string, double>>& customVariables = {});
+    const std::vector<std::pair<std::string, double>>& customVariables = {},
+    const mrpt::system::VerbosityLevel verbosity = mrpt::system::LVL_INFO);
 
 /** @} */
 

@@ -66,6 +66,10 @@ void Generator::process(
 
     const auto obsClassName = o.GetRuntimeClass()->className;
 
+    MRPT_LOG_DEBUG_FMT(
+        "Processing observation type='%s' label='%s'", obsClassName,
+        o.sensorLabel.c_str());
+
     // default: use point clouds:
     if (params_.metric_map_definition_ini_file.empty())
     {
@@ -271,6 +275,11 @@ bool Generator::filterPointCloud(  //
         outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
             pc.GetRuntimeClass()->ptrCreateObject());
         ASSERT_(outPc);
+
+        MRPT_LOG_DEBUG_FMT(
+            "[filterPointCloud] Created new layer '%s' of type '%s'",
+            params_.target_layer.c_str(), outPc->GetRuntimeClass()->className);
+
         out.layers[params_.target_layer] = outPc;
     }
 
