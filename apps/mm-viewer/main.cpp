@@ -35,9 +35,9 @@ constexpr int         MID_FONT_SIZE = 14;
 // =========== Declare supported cli switches ===========
 static TCLAP::CmdLine cmd(APP_NAME);
 
-static TCLAP::ValueArg<std::string> argMapFile(
-    "i", "input", "Load this metric map file (*.mm)", false, "myMap.mm",
-    "myMap.mm", cmd);
+static TCLAP::UnlabeledValueArg<std::string> argMapFile(
+    "input", "Load this metric map file (*.mm)", false, "myMap.mm", "myMap.mm",
+    cmd);
 
 static TCLAP::ValueArg<std::string> arg_plugins(
     "l", "load-plugins",
