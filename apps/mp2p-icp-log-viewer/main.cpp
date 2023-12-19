@@ -30,6 +30,7 @@
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
 #include <mrpt/system/progress.h>
+#include <mrpt/system/string_utils.h>  // unitsFormat()
 
 #include <iostream>
 
@@ -767,8 +768,10 @@ void rebuild_3d_view()
                 pc)
             {
                 cb->setCaption(
-                    lyName + " | "s + std::to_string(pc->size()) + " points"s +
-                    " | class="s + pc->GetRuntimeClass()->className);
+                    lyName + " | "s +
+                    mrpt::system::unitsFormat(static_cast<double>(pc->size())) +
+                    " points"s + " | class="s +
+                    pc->GetRuntimeClass()->className);
             }
             else
             {
@@ -824,8 +827,11 @@ void rebuild_3d_view()
                 pc)
             {
                 cb->setCaption(
-                    lyName + " | "s + std::to_string(pc->size()) + " points"s +
-                    " | class="s + pc->GetRuntimeClass()->className);
+                    lyName + " | "s +
+                    mrpt::system::unitsFormat(
+                        static_cast<double>(pc->size()), 2, false) +
+                    " points"s + " | class="s +
+                    pc->GetRuntimeClass()->className);
             }
             else
             {
@@ -885,7 +891,7 @@ void rebuild_3d_view()
         lbDepthFieldMid->setCaption(
             mrpt::format("Center depth clip plane: %f", depthFieldMid));
         lbDepthFieldThickness->setCaption(
-            mrpt::format("Max-Min depth thickness:%f", depthFieldThickness));
+            mrpt::format("Max-Min depth thickness: %f", depthFieldThickness));
         lbDepthFieldValues->setCaption(mrpt::format(
             "Depth field: near plane=%f far plane=%f", clipNear, clipFar));
 

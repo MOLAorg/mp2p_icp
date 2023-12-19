@@ -37,6 +37,16 @@ struct render_params_planes_t
     double            halfWidth   = 1.0;
     double            gridSpacing = 0.25;
     mrpt::img::TColor color{0xff, 0xff, 0xff, 0xff};
+
+    bool operator==(const render_params_planes_t& o) const
+    {
+        return visible == o.visible && halfWidth == o.halfWidth &&
+               gridSpacing == o.gridSpacing && color == o.color;
+    }
+    bool operator!=(const render_params_planes_t& o) const
+    {
+        return !(*this == o);
+    }
 };
 
 /** Used in metric_map_t::get_visualization() */
@@ -48,6 +58,16 @@ struct render_params_lines_t
     mrpt::img::TColor color{0xff, 0x00, 0x00, 0xff};
     double            length = 20.0;  //!< all lines with same length
     std::optional<std::vector<double>> lengths;  //!< individual lengths
+
+    bool operator==(const render_params_lines_t& o) const
+    {
+        return visible == o.visible && length == o.length &&
+               lengths == o.lengths && color == o.color;
+    }
+    bool operator!=(const render_params_lines_t& o) const
+    {
+        return !(*this == o);
+    }
 };
 
 enum class Coordinate : uint8_t
@@ -73,6 +93,15 @@ struct color_mode_t
      * and 5.0f and set the mrpt::img::cmHOT color map.
      */
     std::optional<float> colorMapMinCoord, colorMapMaxCoord;
+
+    bool operator==(const color_mode_t& o) const
+    {
+        return colorMap == o.colorMap &&
+               recolorizeByCoordinate == o.recolorizeByCoordinate &&
+               colorMapMinCoord == o.colorMapMinCoord &&
+               colorMapMaxCoord == o.colorMapMaxCoord;
+    }
+    bool operator!=(const color_mode_t& o) const { return !(*this == o); }
 };
 
 /** Rendering options for each point layer, see
@@ -93,6 +122,17 @@ struct render_params_point_layer_t
     std::optional<color_mode_t> colorMode;
 
     bool render_voxelmaps_as_points = false;
+
+    bool operator==(const render_params_point_layer_t& o) const
+    {
+        return pointSize == o.pointSize && color == o.color &&
+               colorMode == o.colorMode &&
+               render_voxelmaps_as_points == o.render_voxelmaps_as_points;
+    }
+    bool operator!=(const render_params_point_layer_t& o) const
+    {
+        return !(*this == o);
+    }
 };
 
 /** Used in metric_map_t::get_visualization() */
@@ -111,6 +151,16 @@ struct render_params_points_t
     /** If not empty, only the layers defined as keys will be visible, each one
      * with its own set of parameters. */
     std::map<layer_name_t, render_params_point_layer_t> perLayer;
+
+    bool operator==(const render_params_points_t& o) const
+    {
+        return visible == o.visible && allLayers == o.allLayers &&
+               perLayer == o.perLayer;
+    }
+    bool operator!=(const render_params_points_t& o) const
+    {
+        return !(*this == o);
+    }
 };
 
 /** Used in metric_map_t::get_visualization() */
@@ -121,6 +171,12 @@ struct render_params_t
     render_params_planes_t planes;
     render_params_lines_t  lines;
     render_params_points_t points;
+
+    bool operator==(const render_params_t& o) const
+    {
+        return planes == o.planes && lines == o.lines && points == o.points;
+    }
+    bool operator!=(const render_params_t& o) const { return !(*this == o); }
 };
 
 struct render_params_pairings_pt2pt_t

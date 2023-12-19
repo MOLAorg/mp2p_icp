@@ -23,6 +23,7 @@
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/serialization/stl_serialization.h>
+#include <mrpt/system/string_utils.h>  // unitsFormat()
 
 #include <algorithm>
 #include <iterator>
@@ -441,7 +442,9 @@ std::string metric_map_t::contents_summary() const
     if (nPts != 0 || nVoxels != 0)
     {
         retAppend(
-            std::to_string(nPts) + " points, "s + std::to_string(nVoxels) +
+            mrpt::system::unitsFormat(static_cast<double>(nPts), 2, false) +
+            " points, "s +
+            mrpt::system::unitsFormat(static_cast<double>(nVoxels), 2, false) +
             " voxels in "s + std::to_string(layers.size()) + " layers ("s);
 
         for (const auto& layer : layers)

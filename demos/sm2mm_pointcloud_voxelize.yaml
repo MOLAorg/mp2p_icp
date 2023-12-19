@@ -6,7 +6,8 @@
 # Explanation of this particular pipeline:
 #  - Generators: empty, so the default generator is used (everything in one 
 #                layer named 'raw' with all points).
-#  - Filters: Just one downsampling filter.
+#  - Filters: Just one downsampling filter, with an additional removal of close
+#             points (e.g. the robot body)
 # -----------------------------------------------------------------------------
 
 filters:
@@ -16,7 +17,15 @@ filters:
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.10  # [m]
 
+  - class_name: mp2p_icp_filters::FilterBoundingBox
+    params:
+      input_pointcloud_layer: 'decimated'
+      output_pointcloud_layer: 'filtered'
+      bounding_box_min: [-5, -5, -2]
+      bounding_box_max: [ 5,  5,  2]
+      keep_bbox_contents: false            # remove the bbox
+
   - class_name: mp2p_icp_filters::FilterDeleteLayer
     params:
       # one or more layers to remove
-      pointcloud_layer_to_remove: ['raw']
+      pointcloud_layer_to_remove: ['raw', 'decimated']

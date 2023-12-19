@@ -25,6 +25,7 @@
 #include <mrpt/opengl/stock_objects.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>  // loadPluginModules()
+#include <mrpt/system/string_utils.h>  // unitsFormat()
 
 #include <iostream>
 
@@ -47,18 +48,18 @@ static TCLAP::ValueArg<std::string> arg_plugins(
 #if MRPT_HAS_NANOGUI
 
 auto glVizMap = mrpt::opengl::CSetOfObjects::Create();
+auto glGrid   = mrpt::opengl::CGridPlaneXY::Create();
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
-std::array<nanogui::TextBox*, 5> lbMapStats = {
-    nullptr, nullptr, nullptr, nullptr, nullptr};
-nanogui::CheckBox* cbViewOrtho           = nullptr;
-nanogui::CheckBox* cbViewVoxelsAsPoints  = nullptr;
-nanogui::CheckBox* cbColorizeLocalMap    = nullptr;
-nanogui::CheckBox* cbColorizeGlobalMap   = nullptr;
-nanogui::Slider*   slPointSize           = nullptr;
-nanogui::Slider*   slMidDepthField       = nullptr;
-nanogui::Slider*   slThicknessDepthField = nullptr;
-nanogui::Label *   lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
+std::array<nanogui::TextBox*, 2> lbMapStats            = {nullptr, nullptr};
+nanogui::CheckBox*               cbViewOrtho           = nullptr;
+nanogui::CheckBox*               cbViewVoxelsAsPoints  = nullptr;
+nanogui::CheckBox*               cbColorizeMap         = nullptr;
+nanogui::CheckBox*               cbShowGroundGrid      = nullptr;
+nanogui::Slider*                 slPointSize           = nullptr;
+nanogui::Slider*                 slMidDepthField       = nullptr;
+nanogui::Slider*                 slThicknessDepthField = nullptr;
+nanogui::Label *lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr;
 
 std::vector<std::string>                  layerNames;
@@ -107,7 +108,6 @@ static void main_show_gui()
     // Add a background scene:
     auto scene = mrpt::opengl::COpenGLScene::Create();
     {
-        auto glGrid = mrpt::opengl::CGridPlaneXY::Create();
         glGrid->setColor_u8(0xff, 0xff, 0xff, 0x10);
         scene->insert(glGrid);
     }
@@ -138,6 +138,7 @@ static void main_show_gui()
             lb = w->add<nanogui::TextBox>("  ");
             lb->setFontSize(MID_FONT_SIZE);
             lb->setAlignment(nanogui::TextBox::Alignment::Left);
+            lb->setEditable(true);
         }
 
         //
@@ -201,13 +202,13 @@ static void main_show_gui()
         cbViewVoxelsAsPoints->setChecked(true);
         cbViewVoxelsAsPoints->setCallback([&](bool) { rebuild_3d_view(); });
 
-        cbColorizeLocalMap =
-            tab5->add<nanogui::CheckBox>("Recolorize local map");
-        cbColorizeLocalMap->setCallback([&](bool) { rebuild_3d_view(); });
+        cbColorizeMap = tab5->add<nanogui::CheckBox>("Recolorize map points");
+        cbColorizeMap->setChecked(true);
+        cbColorizeMap->setCallback([&](bool) { rebuild_3d_view(); });
 
-        cbColorizeGlobalMap =
-            tab5->add<nanogui::CheckBox>("Recolorize global map");
-        cbColorizeGlobalMap->setCallback([&](bool) { rebuild_3d_view(); });
+        cbShowGroundGrid = tab5->add<nanogui::CheckBox>("Show ground grid");
+        cbShowGroundGrid->setChecked(true);
+        cbShowGroundGrid->setCallback([&](bool) { rebuild_3d_view(); });
 
         // ----
         w->add<nanogui::Label>(" ");  // separator
@@ -257,17 +258,16 @@ void rebuild_3d_view()
 {
     using namespace std::string_literals;
 
-    glVizMap->clear();
-
     lbMapStats[0]->setValue(theMapFileName);
     lbMapStats[1]->setValue("Map: "s + theMap.contents_summary());
 
     // 3D objects -------------------
+    std::optional<mrpt::math::TBoundingBoxf> mapBbox;
 
     // the map:
-    mp2p_icp::render_params_t rpGlobal;
+    mp2p_icp::render_params_t rpMap;
 
-    rpGlobal.points.visible = false;
+    rpMap.points.visible = false;
     for (const auto& [lyName, cb] : cbLayersByName)
     {
         // Update stats in the cb label:
@@ -279,8 +279,19 @@ void rebuild_3d_view()
                 pc)
             {
                 cb->setCaption(
-                    lyName + " | "s + std::to_string(pc->size()) + " points"s +
-                    " | class="s + pc->GetRuntimeClass()->className);
+                    lyName + " | "s +
+                    mrpt::system::unitsFormat(
+                        static_cast<double>(pc->size()), 2, false) +
+                    " points"s + " | class="s +
+                    pc->GetRuntimeClass()->className);
+
+                const auto bb = pc->boundingBox();
+                if (!mapBbox.has_value())
+                    mapBbox = bb;
+                else
+                {
+                    mapBbox->unionWith(bb);
+                }
             }
             else
             {
@@ -292,33 +303,48 @@ void rebuild_3d_view()
 
         // show/hide:
         if (!cb->checked()) continue;  // hidden
-        rpGlobal.points.visible = true;
+        rpMap.points.visible = true;
 
-        auto& rpL                      = rpGlobal.points.perLayer[lyName];
+        auto& rpL                      = rpMap.points.perLayer[lyName];
         rpL.pointSize                  = slPointSize->value();
         rpL.render_voxelmaps_as_points = cbViewVoxelsAsPoints->checked();
 
-        if (cbColorizeGlobalMap->checked())
+        if (cbColorizeMap->checked())
         {
             auto& cm                  = rpL.colorMode.emplace();
-            cm.colorMap               = mrpt::img::TColormap::cmHOT;
+            cm.colorMap               = mrpt::img::TColormap::cmJET;
             cm.recolorizeByCoordinate = mp2p_icp::Coordinate::Z;
         }
     }
 
+    // Default color:
+    for (auto& [layer, rp] : rpMap.points.perLayer)
+        rp.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+
+    // Regenerate points opengl representation only if some parameter changed:
+    static std::optional<mp2p_icp::render_params_t> prevRenderParams;
+
+    if (!prevRenderParams.has_value() || prevRenderParams.value() != rpMap)
     {
-        // Show all or selected layers:
-        for (auto& rpL : rpGlobal.points.perLayer)
-            rpL.second.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+        prevRenderParams = rpMap;
+        glVizMap->clear();
 
-        auto glPts = theMap.get_visualization(rpGlobal);
+        auto glPts = theMap.get_visualization(rpMap);
 
         // Show all or selected layers:
-        rpGlobal.points.allLayers.color =
+        rpMap.points.allLayers.color =
             mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
 
         glVizMap->insert(glPts);
     }
+
+    // ground grid:
+    if (mapBbox)
+    {
+        glGrid->setPlaneLimits(
+            mapBbox->min.x, mapBbox->max.x, mapBbox->min.y, mapBbox->max.y);
+    }
+    glGrid->setVisibility(cbShowGroundGrid->checked());
 
     // Global view options:
     {
@@ -337,7 +363,7 @@ void rebuild_3d_view()
         lbDepthFieldMid->setCaption(
             mrpt::format("Center depth clip plane: %f", depthFieldMid));
         lbDepthFieldThickness->setCaption(
-            mrpt::format("Max-Min depth thickness:%f", depthFieldThickness));
+            mrpt::format("Max-Min depth thickness: %f", depthFieldThickness));
         lbDepthFieldValues->setCaption(mrpt::format(
             "Depth field: near plane=%f far plane=%f", clipNear, clipFar));
 
