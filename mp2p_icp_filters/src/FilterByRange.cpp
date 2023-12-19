@@ -44,7 +44,10 @@ void FilterByRange::Parameters::load_from_yaml(
     MCP_LOAD_REQ(c, keep_between);
 }
 
-FilterByRange::FilterByRange() = default;
+FilterByRange::FilterByRange()
+{
+    mrpt::system::COutputLogger::setLoggerName("FilterByRange");
+}
 
 void FilterByRange::initialize(const mrpt::containers::yaml& c)
 {
@@ -115,9 +118,13 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
                              // keep it:
                              outPc;
 
-        if (targetPc) targetPc->insertPointFast(xs[i], ys[i], zs[i]);
+        if (targetPc) targetPc->insertPointFrom(pc, i);
     }
     outPc->mark_as_modified();
+
+    MRPT_LOG_DEBUG_STREAM(
+        "output_layer=" << params_.output_pointcloud_layer
+                        << " type=" << outPc->GetRuntimeClass()->className);
 
     MRPT_END
 }

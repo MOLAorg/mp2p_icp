@@ -10,6 +10,16 @@
 #             points (e.g. the robot body)
 # -----------------------------------------------------------------------------
 
+# --------------------------------------------------------
+# 1) Generator (observation -> local frame metric maps)
+# --------------------------------------------------------
+#generators:
+#  - class_name: mp2p_icp_filters::Generator
+#    params: ~
+
+# --------------------------------------------------------
+# 2) Per local frame filtering
+# --------------------------------------------------------
 filters:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
@@ -31,3 +41,10 @@ filters:
     params:
       # one or more layers to remove
       pointcloud_layer_to_remove: ['raw', 'decimated']
+
+# -------------------------------------------------------------------
+# 3) Final, overall filter pipeline to apply to the whole metric map
+# -------------------------------------------------------------------
+#final_filters:
+#  - (none)
+

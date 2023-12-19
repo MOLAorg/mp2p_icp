@@ -137,7 +137,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     mrpt::maps::CPointsMap* outPc = GetOrCreatePointLayer(
         inOut, params_.output_pointcloud_layer,
         /*do not allow empty*/
-        false);
+        false,
+        /* create cloud of the same type */
+        pcPtrs.at(0)->GetRuntimeClass()->className);
 
     outPc->reserve(outPc->size() + reserveSize);
 
@@ -164,11 +166,11 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         // 2nd) collect grid results:
         for (const auto& [idx, vxl] : grid.pts_voxels)
         {
-            if (!vxl.point.has_value()) continue;
+            if (!vxl.pointIdx.has_value()) continue;
 
             nonEmptyVoxels++;
 
-            outPc->insertPoint(vxl.point.value());
+            outPc->insertPointFrom(*vxl.source.value(), vxl.pointIdx.value());
         }
     }
     else
@@ -264,7 +266,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
     MRPT_LOG_DEBUG_STREAM(
         "Voxel count=" << nonEmptyVoxels
-                       << ", output_layer=" << params_.output_pointcloud_layer);
+                       << ", output_layer=" << params_.output_pointcloud_layer
+                       << " type=" << outPc->GetRuntimeClass()->className
+                       << " useSingleGrid="
+                       << (useSingleGrid() ? "Yes" : "No"));
 
     MRPT_END
 }

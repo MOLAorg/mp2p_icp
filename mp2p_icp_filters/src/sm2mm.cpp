@@ -57,6 +57,14 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                   << std::endl;
     }
 
+    // Final, overall filters for the whole metric map:
+    mp2p_icp_filters::FilterPipeline finalFilters;
+    if (yamlData.has("final_filters"))
+    {
+        finalFilters = mp2p_icp_filters::filter_pipeline_from_yaml(
+            yamlData["final_filters"], options.verbosity);
+    }
+
     // sm2mm core code:
 
     // Parameters for twist, and possibly other user-provided variables.
@@ -149,5 +157,15 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                        mrpt::system::formatTimeInterval(totalTime).c_str());
             std::cout.flush();
         }
+    }  // end for each KF.
+
+    // Final optional filtering:
+    if (!finalFilters.empty())
+    {
+        std::cout << "Applying 'final_filters'..." << std::endl;
+
+        mp2p_icp_filters::apply_filter_pipeline(finalFilters, mm);
+
+        std::cout << "Done with 'final_filters'." << std::endl;
     }
 }

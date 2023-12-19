@@ -54,7 +54,7 @@ void PointCloudToVoxelGridSingle::processPointCloud(
         else
         {
             // insert new
-            pts_voxels[vxl_idx] = {mrpt::math::TPoint3Df(x, y, z), 0};
+            pts_voxels[vxl_idx] = {mrpt::math::TPoint3Df(x, y, z), i, &p, 0};
         }
     }
 }

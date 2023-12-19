@@ -111,11 +111,11 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
             if (pt.sqrNorm() < ptm1.sqrNorm())
             {
                 counterLarger++;
-                if (outPcLarger) outPcLarger->insertPoint(pt);
+                if (outPcLarger) outPcLarger->insertPointFrom(pc, i);
             }
             else
             {
-                if (outPcOther) outPcOther->insertPoint(pt);
+                if (outPcOther) outPcOther->insertPointFrom(pc, i);
             }
             continue;
         }
@@ -133,12 +133,12 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
         if (std::abs(score) < params_.max_cosine * v1n * v2n)
         {
             counterLarger++;
-            if (outPcLarger) outPcLarger->insertPoint(pt);
+            if (outPcLarger) outPcLarger->insertPointFrom(pc, i);
         }
         else
         {
             counterLess++;
-            if (outPcSmaller) outPcSmaller->insertPoint(pt);
+            if (outPcSmaller) outPcSmaller->insertPointFrom(pc, i);
         }
     }
 

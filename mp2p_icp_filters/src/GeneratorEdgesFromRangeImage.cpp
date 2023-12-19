@@ -120,7 +120,6 @@ bool GeneratorEdgesFromRangeImage::filterRotatingScan(  //
             if (scoreSqr > paramsEdges_.score_threshold)
             {
                 // this point passes:
-                MRPT_TODO("Handle intensity field");
                 if (robotPose)
                     outPc->insertPoint(
                         robotPose->composePoint(pc.organizedPoints(r, i)));

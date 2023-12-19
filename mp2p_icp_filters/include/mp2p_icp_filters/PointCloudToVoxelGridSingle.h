@@ -44,6 +44,8 @@ class PointCloudToVoxelGridSingle
     struct voxel_t
     {
         std::optional<mrpt::math::TPoint3Df> point;
+        std::optional<size_t>                pointIdx;  // Index in the source
+        std::optional<const mrpt::maps::CPointsMap*> source;
 
         /** Even if we keep the first point only, count them all. */
         uint32_t pointCount = 0;

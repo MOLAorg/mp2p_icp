@@ -133,7 +133,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         if (!ith.exhausted)
         {
             auto ptIdx = ith.voxel->indices[ith.nextIdx++];
-            outPc->insertPoint(xs[ptIdx], ys[ptIdx], zs[ptIdx]);
+            outPc->insertPointFrom(pc, ptIdx);
             anyInsertInTheRound = true;
 
             if (ith.nextIdx >= ith.voxel->indices.size()) ith.exhausted = true;

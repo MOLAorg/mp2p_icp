@@ -46,7 +46,10 @@ void FilterBoundingBox::Parameters::load_from_yaml(
     }
 }
 
-FilterBoundingBox::FilterBoundingBox() = default;
+FilterBoundingBox::FilterBoundingBox()
+{
+    mrpt::system::COutputLogger::setLoggerName("FilterBoundingBox");
+}
 
 void FilterBoundingBox::initialize(const mrpt::containers::yaml& c)
 {
@@ -98,7 +101,7 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
             continue;  // remove this point.
 
         // Otherwise, add it:
-        outPc->insertPointFast(xs[i], ys[i], zs[i]);
+        outPc->insertPointFrom(pc, i);
     }
     outPc->mark_as_modified();
 

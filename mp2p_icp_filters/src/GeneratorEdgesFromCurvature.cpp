@@ -140,12 +140,12 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
             if (std::abs(score) < paramsEdges_.max_cosine * v1n * v2n)
             {
                 // this point passes:
-                MRPT_TODO("Handle intensity field");
                 if (robotPose)
                     outPc->insertPoint(
                         robotPose->composePoint(pc.organizedPoints(r, i)));
                 else
                     outPc->insertPoint(pc.organizedPoints(r, i));
+                // TODO(jlbc) Output intensity?
             }
         }
 
