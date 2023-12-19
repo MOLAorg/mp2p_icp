@@ -59,6 +59,8 @@ nanogui::CheckBox*               cbShowGroundGrid      = nullptr;
 nanogui::Slider*                 slPointSize           = nullptr;
 nanogui::Slider*                 slMidDepthField       = nullptr;
 nanogui::Slider*                 slThicknessDepthField = nullptr;
+nanogui::Slider*                 slCameraFOV           = nullptr;
+nanogui::Label*                  lbCameraFOV           = nullptr;
 nanogui::Label *lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr;
 
@@ -131,7 +133,7 @@ static void main_show_gui()
         w->requestFocus();
         w->setLayout(new nanogui::BoxLayout(
             nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 5, 2));
-        w->setFixedWidth(450);
+        w->setFixedWidth(400);
 
         for (auto& lb : lbMapStats)
         {
@@ -146,19 +148,19 @@ static void main_show_gui()
 
         auto tabWidget = w->add<nanogui::TabWidget>();
 
-        auto* tab3 = tabWidget->createTab("Maps");
-        tab3->setLayout(new nanogui::GroupLayout());
+        auto* tab1 = tabWidget->createTab("View");
+        tab1->setLayout(new nanogui::GroupLayout());
 
-        auto* tab5 = tabWidget->createTab("View");
-        tab5->setLayout(new nanogui::GroupLayout());
+        auto* tab2 = tabWidget->createTab("Layers");
+        tab2->setLayout(new nanogui::GroupLayout());
 
         tabWidget->setActiveTab(0);
 
-        tab3->add<nanogui::Label>("Visible layers:");
+        tab2->add<nanogui::Label>("Visible layers:");
 
         for (size_t i = 0; i < layerNames.size(); i++)
         {
-            auto cb = tab3->add<nanogui::CheckBox>(layerNames.at(i));
+            auto cb = tab2->add<nanogui::CheckBox>(layerNames.at(i));
             cb->setChecked(true);
             cb->setCallback([](bool) { rebuild_3d_view(); });
             cb->setFontSize(13);
@@ -166,9 +168,9 @@ static void main_show_gui()
             cbLayersByName[layerNames.at(i)] = cb;
         }
 
-        // tab5: view
+        // tab
         {
-            auto pn = tab5->add<nanogui::Widget>();
+            auto pn = tab1->add<nanogui::Widget>();
             pn->setLayout(new nanogui::GridLayout(
                 nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
@@ -180,33 +182,39 @@ static void main_show_gui()
             slPointSize->setCallback([&](float) { rebuild_3d_view(); });
         }
 
-        lbDepthFieldMid = tab5->add<nanogui::Label>("Center depth clip plane:");
-        slMidDepthField = tab5->add<nanogui::Slider>();
+        lbDepthFieldMid = tab1->add<nanogui::Label>("Center depth clip plane:");
+        slMidDepthField = tab1->add<nanogui::Slider>();
         slMidDepthField->setRange({-2.0, 3.0});
         slMidDepthField->setValue(1.0f);
         slMidDepthField->setCallback([&](float) { rebuild_3d_view(); });
 
         lbDepthFieldThickness =
-            tab5->add<nanogui::Label>("Max-Min depth thickness:");
-        slThicknessDepthField = tab5->add<nanogui::Slider>();
+            tab1->add<nanogui::Label>("Max-Min depth thickness:");
+        slThicknessDepthField = tab1->add<nanogui::Slider>();
         slThicknessDepthField->setRange({-2.0, 4.0});
         slThicknessDepthField->setValue(3.0);
         slThicknessDepthField->setCallback([&](float) { rebuild_3d_view(); });
-        lbDepthFieldValues = tab5->add<nanogui::Label>(" ");
+        lbDepthFieldValues = tab1->add<nanogui::Label>(" ");
 
-        cbViewOrtho = tab5->add<nanogui::CheckBox>("Orthogonal view");
+        lbCameraFOV = tab1->add<nanogui::Label>("Camera FOV:");
+        slCameraFOV = tab1->add<nanogui::Slider>();
+        slCameraFOV->setRange({20.0f, 170.0f});
+        slCameraFOV->setValue(90.0f);
+        slCameraFOV->setCallback([&](float) { rebuild_3d_view(); });
+
+        cbViewOrtho = tab1->add<nanogui::CheckBox>("Orthogonal view");
         cbViewOrtho->setCallback([&](bool) { rebuild_3d_view(); });
 
         cbViewVoxelsAsPoints =
-            tab5->add<nanogui::CheckBox>("Render voxel maps as point clouds");
+            tab1->add<nanogui::CheckBox>("Render voxel maps as point clouds");
         cbViewVoxelsAsPoints->setChecked(true);
         cbViewVoxelsAsPoints->setCallback([&](bool) { rebuild_3d_view(); });
 
-        cbColorizeMap = tab5->add<nanogui::CheckBox>("Recolorize map points");
+        cbColorizeMap = tab1->add<nanogui::CheckBox>("Recolorize map points");
         cbColorizeMap->setChecked(true);
         cbColorizeMap->setCallback([&](bool) { rebuild_3d_view(); });
 
-        cbShowGroundGrid = tab5->add<nanogui::CheckBox>("Show ground grid");
+        cbShowGroundGrid = tab1->add<nanogui::CheckBox>("Show ground grid");
         cbShowGroundGrid->setChecked(true);
         cbShowGroundGrid->setCallback([&](bool) { rebuild_3d_view(); });
 
@@ -360,12 +368,17 @@ void rebuild_3d_view()
             std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
         const auto clipFar = depthFieldMid + 0.5 * depthFieldThickness;
 
+        const float cameraFOV = slCameraFOV->value();
+        win->camera().setCameraFOV(cameraFOV);
+
         lbDepthFieldMid->setCaption(
             mrpt::format("Center depth clip plane: %f", depthFieldMid));
         lbDepthFieldThickness->setCaption(
             mrpt::format("Max-Min depth thickness: %f", depthFieldThickness));
-        lbDepthFieldValues->setCaption(mrpt::format(
-            "Depth field: near plane=%f far plane=%f", clipNear, clipFar));
+        lbDepthFieldValues->setCaption(
+            mrpt::format("Depth field: near=%f far=%f", clipNear, clipFar));
+        lbCameraFOV->setCaption(
+            mrpt::format("Camera FOV: %.02f deg", cameraFOV));
 
         win->background_scene->getViewport()->setViewportClipDistances(
             clipNear, clipFar);
