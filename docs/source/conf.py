@@ -8,25 +8,24 @@
 
 # -- Path setup --------------------------------------------------------------
 
+from datetime import datetime
 import os
 import sys
 sys.path.insert(0, os.path.abspath('_ext'))
 
-#sys.path.insert(1, os.path.abspath('/PATH/TO/doxyrest_b/doxyrest/sphinx'))
+# sys.path.insert(1, os.path.abspath('/PATH/TO/doxyrest_b/doxyrest/sphinx'))
 # JLBC: Must be added to PYTHONPATH manually by the caller.
-
-from datetime import datetime
 
 
 # -- Project information -----------------------------------------------------
 
-project = u'MOLA'
-copyright = u'{year} The MOLA Authors.'.format(year=datetime.now().year)
+project = u'mp2p_icp'
+copyright = u'{year} The mp2p_icp authors.'.format(year=datetime.now().year)
 
 # The short X.Y version
-version = u'v0.1'
+# version = u'v0.1'
 # The full version, including alpha/beta/rc tags
-release = u'v0.1'
+# release = u'v0.1'
 
 # -- General configuration ---------------------------------------------------
 
@@ -49,10 +48,10 @@ html_last_updated_fmt = '%H:%M, %b %d, %Y'
 
 # For edit on github:
 html_context = {
-  'display_github': True,
-  'github_user': 'MOLAorg',
-  'github_repo': 'mola',
-  'github_version': 'master/docs/source/'
+    'display_github': True,
+    'github_user': 'MOLAorg',
+    'github_repo': 'mp2p_icp',
+    'github_version': 'master/docs/source/'
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -88,7 +87,7 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-#html_theme = 'alabaster'
+# html_theme = 'alabaster'
 html_theme = "sphinx_rtd_theme"
 
 
