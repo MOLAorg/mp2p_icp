@@ -217,8 +217,7 @@ void Generator::process(
         {
             THROW_EXCEPTION_FMT(
                 "Observation of type '%s' could not be converted inserted into "
-                "the "
-                "map of type '%s', so I do not know what to do with this "
+                "the map of type '%s', so I do not know what to do with this "
                 "observation!",
                 obsClassName, outMap->GetRuntimeClass()->className);
         }

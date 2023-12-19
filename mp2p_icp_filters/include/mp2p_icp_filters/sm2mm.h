@@ -26,6 +26,19 @@ namespace mp2p_icp_filters
 /** \addtogroup mp2p_icp_filters_grp
  *  @{ */
 
+/// Options for simplemap_to_metricmap()
+struct sm2mm_options_t
+{
+    sm2mm_options_t()  = default;
+    ~sm2mm_options_t() = default;
+
+    mrpt::system::VerbosityLevel verbosity       = mrpt::system::LVL_INFO;
+    bool                         showProgressBar = false;
+    std::vector<std::pair<std::string, double>> customVariables = {};
+    std::optional<size_t>                       start_index;
+    std::optional<size_t>                       end_index;
+};
+
 /** Utility function to build metric maps ("*.mm") from raw observations
  *  as a simple map ("*.sm"). For a ready-to-use CLI application exposing
  *  this function, as well as documentation on the meaning of each argument,
@@ -37,9 +50,8 @@ namespace mp2p_icp_filters
  */
 void simplemap_to_metricmap(
     const mrpt::maps::CSimpleMap& sm, mp2p_icp::metric_map_t& outMap,
-    const mrpt::containers::yaml& pipeline, bool showProgressBar = false,
-    const std::vector<std::pair<std::string, double>>& customVariables = {},
-    const mrpt::system::VerbosityLevel verbosity = mrpt::system::LVL_INFO);
+    const mrpt::containers::yaml& pipeline,
+    const sm2mm_options_t&        options = {});
 
 /** @} */
 

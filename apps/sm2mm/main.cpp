@@ -55,6 +55,18 @@ static TCLAP::SwitchArg argNoProgressBar(
     "verbosity level.",
     cmd);
 
+static TCLAP::ValueArg<size_t> argIndexFrom(
+    "", "from-index",
+    "If provided, the simplemap keyframes until this index will be discarded "
+    "and it will start at this point.",
+    false, 0, "0", cmd);
+
+static TCLAP::ValueArg<size_t> argIndexTo(
+    "", "to-index",
+    "If provided, the simplemap keyframes will be processed up to this index "
+    "only.",
+    false, 0, "0", cmd);
+
 void run_sm_to_mm()
 {
     const auto& filSM = argInput.getValue();
@@ -83,15 +95,22 @@ void run_sm_to_mm()
 
     mp2p_icp::metric_map_t mm;
 
-    mrpt::system::VerbosityLevel logLevel;
+    mrpt::system::VerbosityLevel logLevel = mrpt::system::LVL_INFO;
+    if (arg_verbosity_level.isSet())
     {
         using vl = mrpt::typemeta::TEnumType<mrpt::system::VerbosityLevel>;
         logLevel = vl::name2value(arg_verbosity_level.getValue());
     }
 
-    mp2p_icp_filters::simplemap_to_metricmap(
-        sm, mm, yamlData, !argNoProgressBar.isSet(), {} /*custom vars*/,
-        logLevel);
+    mp2p_icp_filters::sm2mm_options_t opts;
+    opts.showProgressBar = !argNoProgressBar.isSet();
+    opts.verbosity       = logLevel;
+
+    if (argIndexFrom.isSet()) opts.start_index = argIndexFrom.getValue();
+    if (argIndexTo.isSet()) opts.end_index = argIndexTo.getValue();
+
+    // Create the map:
+    mp2p_icp_filters::simplemap_to_metricmap(sm, mm, yamlData, opts);
 
     // Save as mm file:
     const auto filOut = argOutput.getValue();

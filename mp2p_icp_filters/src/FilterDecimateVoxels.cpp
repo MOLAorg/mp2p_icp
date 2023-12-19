@@ -94,15 +94,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
     checkAllParametersAreRealized();
 
-    // Out:
-    ASSERT_(!params_.output_pointcloud_layer.empty());
-
-    // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPc =
-        GetOrCreatePointLayer(inOut, params_.output_pointcloud_layer);
-
     // In:
     std::vector<mrpt::maps::CPointsMap*> pcPtrs;
+    size_t                               reserveSize = 0;
     for (const auto& inputLayer : params_.input_pointcloud_layer)
     {
         if (auto itLy = inOut.layers.find(inputLayer);
@@ -115,8 +109,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     inputLayer.c_str());
 
             pcPtrs.push_back(pcPtr);
-
-            outPc->reserve(outPc->size() + pcPtr->size() / 10);  // heuristic
+            reserveSize += pcPtr->size() / 10;  // heuristic
         }
         else
         {
@@ -134,6 +127,19 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             }
         }
     }
+
+    ASSERT_(!pcPtrs.empty());
+
+    // Out:
+    ASSERT_(!params_.output_pointcloud_layer.empty());
+
+    // Create if new: Append to existing layer, if already existed.
+    mrpt::maps::CPointsMap* outPc = GetOrCreatePointLayer(
+        inOut, params_.output_pointcloud_layer,
+        /*do not allow empty*/
+        false);
+
+    outPc->reserve(outPc->size() + reserveSize);
 
     // Do filter:
     size_t nonEmptyVoxels = 0;

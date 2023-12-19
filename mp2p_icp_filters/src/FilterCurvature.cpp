@@ -57,18 +57,27 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap* outPcLarger = GetOrCreatePointLayer(
         inOut, params_.output_layer_larger_curvature,
-        true /*allow empty name for nullptr*/);
+        /*allow empty name for nullptr*/
+        true,
+        /* create cloud of the same type */
+        pcPtr->GetRuntimeClass()->className);
     if (outPcLarger) outPcLarger->reserve(outPcLarger->size() + pc.size() / 10);
 
     mrpt::maps::CPointsMap* outPcSmaller = GetOrCreatePointLayer(
         inOut, params_.output_layer_smaller_curvature,
-        true /*allow empty name for nullptr*/);
+        /*allow empty name for nullptr*/
+        true,
+        /* create cloud of the same type */
+        pcPtr->GetRuntimeClass()->className);
     if (outPcSmaller)
         outPcSmaller->reserve(outPcSmaller->size() + pc.size() / 10);
 
     mrpt::maps::CPointsMap* outPcOther = GetOrCreatePointLayer(
         inOut, params_.output_layer_other,
-        true /*allow empty name for nullptr*/);
+        /*allow empty name for nullptr*/
+        true,
+        /* create cloud of the same type */
+        pcPtr->GetRuntimeClass()->className);
     if (outPcOther) outPcOther->reserve(outPcOther->size() + pc.size() / 10);
 
     ASSERTMSG_(

@@ -214,9 +214,11 @@ void metric_map_t::get_visualization_map_layer(
         pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
     }
 
-    if (!pts)
+    if (!pts ||
+        (p.colorMode.has_value() && p.colorMode->keep_original_cloud_color))
     {
-        // Not convertible to point maps: use its own default renderer:
+        // Not convertible to point maps or user selected their original colors,
+        // use its own default renderer:
         map->getVisualizationInto(o);
         return;
     }

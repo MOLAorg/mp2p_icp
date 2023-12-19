@@ -79,6 +79,9 @@ enum class Coordinate : uint8_t
 
 struct color_mode_t
 {
+    /** If set, keep the intensity or RGB channels from the original clouds */
+    bool keep_original_cloud_color = false;
+
     /** The colormap palette to use. */
     mrpt::img::TColormap colorMap = mrpt::img::cmHOT;
 
@@ -96,7 +99,8 @@ struct color_mode_t
 
     bool operator==(const color_mode_t& o) const
     {
-        return colorMap == o.colorMap &&
+        return keep_original_cloud_color == o.keep_original_cloud_color &&
+               colorMap == o.colorMap &&
                recolorizeByCoordinate == o.recolorizeByCoordinate &&
                colorMapMinCoord == o.colorMapMinCoord &&
                colorMapMaxCoord == o.colorMapMaxCoord;

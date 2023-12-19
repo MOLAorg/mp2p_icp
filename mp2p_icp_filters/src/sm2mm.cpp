@@ -21,9 +21,7 @@
 
 void mp2p_icp_filters::simplemap_to_metricmap(
     const mrpt::maps::CSimpleMap& sm, mp2p_icp::metric_map_t& mm,
-    const mrpt::containers::yaml& yamlData, bool showProgressBar,
-    const std::vector<std::pair<std::string, double>>& customVariables,
-    const mrpt::system::VerbosityLevel                 verbosity)
+    const mrpt::containers::yaml& yamlData, const sm2mm_options_t& options)
 {
     mm.clear();
 
@@ -32,7 +30,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     if (yamlData.has("generators"))
     {
         generators = mp2p_icp_filters::generators_from_yaml(
-            yamlData["generators"], verbosity);
+            yamlData["generators"], options.verbosity);
     }
     else
     {
@@ -41,7 +39,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                   << std::endl;
 
         auto defaultGen = mp2p_icp_filters::Generator::Create();
-        defaultGen->setMinLoggingLevel(verbosity);
+        defaultGen->setMinLoggingLevel(options.verbosity);
         defaultGen->initialize({});
         generators.push_back(defaultGen);
     }
@@ -51,7 +49,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     if (yamlData.has("filters"))
     {
         filters = mp2p_icp_filters::filter_pipeline_from_yaml(
-            yamlData["filters"], verbosity);
+            yamlData["filters"], options.verbosity);
     }
     else
     {
@@ -75,20 +73,27 @@ void mp2p_icp_filters::simplemap_to_metricmap(
          {"wy", .0},
          {"wz", .0}});
     ps.updateVariables({{"robot_x", .0}, {"robot_y", .0}, {"robot_z", .0}});
-    ps.updateVariables(customVariables);
+    ps.updateVariables(options.customVariables);
     ps.realize();
 
     // progress bar:
-    if (showProgressBar)
+    if (options.showProgressBar)
         std::cout << "\n";  // Needed for the VT100 codes below.
 
     const double tStart = mrpt::Clock::nowDouble();
 
-    const size_t nKFs  = sm.size();
-    size_t       curKF = 0;
-#if MRPT_VERSION >= 0x020b05
-    for (const auto& [pose, sf, twist] : sm)
+    size_t nKFs = sm.size();
+    if (options.end_index.has_value())
+        mrpt::keep_min(nKFs, *options.end_index + 1);
+
+    size_t curKF = 0;
+    if (options.start_index.has_value())
+        mrpt::keep_max(curKF, *options.start_index);
+
+    for (; curKF < nKFs; curKF++)
     {
+#if MRPT_VERSION >= 0x020b05
+        const auto& [pose, sf, twist] = sm.get(curKF);
         if (twist.has_value())
         {
             ps.updateVariables(
@@ -100,8 +105,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                  {"wz", twist->wz}});
         }
 #else
-    for (const auto& [pose, sf] : sm)
-    {
+        const auto& [pose, sf] = sm.get(curKF);
 #endif
         ASSERT_(pose);
         ASSERT_(sf);
@@ -126,7 +130,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         }
 
         // progress bar:
-        if (showProgressBar)
+        if (options.showProgressBar)
         {
             const size_t N  = nKFs;
             const double pc = (1.0 * curKF) / N;
@@ -145,7 +149,5 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                        mrpt::system::formatTimeInterval(totalTime).c_str());
             std::cout.flush();
         }
-
-        curKF++;
     }
 }

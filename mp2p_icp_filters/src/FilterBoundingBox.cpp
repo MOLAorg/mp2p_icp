@@ -75,8 +75,12 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(!params_.output_pointcloud_layer.empty());
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPc =
-        GetOrCreatePointLayer(inOut, params_.output_pointcloud_layer);
+    mrpt::maps::CPointsMap* outPc = GetOrCreatePointLayer(
+        inOut, params_.output_pointcloud_layer,
+        /*do not allow empty*/
+        false,
+        /* create cloud of the same type */
+        pcPtr->GetRuntimeClass()->className);
 
     outPc->reserve(outPc->size() + pc.size() / 10);
 

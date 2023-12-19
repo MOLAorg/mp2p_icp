@@ -51,16 +51,17 @@ auto glVizMap = mrpt::opengl::CSetOfObjects::Create();
 auto glGrid   = mrpt::opengl::CGridPlaneXY::Create();
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
-std::array<nanogui::TextBox*, 2> lbMapStats            = {nullptr, nullptr};
-nanogui::CheckBox*               cbViewOrtho           = nullptr;
-nanogui::CheckBox*               cbViewVoxelsAsPoints  = nullptr;
-nanogui::CheckBox*               cbColorizeMap         = nullptr;
-nanogui::CheckBox*               cbShowGroundGrid      = nullptr;
-nanogui::Slider*                 slPointSize           = nullptr;
-nanogui::Slider*                 slMidDepthField       = nullptr;
-nanogui::Slider*                 slThicknessDepthField = nullptr;
-nanogui::Slider*                 slCameraFOV           = nullptr;
-nanogui::Label*                  lbCameraFOV           = nullptr;
+std::array<nanogui::TextBox*, 2> lbMapStats                = {nullptr, nullptr};
+nanogui::CheckBox*               cbViewOrtho               = nullptr;
+nanogui::CheckBox*               cbViewVoxelsAsPoints      = nullptr;
+nanogui::CheckBox*               cbColorizeMap             = nullptr;
+nanogui::CheckBox*               cbKeepOriginalCloudColors = nullptr;
+nanogui::CheckBox*               cbShowGroundGrid          = nullptr;
+nanogui::Slider*                 slPointSize               = nullptr;
+nanogui::Slider*                 slMidDepthField           = nullptr;
+nanogui::Slider*                 slThicknessDepthField     = nullptr;
+nanogui::Slider*                 slCameraFOV               = nullptr;
+nanogui::Label*                  lbCameraFOV               = nullptr;
 nanogui::Label *lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr;
 
@@ -214,6 +215,12 @@ static void main_show_gui()
         cbColorizeMap->setChecked(true);
         cbColorizeMap->setCallback([&](bool) { rebuild_3d_view(); });
 
+        cbKeepOriginalCloudColors =
+            tab1->add<nanogui::CheckBox>("Keep original cloud colors");
+        cbKeepOriginalCloudColors->setChecked(false);
+        cbKeepOriginalCloudColors->setCallback(
+            [&](bool) { rebuild_3d_view(); });
+
         cbShowGroundGrid = tab1->add<nanogui::CheckBox>("Show ground grid");
         cbShowGroundGrid->setChecked(true);
         cbShowGroundGrid->setCallback([&](bool) { rebuild_3d_view(); });
@@ -254,7 +261,7 @@ static void main_show_gui()
         // None
     });
 
-    nanogui::mainloop(10 /*refresh Hz*/);
+    nanogui::mainloop(1 /*refresh Hz*/);
 
     nanogui::shutdown();
 }
@@ -322,6 +329,11 @@ void rebuild_3d_view()
             auto& cm                  = rpL.colorMode.emplace();
             cm.colorMap               = mrpt::img::TColormap::cmJET;
             cm.recolorizeByCoordinate = mp2p_icp::Coordinate::Z;
+        }
+        if (cbKeepOriginalCloudColors->checked())
+        {
+            auto& cm                     = rpL.colorMode.emplace();
+            cm.keep_original_cloud_color = true;
         }
     }
 
