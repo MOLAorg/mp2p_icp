@@ -72,6 +72,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
          {"wx", .0},
          {"wy", .0},
          {"wz", .0}});
+    ps.updateVariables({{"robot_x", .0}, {"robot_y", .0}, {"robot_z", .0}});
     ps.updateVariables(customVariables);
     ps.realize();
 
@@ -95,7 +96,6 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                  {"wx", twist->wx},
                  {"wy", twist->wy},
                  {"wz", twist->wz}});
-            ps.realize();
         }
 #else
     for (const auto& [pose, sf] : sm)
@@ -104,6 +104,13 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         ASSERT_(pose);
         ASSERT_(sf);
         const mrpt::poses::CPose3D robotPose = pose->getMeanVal();
+
+        // Update pose variables:
+        ps.updateVariables(
+            {{"robot_x", robotPose.x()},
+             {"robot_y", robotPose.y()},
+             {"robot_z", robotPose.z()}});
+        ps.realize();
 
         for (const auto& obs : *sf)
         {
@@ -127,7 +134,8 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             const double totalTime = ETA + (tNow - tStart);
 
             std::cout
-                << "\033[A\33[2KT\r"  // VT100 codes: cursor up and clear line
+                << "\033[A\33[2KT\r"  // VT100 codes: cursor up and clear
+                                      // line
                 << mrpt::system::progress(pc, 30)
                 << mrpt::format(
                        " %6zu/%6zu (%.02f%%) ETA=%s / T=%s\n", curKF, N,

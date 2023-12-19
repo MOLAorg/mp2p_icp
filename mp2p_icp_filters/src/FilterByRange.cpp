@@ -29,6 +29,18 @@ void FilterByRange::Parameters::load_from_yaml(
     DECLARE_PARAMETER_IN_REQ(c, range_min, parent);
     DECLARE_PARAMETER_IN_REQ(c, range_max, parent);
 
+    if (c.has("center"))
+    {
+        ASSERT_(
+            c["center"].isSequence() && c["center"].asSequence().size() == 3);
+
+        auto cc = c["center"].asSequence();
+
+        for (int i = 0; i < 3; i++)
+            parent.parseAndDeclareParameter(
+                cc.at(i).as<std::string>(), center[i]);
+    }
+
     MCP_LOAD_REQ(c, keep_between);
 }
 
@@ -83,7 +95,8 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     for (size_t i = 0; i < xs.size(); i++)
     {
         const float sqrNorm =
-            mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]).sqrNorm();
+            (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params_.center)
+                .sqrNorm();
 
         const bool isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
 

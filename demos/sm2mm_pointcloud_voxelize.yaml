@@ -17,13 +17,15 @@ filters:
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.10  # [m]
 
-  - class_name: mp2p_icp_filters::FilterBoundingBox
+  - class_name: mp2p_icp_filters::FilterByRange
     params:
       input_pointcloud_layer: 'decimated'
       output_pointcloud_layer: 'filtered'
-      bounding_box_min: [-5, -5, -2]
-      bounding_box_max: [ 5,  5,  2]
-      keep_bbox_contents: false            # remove the bbox
+      range_min: 0.0
+      range_max: 5.0
+      keep_between: false            # remove this range
+      # Measure distances from the moving robot pose:
+      center: [robot_x, robot_y, robot_z]
 
   - class_name: mp2p_icp_filters::FilterDeleteLayer
     params:

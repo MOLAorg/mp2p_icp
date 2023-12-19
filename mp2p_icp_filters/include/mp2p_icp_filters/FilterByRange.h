@@ -18,7 +18,9 @@
 namespace mp2p_icp_filters
 {
 /** Leaves (`keep_between`=true) or removes (`keep_between`=false)
- * the points with a range (distance from origin) in between a (min,max) range.
+ * the points with a range (distance from "center") in between a (min,max)
+ * range. By default, "center" is at (0,0,0) in the point cloud frame of
+ * reference.
  *
  * \ingroup mp2p_icp_filters_grp
  */
@@ -60,6 +62,16 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
 
         /** See explanation on top of FilterByRange */
         bool keep_between = true;
+
+        /** Ranges are measured from this center point.
+         * Can be defined as a function of the robot pose variables, e.g.:
+         * \code
+         * center: [0, 0, 0]
+         * # or:
+         * center: [robot_x, robot_y, robot_z]
+         * \endcode
+         */
+        mrpt::math::TPoint3Df center = {0, 0, 0};
     };
 
     /** Algorithm parameters */
