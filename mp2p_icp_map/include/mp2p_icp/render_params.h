@@ -97,13 +97,24 @@ struct color_mode_t
      */
     std::optional<float> colorMapMinCoord, colorMapMaxCoord;
 
+    /** If colorMapMinCoord & colorMapMaxCoord are not set, the limits will be
+     *  taken from the cloud bounding box. However, if this value is set
+     * (default), an outlier filter will be applied to prevent gross outliers to
+     * modify the coloring of the whole cloud. The option to disable it is
+     * provided since this has a non-negligible computational cost, which may be
+     * important for very large clouds.
+     */
+    std::optional<float> autoBoundingBoxOutliersPercentile = {0.025};
+
     bool operator==(const color_mode_t& o) const
     {
         return keep_original_cloud_color == o.keep_original_cloud_color &&
                colorMap == o.colorMap &&
                recolorizeByCoordinate == o.recolorizeByCoordinate &&
                colorMapMinCoord == o.colorMapMinCoord &&
-               colorMapMaxCoord == o.colorMapMaxCoord;
+               colorMapMaxCoord == o.colorMapMaxCoord &&
+               autoBoundingBoxOutliersPercentile ==
+                   o.autoBoundingBoxOutliersPercentile;
     }
     bool operator!=(const color_mode_t& o) const { return !(*this == o); }
 };

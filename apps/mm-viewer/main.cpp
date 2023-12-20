@@ -63,7 +63,7 @@ nanogui::Slider*                 slThicknessDepthField     = nullptr;
 nanogui::Slider*                 slCameraFOV               = nullptr;
 nanogui::Label*                  lbCameraFOV               = nullptr;
 nanogui::Label *lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
-               *lbDepthFieldThickness = nullptr;
+               *lbDepthFieldThickness = nullptr, *lbPointSize = nullptr;
 
 std::vector<std::string>                  layerNames;
 std::map<std::string, nanogui::CheckBox*> cbLayersByName;
@@ -72,6 +72,7 @@ mp2p_icp::metric_map_t theMap;
 std::string            theMapFileName = "unnamed.mm";
 
 static void rebuild_3d_view();
+static void onSaveLayers();
 
 static void loadMapFile(const std::string& mapFile)
 {
@@ -169,13 +170,20 @@ static void main_show_gui()
             cbLayersByName[layerNames.at(i)] = cb;
         }
 
+        {
+            tab2->add<nanogui::Label>(" ");  // separator
+            auto btnSave =
+                tab2->add<nanogui::Button>("Export marked layers...");
+            btnSave->setCallback([]() { onSaveLayers(); });
+        }
+
         // tab
         {
             auto pn = tab1->add<nanogui::Widget>();
             pn->setLayout(new nanogui::GridLayout(
                 nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
-            pn->add<nanogui::Label>("Point size");
+            lbPointSize = pn->add<nanogui::Label>("Point size");
 
             slPointSize = pn->add<nanogui::Slider>();
             slPointSize->setRange({1.0f, 10.0f});
@@ -324,6 +332,8 @@ void rebuild_3d_view()
         rpL.pointSize                  = slPointSize->value();
         rpL.render_voxelmaps_as_points = cbViewVoxelsAsPoints->checked();
 
+        lbPointSize->setCaption("Point size: " + std::to_string(rpL.pointSize));
+
         if (cbColorizeMap->checked())
         {
             auto& cm                  = rpL.colorMode.emplace();
@@ -394,6 +404,21 @@ void rebuild_3d_view()
 
         win->background_scene->getViewport()->setViewportClipDistances(
             clipNear, clipFar);
+    }
+}
+
+void onSaveLayers()
+{
+    const std::string outFile =
+        nanogui::file_dialog({{"txt", "(*.txt)"}}, true /*save*/);
+    if (outFile.empty()) return;
+
+    for (const auto& [lyName, cb] : cbLayersByName)
+    {
+        if (auto itL = theMap.layers.find(lyName); itL != theMap.layers.end())
+        {
+            itL->second->saveMetricMapRepresentationToFile(outFile);
+        }
     }
 }
 

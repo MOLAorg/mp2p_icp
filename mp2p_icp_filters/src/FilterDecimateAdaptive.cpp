@@ -121,10 +121,6 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
                    static_cast<float>(params_.desired_output_point_count)));
     }
 
-    const auto& xs = pc.getPointsBufferRef_x();
-    const auto& ys = pc.getPointsBufferRef_y();
-    const auto& zs = pc.getPointsBufferRef_z();
-
     bool anyInsertInTheRound = false;
 
     for (size_t i = 0; outPc->size() < params_.desired_output_point_count;)
