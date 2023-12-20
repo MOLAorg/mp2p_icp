@@ -6,3 +6,5 @@ source/class_*.rst
 source/enum_*.rst
 source/group_*.rst
 source/page_*.rst
+source/global.rst
+source/doxygen-index.rst
