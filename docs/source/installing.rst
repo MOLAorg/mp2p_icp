@@ -31,13 +31,13 @@ Get the build dependencies
 ----------------------------
 - A C++17 compiler
 - CMake >=3.4
-- MRPT >= 2.11.3
+- MRPT >= 2.11.5
 
 For modern Ubuntu distributions, install all dependencies with:
 
 .. code-block:: bash
 
-    # MRPT >2.1.0, for now from this PPA (or build from sources if preferred):
+    # MRPT, from this PPA, or from its ROS package, or build from sources if preferred:
     sudo add-apt-repository ppa:joseluisblancoc/mrpt
     sudo apt update
     sudo apt install libmrpt-dev mrpt-apps

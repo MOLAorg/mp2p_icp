@@ -29,7 +29,7 @@ endif()
 add_subdirectory(3rdparty)
 
 # find dependencies:
-find_package(MRPT 2.11.3 REQUIRED COMPONENTS containers tfest maps gui)
+find_package(MRPT 2.11.5 REQUIRED COMPONENTS containers tfest maps gui)
 find_package(Threads REQUIRED)
 find_package(TBB) # optional
 
