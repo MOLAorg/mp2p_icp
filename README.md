@@ -24,7 +24,7 @@ Jose-Luis Blanco-Claraco. "OLAE-ICP: Robust and fast alignment of geometric
 features with the optimal linear attitude estimator", Arxiv 2019.
 ```
 
-![mp2p_pairings](docs/mp2p_pairings.png)
+![mp2p_pairings](docs/source/imgs/mp2p_pairings.png)
 
 ## Introduction
 
