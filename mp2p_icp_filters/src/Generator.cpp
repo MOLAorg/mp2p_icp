@@ -102,7 +102,7 @@ void Generator::process(
         // done?
         if (processed)
         {
-            o.unload();
+            // o.unload();  // DON'T! We don't know who else is using the data
             return;  // we are done.
         }
 
@@ -159,7 +159,7 @@ void Generator::process(
             }
         }
 
-        o.unload();
+        // o.unload();  // DON'T! We don't know who else is using the data
     }
     else
     {
@@ -222,7 +222,7 @@ void Generator::process(
                 obsClassName, outMap->GetRuntimeClass()->className);
         }
 
-        o.unload();
+        // o.unload();  // DON'T! We don't know who else is using the data
     }
 
     MRPT_END
