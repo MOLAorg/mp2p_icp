@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *   A Modular Optimization framework for Localization and mApping  (MOLA)
- * Copyright (C) 2018-2023 University of Almeria
+ * Copyright (C) 2018-2024 University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 
