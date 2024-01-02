@@ -46,6 +46,7 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
 
     MCP_LOAD_OPT(c, silently_ignore_no_timestamps);
     MCP_LOAD_OPT(c, output_layer_class);
+    MCP_LOAD_OPT(c, skip_deskew);
 
     ASSERT_(c.has("twist") && c["twist"].isSequence());
     ASSERT_EQUAL_(c["twist"].asSequence().size(), 6UL);
@@ -111,10 +112,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     auto* out_Ts = outPc->getPointsBufferRef_timestamp();
 
     // Do we have input timestamps per point?
-    if (!Ts || Ts->empty())
+    if (!Ts || Ts->empty() || skip_deskew)
     {
         // not possible to do de-skew:
-        if (silently_ignore_no_timestamps)
+        if (silently_ignore_no_timestamps || skip_deskew)
         {
             // just copy points:
             const size_t n0 = outPc->size();
@@ -123,6 +124,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             {
                 outPc->setPointFast(n0 + i, xs[i], ys[i], zs[i]);
                 if (Is && out_Is) (*out_Is)[n0 + i] = (*Is)[i];
+                if (Rs && out_Rs) (*out_Rs)[n0 + i] = (*Rs)[i];
             }
         }
         else

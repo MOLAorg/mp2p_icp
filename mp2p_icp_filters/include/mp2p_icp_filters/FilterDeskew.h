@@ -48,7 +48,8 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      * params:
      *   input_pointcloud_layer: 'raw'
      *   output_pointcloud_layer: 'deskewed'
-     *   silently_ignore_no_timestamps: false
+     *   # silently_ignore_no_timestamps: false
+     *   # skip_deskew: false  # Can be enabled to bypass deskew
      *   # These (vx,...wz) are variable names that must be defined via the
      *   # mp2p_icp::Parameterizable API to update them dynamically.
      *   twist: [VX,VY,VZ,WX,WY,WZ]
@@ -76,6 +77,11 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      * contain timestamps.
      */
     bool silently_ignore_no_timestamps = false;
+
+    /** If enabled (set to true), no "de-skew" will be performed, and the input
+     *  points will be just copied into the output layer.
+     */
+    bool skip_deskew = false;
 
     /** The velocity (linear and angular) of the vehicle in the local
      * vehicle frame. See FilterDeskew::initialize for an example of how
