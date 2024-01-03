@@ -13,21 +13,13 @@
 
 
 # `mp2p_icp`
-A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++. 
+C++ libraries for multi primitive-to-primitive (MP2P) ICP algorithms and flexible point cloud processing pipelines. `mp2p_icp` is used in the [mola_lidar_odometry](https://github.com/MOLAorg/mola_lidar_odometry) framework:
 
-License: New BSD 3-Clause
+![mola_lidar_short_demo_stairs](https://github.com/MOLAorg/mp2p_icp/assets/5497818/af5c7250-85bf-4017-a983-4883ac9fb972)
 
-Documentation and C++ API:
-- [Main library documentation](https://docs.mola-slam.org/mp2p_icp/)
 
-The OLAE-ICP method is described in [this technical report](https://arxiv.org/abs/1906.10783):
-
-```
-Jose-Luis Blanco-Claraco. "OLAE-ICP: Robust and fast alignment of geometric
-features with the optimal linear attitude estimator", Arxiv 2019.
-```
-
-![mp2p_pairings](docs/source/imgs/mp2p_pairings.png)
+- [Main library documentation and C++ API](https://docs.mola-slam.org/mp2p_icp/)
+- License: New BSD 3-Clause
 
 ## Introduction
 
@@ -49,7 +41,7 @@ This project provides:
  * The library exposes both, complete iterative ICP algorithms, and the
  underlying optimal transformation estimators which are run at each ICP iteration.
 
-`mp2p_icp` is used in the [MOLA lidar-inertial odometry system](https://github.com/MOLAorg/mola_lidar_odometry).
+![mp2p_pairings](docs/source/imgs/mp2p_pairings.png)
 
 ## Implemented Optimal Transformation methods
  * `optimal_tf_olae()`: A novel algorithm that can recover the optimal attitude from a set
@@ -61,7 +53,12 @@ This project provides:
 
 ## Implemented ICP methods
 
- * `ICP_OLAE`: ICP for point clouds, planes, and lines. Uses `optimal_tf_olae()`.
+ * `ICP_OLAE`: ICP for point clouds, planes, and lines. Uses `optimal_tf_olae()`. The OLAE-ICP method is described in [this technical report](https://arxiv.org/abs/1906.10783):
+    ```
+    Jose-Luis Blanco-Claraco. "OLAE-ICP: Robust and fast alignment of geometric
+    features with the optimal linear attitude estimator", Arxiv 2019.
+    ```
+
  * `ICP_Horn_MultiCloud`: Align point clouds layers, using classic Horn's
     closed-form optimal quaternion solution.
 
