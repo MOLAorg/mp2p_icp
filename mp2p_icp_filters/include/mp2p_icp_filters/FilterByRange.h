@@ -22,6 +22,9 @@ namespace mp2p_icp_filters
  * range. By default, "center" is at (0,0,0) in the point cloud frame of
  * reference.
  *
+ * Optionally, removed points can be also sent out to another layer (set
+ * `output_deleted_pointcloud_layer`)
+ *
  * \ingroup mp2p_icp_filters_grp
  */
 class FilterByRange : public mp2p_icp_filters::FilterBase

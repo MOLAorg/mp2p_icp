@@ -24,8 +24,13 @@ void FilterBoundingBox::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c, FilterBoundingBox& parent)
 {
     MCP_LOAD_OPT(c, input_pointcloud_layer);
-    MCP_LOAD_REQ(c, output_pointcloud_layer);
-    MCP_LOAD_REQ(c, keep_bbox_contents);
+    MCP_LOAD_OPT(c, inside_pointcloud_layer);
+    MCP_LOAD_OPT(c, outside_pointcloud_layer);
+
+    ASSERTMSG_(
+        !inside_pointcloud_layer.empty() || !outside_pointcloud_layer.empty(),
+        "At least one 'inside_pointcloud_layer' or "
+        "'outside_pointcloud_layer' must be provided.");
 
     ASSERT_(
         c.has("bounding_box_min") && c["bounding_box_min"].isSequence() &&
@@ -74,18 +79,22 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
 
     const auto& pc = *pcPtr;
 
-    // Out:
-    ASSERT_(!params_.output_pointcloud_layer.empty());
-
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPc = GetOrCreatePointLayer(
-        inOut, params_.output_pointcloud_layer,
-        /*do not allow empty*/
-        false,
+    mrpt::maps::CPointsMap* insidePc = GetOrCreatePointLayer(
+        inOut, params_.inside_pointcloud_layer,
+        true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    outPc->reserve(outPc->size() + pc.size() / 10);
+    if (insidePc) insidePc->reserve(insidePc->size() + pc.size() / 10);
+
+    mrpt::maps::CPointsMap* outsidePc = GetOrCreatePointLayer(
+        inOut, params_.outside_pointcloud_layer,
+        true /*allow empty for nullptr*/,
+        /* create cloud of the same type */
+        pcPtr->GetRuntimeClass()->className);
+
+    if (outsidePc) outsidePc->reserve(outsidePc->size() + pc.size() / 10);
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
@@ -96,14 +105,10 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
         const bool isInside =
             params_.bounding_box.containsPoint({xs[i], ys[i], zs[i]});
 
-        if ((isInside && !params_.keep_bbox_contents) ||
-            (!isInside && params_.keep_bbox_contents))
-            continue;  // remove this point.
+        auto* targetPc = isInside ? insidePc : outsidePc;
 
-        // Otherwise, add it:
-        outPc->insertPointFrom(pc, i);
+        if (targetPc) targetPc->insertPointFrom(pc, i);
     }
-    outPc->mark_as_modified();
 
     MRPT_END
 }
