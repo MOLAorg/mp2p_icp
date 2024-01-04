@@ -30,6 +30,9 @@ namespace mp2p_icp_filters
  * If the given output pointcloud layer already exists, new points will be
  * appended, without clearing the former contents.
  *
+ * If the parameter `flatten_to` is defined, this filter will also "flatten" or
+ * "summarize" the 3D points into a 2D planar (constant height `z`) cloud.
+ *
  * Not compatible with calling from different threads simultaneously for
  * different input point clouds. Use independent instances for each thread if
  * needed.
@@ -68,6 +71,9 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
 
         /** Size of each voxel edge [meters] */
         double voxel_filter_resolution = 1.0;  // [m]
+
+        /// See description on top of this page.
+        std::optional<double> flatten_to;
 
         // TODO: Convert into an enum !!
 

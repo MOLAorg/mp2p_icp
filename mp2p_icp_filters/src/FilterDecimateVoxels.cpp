@@ -59,6 +59,8 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
 
     MCP_LOAD_OPT(c, use_voxel_average);
     MCP_LOAD_OPT(c, use_closest_to_voxel_average);
+
+    if (c.has("flatten_to")) flatten_to = c["flatten_to"].as<double>();
 }
 
 FilterDecimateVoxels::FilterDecimateVoxels()
@@ -164,13 +166,36 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         }
 
         // 2nd) collect grid results:
+        std::set<
+            PointCloudToVoxelGridSingle::indices_t,
+            PointCloudToVoxelGridSingle::IndicesHash>
+            flattenUsedBins;
+
         for (const auto& [idx, vxl] : grid.pts_voxels)
         {
             if (!vxl.pointIdx.has_value()) continue;
 
             nonEmptyVoxels++;
 
-            outPc->insertPointFrom(*vxl.source.value(), vxl.pointIdx.value());
+            if (params_.flatten_to.has_value())
+            {
+                const PointCloudToVoxelGridSingle::indices_t flattenIdx = {
+                    idx.cx_, idx.cy_, 0};
+
+                // first time?
+                if (flattenUsedBins.count(flattenIdx) != 0)
+                    continue;  // nope. Skip this point.
+
+                // First time we see this (x,y) cell:
+                flattenUsedBins.insert(flattenIdx);
+
+                outPc->insertPointFast(
+                    vxl.point->x, vxl.point->y, *params_.flatten_to);
+            }
+            else
+            {
+                outPc->insertPointFrom(*vxl.source.value(), *vxl.pointIdx);
+            }
         }
     }
     else
@@ -199,21 +224,27 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         auto rng = mrpt::random::CRandomGenerator();
         // TODO?: rng.randomize(seed);
 
-        for (const auto& vxl_pts : grid.pts_voxels)
+        std::set<
+            PointCloudToVoxelGrid::indices_t,
+            PointCloudToVoxelGrid::IndicesHash>
+            flattenUsedBins;
+
+        for (const auto& [idx, vxl] : grid.pts_voxels)
         {
-            if (vxl_pts.second.indices.empty()) continue;
+            if (vxl.indices.empty()) continue;
 
             nonEmptyVoxels++;
+            mrpt::math::TPoint3Df insertPt;
 
             if (params_.use_voxel_average ||
                 params_.use_closest_to_voxel_average)
             {
                 // Analyze the voxel contents:
                 auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
-                const float inv_n = (1.0f / vxl_pts.second.indices.size());
-                for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
+                const float inv_n = (1.0f / vxl.indices.size());
+                for (size_t i = 0; i < vxl.indices.size(); i++)
                 {
-                    const auto pt_idx = vxl_pts.second.indices[i];
+                    const auto pt_idx = vxl.indices[i];
                     mean.x += xs[pt_idx];
                     mean.y += ys[pt_idx];
                     mean.z += zs[pt_idx];
@@ -225,9 +256,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     std::optional<float>  minSqrErr;
                     std::optional<size_t> bestIdx;
 
-                    for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
+                    for (size_t i = 0; i < vxl.indices.size(); i++)
                     {
-                        const auto  pt_idx = vxl_pts.second.indices[i];
+                        const auto  pt_idx = vxl.indices[i];
                         const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
                                              mrpt::square(ys[pt_idx] - mean.y) +
                                              mrpt::square(zs[pt_idx] - mean.z);
@@ -239,25 +270,44 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                         }
                     }
                     // Insert the closest to the mean:
-                    outPc->insertPointFast(
-                        xs[*bestIdx], ys[*bestIdx], zs[*bestIdx]);
+                    insertPt = {xs[*bestIdx], ys[*bestIdx], zs[*bestIdx]};
                 }
                 else
                 {
                     // Insert the mean:
-                    outPc->insertPointFast(mean.x, mean.y, mean.z);
+                    insertPt = {mean.x, mean.y, mean.z};
                 }
             }
             else
             {
                 // Insert a randomly-picked point:
-                const auto idxInVoxel = params_.use_random_point_within_voxel
-                                            ? (rng.drawUniform64bit() %
-                                               vxl_pts.second.indices.size())
-                                            : 0UL;
+                const auto idxInVoxel =
+                    params_.use_random_point_within_voxel
+                        ? (rng.drawUniform64bit() % vxl.indices.size())
+                        : 0UL;
 
-                const auto pt_idx = vxl_pts.second.indices.at(idxInVoxel);
-                outPc->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
+                const auto pt_idx = vxl.indices.at(idxInVoxel);
+                insertPt          = {xs[pt_idx], ys[pt_idx], zs[pt_idx]};
+            }
+
+            // insert it, if passed the flatten filter:
+            if (params_.flatten_to.has_value())
+            {
+                const PointCloudToVoxelGrid::indices_t flattenIdx = {
+                    idx.cx_, idx.cy_, 0};
+
+                // first time?
+                if (flattenUsedBins.count(flattenIdx) != 0)
+                    continue;  // nope. Skip this point.
+
+                // First time we see this (x,y) cell:
+                flattenUsedBins.insert(flattenIdx);
+                outPc->insertPointFast(
+                    insertPt.x, insertPt.y, *params_.flatten_to);
+            }
+            else
+            {
+                outPc->insertPointFast(insertPt.x, insertPt.y, insertPt.z);
             }
         }
     }  // end: non-single grid
