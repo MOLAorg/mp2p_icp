@@ -15,6 +15,7 @@
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/io/lazy_load_path.h>
 #include <mrpt/system/COutputLogger.h>
 #include <mrpt/system/filesystem.h>
 
@@ -48,6 +49,11 @@ static TCLAP::ValueArg<std::string> argPipeline(
 static TCLAP::ValueArg<std::string> arg_verbosity_level(
     "v", "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)",
     false, "", "INFO", cmd);
+
+static TCLAP::ValueArg<std::string> arg_lazy_load_base_dir(
+    "", "externals-dir",
+    "Lazy-load base directory for datasets with externally-stored observations",
+    false, "dataset_Images", "<ExternalsDirectory>", cmd);
 
 static TCLAP::SwitchArg argNoProgressBar(
     "", "no-progress-bar",
@@ -101,6 +107,9 @@ void run_sm_to_mm()
         using vl = mrpt::typemeta::TEnumType<mrpt::system::VerbosityLevel>;
         logLevel = vl::name2value(arg_verbosity_level.getValue());
     }
+
+    if (arg_lazy_load_base_dir.isSet())
+        mrpt::io::setLazyLoadPathBase(arg_lazy_load_base_dir.getValue());
 
     mp2p_icp_filters::sm2mm_options_t opts;
     opts.showProgressBar = !argNoProgressBar.isSet();
