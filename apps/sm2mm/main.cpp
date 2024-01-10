@@ -39,7 +39,7 @@ static TCLAP::ValueArg<std::string> argPlugins(
 static TCLAP::ValueArg<std::string> argPipeline(
     "p", "pipeline",
     "YAML file with the mp2p_icp_filters pipeline to load. It can optionally "
-    "contain a `filters:` and a `generators:` section. "
+    "contain a `filters:`, a `generators:`, and a `final_filters:` sections. "
     "If this argument is not provided, the default generator will be used and "
     "no filtering will be applied, which might be ok in some cases. "
     "See the app README for examples:\n"
