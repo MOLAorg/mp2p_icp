@@ -13,7 +13,6 @@
 #include <mp2p_icp_filters/FilterBoundingBox.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
-#include <mrpt/obs/CObservation2DRangeScan.h>
 
 IMPLEMENTS_MRPT_OBJECT(
     FilterBoundingBox, mp2p_icp_filters::FilterBase, mp2p_icp_filters)

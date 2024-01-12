@@ -164,39 +164,31 @@ void Generator::process(
     else
     {
         // Use a user-defined custom map type:
-        ASSERT_FILE_EXISTS_(params_.metric_map_definition_ini_file);
-
-        mrpt::config::CConfigFile cfg(params_.metric_map_definition_ini_file);
-        mrpt::maps::TSetOfMetricMapInitializers mapInits;
-        mapInits.loadFromConfigFile(cfg, "map");
-
-        mrpt::maps::CMultiMetricMap theMap;
-        theMap.setListOfMaps(mapInits);
-
-        ASSERT_(theMap.maps.size() >= 1);
 
         // Create if new: Append to existing layer, if already existed.
-        mrpt::maps::CMetricMap::Ptr outMap = theMap.maps.at(0);
+        mrpt::maps::CMetricMap::Ptr outMap;
 
         if (auto itLy = out.layers.find(params_.target_layer);
             itLy != out.layers.end())
         {
-            if (!outMap->GetRuntimeClass()->derivedFrom(
-                    itLy->second->GetRuntimeClass()))
-            {
-                THROW_EXCEPTION_FMT(
-                    "Layer '%s' already existed, but it has class '%s' while "
-                    "it was expected to be '%s'.",
-                    params_.target_layer.c_str(),
-                    itLy->second->GetRuntimeClass()->className,
-                    outMap->GetRuntimeClass()->className);
-            }
-
             outMap = itLy->second;
         }
         else
         {
             // insert new layer:
+            ASSERT_FILE_EXISTS_(params_.metric_map_definition_ini_file);
+
+            mrpt::config::CConfigFile cfg(
+                params_.metric_map_definition_ini_file);
+            mrpt::maps::TSetOfMetricMapInitializers mapInits;
+            mapInits.loadFromConfigFile(cfg, "map");
+
+            mrpt::maps::CMultiMetricMap theMap;
+            theMap.setListOfMaps(mapInits);
+
+            ASSERT_(theMap.maps.size() >= 1);
+            outMap = theMap.maps.at(0);
+
             out.layers[params_.target_layer] = outMap;
         }
 

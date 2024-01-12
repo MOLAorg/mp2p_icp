@@ -136,13 +136,15 @@ struct render_params_point_layer_t
      * mode. */
     std::optional<color_mode_t> colorMode;
 
-    bool render_voxelmaps_as_points = false;
+    bool render_voxelmaps_as_points  = false;
+    bool render_voxelmaps_free_space = false;
 
     bool operator==(const render_params_point_layer_t& o) const
     {
         return pointSize == o.pointSize && color == o.color &&
                colorMode == o.colorMode &&
-               render_voxelmaps_as_points == o.render_voxelmaps_as_points;
+               render_voxelmaps_as_points == o.render_voxelmaps_as_points &&
+               render_voxelmaps_free_space == o.render_voxelmaps_free_space;
     }
     bool operator!=(const render_params_point_layer_t& o) const
     {

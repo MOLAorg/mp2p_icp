@@ -80,7 +80,13 @@ void mp2p_icp_filters::simplemap_to_metricmap(
          {"wx", .0},
          {"wy", .0},
          {"wz", .0}});
-    ps.updateVariables({{"robot_x", .0}, {"robot_y", .0}, {"robot_z", .0}});
+    ps.updateVariables(
+        {{"robot_x", .0},
+         {"robot_y", .0},
+         {"robot_z", .0},
+         {"robot_yaw", .0},
+         {"robot_pitch", .0},
+         {"robot_roll", .0}});
     ps.updateVariables(options.customVariables);
     ps.realize();
 
@@ -123,7 +129,10 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         ps.updateVariables(
             {{"robot_x", robotPose.x()},
              {"robot_y", robotPose.y()},
-             {"robot_z", robotPose.z()}});
+             {"robot_z", robotPose.z()},
+             {"robot_yaw", robotPose.yaw()},
+             {"robot_pitch", robotPose.pitch()},
+             {"robot_roll", robotPose.roll()}});
         ps.realize();
 
         for (const auto& obs : *sf)

@@ -207,6 +207,18 @@ void metric_map_t::get_visualization_map_layer(
         else
         {
             // Render as real voxelmaps:
+            if (voxelMap)
+            {
+                voxelMap->renderingOptions.generateFreeVoxels =
+                    p.render_voxelmaps_free_space;
+            }
+            else if (voxelRGBMap)
+            {
+                voxelRGBMap->renderingOptions.generateFreeVoxels =
+                    p.render_voxelmaps_free_space;
+            }
+
+            // regular render method:
             map->getVisualizationInto(o);
             return;
         }

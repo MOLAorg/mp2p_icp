@@ -54,6 +54,7 @@ mrpt::gui::CDisplayWindowGUI::Ptr win;
 std::array<nanogui::TextBox*, 2> lbMapStats                = {nullptr, nullptr};
 nanogui::CheckBox*               cbViewOrtho               = nullptr;
 nanogui::CheckBox*               cbViewVoxelsAsPoints      = nullptr;
+nanogui::CheckBox*               cbViewVoxelsFreeSpace     = nullptr;
 nanogui::CheckBox*               cbColorizeMap             = nullptr;
 nanogui::CheckBox*               cbKeepOriginalCloudColors = nullptr;
 nanogui::CheckBox*               cbShowGroundGrid          = nullptr;
@@ -216,8 +217,13 @@ static void main_show_gui()
 
         cbViewVoxelsAsPoints =
             tab1->add<nanogui::CheckBox>("Render voxel maps as point clouds");
-        cbViewVoxelsAsPoints->setChecked(true);
+        cbViewVoxelsAsPoints->setChecked(false);
         cbViewVoxelsAsPoints->setCallback([&](bool) { rebuild_3d_view(); });
+
+        cbViewVoxelsFreeSpace =
+            tab1->add<nanogui::CheckBox>("Render free space of voxel maps");
+        cbViewVoxelsFreeSpace->setChecked(false);
+        cbViewVoxelsFreeSpace->setCallback([&](bool) { rebuild_3d_view(); });
 
         cbColorizeMap = tab1->add<nanogui::CheckBox>("Recolorize map points");
         cbColorizeMap->setChecked(true);
@@ -328,9 +334,10 @@ void rebuild_3d_view()
         if (!cb->checked()) continue;  // hidden
         rpMap.points.visible = true;
 
-        auto& rpL                      = rpMap.points.perLayer[lyName];
-        rpL.pointSize                  = slPointSize->value();
-        rpL.render_voxelmaps_as_points = cbViewVoxelsAsPoints->checked();
+        auto& rpL                       = rpMap.points.perLayer[lyName];
+        rpL.pointSize                   = slPointSize->value();
+        rpL.render_voxelmaps_as_points  = cbViewVoxelsAsPoints->checked();
+        rpL.render_voxelmaps_free_space = cbViewVoxelsFreeSpace->checked();
 
         lbPointSize->setCaption("Point size: " + std::to_string(rpL.pointSize));
 

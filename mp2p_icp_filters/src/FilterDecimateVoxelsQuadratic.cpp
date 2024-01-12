@@ -14,7 +14,6 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
-#include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/random/RandomGenerators.h>
 
 IMPLEMENTS_MRPT_OBJECT(

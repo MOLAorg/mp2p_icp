@@ -13,7 +13,6 @@
 #include <mp2p_icp_filters/FilterByRange.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/TPoint3D.h>
-#include <mrpt/obs/CObservation2DRangeScan.h>
 
 IMPLEMENTS_MRPT_OBJECT(
     FilterByRange, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
