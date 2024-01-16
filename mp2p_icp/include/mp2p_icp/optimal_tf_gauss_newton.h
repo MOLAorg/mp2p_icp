@@ -15,6 +15,7 @@
 #include <mp2p_icp/PairWeights.h>
 #include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/robust_kernels.h>
+#include <mrpt/poses/CPose3DPDFGaussianInf.h>
 
 namespace mp2p_icp
 {
@@ -26,6 +27,13 @@ struct OptimalTF_GN_Parameters
 
     /** The linerization point (the current relative pose guess) */
     std::optional<mrpt::poses::CPose3D> linearizationPoint;
+
+    /** Optional prior guess of the SE(3) solution, including a mean value
+     *  and an inverse covariance (information) matrix, i.e. zeros in the
+     * diagonal mean that those prior coordinates should be ignored, a large
+     * value means the solution must be close to those coordinates.
+     */
+    std::optional<mrpt::poses::CPose3DPDFGaussianInf> prior;
 
     /** Minimum SE(3) change to stop iterating. */
     double minDelta = 1e-7;

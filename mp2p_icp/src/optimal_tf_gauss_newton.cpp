@@ -276,6 +276,41 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             H.noalias() += weight * Ji.transpose() * Ji;
         }
 
+        // Prior guess term:
+        if (gnParams.prior.has_value())
+        {
+            const auto& priorMean = gnParams.prior->mean;
+            const auto& priorInf  = gnParams.prior->cov_inv;
+
+            // Compute the residual pose error of these pair of nodes + its
+            // constraint:
+            // SE(3) error = inv(P_prior) * P_current
+            //             = (P_current \ominus P_prior)
+
+            const mrpt::poses::CPose3D P1invP2 = result.optimalPose - priorMean;
+            const auto err_i = mrpt::poses::Lie::SE<3>::log(P1invP2);
+
+            mrpt::math::CMatrixDouble66 df_de2;
+
+            mrpt::poses::Lie::SE<3>::jacob_dDinvP1invP2_de1e2(
+                // edge between the two poses:in this case, both should coincide
+                mrpt::poses::CPose3D::Identity(),
+                // P1:
+                priorMean,
+                // P2:
+                result.optimalPose,
+                // df_de1
+                std::nullopt,
+                // df_de2
+                df_de2);
+
+            g.noalias() +=
+                (df_de2.transpose() * priorInf.asEigen()) * err_i.asEigen();
+
+            H.noalias() +=
+                (df_de2.transpose() * priorInf.asEigen()) * df_de2.asEigen();
+        }
+
         // Target error?
         const double errNorm = std::sqrt(errNormSqr);
 
