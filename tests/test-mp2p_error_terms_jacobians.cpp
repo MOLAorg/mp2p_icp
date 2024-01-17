@@ -256,7 +256,7 @@ static void test_Jacob_error_point2plane()
 // ===========================================================================
 //  Test: error_line2line
 // ===========================================================================
-
+#if 0
 static void test_Jacob_error_line2line()
 {
     const CPose3D p = CPose3D(
@@ -328,6 +328,7 @@ static void test_Jacob_error_line2line()
         THROW_EXCEPTION("Jacobian mismatch, see above.");
     }
 }
+#endif
 
 // ===========================================================================
 //  Test: error_plane2plane

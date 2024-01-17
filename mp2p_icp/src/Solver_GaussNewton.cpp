@@ -45,9 +45,9 @@ bool Solver_GaussNewton::impl_optimal_pose(
     OptimalTF_GN_Parameters gnParams;
     gnParams.maxInnerLoopIterations = maxIterations;
     gnParams.pairWeights            = pairWeights;
-
-    gnParams.kernel      = robustKernel;
-    gnParams.kernelParam = robustKernelParam;
+    gnParams.kernel                 = robustKernel;
+    gnParams.kernelParam            = robustKernelParam;
+    gnParams.prior                  = sc.prior;
 
     ASSERT_(sc.guessRelativePose.has_value());
     gnParams.linearizationPoint =

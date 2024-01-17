@@ -26,7 +26,9 @@ using namespace mp2p_icp;
 void ICP::align(
     const metric_map_t& pcLocal, const metric_map_t& pcGlobal,
     const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p,
-    Results& result, const mrpt::optional_ref<LogRecord>& outputDebugInfo)
+    Results&                                                 result,
+    const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior,
+    const mrpt::optional_ref<LogRecord>&                     outputDebugInfo)
 {
     using namespace std::string_literals;
 
@@ -86,6 +88,7 @@ void ICP::align(
     std::optional<mrpt::poses::CPose3D> prev2_solution;  // 2 steps ago
     std::optional<mrpt::poses::CPose3D> lastCorrection;
     SolverContext                       sc;
+    sc.prior = prior;
 
     for (result.nIterations = 0; result.nIterations < p.maxIterations;
          result.nIterations++)

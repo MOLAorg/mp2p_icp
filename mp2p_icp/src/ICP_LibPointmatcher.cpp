@@ -77,6 +77,8 @@ void ICP_LibPointmatcher::align(
     [[maybe_unused]] const metric_map_t&        pcGlobal,
     [[maybe_unused]] const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
     [[maybe_unused]] const Parameters& p, [[maybe_unused]] Results& result,
+    [[maybe_unused]] const std::optional<mrpt::poses::CPose3DPDFGaussianInf>&
+                                                          prior,
     [[maybe_unused]] const mrpt::optional_ref<LogRecord>& outputDebugInfo)
 {
     using namespace std::string_literals;

@@ -62,6 +62,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         const metric_map_t& pcLocal, const metric_map_t& pcGlobal,
         const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
         const Parameters& p, Results& result,
+        const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior =
+            std::nullopt,
         const mrpt::optional_ref<LogRecord>& outputDebugInfo = std::nullopt);
 
     /** @name Module: Solver instances

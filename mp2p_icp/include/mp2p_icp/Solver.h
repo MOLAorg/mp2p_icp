@@ -17,6 +17,7 @@
 #include <mp2p_icp/WeightParameters.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/poses/CPose3D.h>
+#include <mrpt/poses/CPose3DPDFGaussianInf.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
 
@@ -38,6 +39,14 @@ struct SolverContext
     std::optional<mrpt::poses::CPose3D> guessRelativePose;
     std::optional<mrpt::poses::CPose3D> currentCorrectionFromInitialGuess;
     std::optional<mrpt::poses::CPose3D> lastIcpStepIncrement;
+
+    /** Optional prior guess of the SE(3) solution, including a mean value
+     *  and an inverse covariance (information) matrix, i.e. zeros in the
+     * diagonal mean that those prior coordinates should be ignored, a large
+     * value means the solution must be close to those coordinates.
+     */
+    std::optional<mrpt::poses::CPose3DPDFGaussianInf> prior;
+
     // room for optional solver-specific context:
     mutable std::map<const Solver*, std::map<std::string, std::any>>
         perSolverPersistentData;
