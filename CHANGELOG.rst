@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2024-01-20)
+------------------
 * Gauss-Newton solver: Add optional prior term
 * Added FilterMerge and modifications to allow sm2mm to build any type maps
 * sm2mm: add option for lazy-load external directory
