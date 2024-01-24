@@ -99,7 +99,7 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
 
     struct Parameters
     {
-        void load_from_yaml(const mrpt::containers::yaml& c);
+        void load_from_yaml(const mrpt::containers::yaml& c, Generator& parent);
 
         /** The map layer name where the observation will be loaded into.
          *  Default: "raw" */
@@ -109,16 +109,27 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
          *  mrpt::maps::CSimplePointCloud, and the observation will be inserted
          * via the virtual method mrpt::maps::CMetricMap::insertObservation()
          *
-         *
-         * Alternatively, a path to a .INI file can be provided here, with
+         * Alternatively, if this variable *or* `metric_map_definition` are set,
          * a custom metric map class can be defined via a
          * mrpt::maps::CMultiMetricMap initializer list.
          * If the CMultiMetricMap defines multiple metric maps, the first one
          * only will be taken to generate the new layer.
          *
-         * Refer to example files.
+         * This variable may be set to an external `.ini` file in the format
+         * expected by mrpt::maps::TSetOfMetricMapInitializers. The recomended
+         * alternative is to directly define the map setting in the YAML file.
+         *
+         * Refer to [example pipelines](https://docs.mola-slam.org/mp2p_icp/).
+         *
          */
         std::string metric_map_definition_ini_file;
+
+        /** Read metric_map_definition_ini_file. Defining a custom metric map
+         * via this YAML structure is preferred, since parameterizable variables
+         * are supported in this way, while external `.ini` files must contain
+         * fixed static values only.
+         */
+        mrpt::containers::yaml metric_map_definition;
 
         /** Sensor observation class names to process. Default = ".*" (any).
          *  Example: use "mrpt::obs::CObservation2DRangeScan" if you only want
@@ -169,6 +180,19 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     bool       initialized_ = false;
     std::regex process_class_names_regex_;
     std::regex process_sensor_labels_regex_;
+
+   private:
+    void implProcessDefault(
+        const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
+        const std::optional<mrpt::poses::CPose3D>& robotPose =
+            std::nullopt) const;
+
+    void implProcessCustomMap(
+        const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
+        const std::optional<mrpt::poses::CPose3D>& robotPose =
+            std::nullopt) const;
+
+    void internalLoadUserPlugin(const std::string& moduleToLoad) const;
 };
 
 /** A set of generators  */
