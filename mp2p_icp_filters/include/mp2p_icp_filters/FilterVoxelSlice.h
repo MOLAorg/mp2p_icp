@@ -20,7 +20,8 @@
 namespace mp2p_icp_filters
 {
 /** Takes an input layer of type CVoxelMap (Bonxai) and extracts one 2D
- * slice as an occupancy gridmap, taken at a given height ("z" coordinate).
+ * slice as an occupancy gridmap, taken at a given height ("z") range of values.
+ * That is, each voxel column will be collapsed into a 2D grid cell.
  *
  * If the output layer already exists, it will be overwritten.
  *
@@ -46,7 +47,8 @@ class FilterVoxelSlice : public mp2p_icp_filters::FilterBase
         std::string input_layer;
         std::string output_layer;
 
-        double slice_z = 0;  // [m]
+        double slice_z_min = 0;  // [m]
+        double slice_z_max = 0;  // [m]
     };
 
     /** Algorithm parameters */

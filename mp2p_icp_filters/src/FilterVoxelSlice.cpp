@@ -30,7 +30,8 @@ void FilterVoxelSlice::Parameters::load_from_yaml(
     MCP_LOAD_REQ(c, input_layer);
     MCP_LOAD_REQ(c, output_layer);
 
-    DECLARE_PARAMETER_IN_REQ(c, slice_z, parent);
+    DECLARE_PARAMETER_IN_REQ(c, slice_z_min, parent);
+    DECLARE_PARAMETER_IN_REQ(c, slice_z_max, parent);
 }
 
 FilterVoxelSlice::FilterVoxelSlice()
@@ -53,6 +54,8 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     checkAllParametersAreRealized();
+
+    ASSERT_GE_(params_.slice_z_max, params_.slice_z_min);
 
     // In:
     ASSERT_(!params_.input_layer.empty());
@@ -80,6 +83,10 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
     auto occGrid = mrpt::maps::COccupancyGridMap2D::Create();
     inOut.layers[params_.output_layer] = occGrid;
 
+    // Set the grid "height" (z):
+    occGrid->insertionOptions.mapAltitude =
+        0.5 * (params_.slice_z_max + params_.slice_z_min);
+
     // make the conversion:
     if (inVoxelMap)
     {
@@ -92,19 +99,22 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
         occGrid->setSize(
             bbox.min.x, bbox.max.x, bbox.min.y, bbox.max.y, grid.resolution);
 
-        const auto zCoord =
-            Bonxai::PosToCoord({0., 0., params_.slice_z}, grid.inv_resolution);
+        const auto zCoordMin = Bonxai::PosToCoord(
+            {0., 0., params_.slice_z_min}, grid.inv_resolution);
+        const auto zCoordMax = Bonxai::PosToCoord(
+            {0., 0., params_.slice_z_max}, grid.inv_resolution);
 
         // Go thru all voxels:
         auto lmbdPerVoxel = [&](mrpt::maps::CVoxelMap::voxel_node_t& data,
                                 const Bonxai::CoordT&                coord) {
             // are we at the correct height?
-            if (coord.z != zCoord.z) return;
+            if (coord.z < zCoordMin.z || coord.z > zCoordMax.z) return;
             const auto pt = Bonxai::CoordToPos(coord, grid.resolution);
 
             const double freeness = inVoxelMap->l2p(data.occupancy);
 
-            occGrid->setCell(
+            // Bayesian fuse information:
+            occGrid->updateCell(
                 occGrid->x2idx(pt.x), occGrid->y2idx(pt.y), freeness);
         };  // end lambda for each voxel
 
