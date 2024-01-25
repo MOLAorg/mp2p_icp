@@ -26,6 +26,7 @@ filters:
       input_pointcloud_layer: 'raw'
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.10  # [m]
+      decimate_method: DecimateMethod::FirstPoint
 
   - class_name: mp2p_icp_filters::FilterByRange
     params:

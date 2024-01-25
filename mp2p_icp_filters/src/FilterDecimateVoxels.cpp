@@ -20,8 +20,6 @@ IMPLEMENTS_MRPT_OBJECT(
 
 using namespace mp2p_icp_filters;
 
-MRPT_TODO("Define enum type for selected operation?");
-
 void FilterDecimateVoxels::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c, FilterDecimateVoxels& parent)
 {
@@ -50,14 +48,11 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
     ASSERT_(!input_pointcloud_layer.empty());
 
     MCP_LOAD_OPT(c, error_on_missing_input_layer);
-    MCP_LOAD_OPT(c, use_random_point_within_voxel);
+    MCP_LOAD_REQ(c, decimate_method);
 
     MCP_LOAD_REQ(c, output_pointcloud_layer);
 
     DECLARE_PARAMETER_IN_REQ(c, voxel_filter_resolution, parent);
-
-    MCP_LOAD_OPT(c, use_voxel_average);
-    MCP_LOAD_OPT(c, use_closest_to_voxel_average);
 
     if (c.has("flatten_to")) flatten_to = c["flatten_to"].as<double>();
 }
@@ -235,8 +230,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             nonEmptyVoxels++;
             mrpt::math::TPoint3Df insertPt;
 
-            if (params_.use_voxel_average ||
-                params_.use_closest_to_voxel_average)
+            if (params_.decimate_method == DecimateMethod::VoxelAverage ||
+                params_.decimate_method == DecimateMethod::ClosestToAverage)
             {
                 // Analyze the voxel contents:
                 auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
@@ -250,7 +245,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 }
                 mean *= inv_n;
 
-                if (params_.use_closest_to_voxel_average)
+                if (params_.decimate_method == DecimateMethod::ClosestToAverage)
                 {
                     std::optional<float>  minSqrErr;
                     std::optional<size_t> bestIdx;
@@ -281,7 +276,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             {
                 // Insert a randomly-picked point:
                 const auto idxInVoxel =
-                    params_.use_random_point_within_voxel
+                    (params_.decimate_method == DecimateMethod::RandomPoint)
                         ? (rng.drawUniform64bit() % vxl.indices.size())
                         : 0UL;
 

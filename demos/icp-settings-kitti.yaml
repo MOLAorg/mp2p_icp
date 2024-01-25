@@ -78,4 +78,4 @@ filters:
     params:
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 2.00  # [m]
-      use_voxel_average: false
+      decimate_method: DecimateMethod::FirstPoint

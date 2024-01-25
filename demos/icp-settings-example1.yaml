@@ -61,11 +61,11 @@ filters_local_map:
     params:
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.01  # [m]
-      use_voxel_average: true
+      decimate_method: DecimateMethod::ClosestToAverage
 
 filters_global_map:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.01  # [m]
-      use_voxel_average: true
+      decimate_method: DecimateMethod::ClosestToAverage

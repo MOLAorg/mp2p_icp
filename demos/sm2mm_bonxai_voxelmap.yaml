@@ -62,6 +62,7 @@ filters:
       input_pointcloud_layer: 'filtered'
       output_pointcloud_layer: 'localmap_pre'
       voxel_filter_resolution: 0.15  # [m]
+      decimate_method: DecimateMethod::FirstPoint
 
   - class_name: mp2p_icp_filters::FilterMerge
     params:

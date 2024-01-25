@@ -17,15 +17,33 @@
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGridSingle.h>
 #include <mrpt/maps/CPointsMap.h>
+#include <mrpt/typemeta/TEnumType.h>
 
 namespace mp2p_icp_filters
 {
+/** Enum to select what method to use to pick the downsampled point for each
+ *  voxel in FilterDecimateVoxels.
+ *
+ * \ingroup mp2p_icp_filters_grp
+ */
+enum class DecimateMethod : uint8_t
+{
+    /** Pick the first point that was put int the voxel */
+    FirstPoint = 0,
+    /** Closest to the average of all voxel points */
+    ClosestToAverage,
+    /** Average of all voxel points */
+    VoxelAverage,
+    /** Pick one of the voxel points at random */
+    RandomPoint
+};
+
 /** Builds a new layer with a decimated version of one or more input layers,
  * merging their contents.
  *
  * This builds a voxel grid from the input point cloud, and then takes either,
  * the mean of the points in the voxel, or one of the points picked at random,
- * depending on the parameter `use_voxel_average`.
+ * depending on the parameter `decimate_method`.
  *
  * If the given output pointcloud layer already exists, new points will be
  * appended, without clearing the former contents.
@@ -75,19 +93,9 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
         /// See description on top of this page.
         std::optional<double> flatten_to;
 
-        // TODO: Convert into an enum !!
-
-        /** If enabled, the mean of each voxel is taken instead of any of
-         *  the original points. */
-        bool use_voxel_average = false;
-
-        /** If enabled, the *actual* data point closest to the mean of each
-         * voxel is taken as representative for each voxel. */
-        bool use_closest_to_voxel_average = false;
-
-        /** If false (default), the first point in each voxel will be returned
-         * as voxel representative. Otherwise, one picked at random. */
-        bool use_random_point_within_voxel = false;
+        /** The method to pick what point will be used as representative of each
+         * voxel */
+        DecimateMethod decimate_method = DecimateMethod::FirstPoint;
     };
 
     /** Algorithm parameters */
@@ -99,13 +107,18 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
 
     bool useSingleGrid() const
     {
-        return !(
-            params_.use_closest_to_voxel_average ||
-            params_.use_random_point_within_voxel ||  //
-            params_.use_voxel_average);
+        return params_.decimate_method == DecimateMethod::FirstPoint;
     }
 };
 
 /** @} */
 
 }  // namespace mp2p_icp_filters
+
+MRPT_ENUM_TYPE_BEGIN_NAMESPACE(
+    mp2p_icp_filters, mp2p_icp_filters::DecimateMethod)
+MRPT_FILL_ENUM(DecimateMethod::FirstPoint);
+MRPT_FILL_ENUM(DecimateMethod::ClosestToAverage);
+MRPT_FILL_ENUM(DecimateMethod::VoxelAverage);
+MRPT_FILL_ENUM(DecimateMethod::RandomPoint);
+MRPT_ENUM_TYPE_END()
