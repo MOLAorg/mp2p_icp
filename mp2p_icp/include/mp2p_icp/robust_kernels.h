@@ -78,7 +78,7 @@ inline robust_sqrt_weight_func_t create_robust_kernel(
              * with the loss function ρ(x) = 0.5 c² log(1+x²/c²)
              *
              */
-            return [kernelParamSqr, kernelParam](double errorSqr) -> double {
+            return [kernelParamSqr](double errorSqr) -> double {
                 return (kernelParamSqr) / (errorSqr + kernelParamSqr);
             };
 

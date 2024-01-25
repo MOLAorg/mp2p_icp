@@ -23,6 +23,8 @@ using namespace mp2p_icp;
 
 static const uint8_t SERIALIZATION_VERSION = 1;
 
+Pairings::~Pairings() = default;
+
 void Pairings::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out.WriteAs<uint8_t>(SERIALIZATION_VERSION);
