@@ -2,6 +2,16 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* FilterDecimateVoxels: Replace 3 bool parameters with an enum
+* Fix clang warnings
+* Save and visualize ICP step partial solutions
+* QualityEvaluator_PairedRatio: now does not require parameters
+* Add filter: Bonxai VoxelMap -> 2D gridmap. Bayesian filtering of voxel columns
+* Generator: allow defining custom metric maps directly in the YAML configuration
+* Contributors: Jose Luis Blanco-Claraco
+
 1.0.0 (2024-01-20)
 ------------------
 * Gauss-Newton solver: Add optional prior term
