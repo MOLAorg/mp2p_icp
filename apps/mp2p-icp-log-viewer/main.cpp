@@ -78,15 +78,17 @@ double           lastAutoPlayTime    = .0;
 
 std::array<nanogui::TextBox*, 5> lbICPStats = {
     nullptr, nullptr, nullptr, nullptr, nullptr};
-nanogui::CheckBox* cbShowInitialPose    = nullptr;
+nanogui::CheckBox* cbShowInitialPose  = nullptr;
+nanogui::Label*    lbICPIteration     = nullptr;
+nanogui::Slider*   slIterationDetails = nullptr;
+
 nanogui::CheckBox* cbViewOrtho          = nullptr;
 nanogui::CheckBox* cbCameraFollowsLocal = nullptr;
 nanogui::CheckBox* cbViewVoxelsAsPoints = nullptr;
 nanogui::CheckBox* cbColorizeLocalMap   = nullptr;
 nanogui::CheckBox* cbColorizeGlobalMap  = nullptr;
 
-nanogui::CheckBox* cbViewFinalPairings    = nullptr;
-nanogui::CheckBox* cbViewPairingEvolution = nullptr;
+nanogui::CheckBox* cbViewPairings = nullptr;
 
 nanogui::CheckBox* cbViewPairings_pt2pt = nullptr;
 nanogui::CheckBox* cbViewPairings_pt2pl = nullptr;
@@ -251,7 +253,18 @@ static void main_show_gui()
 
         cbShowInitialPose =
             w->add<nanogui::CheckBox>("Show at INITIAL GUESS pose");
-        cbShowInitialPose->setCallback([=](bool) { rebuild_3d_view(); });
+        cbShowInitialPose->setCallback([=](bool v) {
+            if (slIterationDetails->enabled())
+            {
+                const auto& r = slIterationDetails->range();
+                slIterationDetails->setValue(v ? r.first : r.second);
+            }
+            rebuild_3d_view();
+        });
+        lbICPIteration     = w->add<nanogui::Label>("Show ICP iteration:");
+        slIterationDetails = w->add<nanogui::Slider>();
+        slIterationDetails->setRange({.0f, 1.0f});
+        slIterationDetails->setCallback([](float) { rebuild_3d_view(); });
 
         //
         w->add<nanogui::Label>(" ");  // separator
@@ -268,6 +281,7 @@ static void main_show_gui()
             lb = w->add<nanogui::TextBox>("  ");
             lb->setFontSize(MID_FONT_SIZE);
             lb->setAlignment(nanogui::TextBox::Alignment::Left);
+            lb->setEditable(true);
         }
 
         // navigation panel:
@@ -439,20 +453,7 @@ static void main_show_gui()
         tbPairings->setFontSize(16);
         tbPairings->setEditable(false);
 
-        cbViewFinalPairings =
-            tab4->add<nanogui::CheckBox>("View final pairings");
-        cbViewPairingEvolution =
-            tab4->add<nanogui::CheckBox>("View pairing evolution");
-
-        cbViewFinalPairings->setCallback([](bool checked) {
-            if (checked) cbViewPairingEvolution->setChecked(false);
-            rebuild_3d_view();
-        });
-
-        cbViewPairingEvolution->setCallback([](bool checked) {
-            if (checked) cbViewFinalPairings->setChecked(false);
-            rebuild_3d_view();
-        });
+        cbViewPairings = tab4->add<nanogui::CheckBox>("View pairings");
 
         cbViewPairings_pt2pt =
             tab4->add<nanogui::CheckBox>("View: point-to-point");
@@ -629,7 +630,7 @@ double conditionNumber(const MATRIX& m)
 }
 
 // ==============================
-// onHighlightOneICPEntry
+// rebuild_3d_view
 // ==============================
 void rebuild_3d_view()
 {
@@ -644,11 +645,16 @@ void rebuild_3d_view()
     glVizICP->clear();
 
     // Free memory
-    static size_t lastIdx = 0;
+    static std::optional<size_t> lastIdx;
+    bool                         mustResetIterationSlider = false;
 
-    if (idx != lastIdx)
-    {  // free memory:
-        logRecords.at(lastIdx).dispose();
+    if (!lastIdx || (lastIdx && idx != *lastIdx))
+    {
+        // free memory:
+        if (lastIdx) logRecords.at(*lastIdx).dispose();
+
+        // and note that we should show the first/last ICP iteration:
+        mustResetIterationSlider = true;
     }
     lastIdx = idx;
 
@@ -692,14 +698,52 @@ void rebuild_3d_view()
 
     const auto poseFromCorner = mrpt::poses::CPose3D::Identity();
     mrpt::poses::CPose3DPDFGaussian relativePose;
+    const mp2p_icp::Pairings*       pairsToViz = nullptr;
 
-    if (cbShowInitialPose->checked())
+    if (!lr.iterationsDetails.has_value() || lr.iterationsDetails->empty())
     {
-        relativePose.mean = mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
+        slIterationDetails->setEnabled(false);
+
+        if (cbShowInitialPose->checked())
+        {
+            relativePose.mean =
+                mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
+            lbICPIteration->setCaption("Show ICP iteration: INITIAL");
+        }
+        else
+        {
+            relativePose = lr.icpResult.optimal_tf;
+            lbICPIteration->setCaption("Show ICP iteration: FINAL");
+        }
+
+        if (cbViewPairings->checked()) pairsToViz = &lr.icpResult.finalPairings;
     }
     else
     {
-        relativePose = lr.icpResult.optimal_tf;
+        slIterationDetails->setEnabled(true);
+        slIterationDetails->setRange(
+            {.0f, static_cast<float>(lr.iterationsDetails->size() - 1)});
+
+        if (mustResetIterationSlider)
+            slIterationDetails->setValue(
+                cbShowInitialPose->checked()
+                    ? slIterationDetails->range().first
+                    : slIterationDetails->range().second);
+
+        // final or partial solution?
+        auto it = lr.iterationsDetails->begin();
+
+        size_t nIter = mrpt::round(slIterationDetails->value());
+        mrpt::keep_min(nIter, lr.iterationsDetails->size() - 1);
+
+        std::advance(it, nIter);
+
+        relativePose.mean = it->second.optimalPose;
+        if (cbViewPairings->checked()) pairsToViz = &it->second.pairings;
+
+        lbICPIteration->setCaption(
+            "Show ICP iteration: "s + std::to_string(it->first) + "/"s +
+            std::to_string(lr.iterationsDetails->rbegin()->first));
     }
 
     {
@@ -897,20 +941,6 @@ void rebuild_3d_view()
     }
 
     // Pairings ------------------
-    cbViewPairingEvolution->setEnabled(lr.iterationsDetails.has_value());
-
-    const mp2p_icp::Pairings* pairsToViz = nullptr;
-
-    if (cbViewFinalPairings->checked())
-    {
-        // final:
-        pairsToViz = &lr.icpResult.finalPairings;
-    }
-    else
-    {
-        // pairings evolution:
-        // TODO: get from slider:
-    }
 
     // viz pairings:
     if (pairsToViz)

@@ -202,7 +202,7 @@ struct render_params_pairings_pt2pt_t
 
     bool visible = true;
 
-    mrpt::img::TColor color{0x80, 0x80, 0x80, 0xa0};
+    mrpt::img::TColor color{0xe0, 0xe0, 0xe0, 0xc0};
 };
 
 struct render_params_pairings_pt2pl_t

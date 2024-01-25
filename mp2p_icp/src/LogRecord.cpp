@@ -107,6 +107,7 @@ void LogRecord::DebugInfoPerIteration::serializeFrom(
 {
     const auto readVersion = in.ReadAs<uint8_t>();
     ASSERT_EQUAL_(readVersion, DIPI_SERIALIZATION_VERSION);
+    in >> optimalPose >> pairings;
 }
 
 mrpt::serialization::CArchive& mrpt::serialization::operator<<(

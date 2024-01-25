@@ -12,6 +12,8 @@ params:
   debugPrintIterationProgress: true  # Print progress
   #generateDebugFiles: true
   #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
+  #saveIterationDetails: true
+  #decimationIterationDetails: 10
 
 solvers:
   - class: mp2p_icp::Solver_Horn
@@ -24,10 +26,8 @@ matchers:
   - class: mp2p_icp::Matcher_Points_DistanceThreshold
     params:
       threshold: 0.15
+      thresholdAngularDeg: 0
       #pairingsPerPoint: 1
-      #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
-      #runFromIteration: 0  # "from 0 to 0" means "all"
-      #runUpToIteration: 0
       #
       # If "pointLayerMatches" is not defined, layers will be matched against
       # those with the same name in both maps:
@@ -37,4 +37,4 @@ matchers:
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio
     params:
-     threshold: 0.15
+      ~  # none required

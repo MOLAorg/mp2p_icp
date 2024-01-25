@@ -192,8 +192,27 @@ void ICP::align(
                 state.currentPairings.contents_summary().c_str());
         }
 
-        if (std::abs(delta_xyz) < p.minAbsStep_trans &&
-            std::abs(delta_rot) < p.minAbsStep_rot)
+        const bool stalled =
+            (std::abs(delta_xyz) < p.minAbsStep_trans &&
+             std::abs(delta_rot) < p.minAbsStep_rot);
+
+        // store partial solutions for logging/debuging?
+        if (p.saveIterationDetails &&
+            (p.decimationIterationDetails == 0 ||
+             state.currentIteration % p.decimationIterationDetails == 0 ||
+             stalled))
+        {
+            if (!currentLog->iterationsDetails.has_value())
+                currentLog->iterationsDetails.emplace();
+
+            auto& id =
+                currentLog->iterationsDetails.value()[state.currentIteration];
+            id.optimalPose = state.currentSolution.optimalPose;
+            id.pairings    = state.currentPairings;
+        }
+
+        // End criteria?
+        if (stalled)
         {
             result.terminationReason = IterTermReason::Stalled;
 

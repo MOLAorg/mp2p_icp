@@ -52,9 +52,22 @@ struct Parameters : public mrpt::serialization::CSerializable
      * The same mp2p_icp::LogRecord object saved to disk will be also returned
      * by ICP::align().
      *
-     * \sa debugFileNameFormat
+     * \sa debugFileNameFormat, saveIterationDetails
      */
     bool generateDebugFiles = false;
+
+    /** If enabled, the intermediary pairings and SE(3) solution for each
+     *  ICP step will be also stored in the mp2p_icp::LogRecord to help
+     *  investigating how ICP made progress.
+     */
+    bool saveIterationDetails = true;
+
+    /** If set to N>1, only 1 out of N ICP iterations will be kept.
+     *  Applicable if saveIterationDetails is true.
+     *  Useful to save tons of disk space for large datasets (!).
+     */
+    uint32_t decimationIterationDetails = 10;
+
 
     /** If set to N>1, only 1 out of N log files will be actually generated.
      *  Useful to save tons of disk space for large datasets (!).
