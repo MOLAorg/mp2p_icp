@@ -21,7 +21,7 @@
 
 using namespace mp2p_icp;
 
-static const uint8_t SERIALIZATION_VERSION = 0;
+static const uint8_t SERIALIZATION_VERSION = 1;
 
 void Pairings::serializeTo(mrpt::serialization::CArchive& out) const
 {
@@ -29,16 +29,18 @@ void Pairings::serializeTo(mrpt::serialization::CArchive& out) const
     out << paired_pt2pt;
     out << paired_pt2ln << paired_pt2pl << paired_ln2ln << paired_pl2pl
         << point_weights;
+    out << potential_pairings;  // v1
 }
 
 void Pairings::serializeFrom(mrpt::serialization::CArchive& in)
 {
     const auto readVersion = in.ReadAs<uint8_t>();
 
-    ASSERT_EQUAL_(readVersion, SERIALIZATION_VERSION);
+    ASSERT_LE_(readVersion, SERIALIZATION_VERSION);
     in >> paired_pt2pt;
     in >> paired_pt2ln >> paired_pt2pl >> paired_ln2ln >> paired_pl2pl >>
         point_weights;
+    if (readVersion >= 1) in >> potential_pairings;
 }
 
 mrpt::serialization::CArchive& mp2p_icp::operator<<(
@@ -121,6 +123,7 @@ void Pairings::push_back(const Pairings& o)
     push_back_copy(o.paired_pt2pl, paired_pt2pl);
     push_back_copy(o.paired_ln2ln, paired_ln2ln);
     push_back_copy(o.paired_pl2pl, paired_pl2pl);
+    potential_pairings += o.potential_pairings;
 }
 
 void Pairings::push_back(Pairings&& o)
@@ -130,6 +133,7 @@ void Pairings::push_back(Pairings&& o)
     push_back_move(std::move(o.paired_pt2pl), paired_pt2pl);
     push_back_move(std::move(o.paired_ln2ln), paired_ln2ln);
     push_back_move(std::move(o.paired_pl2pl), paired_pl2pl);
+    potential_pairings = o.potential_pairings;
 }
 
 size_t Pairings::size() const
@@ -161,6 +165,7 @@ std::string Pairings::contents_summary() const
     append_container_size(paired_pt2pl, "point-plane", ret);
     append_container_size(paired_ln2ln, "line-line", ret);
     append_container_size(paired_pl2pl, "plane-plane", ret);
+    ret += " out of "s + std::to_string(potential_pairings);
 
     return ret;
 }

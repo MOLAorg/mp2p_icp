@@ -58,6 +58,8 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     const mrpt::maps::NearestNeighborsCapable& nnGlobal =
         *mp2p_icp::MapToNN(pcGlobalMap, true /*throw if cannot convert*/);
 
+    out.potential_pairings += pcLocal.size() * pairingsPerPoint;
+
     // Empty maps?  Nothing to do
     if (pcGlobalMap.isEmpty() || pcLocal.empty()) return;
 
@@ -275,7 +277,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
                 neighborIndices.at(k), tentativeErrSqr);
         }
     }
-
 #endif
+
     MRPT_END
 }

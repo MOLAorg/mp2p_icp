@@ -95,6 +95,7 @@ void f2()
             pairings.paired_pt2pl.emplace_back(pl_this, pt_other);
         }
     }
+    out.potential_pairings += pcLocal.size() * maxPt2PtCorrespondences;
 }
 
 #endif

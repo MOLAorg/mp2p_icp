@@ -19,18 +19,19 @@ using namespace mp2p_icp;
 void QualityEvaluator_PairedRatio::initialize(
     const mrpt::containers::yaml& params)
 {
-    // By default, matchers only assign one pairing to each global point.
-    // However, in quality assesment, it DOES make sense to count several times
-    // the same global point:
-    mrpt::containers::yaml p = params;
-    if (!p.has("allowMatchAlreadyMatchedGlobalPoints"))
-        p["allowMatchAlreadyMatchedGlobalPoints"] = true;
-
     MCP_LOAD_OPT(params, reuse_icp_pairings);
 
-    // Even if reuse_icp_pairings==true, we need the matcher to check its
-    // weight_pt2pt_layers:
-    matcher_.initialize(p);
+    if (!reuse_icp_pairings)
+    {
+        // By default, matchers only assign one pairing to each global point.
+        // However, in quality assesment, it DOES make sense to count several
+        // times the same global point:
+        mrpt::containers::yaml p = params;
+        if (!p.has("allowMatchAlreadyMatchedGlobalPoints"))
+            p["allowMatchAlreadyMatchedGlobalPoints"] = true;
+
+        matcher_.initialize(p);
+    }
 }
 
 double QualityEvaluator_PairedRatio::evaluate(
@@ -54,28 +55,7 @@ double QualityEvaluator_PairedRatio::evaluate(
         pairings = &newPairings;
     }
 
-    // The ratio must be accounted for using the number of points in
-    // the active layers:
-    size_t nEffectiveLocalPoints = 0;
-    if (matcher_.weight_pt2pt_layers.empty())
-    {
-        // all layers:
-        nEffectiveLocalPoints = pcLocal.size_points_only();
-    }
-    else
-    {
-        // only selected ones:
-        for (const auto& p : matcher_.weight_pt2pt_layers)
-        {
-            for (const auto& kv : p.second)
-            {
-                const auto& localLayerName = kv.first;
-                nEffectiveLocalPoints +=
-                    pcLocal.point_layer(localLayerName)->size();
-            }
-        }
-    }
-
+    const auto nEffectiveLocalPoints = pairings->potential_pairings;
     ASSERT_(nEffectiveLocalPoints != 0);
 
     return pairings->size() / double(nEffectiveLocalPoints);

@@ -16,7 +16,10 @@
 
 namespace mp2p_icp
 {
-/** Matching quality evaluator: simple ratio [0,1] of paired entities.
+/** Matching quality evaluator: simple ratio [0,1] of paired entities,
+ *  using either an independent Matcher_Points_DistanceThreshold object,
+ *  or (faster) directly from the ratio of found pairings in the last ICP step
+ *  if `reuse_icp_pairings` is `true`, the default.
  *
  * \ingroup mp2p_icp_grp
  */
@@ -28,8 +31,9 @@ class QualityEvaluator_PairedRatio : public QualityEvaluator
     /** See base class. Parameters:
      *
      * \code
-     * reuse_icp_pairings: true # Default=true (thresholdDistance is ignored)
-     * thresholdDistance: 0.10
+     * reuse_icp_pairings: true # Default=true (no more params then required)
+     * #thresholdDistance: 0.10
+     * #thresholdAngularDeg: 0
      * \endcode
      */
     void initialize(const mrpt::containers::yaml& params) override;

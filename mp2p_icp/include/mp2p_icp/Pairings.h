@@ -103,6 +103,12 @@ struct Pairings
     MatchedPointPlaneList          paired_pt2pl;
     MatchedLineList                paired_ln2ln;
     MatchedPlaneList               paired_pl2pl;
+    
+    /// Each Matcher will add pairings in the fields above, and will increment
+    /// this `potential_pairings` with the maximum number of potential pairings
+    /// that it might have found. That is, the ratio of successful pairings 
+    /// is `this->size() / double(potential_pairings)`.
+    uint64_t potential_pairings = 0;
 
     /** *Individual* weights for paired_pt2pt: each entry specifies how many
      * points have the given (mapped second value) weight, in the same order as
