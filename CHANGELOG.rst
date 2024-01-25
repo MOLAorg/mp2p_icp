@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2024-01-25)
+------------------
 * FilterDecimateVoxels: Replace 3 bool parameters with an enum
 * Fix clang warnings
 * Save and visualize ICP step partial solutions
