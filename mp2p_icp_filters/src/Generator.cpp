@@ -80,7 +80,9 @@ void Generator::Parameters::load_from_yaml(
                 THROW_EXCEPTION_FMT(
                     "key '%s' must be either a scalar or a map", key.c_str());
 
-            mrpt::containers::yaml newMap = mrpt::containers::yaml::Map();
+            trg[key]     = mrpt::containers::yaml::Map();
+            auto& newMap = trg.asMap().at(key).asMap();
+
             for (const auto& [kk, vv] : v.asMap())
             {
                 const std::string val = vv.as<std::string>();
@@ -92,8 +94,9 @@ void Generator::Parameters::load_from_yaml(
 
                     const auto ks = kk.as<std::string>();
 
-                    newMap[ks]          = 0.0;
-                    double& placeholder = newMap[ks].asRef<double>();
+                    auto [it, exist] = newMap.insert({ks, .0});
+                    double& placeholder =
+                        *std::any_cast<double>(&it->second.asScalar());
 
                     parent.parseAndDeclareParameter(
                         val.substr(3, val.size() - 4), placeholder);
@@ -104,8 +107,6 @@ void Generator::Parameters::load_from_yaml(
                     newMap[kk.as<std::string>()] = val;
                 }
             }
-
-            trg[key] = std::move(newMap);
         }
 
         std::stringstream ss;
