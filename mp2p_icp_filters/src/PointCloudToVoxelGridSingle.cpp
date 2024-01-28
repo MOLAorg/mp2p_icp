@@ -35,6 +35,8 @@ void PointCloudToVoxelGridSingle::processPointCloud(
     const auto& zs   = p.getPointsBufferRef_z();
     const auto  npts = xs.size();
 
+    pts_voxels.reserve(pts_voxels.size() + npts);
+
     for (std::size_t i = 0; i < npts; i++)
     {
         const auto x = xs[i];
@@ -54,8 +56,6 @@ void PointCloudToVoxelGridSingle::processPointCloud(
                 vx = {mrpt::math::TPoint3Df(x, y, z), i, &p, 1};
             else
                 vx.pointCount++;
-
-            continue;  // already existed, do nothing else
         }
         else
         {
