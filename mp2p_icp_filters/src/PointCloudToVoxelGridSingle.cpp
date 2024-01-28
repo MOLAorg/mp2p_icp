@@ -68,5 +68,6 @@ void PointCloudToVoxelGridSingle::processPointCloud(
 void PointCloudToVoxelGridSingle::clear()
 {
     //
+    pts_voxels.min_load_factor(0.01f);
     pts_voxels.clear();
 }
