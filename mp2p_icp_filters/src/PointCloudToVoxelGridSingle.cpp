@@ -44,17 +44,23 @@ void PointCloudToVoxelGridSingle::processPointCloud(
         const indices_t vxl_idx = {coord2idx(x), coord2idx(y), coord2idx(z)};
 
         auto itVoxel = pts_voxels.find(vxl_idx);
+
         if (itVoxel != pts_voxels.end())
         {
             // (const cast: required for tsl::robin_map)
-            const_cast<voxel_t&>(itVoxel->second).pointCount++;
+            auto& vx = const_cast<voxel_t&>(itVoxel->second);
+
+            if (vx.pointCount == 0)
+                vx = {mrpt::math::TPoint3Df(x, y, z), i, &p, 1};
+            else
+                vx.pointCount++;
 
             continue;  // already existed, do nothing else
         }
         else
         {
             // insert new
-            pts_voxels[vxl_idx] = {mrpt::math::TPoint3Df(x, y, z), i, &p, 0};
+            pts_voxels[vxl_idx] = {mrpt::math::TPoint3Df(x, y, z), i, &p, 1};
         }
     }
 }
