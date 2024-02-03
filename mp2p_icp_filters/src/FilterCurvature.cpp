@@ -13,6 +13,14 @@
 #include <mp2p_icp_filters/FilterCurvature.h>
 #include <mrpt/containers/yaml.h>
 
+//#define DEBUG_GL
+
+#ifdef DEBUG_GL
+#include <mrpt/img/color_maps.h>
+#include <mrpt/opengl/CPointCloudColoured.h>
+#include <mrpt/opengl/Scene.h>
+#endif
+
 IMPLEMENTS_MRPT_OBJECT(
     FilterCurvature, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -85,60 +93,138 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
         "At least one 'output_layer_larger_curvature' or "
         "'output_layer_smaller_curvature' output layers must be provided.");
 
-    const auto&  xs = pc.getPointsBufferRef_x();
-    const auto&  ys = pc.getPointsBufferRef_y();
-    const auto&  zs = pc.getPointsBufferRef_z();
-    const size_t N  = xs.size();
+    const auto& xs       = pc.getPointsBufferRef_x();
+    const auto& ys       = pc.getPointsBufferRef_y();
+    const auto& zs       = pc.getPointsBufferRef_z();
+    const auto* ptrRings = pc.getPointsBufferRef_ring();
+    if (!ptrRings || ptrRings->empty())
+    {
+        THROW_EXCEPTION_FMT(
+            "Error: this filter needs the input layer '%s' to has a 'ring' "
+            "point channel.",
+            params_.input_pointcloud_layer.c_str());
+    }
+
+    const auto& ringPerPt = *ptrRings;
+    ASSERT_EQUAL_(ringPerPt.size(), xs.size());
+
+    const size_t N = xs.size();
+
+    const uint16_t nRings =
+        1 + *std::max_element(ringPerPt.begin(), ringPerPt.end());
+
+    const auto estimPtsPerRing = N / nRings;
+
+    MRPT_LOG_DEBUG_STREAM(
+        "nRings: " << nRings << " estimPtsPerRing: " << estimPtsPerRing);
+    ASSERT_(nRings > 0 && nRings < 5000 /*something wrong?*/);
+
+    std::vector<std::vector<size_t>> idxPerRing;
+    idxPerRing.resize(nRings);
+    for (auto& r : idxPerRing) r.reserve(estimPtsPerRing);
+
+#ifdef DEBUG_GL
+    auto glPts = mrpt::opengl::CPointCloudColoured::Create();
+    glPts->setPointSize(4.0f);
+    auto glRawPts = mrpt::opengl::CPointCloudColoured::Create();
+    glRawPts->setPointSize(1.0f);
+#endif
+
+    for (size_t i = 0; i < N; i++)
+    {
+        auto& trg = idxPerRing.at(ringPerPt[i]);
+
+#ifdef DEBUG_GL
+        auto ringId = ringPerPt[i];
+        auto col    = mrpt::img::colormap(
+            mrpt::img::cmJET, static_cast<double>(ringId) / nRings);
+        glRawPts->insertPoint({xs[i], ys[i], zs[i], col.R, col.G, col.B});
+#endif
+
+        if (!trg.empty())
+        {
+            // filter: minimum distance:
+            auto       li     = trg.back();
+            const auto lastPt = mrpt::math::TPoint3Df(xs[li], ys[li], zs[li]);
+            const auto pt     = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
+            const auto d      = pt - lastPt;
+
+            if (mrpt::max3(std::abs(d.x), std::abs(d.y), std::abs(d.z)) <
+                params_.min_clearance)
+                continue;
+        }
+
+        // accept the point:
+        trg.push_back(i);
+
+#ifdef DEBUG_GL
+        glPts->insertPoint({xs[i], ys[i], zs[i], col.R, col.G, col.B});
+#endif
+    }
+
+#ifdef DEBUG_GL
+    {
+        static int          iter = 0;
+        mrpt::opengl::Scene scene;
+        scene.insert(glRawPts);
+        scene.insert(glPts);
+        scene.saveToFile(mrpt::format("debug_curvature_%04i.3Dscene", iter++));
+    }
+#endif
 
     const float maxGapSqr = mrpt::square(params_.max_gap);
 
     size_t counterLarger = 0, counterLess = 0;
 
-    for (size_t i = 1; i + 1 < N; i++)
+    for (size_t ri = 0; ri < nRings; ri++)
     {
-        const auto pt = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
-        const auto ptm1 =
-            mrpt::math::TPoint3Df(xs[i - 1], ys[i - 1], zs[i - 1]);
-        const auto ptp1 =
-            mrpt::math::TPoint3Df(xs[i + 1], ys[i + 1], zs[i + 1]);
+        const auto& idxs = idxPerRing.at(ri);
 
-        if ((pt - ptm1).sqrNorm() > maxGapSqr ||
-            (pt - ptp1).sqrNorm() > maxGapSqr)
+        for (size_t idx = 1; idx + 1 < idxs.size(); idx++)
         {
-            // count borders as large curvature, if this is the edge
-            // of the discontinuity that is closer to the sensor (assumed to be
-            // close to the origin!)
-            if (pt.sqrNorm() < ptm1.sqrNorm())
+            const size_t im1 = idxs[idx - 1];
+            const size_t i   = idxs[idx];
+            const size_t ip1 = idxs[idx + 1];
+
+            const auto pt   = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
+            const auto ptm1 = mrpt::math::TPoint3Df(xs[im1], ys[im1], zs[im1]);
+            const auto ptp1 = mrpt::math::TPoint3Df(xs[ip1], ys[ip1], zs[ip1]);
+
+            if ((pt - ptm1).sqrNorm() > maxGapSqr ||
+                (pt - ptp1).sqrNorm() > maxGapSqr)
+            {
+                // count borders as large curvature, if this is the edge
+                // of the discontinuity that is closer to the sensor (assumed to
+                // be close to the origin!)
+                if (pt.sqrNorm() < ptm1.sqrNorm())
+                {
+                    counterLarger++;
+                    if (outPcLarger) outPcLarger->insertPointFrom(pc, i);
+                }
+                else
+                {
+                    if (outPcOther) outPcOther->insertPointFrom(pc, i);
+                }
+                continue;
+            }
+
+            const auto v1  = (pt - ptm1);
+            const auto v2  = (ptp1 - pt);
+            const auto v1n = v1.norm();
+            const auto v2n = v2.norm();
+
+            const float score = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+
+            if (std::abs(score) < params_.max_cosine * v1n * v2n)
             {
                 counterLarger++;
                 if (outPcLarger) outPcLarger->insertPointFrom(pc, i);
             }
             else
             {
-                if (outPcOther) outPcOther->insertPointFrom(pc, i);
+                counterLess++;
+                if (outPcSmaller) outPcSmaller->insertPointFrom(pc, i);
             }
-            continue;
-        }
-
-        const auto v1  = (pt - ptm1);
-        const auto v2  = (ptp1 - pt);
-        const auto v1n = v1.norm();
-        const auto v2n = v2.norm();
-
-        if (v1n < params_.min_clearance || v2n < params_.min_clearance)
-            continue;
-
-        const float score = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-
-        if (std::abs(score) < params_.max_cosine * v1n * v2n)
-        {
-            counterLarger++;
-            if (outPcLarger) outPcLarger->insertPointFrom(pc, i);
-        }
-        else
-        {
-            counterLess++;
-            if (outPcSmaller) outPcSmaller->insertPointFrom(pc, i);
         }
     }
 
