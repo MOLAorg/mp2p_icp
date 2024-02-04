@@ -38,6 +38,8 @@ void PointCloudToVoxelGrid::processPointCloud(const mrpt::maps::CPointsMap& p)
     float x0, y0, z0;
     x0 = y0 = z0 = std::numeric_limits<float>::max();
 
+    pts_voxels.reserve(pts_voxels.size() + npts);
+
     for (std::size_t i = 0; i < npts; i++)
     {
         // Skip this point?

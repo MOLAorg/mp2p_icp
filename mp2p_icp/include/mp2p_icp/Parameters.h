@@ -60,7 +60,7 @@ struct Parameters : public mrpt::serialization::CSerializable
      *  ICP step will be also stored in the mp2p_icp::LogRecord to help
      *  investigating how ICP made progress.
      */
-    bool saveIterationDetails = true;
+    bool saveIterationDetails = false;
 
     /** If set to N>1, only 1 out of N ICP iterations will be kept.
      *  Applicable if saveIterationDetails is true.
