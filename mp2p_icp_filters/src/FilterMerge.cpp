@@ -64,11 +64,22 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
     checkAllParametersAreRealized();
 
     // In:
-    const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    ASSERTMSG_(
+        inOut.layers.count(params_.input_pointcloud_layer) != 0,
+        mrpt::format(
+            "Input layer '%s' not found.",
+            params_.input_pointcloud_layer.c_str()));
+
+    const auto mapPtr = inOut.layers.at(params_.input_pointcloud_layer);
+    ASSERT_(mapPtr);
+
+    const auto pcPtr = mp2p_icp::MapToPointsMap(*mapPtr);
     ASSERTMSG_(
         pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.input_pointcloud_layer.c_str()));
+                   "Input point cloud layer '%s' could not be converted into a "
+                   "point cloud (class='%s')",
+                   params_.input_pointcloud_layer.c_str(),
+                   mapPtr->GetRuntimeClass()->className));
 
     // Out:
     ASSERT_(!params_.target_layer.empty());
@@ -87,7 +98,7 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
     // Copy the input layer here, as seen from the robot (hence the "-"):
     const auto robotPose    = mrpt::poses::CPose3D(params_.robot_pose);
     const auto invRobotPose = -robotPose;
-    pts->insertAnotherMap(pcPtr.get(), invRobotPose);
+    pts->insertAnotherMap(pcPtr, invRobotPose);
 
     // Merge into map:
     out->insertObservation(obs, robotPose);

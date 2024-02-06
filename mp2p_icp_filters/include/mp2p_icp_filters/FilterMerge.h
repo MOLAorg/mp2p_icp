@@ -19,12 +19,16 @@
 
 namespace mp2p_icp_filters
 {
-/** Takes an input point cloud layer and inserts it into another one of
- * arbitrary metric map type.
+/** Takes an input point cloud or mrpt::maps::CVoxelMap layer and inserts it
+ * into another one of arbitrary metric map type.
  *
  * Insertion is done by converting the input layer into an
  * mrpt::obs::CObservationPointCloud, then invoking the target layer's
  * mrpt::maps::CMetricMap::insertObservation()
+ *
+ * If the input was a mrpt::maps::CVoxelMap, it is first converted into
+ * a point cloud by generating points for each occupied voxel using
+ * mrpt::maps::CVoxelMap::getOccupiedVoxels().
  *
  * \ingroup mp2p_icp_filters_grp
  */

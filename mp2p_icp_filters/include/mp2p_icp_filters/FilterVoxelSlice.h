@@ -19,9 +19,9 @@
 
 namespace mp2p_icp_filters
 {
-/** Takes an input layer of type CVoxelMap (Bonxai) and extracts one 2D
- * slice as an occupancy gridmap, taken at a given height ("z") range of values.
- * That is, each voxel column will be collapsed into a 2D grid cell.
+/** Takes an input layer of type mrpt::maps::CVoxelMap (Bonxai) and extracts one
+ * 2D slice as an occupancy gridmap, taken at a given height ("z") range of
+ * values. That is, each voxel column will be collapsed into a 2D grid cell.
  *
  * If the output layer already exists, it will be overwritten.
  *
