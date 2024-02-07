@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.1 (2024-02-07)
+------------------
 * MergeFilter: now also handles CVoxelMap as inputs
 * more memory efficient defaults
 * FilterCurvature: now based on ring_id channel
