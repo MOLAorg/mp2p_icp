@@ -2,6 +2,16 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* MergeFilter: now also handles CVoxelMap as inputs
+* more memory efficient defaults
+* FilterCurvature: now based on ring_id channel
+* Use hash map min_factor to speed up clear()s
+* add missing hash reserve
+* PointCloudToVoxelGridSingle: Fix wrong initialization of point count
+* Contributors: Jose Luis Blanco-Claraco
+
 1.1.0 (2024-01-25)
 ------------------
 * FilterDecimateVoxels: Replace 3 bool parameters with an enum
