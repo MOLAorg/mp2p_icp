@@ -37,6 +37,20 @@ if (TBB_FOUND)
 	option(MP2PICP_USE_TBB "If found TBB, this option controls whether to use it or not" ON)
 endif()
 
+#----
+# Extract version from package.xml
+# Example line:" <version>0.3.2</version>"
+file(READ package.xml contentPackageXML)
+string(REGEX MATCH "<version>([0-9\.]*)</version>" _ ${contentPackageXML})
+set(MP2P_ICP_VERSION ${CMAKE_MATCH_1})
+message(STATUS "MP2P_ICP version: ${MP2P_ICP_VERSION} (detected in package.xml)")
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ ${MP2P_ICP_VERSION})
+set(MP2P_ICP_MAJOR_VERSION ${CMAKE_MATCH_1})
+set(MP2P_ICP_MINOR_VERSION ${CMAKE_MATCH_2})
+set(MP2P_ICP_PATCH_VERSION ${CMAKE_MATCH_3})
+#----
+
+
 # -----------------------
 # define library targets:
 # -----------------------
