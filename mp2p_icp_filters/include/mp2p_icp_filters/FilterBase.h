@@ -16,6 +16,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/optional_ref.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/obs/obs_frwds.h>
 #include <mrpt/rtti/CObject.h>
@@ -23,6 +24,11 @@
 
 #include <cstdint>
 #include <stdexcept>
+
+namespace mrpt::system
+{
+class CTimeLogger;
+}
 
 namespace mp2p_icp_filters
 {
@@ -71,7 +77,9 @@ using FilterPipeline = std::vector<FilterBase::Ptr>;
 
 /** Applies a pipeline of filters to a given metric_map_t  */
 void apply_filter_pipeline(
-    const FilterPipeline& filters, mp2p_icp::metric_map_t& inOut);
+    const FilterPipeline& filters, mp2p_icp::metric_map_t& inOut,
+    const mrpt::optional_ref<mrpt::system::CTimeLogger>& profiler =
+        std::nullopt);
 
 /** Creates a pipeline of filters from a YAML configuration block (a sequence).
  *  Refer to YAML file examples. Returns an empty pipeline for an empty or null

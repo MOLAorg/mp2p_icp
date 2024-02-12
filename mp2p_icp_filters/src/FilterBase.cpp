@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp_filters/FilterBase.h>
+#include <mrpt/system/CTimeLogger.h>
 
 IMPLEMENTS_VIRTUAL_MRPT_OBJECT(
     FilterBase, mrpt::rtti::CObject, mp2p_icp_filters)
@@ -22,11 +23,16 @@ FilterBase::FilterBase() : mrpt::system::COutputLogger("FilterBase") {}
 FilterBase::~FilterBase() = default;
 
 void mp2p_icp_filters::apply_filter_pipeline(
-    const FilterPipeline& filters, mp2p_icp::metric_map_t& inOut)
+    const FilterPipeline& filters, mp2p_icp::metric_map_t& inOut,
+    const mrpt::optional_ref<mrpt::system::CTimeLogger>& profiler)
 {
     for (const auto& f : filters)
     {
         ASSERT_(f.get() != nullptr);
+
+        std::optional<mrpt::system::CTimeLoggerEntry> tle;
+        if (profiler) tle.emplace(*profiler, f->GetRuntimeClass()->className);
+
         f->filter(inOut);
     }
 }
