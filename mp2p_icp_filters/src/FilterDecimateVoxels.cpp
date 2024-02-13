@@ -228,7 +228,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             if (vxl.indices.empty()) continue;
 
             nonEmptyVoxels++;
-            mrpt::math::TPoint3Df insertPt;
+            std::optional<mrpt::math::TPoint3Df> insertPt;
+            size_t insertPtIdx;  // valid only if insertPt is empty
 
             if (params_.decimate_method == DecimateMethod::VoxelAverage ||
                 params_.decimate_method == DecimateMethod::ClosestToAverage)
@@ -264,7 +265,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                         }
                     }
                     // Insert the closest to the mean:
-                    insertPt = {xs[*bestIdx], ys[*bestIdx], zs[*bestIdx]};
+                    insertPtIdx = *bestIdx;
                 }
                 else
                 {
@@ -281,7 +282,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                         : 0UL;
 
                 const auto pt_idx = vxl.indices.at(idxInVoxel);
-                insertPt          = {xs[pt_idx], ys[pt_idx], zs[pt_idx]};
+                insertPtIdx       = pt_idx;
             }
 
             // insert it, if passed the flatten filter:
@@ -296,12 +297,21 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
                 // First time we see this (x,y) cell:
                 flattenUsedBins.insert(flattenIdx);
+
+                insertPt.emplace(
+                    xs[insertPtIdx], ys[insertPtIdx], zs[insertPtIdx]);
                 outPc->insertPointFast(
-                    insertPt.x, insertPt.y, *params_.flatten_to);
+                    insertPt->x, insertPt->y, *params_.flatten_to);
             }
             else
             {
-                outPc->insertPointFast(insertPt.x, insertPt.y, insertPt.z);
+                if (insertPt)
+                    outPc->insertPointFast(
+                        insertPt->x, insertPt->y, insertPt->z);
+                else
+                {
+                    outPc->insertPointFrom(pc, insertPtIdx);
+                }
             }
         }
     }  // end: non-single grid
