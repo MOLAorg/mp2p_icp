@@ -25,6 +25,15 @@ struct cli_flags
         "command", "Command to run. Run 'sm help' to list commands.", false, "",
         cmd};
 
+    TCLAP::ValueArg<std::string> arg_verbosity_level{
+        "v",
+        "verbosity",
+        "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)",
+        false,
+        "",
+        "INFO",
+        cmd};
+
     TCLAP::SwitchArg argHelp{
         "h", "help", "Shows more detailed help for command", cmd};
 
@@ -39,6 +48,7 @@ using cmd_t = std::function<int(void)>;
 int  printListCommands();  // "help"
 void printVersion();  // "--version"
 int  commandInfo();  // "info"
+int  commandLevel();  // "level"
 
 void setConsoleErrorColor();
 void setConsoleNormalColor();

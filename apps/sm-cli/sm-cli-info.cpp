@@ -34,8 +34,8 @@ int commandInfo()
     std::cout << "Loading: '" << file << "' of "
               << mrpt::system::unitsFormat(sizeBytes) << "B..." << std::endl;
 
-    // register mrpt-obs classes, since we are using them explicitly and hence
-    // they are not auto-loading.
+    // register mrpt-obs classes, since we are not using them explicitly and
+    // hence they are not auto-loading.
     mrpt::maps::registerAllClasses_mrpt_maps();
     mrpt::obs::registerAllClasses_mrpt_obs();
 

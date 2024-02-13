@@ -26,6 +26,7 @@ std::unique_ptr<cli_flags> cli;
 const std::map<std::string, cmd_t> cliCommands = {
     {"help", cmd_t(&printListCommands)},
     {"info", cmd_t(&commandInfo)},
+    {"level", cmd_t(&commandLevel)},
 };
 
 void setConsoleErrorColor()
@@ -97,6 +98,7 @@ int printListCommands()
 
 Available commands:
     sm-cli info               Analyze a .simplemap file.
+    sm-cli level              Makes a .simplemap file level (horizontal).
     sm-cli --version          Shows program version.
     sm-cli --help             Shows this information.
 

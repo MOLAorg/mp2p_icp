@@ -11,6 +11,7 @@ mola_add_executable(
     sm-cli-main.cpp
     sm-cli.h
     sm-cli-info.cpp
+    sm-cli-level.cpp
   LINK_LIBRARIES
     mp2p_icp_filters
     mrpt::maps

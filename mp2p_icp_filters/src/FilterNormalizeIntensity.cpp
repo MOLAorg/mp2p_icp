@@ -85,5 +85,8 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         I = (I - *minI) * delta_inv;
     }
 
+    MRPT_LOG_DEBUG_STREAM(
+        "Normalized with minI=" << *minI << " maxI=" << *maxI);
+
     MRPT_END
 }
