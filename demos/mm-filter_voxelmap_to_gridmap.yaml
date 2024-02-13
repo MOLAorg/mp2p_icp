@@ -1,0 +1,17 @@
+# -----------------------------------------------------------------------------
+# Pipeline definition file for mm-filter
+#
+# See: https://github.com/MOLAorg/mp2p_icp/tree/master/apps/mm-filter
+#
+# Explanation of this particular pipeline:
+# Takes a 3D voxel map and extracts a 2D slice of it as a gridmap.
+# -----------------------------------------------------------------------------
+
+filters:
+  - class_name: mp2p_icp_filters::FilterVoxelSlice
+    params:
+      input_layer: 'voxelmap'
+      output_layer: 'gridmap'
+      # "z" coordinates at which to take the slice:
+      slice_z_min: 0.10
+      slice_z_max: 0.30

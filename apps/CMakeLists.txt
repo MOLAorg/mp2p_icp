@@ -1,5 +1,6 @@
 # Apps:
 add_subdirectory(kitti2mm)
+add_subdirectory(mm-filter)
 add_subdirectory(mm-viewer)
 add_subdirectory(mp2p-icp-log-viewer)
 add_subdirectory(mp2p-icp-run)
