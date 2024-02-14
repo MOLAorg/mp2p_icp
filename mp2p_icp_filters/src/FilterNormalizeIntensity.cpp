@@ -12,6 +12,7 @@
 
 #include <mp2p_icp_filters/FilterNormalizeIntensity.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/lock_helper.h>
 
 IMPLEMENTS_MRPT_OBJECT(
     FilterNormalizeIntensity, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
@@ -22,6 +23,7 @@ void FilterNormalizeIntensity::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c)
 {
     MCP_LOAD_REQ(c, pointcloud_layer);
+    MCP_LOAD_OPT(c, remember_intensity_range);
 }
 
 FilterNormalizeIntensity::FilterNormalizeIntensity()
@@ -73,6 +75,16 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         if (!maxI || I > *maxI) maxI = I;
     }
     ASSERT_(minI && maxI);
+
+    // Merge with range memory?
+    if (params_.remember_intensity_range)
+    {
+        auto lck = mrpt::lockHelper(minMaxMtx_);
+        if (!minI_ || *minI < *minI_) minI_ = *minI;
+        if (!maxI_ || *maxI > *maxI_) maxI_ = *maxI;
+        minI = *minI_;
+        maxI = *maxI_;
+    }
 
     float delta = *maxI - *minI;
     if (delta == 0) delta = 1;

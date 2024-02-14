@@ -15,6 +15,9 @@
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterBase.h>
 
+#include <mutex>
+#include <optional>
+
 namespace mp2p_icp_filters
 {
 /** Normalizes the intensity channel of a point cloud layer, such as intensity
@@ -22,6 +25,11 @@ namespace mp2p_icp_filters
  *
  * No new layer is created, data is directly updated in the same input/output
  * layer.
+ *
+ * If the parameter `remember_intensity_range` is `true` (default=`false`),
+ * the filter object will have "memory" and remember the minimum and maximum
+ * intensities observed in past clouds. Otherwise, each cloud will have its
+ * own extreme values so they will be always normalized to [0, 1].
  *
  * \ingroup mp2p_icp_filters_grp
  */
@@ -42,10 +50,16 @@ class FilterNormalizeIntensity : public mp2p_icp_filters::FilterBase
         void load_from_yaml(const mrpt::containers::yaml& c);
 
         std::string pointcloud_layer;
+
+        bool remember_intensity_range = false;
     };
 
     /** Algorithm parameters */
     Parameters params_;
+
+   private:
+    mutable std::optional<float> minI_, maxI_;
+    mutable std::mutex           minMaxMtx_;
 };
 
 /** @} */
