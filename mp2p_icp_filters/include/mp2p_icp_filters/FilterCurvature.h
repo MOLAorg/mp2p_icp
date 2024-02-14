@@ -4,7 +4,7 @@
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
- * @file   FilterCurvature.cpp
+ * @file   FilterCurvature.h
  * @brief  Classifies a sorted input point cloud by local curvature
  * @author Jose Luis Blanco Claraco
  * @date   Dec 11, 2023
