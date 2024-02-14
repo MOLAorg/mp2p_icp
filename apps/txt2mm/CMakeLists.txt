@@ -1,7 +1,6 @@
-project(kitti2mm)
+project(txt2mm)
 
 find_package(mrpt-maps REQUIRED)
-find_package(mrpt-obs REQUIRED)
 find_package(mrpt-tclap REQUIRED)
 
 mola_add_executable(
@@ -11,7 +10,6 @@ mola_add_executable(
   LINK_LIBRARIES
     mp2p_icp_map
     mrpt::maps
-    mrpt::obs
     mrpt::tclap
 )
 

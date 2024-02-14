@@ -28,6 +28,18 @@ The project provides these C++ libraries:
  * `mp2p_icp`: With ICP algorithms. It depends on `mp2p_icp_map`.
  * `mp2p_icp_filters`: With point cloud filtering and manipulation algorithms. It depends on `mp2p_icp_map`.
 
+And these applications:
+ * [kitti2mm](apps/kitti2mm): Converts KITTI-like `.bin` files to `.mm` files.
+ * [mm-filter](apps/mm-filter): CLI tool to apply a pipeline to an input metric map (`*.mm`), saving the result as another metric map file.
+ * [mm-info](apps/mm-info): CLI tool to read a metric map (`*.mm`) and describe its contents.
+ * [mm-viewer](apps/mm-viewer): GUI tool to visualize .mm (metric map) files.
+ * [mp2p-icp-log-viewer](apps/mp2p-icp-log-viewer): GUI to inspect results from ICP runs.
+ * [mp2p-icp-run](apps/mp2p-icp-run): Standalone program to run ICP pipelines.
+ * [sm2mm](apps/sm2mm): A CLI tool to convert a [simple map](https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html) `*.simplemap`
+(from a SLAM mapping session) into a metric map (`*.mm`) via a configurable pipeline configuration file.
+ * [sm-cli](apps/sm-cli): A CLI tool to inspect, visualize, or modify [simple maps](https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html) `*.simplemap` (from a SLAM mapping session).
+ * [txt2mm](apps/txt2mm): CLI tool to convert pointclouds from CSV/TXT files to mp2p_icp mm.
+
 
 This project provides:
  * [`mp2p_icp::metric_map_t`](https://docs.mola-slam.org/latest/class_mp2p_icp_metric_map_t.html#doxid-classmp2p-icp-1-1metric-map-t): A generic
