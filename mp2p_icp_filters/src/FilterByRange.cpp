@@ -23,10 +23,15 @@ void FilterByRange::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c, FilterByRange& parent)
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
-    MCP_LOAD_REQ(c, output_pointcloud_layer);
-    MCP_LOAD_OPT(c, output_deleted_pointcloud_layer);
+    MCP_LOAD_OPT(c, output_layer_between);
+    MCP_LOAD_OPT(c, output_layer_outside);
     DECLARE_PARAMETER_IN_REQ(c, range_min, parent);
     DECLARE_PARAMETER_IN_REQ(c, range_max, parent);
+
+    ASSERTMSG_(
+        !output_layer_between.empty() || !output_layer_outside.empty(),
+        "At least one 'output_layer_between' or "
+        "'output_layer_outside' must be provided.");
 
     if (c.has("center"))
     {
@@ -39,8 +44,6 @@ void FilterByRange::Parameters::load_from_yaml(
             parent.parseAndDeclareParameter(
                 cc.at(i).as<std::string>(), center[i]);
     }
-
-    MCP_LOAD_REQ(c, keep_between);
 }
 
 FilterByRange::FilterByRange()
@@ -73,25 +76,21 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
     const auto& pc = *pcPtr;
 
-    // Out:
-    ASSERT_(!params_.output_pointcloud_layer.empty());
-
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPc = GetOrCreatePointLayer(
-        inOut, params_.output_pointcloud_layer,
-        /*do not allow empty*/
-        false,
+    mrpt::maps::CPointsMap* outBetween = GetOrCreatePointLayer(
+        inOut, params_.output_layer_between, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    outPc->reserve(outPc->size() + pc.size() / 10);
+    if (outBetween) outBetween->reserve(outBetween->size() + pc.size() / 10);
 
     // Optional output layer for deleted points:
-    mrpt::maps::CPointsMap* outPcForDeleted = GetOrCreatePointLayer(
-        inOut, params_.output_deleted_pointcloud_layer,
-        true /*allow empty for nullptr*/,
+    mrpt::maps::CPointsMap* outOutside = GetOrCreatePointLayer(
+        inOut, params_.output_layer_outside, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
+
+    if (outOutside) outOutside->reserve(outOutside->size() + pc.size() / 10);
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
@@ -108,22 +107,10 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
         const bool isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
 
-        auto* targetPc = ((isInside && !params_.keep_between) ||
-                          (!isInside && params_.keep_between))
-                             ?
-                             // remove this point.
-                             outPcForDeleted
-                             :
-                             // keep it:
-                             outPc;
+        auto* targetPc = isInside ? outBetween : outOutside;
 
         if (targetPc) targetPc->insertPointFrom(pc, i);
     }
-    outPc->mark_as_modified();
-
-    MRPT_LOG_DEBUG_STREAM(
-        "output_layer=" << params_.output_pointcloud_layer
-                        << " type=" << outPc->GetRuntimeClass()->className);
 
     MRPT_END
 }

@@ -17,13 +17,13 @@
 
 namespace mp2p_icp_filters
 {
-/** Leaves (`keep_between`=true) or removes (`keep_between`=false)
- * the points with a range (distance from "center") in between a (min,max)
- * range. By default, "center" is at (0,0,0) in the point cloud frame of
- * reference.
+/** Filter points according to whether their range (distance from "center")
+ *  is between a (min,max) range or not. By default, "center" is at (0,0,0)
+ *  in the point cloud frame of reference.
  *
- * Optionally, removed points can be also sent out to another layer (set
- * `output_deleted_pointcloud_layer`)
+ * There are two (optional) output target layers, one for the points *within*
+ * the range [min,max] (`output_layer_between`) and another for those
+ * outside of the range (`output_layer_outside`). At least one must be provided.
  *
  * \ingroup mp2p_icp_filters_grp
  */
@@ -47,11 +47,13 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
         std::string input_pointcloud_layer =
             mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
-        /** The output point cloud layer name */
-        std::string output_pointcloud_layer;
+        /** Optional output point cloud layer name for points **within** the
+         * [min,max] range */
+        std::string output_layer_between;
 
-        /** Optional output point cloud layer name for deleted points */
-        std::string output_deleted_pointcloud_layer;
+        /** Optional output point cloud layer name for points **outside** of the
+         * range [min,max] */
+        std::string output_layer_outside;
 
         /**
          * YAML loading format:
@@ -62,9 +64,6 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
          */
         float range_min = 3.0f;
         float range_max = 90.0f;
-
-        /** See explanation on top of FilterByRange */
-        bool keep_between = true;
 
         /** Ranges are measured from this center point.
          * Can be defined as a function of the robot pose variables, e.g.:

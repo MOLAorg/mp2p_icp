@@ -51,8 +51,7 @@ filters:
   - class_name: mp2p_icp_filters::FilterByRange
     params:
       input_pointcloud_layer: 'raw'
-      output_pointcloud_layer: 'filtered'
-      keep_between: true # Remove points out of this range limits
+      output_layer_between: 'filtered'
       range_min: 3.0
       range_max: 100
       center: [robot_x, robot_y, robot_z]

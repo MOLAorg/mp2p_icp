@@ -31,10 +31,9 @@ filters:
   - class_name: mp2p_icp_filters::FilterByRange
     params:
       input_pointcloud_layer: 'decimated'
-      output_pointcloud_layer: 'filtered'
+      output_layer_outside: 'filtered'
       range_min: 0.0
       range_max: 5.0
-      keep_between: false            # remove this range
       # Measure distances from the moving robot pose:
       center: [robot_x, robot_y, robot_z]
 
