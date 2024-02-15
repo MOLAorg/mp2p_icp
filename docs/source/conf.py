@@ -38,10 +38,16 @@ copyright = u'{year} The mp2p_icp authors.'.format(year=datetime.now().year)
 # ones.
 extensions = [
     'sphinx.ext.mathjax',
-    'sphinx.ext.ifconfig'
+    'sphinx.ext.ifconfig',
+    'doxyrest', 'cpplexer',
+    'sphinx_rtd_theme',
+    'sphinx.ext.mathjax',
+    'sphinx_design',
+    'sphinx.ext.autosectionlabel',
+    'sphinxcontrib.bibtex',
 ]
 
-extensions += ['doxyrest', 'cpplexer']
+bibtex_bibfiles = ['refs.bib']
 
 # Show build time
 html_last_updated_fmt = '%H:%M, %b %d, %Y'

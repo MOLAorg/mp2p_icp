@@ -19,12 +19,12 @@ C++ libraries for multi primitive-to-primitive (MP2P) ICP algorithms and flexibl
 
 
 - [Main library documentation and C++ API](https://docs.mola-slam.org/mp2p_icp/)
-- License: New BSD 3-Clause
+- License: New BSD 3-Clause (Note that each module of [MOLA](https://github.com/MOLAorg/mola) has its own license)
 
 ## Introduction
 
 The project provides these C++ libraries:
- * `mp2p_icp_map`: Provides the [`mp2p_icp::metric_map_t`](https://docs.mola-slam.org/latest/class_mp2p_icp_metric_map_t.html#doxid-classmp2p-icp-1-1metric-map-t) generic metric map container.
+ * `mp2p_icp_map`: Provides the [`mp2p_icp::metric_map_t`](https://docs.mola-slam.org/latest/class_mp2p_icp_metric_map_t.html#doxid-classmp2p-icp-1-1metric-map-t) generic metric map container. Metric map files with extension `*.mm` are serializations of instances of this class.
  * `mp2p_icp`: With ICP algorithms. It depends on `mp2p_icp_map`.
  * `mp2p_icp_filters`: With point cloud filtering and manipulation algorithms. It depends on `mp2p_icp_map`.
 
@@ -33,6 +33,7 @@ And these applications:
  * [mm-filter](apps/mm-filter): CLI tool to apply a pipeline to an input metric map (`*.mm`), saving the result as another metric map file.
  * [mm-info](apps/mm-info): CLI tool to read a metric map (`*.mm`) and describe its contents.
  * [mm-viewer](apps/mm-viewer): GUI tool to visualize .mm (metric map) files.
+ * [mm2txt](apps/mm2txt): CLI tool to export the layers of a metric map (`*.mm`) as CSV/TXT.
  * [mp2p-icp-log-viewer](apps/mp2p-icp-log-viewer): GUI to inspect results from ICP runs.
  * [mp2p-icp-run](apps/mp2p-icp-run): Standalone program to run ICP pipelines.
  * [sm2mm](apps/sm2mm): A CLI tool to convert a [simple map](https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html) `*.simplemap`
@@ -41,7 +42,7 @@ And these applications:
  * [txt2mm](apps/txt2mm): CLI tool to convert pointclouds from CSV/TXT files to mp2p_icp mm.
 
 
-This project provides:
+Key C++ classes provided by this project (see [full docs](https://docs.mola-slam.org/mp2p_icp/)):
  * [`mp2p_icp::metric_map_t`](https://docs.mola-slam.org/latest/class_mp2p_icp_metric_map_t.html#doxid-classmp2p-icp-1-1metric-map-t): A generic
    data type to store raw or processed point clouds, e.g. segmented, discrete
    extracted features. Note that filtering point clouds is intentionally left
@@ -54,96 +55,4 @@ This project provides:
  underlying optimal transformation estimators which are run at each ICP iteration.
 
 ![mp2p_pairings](docs/source/imgs/mp2p_pairings.png)
-
-## Implemented Optimal Transformation methods
- * `optimal_tf_olae()`: A novel algorithm that can recover the optimal attitude from a set
-    of point-to-point, line-to-line, and plane-to-plane pairings.
- * `optimal_tf_horn()`: Classic Horn's closed-form optimal quaternion solution.
-    Relies on the implementation in [`<mrpt/tfest/se3.h>`](http://mrpt.ual.es/reference/devel/group__mrpt__tfest__grp.html).
- * `optimal_gauss_newton()`: Simple non-linear optimizer to find the SE(3)
-    optimal transformation for these pairings: point-to-point, point-to-plane.
-
-## Implemented ICP methods
-
- * `ICP_OLAE`: ICP for point clouds, planes, and lines. Uses `optimal_tf_olae()`. The OLAE-ICP method is described in [this technical report](https://arxiv.org/abs/1906.10783):
-    ```
-    Jose-Luis Blanco-Claraco. "OLAE-ICP: Robust and fast alignment of geometric
-    features with the optimal linear attitude estimator", Arxiv 2019.
-    ```
-
- * `ICP_Horn_MultiCloud`: Align point clouds layers, using classic Horn's
-    closed-form optimal quaternion solution.
-
-## Building
-
-### Requisites
- * A C++17 compiler. Tested with gcc-7, MSVC 2017.
- * Eigen3
- * CMake >= 3.4
- * MRPT >=2.11.5 (If you **need** to use an older version of MRPT, use mp2p_icp<=0.2.2)
-
-Install all the dependencies in Ubuntu with:
-
-```
-# MRPT >=2.4.0, for now from this PPA (or build from sources if preferred):
-sudo add-apt-repository ppa:joseluisblancoc/mrpt
-sudo apt update
-sudo apt install libmrpt-dev
-
-# Rest of dependencies:
-sudo apt install build-essential cmake libeigen3-dev
-```
-
-### Build
-
-```
-cmake -H. -Bbuild
-cd build
-cmake --build .   # or make
-```
-
-### Run the tests
-
-```
-make test
-```
-
-### Run the demos
-
-```bash
-# 2D icp with point-to-point pairings only:
-build/bin/mp2p-icp-run \
-  --input-local demos/local_001.mm \
-  --input-global demos/global_001.mm \
-  -c demos/icp-settings-2d-lidar-example-point2point.yaml \
-  --generate-debug-log
-
-# Inspect the debug log:
-build/bin/mp2p-icp-log-viewer
-```
-
-```bash
-# 2D icp with point-to-line pairings:
-build/bin/mp2p-icp-run \
-  --input-local demos/local_001.mm \
-  --input-global demos/global_001.mm \
-  -c demos/icp-settings-2d-lidar-example-point2line.yaml \
-  --generate-debug-log
-
-# Inspect the debug log:
-build/bin/mp2p-icp-log-viewer
-```
-
-
-```bash
-# 3D icp with external library wrapper
-build/bin/mp2p-icp-run \
-  --input-local demos/local_001.mm \
-  --input-global demos/global_001.mm \
-  -c demos/icp-settings-example-libpointmatcher.yaml \
-  --generate-debug-log
-
-# Inspect the debug log:
-build/bin/mp2p-icp-log-viewer
-```
 

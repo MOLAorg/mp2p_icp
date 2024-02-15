@@ -4,65 +4,77 @@
 Installing
 ======================
 
-1. From a ROS distribution
-==============================
+.. tab-set::
+    .. tab-item:: From ROS
+        :selected:
 
-Probably the easiest way to get `mp2p_icp`:
+        Probably the easiest way to get ``mp2p_icp``:
 
-.. code-block:: bash
+        .. code-block:: bash
 
-    sudo apt install ros-${ROS_DISTRO}-mp2p-icp
+            sudo apt install ros-${ROS_DISTRO}-mp2p-icp
 
 
-2. Compile from sources (pure CMake)
-========================================
+    .. tab-item:: Compile (no ROS)
 
-Get the sources
--------------------
+        Get the sources
+        -------------------
 
-Clone the project git repository and its submodules:
+        Clone the project git repository and its submodules:
 
-.. code-block:: bash
+        .. code-block:: bash
 
-    mkdir -p ~/code/mp2p_icp && cd ~/code/mp2p_icp
-    git clone --recurse-submodules https://github.com/MOLAorg/mp2p_icp.git
+            mkdir -p ~/code/mp2p_icp && cd ~/code/mp2p_icp
+            git clone --recurse-submodules https://github.com/MOLAorg/mp2p_icp.git
 
-Get the build dependencies
-----------------------------
-- A C++17 compiler
-- CMake >=3.4
-- MRPT >= 2.11.5
+        Get the build dependencies
+        ----------------------------
+        - A C++17 compiler
+        - CMake >=3.4
+        - MRPT >= 2.11.5
 
-For modern Ubuntu distributions, install all dependencies with:
+        .. tab-set::
+            .. tab-item:: Building MRPT from sources
 
-.. code-block:: bash
+                Follow the `installation instructions <https://docs.mrpt.org/reference/latest/compiling.html>`_ for MRPT
 
-    # MRPT, from this PPA, or from its ROS package, or build from sources if preferred:
-    sudo add-apt-repository ppa:joseluisblancoc/mrpt
-    sudo apt update
-    sudo apt install libmrpt-dev mrpt-apps
+            .. tab-item:: Get from ROS 2
+                :selected:
 
-Compile
----------------------
-Classic cmake stuff:
+                .. code-block:: bash
 
-.. code-block:: bash
+                    sudo apt install ros-$ROS_DISTRO-mrpt2
 
-    mkdir build-Release
-    cmake -B build-Release -S . -DCMAKE_BUILD_TYPE=Release
-    cmake --build build-Release
-    (cd build-Release  && make test)  # to run tests
+            .. tab-item:: Get from PPA
 
-3. Compile from sources with colcon (for ROS 2 apps)
-======================================================
+                .. code-block:: bash
 
-You can build `mp2p_icp` within a ROS 2 workspace using colcon, just as with any other package:
+                    # MRPT, from this PPA, or from its ROS package, or build from sources if preferred:
+                    sudo add-apt-repository ppa:joseluisblancoc/mrpt
+                    sudo apt update
+                    sudo apt install libmrpt-dev mrpt-apps
 
-.. code-block:: bash
 
-    mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
-    git clone --recurse-submodules https://github.com/MOLAorg/mp2p_icp.git
-    cd ~/ros2_ws/
-    colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
-    . install/setup.bash
+        Compile
+        ---------------------
+        Classic cmake stuff:
+
+        .. code-block:: bash
+
+            mkdir build-Release
+            cmake -B build-Release -S . -DCMAKE_BUILD_TYPE=Release
+            cmake --build build-Release
+            (cd build-Release  && make test)  # to run tests
+
+    .. tab-item:: Compile (with colcon)
+
+        You can build ``mp2p_icp`` within a ROS 2 workspace using colcon, just as with any other package:
+
+        .. code-block:: bash
+
+            mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
+            git clone --recurse-submodules https://github.com/MOLAorg/mp2p_icp.git
+            cd ~/ros2_ws/
+            colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+            . install/setup.bash
 
