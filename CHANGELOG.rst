@@ -2,6 +2,18 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Add new apps: sm-cli, mm-info, txt2mm, mm2txt, mm-filter
+* Improved documentation.
+* new filter FilterByIntensity
+* FilterNormalizeIntensity: add option for intensity range memory
+* FilterByRange: renamed params to simplify them (removed param 'keep_between')
+* FIX: missing intensity channel in decimate voxel when using some decimation methods
+* sm-cli: new subcommand 'level' to maximize the 'horizontality' of built maps
+* add optional profiler to filter pipelines
+* Contributors: Jose Luis Blanco-Claraco
+
 1.1.1 (2024-02-07)
 ------------------
 * MergeFilter: now also handles CVoxelMap as inputs
