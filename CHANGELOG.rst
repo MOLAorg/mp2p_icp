@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.2.0 (2024-02-16)
+------------------
 * Add new apps: sm-cli, mm-info, txt2mm, mm2txt, mm-filter
 * Improved documentation.
 * new filter FilterByIntensity
