@@ -30,6 +30,15 @@ namespace mp2p_icp_filters
  * a point cloud by generating points for each occupied voxel using
  * mrpt::maps::CVoxelMap::getOccupiedVoxels().
  *
+ * Coordinate frames are:
+ * - If `input_layer_in_local_coordinates` is `false` (default): both, input and
+ *   output layers are in the same frame of reference. Even though, the variable
+ *   `robot_pose` is important in cases where ray-tracing is necesary, e.g.
+ *   voxel or grid maps.
+ * - If `input_layer_in_local_coordinates` is `true`: input is in the vehicle
+ *   frame, output is in another global frame, in which the vehicle is at pose
+ *   `robot_pose`.
+ *
  * \ingroup mp2p_icp_filters_grp
  */
 class FilterMerge : public mp2p_icp_filters::FilterBase
@@ -51,6 +60,9 @@ class FilterMerge : public mp2p_icp_filters::FilterBase
 
         std::string input_pointcloud_layer;
         std::string target_layer;
+
+        /** See discussion above for FilterMerge */
+        bool input_layer_in_local_coordinates = false;
 
         // clang-format off
         /** In the context of a sm2mm pipeline, this should be set to the expression:

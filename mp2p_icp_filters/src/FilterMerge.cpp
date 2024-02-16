@@ -27,6 +27,7 @@ void FilterMerge::Parameters::load_from_yaml(
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
     MCP_LOAD_REQ(c, target_layer);
+    MCP_LOAD_OPT(c, input_layer_in_local_coordinates);
 
     if (c.has("robot_pose"))
     {
@@ -96,9 +97,17 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
     obs.pointcloud = pts;
 
     // Copy the input layer here, as seen from the robot (hence the "-"):
-    const auto robotPose    = mrpt::poses::CPose3D(params_.robot_pose);
-    const auto invRobotPose = -robotPose;
-    pts->insertAnotherMap(pcPtr, invRobotPose);
+    const auto robotPose = mrpt::poses::CPose3D(params_.robot_pose);
+
+    if (params_.input_layer_in_local_coordinates)
+    {
+        pts->insertAnotherMap(pcPtr, mrpt::poses::CPose3D::Identity());
+    }
+    else
+    {
+        const auto invRobotPose = -robotPose;
+        pts->insertAnotherMap(pcPtr, invRobotPose);
+    }
 
     // Merge into map:
     out->insertObservation(obs, robotPose);
