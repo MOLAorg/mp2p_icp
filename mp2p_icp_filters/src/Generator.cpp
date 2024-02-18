@@ -60,6 +60,7 @@ void Generator::Parameters::load_from_yaml(
         for (const auto& [k, v] : c["metric_map_definition"].asMap())
         {
             const auto key = k.as<std::string>();
+            if (v.isNullNode()) continue;  // ignore
             if (v.isScalar())
             {
                 if (allowedTopKeys.count(key) != 0)

@@ -64,12 +64,6 @@ class FilterBase : public mrpt::rtti::CObject,  // RTTI support
     virtual void filter(mp2p_icp::metric_map_t& inOut) const = 0;
 
     /** @} */
-   protected:
-    static mrpt::maps::CPointsMap* GetOrCreatePointLayer(
-        mp2p_icp::metric_map_t& m, const std::string& layerName,
-        bool               allowEmptyName = true,
-        const std::string& classForLayerCreation =
-            "mrpt::maps::CSimplePointsMap");
 };
 
 /** A sequence of filters */

@@ -39,8 +39,11 @@ class GeneratorEdgesFromRangeImage : public mp2p_icp_filters::Generator
     {
         void load_from_yaml(const mrpt::containers::yaml& c);
 
-        uint8_t row_window_length = 4;
-        int32_t score_threshold   = 10;
+        /// Target layer name for detected plane points. May be empty if not
+        /// needed.
+        std::string planes_target_layer;
+
+        int32_t score_threshold = 10;
     };
 
     ParametersEdges paramsEdges_;
@@ -51,6 +54,11 @@ class GeneratorEdgesFromRangeImage : public mp2p_icp_filters::Generator
     // To be overrided in derived classes, if implemented:
     bool filterRotatingScan(
         const mrpt::obs::CObservationRotatingScan& pc,
+        mp2p_icp::metric_map_t&                    out,
+        const std::optional<mrpt::poses::CPose3D>& robotPose) const override;
+
+    bool filterScan3D(
+        const mrpt::obs::CObservation3DRangeScan&  pc,
         mp2p_icp::metric_map_t&                    out,
         const std::optional<mrpt::poses::CPose3D>& robotPose) const override;
 };

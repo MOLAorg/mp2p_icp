@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp_filters/FilterCurvature.h>
+#include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 
 //#define DEBUG_GL
@@ -63,7 +64,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Outputs:
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPcLarger = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outPcLarger = GetOrCreatePointLayer(
         inOut, params_.output_layer_larger_curvature,
         /*allow empty name for nullptr*/
         true,
@@ -71,7 +72,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
         pcPtr->GetRuntimeClass()->className);
     if (outPcLarger) outPcLarger->reserve(outPcLarger->size() + pc.size() / 10);
 
-    mrpt::maps::CPointsMap* outPcSmaller = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outPcSmaller = GetOrCreatePointLayer(
         inOut, params_.output_layer_smaller_curvature,
         /*allow empty name for nullptr*/
         true,
@@ -80,7 +81,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     if (outPcSmaller)
         outPcSmaller->reserve(outPcSmaller->size() + pc.size() / 10);
 
-    mrpt::maps::CPointsMap* outPcOther = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outPcOther = GetOrCreatePointLayer(
         inOut, params_.output_layer_other,
         /*allow empty name for nullptr*/
         true,

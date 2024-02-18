@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
+#include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
 #include <mrpt/random/RandomGenerators.h>
@@ -130,7 +131,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(!params_.output_pointcloud_layer.empty());
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPc = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
         inOut, params_.output_pointcloud_layer,
         /*do not allow empty*/
         false,

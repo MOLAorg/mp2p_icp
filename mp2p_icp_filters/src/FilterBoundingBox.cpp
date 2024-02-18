@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp_filters/FilterBoundingBox.h>
+#include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
 
@@ -79,7 +80,7 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* insidePc = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr insidePc = GetOrCreatePointLayer(
         inOut, params_.inside_pointcloud_layer,
         true /*allow empty for nullptr*/,
         /* create cloud of the same type */
@@ -87,7 +88,7 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
 
     if (insidePc) insidePc->reserve(insidePc->size() + pc.size() / 10);
 
-    mrpt::maps::CPointsMap* outsidePc = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outsidePc = GetOrCreatePointLayer(
         inOut, params_.outside_pointcloud_layer,
         true /*allow empty for nullptr*/,
         /* create cloud of the same type */
@@ -104,7 +105,7 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
         const bool isInside =
             params_.bounding_box.containsPoint({xs[i], ys[i], zs[i]});
 
-        auto* targetPc = isInside ? insidePc : outsidePc;
+        auto* targetPc = isInside ? insidePc.get() : outsidePc.get();
 
         if (targetPc) targetPc->insertPointFrom(pc, i);
     }

@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp_filters/FilterByIntensity.h>
+#include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 
 IMPLEMENTS_MRPT_OBJECT(
@@ -62,7 +63,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Outputs:
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outLow = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outLow = GetOrCreatePointLayer(
         inOut, params_.output_layer_low_intensity,
         true /*allow empty for nullptr*/,
         /* create cloud of the same type */
@@ -71,7 +72,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
     if (outLow) outLow->reserve(outLow->size() + pc.size() / 10);
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outHigh = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outHigh = GetOrCreatePointLayer(
         inOut, params_.output_layer_high_intensity,
         true /*allow empty for nullptr*/,
         /* create cloud of the same type */
@@ -80,7 +81,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
     if (outHigh) outHigh->reserve(outHigh->size() + pc.size() / 10);
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outMid = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outMid = GetOrCreatePointLayer(
         inOut, params_.output_layer_mid_intensity,
         true /*allow empty for nullptr*/,
         /* create cloud of the same type */
@@ -121,17 +122,17 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
         if (I < params_.low_threshold)
         {
-            trg = outLow;
+            trg = outLow.get();
             ++countLow;
         }
         else if (I > params_.high_threshold)
         {
-            trg = outHigh;
+            trg = outHigh.get();
             ++countHigh;
         }
         else
         {
-            trg = outMid;
+            trg = outMid.get();
             ++countMid;
         }
 

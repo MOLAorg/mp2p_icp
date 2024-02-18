@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp_filters/FilterDeskew.h>
+#include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
@@ -68,7 +69,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(!output_pointcloud_layer.empty());
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outPc = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
         inOut, output_pointcloud_layer, false /*dont allow empty names*/,
         output_layer_class);
 

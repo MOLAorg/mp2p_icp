@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp_filters/FilterByRange.h>
+#include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/TPoint3D.h>
 
@@ -77,7 +78,7 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap* outBetween = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outBetween = GetOrCreatePointLayer(
         inOut, params_.output_layer_between, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
@@ -85,7 +86,7 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     if (outBetween) outBetween->reserve(outBetween->size() + pc.size() / 10);
 
     // Optional output layer for deleted points:
-    mrpt::maps::CPointsMap* outOutside = GetOrCreatePointLayer(
+    mrpt::maps::CPointsMap::Ptr outOutside = GetOrCreatePointLayer(
         inOut, params_.output_layer_outside, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
@@ -107,7 +108,7 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
         const bool isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
 
-        auto* targetPc = isInside ? outBetween : outOutside;
+        auto* targetPc = isInside ? outBetween.get() : outOutside.get();
 
         if (targetPc) targetPc->insertPointFrom(pc, i);
     }
