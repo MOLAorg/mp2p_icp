@@ -36,7 +36,7 @@ IMPLEMENTS_MRPT_OBJECT(
 using namespace mp2p_icp;
 
 // Implementation of the CSerializable virtual interface:
-uint8_t metric_map_t::serializeGetVersion() const { return 1; }
+uint8_t metric_map_t::serializeGetVersion() const { return 2; }
 void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << lines;
@@ -52,6 +52,15 @@ void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
 
     out << id << label;  // new in v1
 
+    // new in v2:
+    out.WriteAs<bool>(georeferencing.has_value());
+    if (georeferencing)
+    {
+        out << georeferencing->geo_coord.lat.decimal_value
+            << georeferencing->geo_coord.lon.decimal_value
+            << georeferencing->geo_coord.height << georeferencing->T_enu_to_map;
+    }
+
     // Optional user data:
     derivedSerializeTo(out);
 }
@@ -62,6 +71,7 @@ void metric_map_t::serializeFrom(
     {
         case 0:
         case 1:
+        case 2:
         {
             in >> lines;
             const auto nPls = in.ReadAs<uint32_t>();
@@ -88,6 +98,16 @@ void metric_map_t::serializeFrom(
                 id.reset();
                 label.reset();
             }
+
+            if (version >= 2 && in.ReadAs<bool>())
+            {
+                auto& g = georeferencing.emplace();
+                in >> g.geo_coord.lat.decimal_value >>
+                    g.geo_coord.lon.decimal_value >> g.geo_coord.height >>
+                    g.T_enu_to_map;
+            }
+            else
+                georeferencing.reset();
 
             // Optional user data:
             derivedSerializeFrom(in);
@@ -483,6 +503,13 @@ std::string metric_map_t::contents_summary() const
 
     if (id) ret += "id="s + std::to_string(*id) + " "s;
     if (label) ret += "label='"s + *label + "' "s;
+
+    if (georeferencing)
+        ret += "georeferenced: lat="s +
+               georeferencing->geo_coord.lat.getAsString() + " lon="s +
+               georeferencing->geo_coord.lon.getAsString() + " h="s +
+               std::to_string(georeferencing->geo_coord.height) +
+               " T_enu_map="s + georeferencing->T_enu_to_map.asString();
 
     if (empty()) return {ret + "empty"s};
 

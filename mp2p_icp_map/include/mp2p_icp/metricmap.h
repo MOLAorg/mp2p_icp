@@ -19,7 +19,9 @@
 #include <mrpt/math/TLine3D.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/math/geometry.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/serialization/CSerializable.h>
+#include <mrpt/topography/data_types.h>
 
 #include <map>
 #include <memory>
@@ -92,6 +94,24 @@ class metric_map_t : public mrpt::serialization::CSerializable,
      * a placeholder for the user of this library to use it.
      */
     std::optional<std::string> label;
+
+    struct Georeferencing
+    {
+        /** The geodetic coordinates (on WGS-84) of the metric map origin of
+         * coordinates */
+        mrpt::topography::TGeodeticCoords geo_coord;
+
+        /** The SE(3) transformation from the ENU (earth-north-up) frame at the
+         * origin point, to the metric map local frame of reference.
+         * If this is the identity (default) it means the map is ENU coordinates
+         * (i.e. +X is East, +Y is North, +Z is up).
+         */
+        mrpt::poses::CPose3D T_enu_to_map;
+    };
+
+    /** If provided, gives the placement of the map with respect to the Earth.
+     */
+    std::optional<Georeferencing> georeferencing;
 
     /** @} */
 
