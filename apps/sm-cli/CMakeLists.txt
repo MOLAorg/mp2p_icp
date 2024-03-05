@@ -10,6 +10,8 @@ mola_add_executable(
   SOURCES
     sm-cli-main.cpp
     sm-cli.h
+    sm-cli-cut.cpp
+    sm-cli-export-kfs.cpp
     sm-cli-info.cpp
     sm-cli-level.cpp
   LINK_LIBRARIES

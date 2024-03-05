@@ -9,9 +9,7 @@
 
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CSimpleMap.h>
-#include <mrpt/maps/registerAllClasses.h>
 #include <mrpt/math/TBoundingBox.h>
-#include <mrpt/obs/registerAllClasses.h>
 #include <mrpt/system/filesystem.h>
 
 #include "sm-cli.h"
@@ -27,22 +25,7 @@ int commandInfo()
     // Take second unlabeled argument:
     const std::string file = lstCmds.at(1);
 
-    ASSERT_FILE_EXISTS_(file);
-
-    const auto sizeBytes = mrpt::system::getFileSize(file);
-
-    std::cout << "Loading: '" << file << "' of "
-              << mrpt::system::unitsFormat(sizeBytes) << "B..." << std::endl;
-
-    // register mrpt-obs classes, since we are not using them explicitly and
-    // hence they are not auto-loading.
-    mrpt::maps::registerAllClasses_mrpt_maps();
-    mrpt::obs::registerAllClasses_mrpt_obs();
-
-    mrpt::maps::CSimpleMap sm;
-
-    bool loadOk = sm.loadFromFile(file);
-    ASSERT_(loadOk);
+    const mrpt::maps::CSimpleMap sm = read_input_sm_from_cli(file);
 
     // estimate path bounding box:
     auto bbox     = mrpt::math::TBoundingBox::PlusMinusInfinity();
@@ -72,6 +55,8 @@ int commandInfo()
             obsCount[o->sensorLabel]++;
         }
     }
+
+    const auto sizeBytes = mrpt::system::getFileSize(file);
 
     std::cout << "\n";
     std::cout << "size_bytes:           " << sizeBytes << "\n";

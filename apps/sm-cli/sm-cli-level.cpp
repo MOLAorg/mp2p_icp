@@ -9,10 +9,7 @@
 
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CSimpleMap.h>
-#include <mrpt/maps/registerAllClasses.h>
 #include <mrpt/math/CLevenbergMarquardt.h>
-#include <mrpt/obs/registerAllClasses.h>
-#include <mrpt/system/filesystem.h>
 
 #include <iostream>
 
@@ -30,22 +27,8 @@ int commandLevel()
     const std::string inFile  = lstCmds.at(1);
     const std::string outFile = lstCmds.at(2);
 
-    ASSERT_FILE_EXISTS_(inFile);
+    mrpt::maps::CSimpleMap sm = read_input_sm_from_cli(inFile);
 
-    const auto sizeBytes = mrpt::system::getFileSize(inFile);
-
-    std::cout << "Loading: '" << inFile << "' of "
-              << mrpt::system::unitsFormat(sizeBytes) << "B..." << std::endl;
-
-    // register mrpt-obs classes, since we are not using them explicitly and
-    // hence they are not auto-loading.
-    mrpt::maps::registerAllClasses_mrpt_maps();
-    mrpt::obs::registerAllClasses_mrpt_obs();
-
-    mrpt::maps::CSimpleMap sm;
-
-    bool loadOk = sm.loadFromFile(inFile);
-    ASSERT_(loadOk);
     ASSERT_(!sm.empty());
 
     std::vector<mrpt::poses::CPose3D> poses;  // all SF KeyFrame poses

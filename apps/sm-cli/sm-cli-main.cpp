@@ -13,7 +13,12 @@
 
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>  // consoleColorAndStyle()
+
+// register, for read_input_sm_from_cli()
+#include <mrpt/maps/registerAllClasses.h>
+#include <mrpt/obs/registerAllClasses.h>
 
 #include <iostream>
 #include <map>
@@ -26,6 +31,8 @@ std::unique_ptr<cli_flags> cli;
 const std::map<std::string, cmd_t> cliCommands = {
     {"help", cmd_t(&printListCommands)},
     {"info", cmd_t(&commandInfo)},
+    {"export-keyframes", cmd_t(&commandExportKF)},
+    {"cut", cmd_t(&commandCut)},
     {"level", cmd_t(&commandLevel)},
 };
 
@@ -97,15 +104,43 @@ int printListCommands()
         R"XXX(sm-cli v%s: CLI tool to manipulate and inspect 'simplemap's.
 
 Available commands:
+    sm-cli cut                Cut part of a .simplemap file into a new file.
+    sm-cli export-keyframes   Export KF poses as TUM format.
     sm-cli info               Analyze a .simplemap file.
     sm-cli level              Makes a .simplemap file level (horizontal).
     sm-cli --version          Shows program version.
     sm-cli --help             Shows this information.
 
-Or use `sm <COMMAND> --help` for further options
+Or use `sm-cli <COMMAND> --help` for further options
 )XXX",
         MP2P_ICP_VERSION);
     return 0;
 }
 
-void printVersion() { std::cout << "sm v" << MP2P_ICP_VERSION << std::endl; }
+void printVersion()
+{
+    std::cout << "sm-cli v" << MP2P_ICP_VERSION << std::endl;
+}
+
+// Common part of most commands:
+mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& inFile)
+{
+    ASSERT_FILE_EXISTS_(inFile);
+
+    const auto sizeBytes = mrpt::system::getFileSize(inFile);
+
+    std::cout << "Loading: '" << inFile << "' of "
+              << mrpt::system::unitsFormat(sizeBytes) << "B..." << std::endl;
+
+    // register mrpt-obs classes, since we are not using them explicitly and
+    // hence they are not auto-loading.
+    mrpt::maps::registerAllClasses_mrpt_maps();
+    mrpt::obs::registerAllClasses_mrpt_obs();
+
+    mrpt::maps::CSimpleMap sm;
+
+    bool loadOk = sm.loadFromFile(inFile);
+    ASSERT_(loadOk);
+
+    return sm;
+}

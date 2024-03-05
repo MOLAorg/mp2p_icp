@@ -10,6 +10,7 @@
 #pragma once
 
 #include <mrpt/3rdparty/tclap/CmdLine.h>
+#include <mrpt/maps/CSimpleMap.h>
 
 #include <functional>
 #include <memory>
@@ -34,6 +35,15 @@ struct cli_flags
         "INFO",
         cmd};
 
+    TCLAP::ValueArg<size_t> arg_from{
+        "", "from", "First KF index", false, 0, "KF index", cmd};
+
+    TCLAP::ValueArg<size_t> arg_to{"",         "to", "Last KF index", false, 0,
+                                   "KF index", cmd};
+
+    TCLAP::ValueArg<std::string> arg_output{
+        "o", "output", "Output file", false, "output", "output", cmd};
+
     TCLAP::SwitchArg argHelp{
         "h", "help", "Shows more detailed help for command", cmd};
 
@@ -47,8 +57,12 @@ using cmd_t = std::function<int(void)>;
 
 int  printListCommands();  // "help"
 void printVersion();  // "--version"
+int  commandCut();  // "cut"
 int  commandInfo();  // "info"
 int  commandLevel();  // "level"
+int  commandExportKF();  // "export-keyframes"
+
+mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string &fil);
 
 void setConsoleErrorColor();
 void setConsoleNormalColor();
