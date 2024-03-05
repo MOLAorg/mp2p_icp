@@ -16,6 +16,10 @@ mola_add_library(
 		mrpt::gui
 	CMAKE_DEPENDENCIES
 		mp2p_icp_map
+		mrpt-containers
+		mrpt-maps
+		mrpt-tfest
+		mrpt-gui
 )
 
 if (MP2PICP_BUILD_POINTMATCHER)

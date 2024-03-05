@@ -12,4 +12,8 @@ mola_add_library(
 		mrpt::maps
 		mrpt::opengl
 		mrpt::topography
+	CMAKE_DEPENDENCIES
+		mrpt-maps
+		mrpt-opengl
+		mrpt-topography
 )
