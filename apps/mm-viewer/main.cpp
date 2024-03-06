@@ -52,7 +52,9 @@ auto glGrid   = mrpt::opengl::CGridPlaneXY::Create();
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
 std::array<nanogui::TextBox*, 2> lbMapStats                = {nullptr, nullptr};
+nanogui::CheckBox*               cbApplyGeoRef             = nullptr;
 nanogui::CheckBox*               cbViewOrtho               = nullptr;
+nanogui::CheckBox*               cbView2D                  = nullptr;
 nanogui::CheckBox*               cbViewVoxelsAsPoints      = nullptr;
 nanogui::CheckBox*               cbViewVoxelsFreeSpace     = nullptr;
 nanogui::CheckBox*               cbColorizeMap             = nullptr;
@@ -215,6 +217,9 @@ static void main_show_gui()
         cbViewOrtho = tab1->add<nanogui::CheckBox>("Orthogonal view");
         cbViewOrtho->setCallback([&](bool) { rebuild_3d_view(); });
 
+        cbView2D = tab1->add<nanogui::CheckBox>("Force 2D view");
+        cbView2D->setCallback([&](bool) { rebuild_3d_view(); });
+
         cbViewVoxelsAsPoints =
             tab1->add<nanogui::CheckBox>("Render voxel maps as point clouds");
         cbViewVoxelsAsPoints->setChecked(false);
@@ -238,6 +243,10 @@ static void main_show_gui()
         cbShowGroundGrid = tab1->add<nanogui::CheckBox>("Show ground grid");
         cbShowGroundGrid->setChecked(true);
         cbShowGroundGrid->setCallback([&](bool) { rebuild_3d_view(); });
+
+        cbApplyGeoRef = tab1->add<nanogui::CheckBox>(
+            "Apply georeferenced pose (if available)");
+        cbApplyGeoRef->setCallback([&](bool) { rebuild_3d_view(); });
 
         // ----
         w->add<nanogui::Label>(" ");  // separator
@@ -289,6 +298,8 @@ void rebuild_3d_view()
 
     lbMapStats[0]->setValue(theMapFileName);
     lbMapStats[1]->setValue("Map: "s + theMap.contents_summary());
+
+    cbApplyGeoRef->setEnabled(theMap.georeferencing.has_value());
 
     // 3D objects -------------------
     std::optional<mrpt::math::TBoundingBoxf> mapBbox;
@@ -375,6 +386,15 @@ void rebuild_3d_view()
         glVizMap->insert(glPts);
     }
 
+    if (cbApplyGeoRef->checked() && theMap.georeferencing.has_value())
+    {
+        glVizMap->setPose(theMap.georeferencing->T_enu_to_map);
+    }
+    else
+    {
+        glVizMap->setPose(mrpt::poses::CPose3D::Identity());
+    }
+
     // ground grid:
     if (mapBbox)
     {
@@ -386,7 +406,14 @@ void rebuild_3d_view()
     // Global view options:
     {
         std::lock_guard<std::mutex> lck(win->background_scene_mtx);
-        win->camera().setCameraProjective(!cbViewOrtho->checked());
+        win->camera().setCameraProjective(
+            !cbViewOrtho->checked() && !cbView2D->checked());
+
+        if (cbView2D->checked())
+        {
+            win->camera().setAzimuthDegrees(-90.0f);
+            win->camera().setElevationDegrees(90.0f);
+        }
 
         // clip planes:
         const auto depthFieldMid = std::pow(10.0, slMidDepthField->value());
