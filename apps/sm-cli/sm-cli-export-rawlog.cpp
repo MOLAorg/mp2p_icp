@@ -41,16 +41,28 @@ int commandExportRawlog()
         ASSERT_(kf);
         ASSERT_(sf);
 
+        std::optional<mrpt::Clock::time_point> timestamp;
+
         mrpt::obs::CSensoryFrame outSF;
         // regular observations:
         outSF += *sf;
+
+        for (const auto& o : *sf)
+        {
+            if (o->timestamp == mrpt::system::InvalidTimeStamp()) continue;
+            if (!timestamp)
+            {
+                timestamp = o->timestamp;
+                break;
+            }
+        }
 
         // plus:
         // 1) Robot pose:
         // 2) Twist:
         {
             auto obsPose = mrpt::obs::CObservationRobotPose::Create();
-
+            if (timestamp) obsPose->timestamp = *timestamp;
             obsPose->sensorLabel = "pose";
             obsPose->pose.copyFrom(*kf);
             outSF.insert(obsPose);
@@ -58,7 +70,7 @@ int commandExportRawlog()
         if (twist.has_value())
         {
             auto obsTwist = mrpt::obs::CObservationComment::Create();
-
+            if (timestamp) obsTwist->timestamp = *timestamp;
             obsTwist->sensorLabel = "twist";
             std::stringstream ss;
             ss << "Twist stored in the simplemap keyframe:\n"
