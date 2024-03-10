@@ -2,6 +2,17 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mm-viewer: new options to visualize georeferenced maps
+* New sm-cli commands: --cut, --export-keyframes, --export-rawlog
+* propagate cmake deps downstream
+* metric_map_t: add georeferencing optional field
+* mm-filter: add --rename operation
+* GetOrCreatePointLayer() moved to its own header and uses shared ptrs
+* FilterMerge: add param input_layer_in_local_coordinates
+* Contributors: Jose Luis Blanco-Claraco
+
 1.2.0 (2024-02-16)
 ------------------
 * Add new apps: sm-cli, mm-info, txt2mm, mm2txt, mm-filter
