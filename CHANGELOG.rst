@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.3.0 (2024-03-10)
+------------------
 * mm-viewer: new options to visualize georeferenced maps
 * New sm-cli commands: --cut, --export-keyframes, --export-rawlog
 * propagate cmake deps downstream
