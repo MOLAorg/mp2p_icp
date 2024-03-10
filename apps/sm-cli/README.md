@@ -6,9 +6,13 @@ A CLI tool to inspect, visualize, or modify [simple maps](https://docs.mrpt.org/
 $ sm-cli --help
 
 Available commands:
+    sm-cli cut                Cut part of a .simplemap file into a new file.
+    sm-cli export-keyframes   Export KF poses as TUM format.
+    sm-cli export-rawlog      Export KFs as rawlog for inspection.
     sm-cli info               Analyze a .simplemap file.
+    sm-cli level              Makes a .simplemap file level (horizontal).
     sm-cli --version          Shows program version.
     sm-cli --help             Shows this information.
 
-Or use `sm <COMMAND> --help` for further options
+Or use `sm-cli <COMMAND> --help` for further options
 ```

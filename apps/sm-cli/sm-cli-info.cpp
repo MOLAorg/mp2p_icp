@@ -104,7 +104,7 @@ int printCommandsInfo(bool showErrorMsg)
         stderr,
         R"XXX(Usage:
 
-    sm-cli info <filename>  Loads and analyze the given map
+    sm-cli info <filename.simplemap>  Loads and analyze the given map
 
 )XXX");
 

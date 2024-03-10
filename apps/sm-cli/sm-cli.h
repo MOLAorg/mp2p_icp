@@ -61,8 +61,9 @@ int  commandCut();  // "cut"
 int  commandInfo();  // "info"
 int  commandLevel();  // "level"
 int  commandExportKF();  // "export-keyframes"
+int  commandExportRawlog();  // "export-rawlog"
 
-mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string &fil);
+mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& fil);
 
 void setConsoleErrorColor();
 void setConsoleNormalColor();

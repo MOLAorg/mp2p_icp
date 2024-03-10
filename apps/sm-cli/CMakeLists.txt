@@ -12,6 +12,7 @@ mola_add_executable(
     sm-cli.h
     sm-cli-cut.cpp
     sm-cli-export-kfs.cpp
+    sm-cli-export-rawlog.cpp
     sm-cli-info.cpp
     sm-cli-level.cpp
   LINK_LIBRARIES
