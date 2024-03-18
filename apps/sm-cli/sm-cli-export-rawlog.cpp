@@ -104,7 +104,7 @@ int printCommandsExportRawlog(bool showErrorMsg)
         stderr,
         R"XXX(Usage:
 
-    sm-cli export-rawlog <filename.simplemap> --output <OUTPUT.tum>
+    sm-cli export-rawlog <filename.simplemap> --output <OUTPUT.rawlog>
 
 )XXX");
 
