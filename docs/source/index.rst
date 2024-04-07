@@ -1,31 +1,14 @@
 .. MP2P_ICP documentation master file
 
 ======================
-mp2p_icp project
+About
 ======================
 
 A collection of C++ libraries and tools for multi-primitive-to-primitive (MP2P) matching,
-optimization, ICP-related algorithms, and point-cloud pipeline design.
+optimization, ICP-related algorithms, and point-cloud pipeline design. 
+Part of the `MOLA <index.html>`_ project.
 
-
-.. toctree::
-  :maxdepth: 2
-  :hidden:
-  :caption: Quickstart
-
-  installing
-  demos
-
-.. toctree::
-  :maxdepth: 2
-  :hidden:
-  :caption: Guide
-
-  concepts
-  optimal-transformations
-  applications
-  doxygen-index
-  bibliography
+.. The toctree now lives in the root MOLAorg/mola repo
 
 How to cite it
 ==============

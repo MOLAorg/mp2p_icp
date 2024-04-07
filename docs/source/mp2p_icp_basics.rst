@@ -1,8 +1,8 @@
-.. _concepts:
+.. _mp2p_icp_basics:
 
-=============
-Concepts
-=============
+=================
+Basics
+=================
 
 
 1. Data structures

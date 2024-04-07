@@ -1,8 +1,8 @@
-.. _applications:
+.. _mp2p_icp_applications:
 
-=============
+=======================
 Applications
-=============
+=======================
 
 .. toctree::
   :maxdepth: 2

@@ -1,8 +1,8 @@
-.. _installing:
+======================
+Installation
+======================
 
-======================
-Installing
-======================
+How to install `mp2p_icp`:
 
 .. tab-set::
     .. tab-item:: From ROS
