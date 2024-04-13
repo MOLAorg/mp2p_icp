@@ -147,7 +147,9 @@ class DelayedLoadLog
 
 std::vector<DelayedLoadLog> logRecords;
 
-static void rebuild_3d_view();
+static void rebuild_3d_view(bool regenerateMaps = true);
+
+static void rebuild_3d_view_fast() { rebuild_3d_view(false); }
 
 static void main_show_gui()
 {
@@ -253,18 +255,20 @@ static void main_show_gui()
 
         cbShowInitialPose =
             w->add<nanogui::CheckBox>("Show at INITIAL GUESS pose");
-        cbShowInitialPose->setCallback([=](bool v) {
-            if (slIterationDetails->enabled())
+        cbShowInitialPose->setCallback(
+            [=](bool v)
             {
-                const auto& r = slIterationDetails->range();
-                slIterationDetails->setValue(v ? r.first : r.second);
-            }
-            rebuild_3d_view();
-        });
+                if (slIterationDetails->enabled())
+                {
+                    const auto& r = slIterationDetails->range();
+                    slIterationDetails->setValue(v ? r.first : r.second);
+                }
+                rebuild_3d_view_fast();
+            });
         lbICPIteration     = w->add<nanogui::Label>("Show ICP iteration:");
         slIterationDetails = w->add<nanogui::Slider>();
         slIterationDetails->setRange({.0f, 1.0f});
-        slIterationDetails->setCallback([](float) { rebuild_3d_view(); });
+        slIterationDetails->setCallback([](float) { rebuild_3d_view_fast(); });
 
         //
         w->add<nanogui::Label>(" ");  // separator
@@ -295,23 +299,27 @@ static void main_show_gui()
 
             btnSelectorBack = pn->add<nanogui::Button>(
                 "", ENTYPO_ICON_CONTROLLER_FAST_BACKWARD);
-            btnSelectorBack->setCallback([=]() {
-                if (s->value() > 0)
+            btnSelectorBack->setCallback(
+                [=]()
                 {
-                    s->setValue(s->value() - 1);
-                    s->callback()(s->value());
-                }
-            });
+                    if (s->value() > 0)
+                    {
+                        s->setValue(s->value() - 1);
+                        s->callback()(s->value());
+                    }
+                });
 
             btnSelectorForw = pn->add<nanogui::Button>(
                 "", ENTYPO_ICON_CONTROLLER_FAST_FORWARD);
-            btnSelectorForw->setCallback([=]() {
-                if (s->value() < s->range().second - 0.01f)
+            btnSelectorForw->setCallback(
+                [=]()
                 {
-                    s->setValue(s->value() + 1);
-                    rebuild_3d_view();
-                }
-            });
+                    if (s->value() < s->range().second - 0.01f)
+                    {
+                        s->setValue(s->value() + 1);
+                        rebuild_3d_view();
+                    }
+                });
 
             pn->add<nanogui::Label>(" ");  // separator
 
@@ -377,16 +385,18 @@ static void main_show_gui()
             slGTPose[i]->setRange({-handTunedRange[i], handTunedRange[i]});
             slGTPose[i]->setValue(0.0f);
 
-            slGTPose[i]->setCallback([=](float v) {
-                const size_t idx = mrpt::round(slSelectorICP->value());
-                auto&        lr  = logRecords.at(idx).get();
+            slGTPose[i]->setCallback(
+                [=](float v)
+                {
+                    const size_t idx = mrpt::round(slSelectorICP->value());
+                    auto&        lr  = logRecords.at(idx).get();
 
-                auto p = lr.icpResult.optimal_tf.mean.asTPose();
-                p[i]   = v;
-                lr.icpResult.optimal_tf.mean = mrpt::poses::CPose3D(p);
+                    auto p = lr.icpResult.optimal_tf.mean.asTPose();
+                    p[i]   = v;
+                    lr.icpResult.optimal_tf.mean = mrpt::poses::CPose3D(p);
 
-                rebuild_3d_view();
-            });
+                    rebuild_3d_view_fast();
+                });
         }
 
         tab1->add<nanogui::Label>("Initial guess pose:");
@@ -395,7 +405,8 @@ static void main_show_gui()
         tbInitialGuess->setEditable(true);
 
         // Save map buttons:
-        auto lambdaSave = [&](const mp2p_icp::metric_map_t& m) {
+        auto lambdaSave = [&](const mp2p_icp::metric_map_t& m)
+        {
             const std::string outFile = nanogui::file_dialog(
                 {{"mm",
                   "mp2p_icp::metric_map_t binary serialized object (*.mm)"}},
@@ -410,19 +421,23 @@ static void main_show_gui()
             pn->setLayout(new nanogui::BoxLayout(
                 nanogui::Orientation::Horizontal, nanogui::Alignment::Fill));
             pn->add<nanogui::Button>("Export 'local' map...")
-                ->setCallback([&]() {
-                    const size_t idx = mrpt::round(slSelectorICP->value());
-                    auto&        lr  = logRecords.at(idx).get();
-                    ASSERT_(lr.pcLocal);
-                    lambdaSave(*lr.pcLocal);
-                });
+                ->setCallback(
+                    [&]()
+                    {
+                        const size_t idx = mrpt::round(slSelectorICP->value());
+                        auto&        lr  = logRecords.at(idx).get();
+                        ASSERT_(lr.pcLocal);
+                        lambdaSave(*lr.pcLocal);
+                    });
             pn->add<nanogui::Button>("Export 'global' map...")
-                ->setCallback([&]() {
-                    const size_t idx = mrpt::round(slSelectorICP->value());
-                    auto&        lr  = logRecords.at(idx).get();
-                    ASSERT_(lr.pcGlobal);
-                    lambdaSave(*lr.pcGlobal);
-                });
+                ->setCallback(
+                    [&]()
+                    {
+                        const size_t idx = mrpt::round(slSelectorICP->value());
+                        auto&        lr  = logRecords.at(idx).get();
+                        ASSERT_(lr.pcGlobal);
+                        lambdaSave(*lr.pcGlobal);
+                    });
         }
 
         tab3->add<nanogui::Label>("[GLOBAL map] Visible layers:");
@@ -458,7 +473,7 @@ static void main_show_gui()
         cbViewPairings_pt2pt =
             tab4->add<nanogui::CheckBox>("View: point-to-point");
         cbViewPairings_pt2pt->setChecked(true);
-        cbViewPairings_pt2pt->setCallback([](bool) { rebuild_3d_view(); });
+        cbViewPairings_pt2pt->setCallback([](bool) { rebuild_3d_view_fast(); });
 
         {
             auto pn = tab4->add<nanogui::Widget>();
@@ -468,13 +483,15 @@ static void main_show_gui()
             cbViewPairings_pt2pl =
                 pn->add<nanogui::CheckBox>("View: point-to-plane");
             cbViewPairings_pt2pl->setChecked(true);
-            cbViewPairings_pt2pl->setCallback([](bool) { rebuild_3d_view(); });
+            cbViewPairings_pt2pl->setCallback([](bool)
+                                              { rebuild_3d_view_fast(); });
 
             pn->add<nanogui::Label>("Plane size:");
             slPairingsPl2PlSize = pn->add<nanogui::Slider>();
             slPairingsPl2PlSize->setRange({-2.0f, 2.0f});
             slPairingsPl2PlSize->setValue(-1.0f);
-            slPairingsPl2PlSize->setCallback([&](float) { rebuild_3d_view(); });
+            slPairingsPl2PlSize->setCallback([&](float)
+                                             { rebuild_3d_view_fast(); });
         }
 
         {
@@ -485,13 +502,15 @@ static void main_show_gui()
             cbViewPairings_pt2ln =
                 pn->add<nanogui::CheckBox>("View: point-to-line");
             cbViewPairings_pt2ln->setChecked(true);
-            cbViewPairings_pt2ln->setCallback([](bool) { rebuild_3d_view(); });
+            cbViewPairings_pt2ln->setCallback([](bool)
+                                              { rebuild_3d_view_fast(); });
 
             pn->add<nanogui::Label>("Line length:");
             slPairingsPl2LnSize = pn->add<nanogui::Slider>();
             slPairingsPl2LnSize->setRange({-2.0f, 2.0f});
             slPairingsPl2LnSize->setValue(-1.0f);
-            slPairingsPl2LnSize->setCallback([&](float) { rebuild_3d_view(); });
+            slPairingsPl2LnSize->setCallback([&](float)
+                                             { rebuild_3d_view_fast(); });
         }
 
         // tab5: view
@@ -512,22 +531,24 @@ static void main_show_gui()
         slMidDepthField = tab5->add<nanogui::Slider>();
         slMidDepthField->setRange({-2.0, 3.0});
         slMidDepthField->setValue(1.0f);
-        slMidDepthField->setCallback([&](float) { rebuild_3d_view(); });
+        slMidDepthField->setCallback([&](float) { rebuild_3d_view_fast(); });
 
         lbDepthFieldThickness =
             tab5->add<nanogui::Label>("Max-Min depth thickness:");
         slThicknessDepthField = tab5->add<nanogui::Slider>();
         slThicknessDepthField->setRange({-2.0, 4.0});
         slThicknessDepthField->setValue(3.0);
-        slThicknessDepthField->setCallback([&](float) { rebuild_3d_view(); });
+        slThicknessDepthField->setCallback([&](float)
+                                           { rebuild_3d_view_fast(); });
         lbDepthFieldValues = tab5->add<nanogui::Label>(" ");
 
         cbViewOrtho = tab5->add<nanogui::CheckBox>("Orthogonal view");
-        cbViewOrtho->setCallback([&](bool) { rebuild_3d_view(); });
+        cbViewOrtho->setCallback([&](bool) { rebuild_3d_view_fast(); });
 
         cbCameraFollowsLocal =
             tab5->add<nanogui::CheckBox>("Camera follows 'local'");
-        cbCameraFollowsLocal->setCallback([&](bool) { rebuild_3d_view(); });
+        cbCameraFollowsLocal->setCallback([&](bool)
+                                          { rebuild_3d_view_fast(); });
 
         cbViewVoxelsAsPoints =
             tab5->add<nanogui::CheckBox>("Render voxel maps as point clouds");
@@ -547,44 +568,45 @@ static void main_show_gui()
         w->add<nanogui::Button>("Quit", ENTYPO_ICON_ARROW_BOLD_LEFT)
             ->setCallback([]() { win->setVisible(false); });
 
-        win->setKeyboardCallback([&](int key, [[maybe_unused]] int scancode,
-                                     int                  action,
-                                     [[maybe_unused]] int modifiers) {
-            if (action != GLFW_PRESS && action != GLFW_REPEAT) return false;
-
-            int increment = 0;
-            switch (key)
+        win->setKeyboardCallback(
+            [&](int key, [[maybe_unused]] int scancode, int action,
+                [[maybe_unused]] int modifiers)
             {
-                case GLFW_KEY_LEFT:
-                    increment = -1;
-                    break;
-                case GLFW_KEY_RIGHT:
-                    increment = +1;
-                    break;
-                case GLFW_KEY_PAGE_DOWN:
-                    increment = +100;
-                    break;
-                case GLFW_KEY_PAGE_UP:
-                    increment = -100;
-                    break;
-                case GLFW_KEY_SPACE:
-                    isAutoPlayActive = !isAutoPlayActive;
-                    btnSelectorAutoplay->setPushed(isAutoPlayActive);
-                    break;
-            };
+                if (action != GLFW_PRESS && action != GLFW_REPEAT) return false;
 
-            if (increment != 0)
-            {
-                nanogui::Slider* sl = slSelectorICP;  // shortcut
-                sl->setValue(sl->value() + increment);
-                if (sl->value() < 0) sl->setValue(0);
-                if (sl->value() > sl->range().second)
-                    sl->setValue(sl->range().second);
-                rebuild_3d_view();
-            }
+                int increment = 0;
+                switch (key)
+                {
+                    case GLFW_KEY_LEFT:
+                        increment = -1;
+                        break;
+                    case GLFW_KEY_RIGHT:
+                        increment = +1;
+                        break;
+                    case GLFW_KEY_PAGE_DOWN:
+                        increment = +100;
+                        break;
+                    case GLFW_KEY_PAGE_UP:
+                        increment = -100;
+                        break;
+                    case GLFW_KEY_SPACE:
+                        isAutoPlayActive = !isAutoPlayActive;
+                        btnSelectorAutoplay->setPushed(isAutoPlayActive);
+                        break;
+                };
 
-            return false;
-        });
+                if (increment != 0)
+                {
+                    nanogui::Slider* sl = slSelectorICP;  // shortcut
+                    sl->setValue(sl->value() + increment);
+                    if (sl->value() < 0) sl->setValue(0);
+                    if (sl->value() > sl->range().second)
+                        sl->setValue(sl->range().second);
+                    rebuild_3d_view();
+                }
+
+                return false;
+            });
     }
 
     win->performLayout();
@@ -600,20 +622,22 @@ static void main_show_gui()
     win->drawAll();
     win->setVisible(true);
 
-    win->addLoopCallback([&]() {
-        if (!isAutoPlayActive) return;
-
-        const double tNow = mrpt::Clock::nowDouble();
-        if (tNow - lastAutoPlayTime < argAutoPlayPeriod.getValue()) return;
-
-        lastAutoPlayTime = tNow;
-
-        if (slSelectorICP->value() < slSelectorICP->range().second - 0.01f)
+    win->addLoopCallback(
+        [&]()
         {
-            slSelectorICP->setValue(slSelectorICP->value() + 1);
-            rebuild_3d_view();
-        }
-    });
+            if (!isAutoPlayActive) return;
+
+            const double tNow = mrpt::Clock::nowDouble();
+            if (tNow - lastAutoPlayTime < argAutoPlayPeriod.getValue()) return;
+
+            lastAutoPlayTime = tNow;
+
+            if (slSelectorICP->value() < slSelectorICP->range().second - 0.01f)
+            {
+                slSelectorICP->setValue(slSelectorICP->value() + 1);
+                rebuild_3d_view();
+            }
+        });
 
     nanogui::mainloop(10 /*refresh Hz*/);
 
@@ -632,7 +656,7 @@ double conditionNumber(const MATRIX& m)
 // ==============================
 // rebuild_3d_view
 // ==============================
-void rebuild_3d_view()
+void rebuild_3d_view(bool regenerateMaps)
 {
     using namespace std::string_literals;
 
@@ -838,18 +862,27 @@ void rebuild_3d_view()
         }
     }
 
+    static mrpt::opengl::CSetOfObjects::Ptr lastGlobalPts;
+
+    if (!lastGlobalPts || regenerateMaps)
     {
         // Show all or selected layers:
         for (auto& rpL : rpGlobal.points.perLayer)
             rpL.second.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
 
-        auto glPts = lr.pcGlobal->get_visualization(rpGlobal);
+        auto glPts    = lr.pcGlobal->get_visualization(rpGlobal);
+        lastGlobalPts = glPts;
 
         // Show all or selected layers:
         rpGlobal.points.allLayers.color =
             mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
 
         glVizICP->insert(glPts);
+    }
+    else
+    {
+        // avoid the costly method of re-rendering maps, if possible:
+        glVizICP->insert(lastGlobalPts);
     }
 
     // LOCAL PC:
@@ -897,16 +930,25 @@ void rebuild_3d_view()
         }
     }
 
+    static mrpt::opengl::CSetOfObjects::Ptr lastLocalPts;
+
+    if (!lastLocalPts || regenerateMaps)
     {
         // Show all or selected layers:
         for (auto& rpL : rpLocal.points.perLayer)
             rpL.second.color = mrpt::img::TColor(0x00, 0x00, 0xff, 0xff);
 
-        auto glPts = lr.pcLocal->get_visualization(rpLocal);
+        auto glPts   = lr.pcLocal->get_visualization(rpLocal);
+        lastLocalPts = glPts;
 
-        glPts->setPose(relativePose.mean);
         glVizICP->insert(glPts);
     }
+    else
+    {
+        // avoid the costly method of re-rendering maps, if possible:
+        glVizICP->insert(lastLocalPts);
+    }
+    lastLocalPts->setPose(relativePose.mean);
 
     // Global view options:
     {
