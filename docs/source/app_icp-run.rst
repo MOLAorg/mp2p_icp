@@ -1,6 +1,6 @@
 
 ===============================
-Application: ``mp2p-icp-run``
+Application: ``icp-run``
 ===============================
 
 Write me!

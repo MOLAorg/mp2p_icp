@@ -1,4 +1,4 @@
-project(mp2p-icp-run)
+project(icp-run)
 
 find_package(mrpt-tclap REQUIRED)
 

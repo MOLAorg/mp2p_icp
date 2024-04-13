@@ -1,9 +1,9 @@
-# YAML configuration file for use with the CLI tool mp2p-icp-run or
+# YAML configuration file for use with the CLI tool icp-run or
 # programatically from function mp2p_icp::icp_pipeline_from_yaml()
 #
 # Example command line:
 #  
-# build-Release/bin/mp2p-icp-run   --input-local /mnt/storage/kitti-odometry-slam-mm/00/001478.mm  --input-global /mnt/storage/kitti-odometry-slam-mm/00/001477.mm  -c demos/icp-settings-kitti.yaml --generate-debug-log
+# build-Release/bin/icp-run   --input-local /mnt/storage/kitti-odometry-slam-mm/00/001478.mm  --input-global /mnt/storage/kitti-odometry-slam-mm/00/001477.mm  -c demos/icp-settings-kitti.yaml --generate-debug-log
 #
 class_name: mp2p_icp::ICP
 

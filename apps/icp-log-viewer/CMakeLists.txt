@@ -1,4 +1,4 @@
-project(mp2p-icp-log-viewer)
+project(icp-log-viewer)
 
 find_package(mrpt-tclap REQUIRED)
 find_package(mrpt-gui REQUIRED)

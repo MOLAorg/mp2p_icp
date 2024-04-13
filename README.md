@@ -34,8 +34,8 @@ And these applications:
  * [mm-info](apps/mm-info): CLI tool to read a metric map (`*.mm`) and describe its contents.
  * [mm-viewer](apps/mm-viewer): GUI tool to visualize .mm (metric map) files.
  * [mm2txt](apps/mm2txt): CLI tool to export the layers of a metric map (`*.mm`) as CSV/TXT.
- * [mp2p-icp-log-viewer](apps/mp2p-icp-log-viewer): GUI to inspect results from ICP runs.
- * [mp2p-icp-run](apps/mp2p-icp-run): Standalone program to run ICP pipelines.
+ * [icp-log-viewer](apps/icp-log-viewer): GUI to inspect results from ICP runs.
+ * [icp-run](apps/icp-run): Standalone program to run ICP pipelines.
  * [sm2mm](apps/sm2mm): A CLI tool to convert a [simple map](https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html) `*.simplemap`
 (from a SLAM mapping session) into a metric map (`*.mm`) via a configurable pipeline configuration file.
  * [sm-cli](apps/sm-cli): A CLI tool to inspect, visualize, or modify [simple maps](https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html) `*.simplemap` (from a SLAM mapping session).

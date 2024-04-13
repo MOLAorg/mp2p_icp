@@ -11,6 +11,6 @@ print('Using ICP pipeline config : ' + cfg)
 for i in range(0,1000):
     f =  dir + '/{:06d}.mm'.format(i)
     fnext =  dir + '/{:06d}.mm'.format(i+1)
-    cmd = 'mp2p-icp-run --input-global ' + f + ' --input-local ' + fnext + ' --config-filters-local ' + cfg + ' -c ' + cfg + ' -d'
+    cmd = 'icp-run --input-global ' + f + ' --input-local ' + fnext + ' --config-filters-local ' + cfg + ' -c ' + cfg + ' -d'
     print(cmd)
     os.system(cmd)

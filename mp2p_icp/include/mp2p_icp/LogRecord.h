@@ -24,7 +24,7 @@ namespace mp2p_icp
 /** \addtogroup  mp2p_icp_grp
  * @{ */
 
-/** Details on an ICP run, loadable from the GUI tool mp2p-icp-log-viewer.
+/** Details on an ICP run, loadable from the GUI tool icp-log-viewer.
  *
  */
 class LogRecord : public mrpt::serialization::CSerializable

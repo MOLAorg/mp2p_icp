@@ -1,6 +1,6 @@
 
 =====================================
-Application: ``mp2p-icp-log-viewer``
+Application: ``icp-log-viewer``
 =====================================
 
 Write me!

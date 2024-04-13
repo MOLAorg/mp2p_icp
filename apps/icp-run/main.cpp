@@ -27,7 +27,7 @@
 #include <fstream>
 
 // CLI flags:
-static TCLAP::CmdLine cmd("mp2p-icp-run");
+static TCLAP::CmdLine cmd("icp-run");
 
 static TCLAP::ValueArg<std::string> argInputLocal(
     "", "input-local",
@@ -98,7 +98,7 @@ static TCLAP::ValueArg<std::string> argInitialGuess(
 static TCLAP::SwitchArg argGenerateDebugFiles(
     "d", "generate-debug-log",
     "Enforces generation of the .icplog debug log files for posterior "
-    "visualization with mp2p-icp-log-viewer, overriding the "
+    "visualization with icp-log-viewer, overriding the "
     "`generateDebugFiles` value in the configuration YAML file.",
     cmd);
 
