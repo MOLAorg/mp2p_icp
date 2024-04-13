@@ -330,7 +330,7 @@ void rebuild_3d_view()
                     mapBbox = bb;
                 else
                 {
-                    mapBbox->unionWith(bb);
+                    mapBbox = mapBbox->unionWith(bb);
                 }
             }
             else
