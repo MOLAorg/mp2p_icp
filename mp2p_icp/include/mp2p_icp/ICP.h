@@ -231,5 +231,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         uint32_t            currentIteration = 0;
         LogRecord*          log              = nullptr;
     };
+
+   private:
+    ParameterSource ownParamSource_;
 };
 }  // namespace mp2p_icp

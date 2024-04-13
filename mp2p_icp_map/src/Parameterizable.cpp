@@ -16,6 +16,8 @@ void ParameterSource::attach(Parameterizable& obj)
 {
     for (auto& p : obj.declaredParameters())  //
         attachedDeclParameters_.insert(&p);
+
+    obj.attachedSource_ = this;
 }
 
 std::string ParameterSource::printVariableValues() const

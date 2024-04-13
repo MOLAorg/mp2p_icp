@@ -8,7 +8,6 @@
 
 #include <mrpt/expr/CRuntimeCompiledExpression.h>
 
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <set>
@@ -79,7 +78,12 @@ class ParameterSource
  */
 class Parameterizable
 {
+    friend class ParameterSource;
+
    public:
+    /**
+     * Each parameterizable object can be attached to one source at a given time
+     */
     void attachToParameterSource(ParameterSource& source)
     {
         source.attach(*this);
@@ -87,6 +91,9 @@ class Parameterizable
 
     auto&       declaredParameters() { return declParameters_; }
     const auto& declaredParameters() const { return declParameters_; }
+
+    ParameterSource*       attachedSource() { return attachedSource_; }
+    const ParameterSource* attachedSource() const { return attachedSource_; }
 
     /** Throws if any parameter is uninitialized or realized() has not been
      * called in the attached ParameterSource.
@@ -116,6 +123,7 @@ class Parameterizable
    private:
     /// List of declared parameters:
     std::vector<internal::InfoPerParam> declParameters_;
+    ParameterSource*                    attachedSource_ = nullptr;
 
     template <typename T>
     void parseAndDeclareParameter_impl(const std::string& value, T& target);

@@ -71,6 +71,28 @@ void ICP::align(
     tle1.stop();
 
     // ------------------------------------------------------
+    // Add our own parameters to the user's one, or just
+    // define a new one if none is provided.
+    // ------------------------------------------------------
+    std::set<ParameterSource*> activeParamSouces;
+
+    auto lambdaAddOwnParams = [&](Parameterizable& obj)
+    {
+        ParameterSource* ps = obj.attachedSource();
+        if (!ps)
+        {
+            obj.attachToParameterSource(ownParamSource_);
+            ps = &ownParamSource_;
+        }
+        ps->updateVariable("ICP_ITERATION", result.nIterations);
+        activeParamSouces.insert(ps);
+    };
+    auto lambdaRealizeParamSources = [&]()
+    {
+        for (auto& ps : activeParamSouces) ps->realize();
+    };
+
+    // ------------------------------------------------------
     // Main ICP loop
     // ------------------------------------------------------
     mrpt::system::CTimeLoggerEntry tle2(profiler_, "align.2_create_state");
@@ -95,7 +117,13 @@ void ICP::align(
     {
         mrpt::system::CTimeLoggerEntry tle3(profiler_, "align.3_iter");
 
+        // Update iteration count, both in direct C++ structure...
         state.currentIteration = result.nIterations;
+
+        // ...and via programmable formulas:
+        for (auto& obj : matchers_) lambdaAddOwnParams(*obj);
+        for (auto& obj : solvers_) lambdaAddOwnParams(*obj);
+        lambdaRealizeParamSources();
 
         // Matchings
         // ---------------------------------------
@@ -156,7 +184,8 @@ void ICP::align(
 
         // Termination criterion: small delta:
         auto lambdaCalcIncrs = [](const mrpt::poses::CPose3D& deltaSol)
-            -> std::tuple<double, double> {
+            -> std::tuple<double, double>
+        {
             const mrpt::math::CVectorFixed<double, 6> dSol =
                 mrpt::poses::Lie::SE<3>::log(deltaSol);
             const double delta_xyz = dSol.blockCopy<3, 1>(0, 0).norm();
@@ -239,6 +268,9 @@ void ICP::align(
     // Quality:
     mrpt::system::CTimeLoggerEntry tle7(profiler_, "align.4_quality");
 
+    for (auto& e : quality_evaluators_) lambdaAddOwnParams(*e.obj);
+    lambdaRealizeParamSources();
+
     result.quality = evaluate_quality(
         quality_evaluators_, pcGlobal, pcLocal,
         state.currentSolution.optimalPose, state.currentPairings);
@@ -305,7 +337,7 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$GLOBAL_ID";
         const auto        value = mrpt::format(
-            "%05u", static_cast<unsigned int>(
+                   "%05u", static_cast<unsigned int>(
                         (log.pcGlobal && log.pcGlobal->id.has_value())
                                    ? log.pcGlobal->id.value()
                                    : 0));
@@ -322,7 +354,7 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$LOCAL_ID";
         const auto        value = mrpt::format(
-            "%05u", static_cast<unsigned int>(
+                   "%05u", static_cast<unsigned int>(
                         (log.pcLocal && log.pcLocal->id.has_value())
                                    ? log.pcLocal->id.value()
                                    : 0));
