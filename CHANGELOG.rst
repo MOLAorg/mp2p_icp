@@ -2,6 +2,17 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mm-viewer and icp-log-viewer: saves UI state in persistent user config file
+* FIX: missing UI refresh when clicking showPairings checkbox
+* renamed apps for less verbose names: icp-run, icp-log-viewer
+* ICP core now defines a variable ICP_ITERATION for use in programmable formulas in pipelines
+* icp-log-viewer: much faster rendering of ICP iteration details
+* mm-viewer: fix bug in calculation of bounding box
+* Merge docs with main MOLA repo
+* Contributors: Jose Luis Blanco-Claraco
+
 1.3.0 (2024-03-10)
 ------------------
 * mm-viewer: new options to visualize georeferenced maps
