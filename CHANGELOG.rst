@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.3.1 (2024-04-16)
+------------------
 * mm-viewer and icp-log-viewer: saves UI state in persistent user config file
 * FIX: missing UI refresh when clicking showPairings checkbox
 * renamed apps for less verbose names: icp-run, icp-log-viewer
