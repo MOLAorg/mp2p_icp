@@ -19,6 +19,7 @@
 // other deps:
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/config.h>
+#include <mrpt/config/CConfigFile.h>
 #include <mrpt/core/round.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/COpenGLScene.h>
@@ -28,6 +29,8 @@
 #include <mrpt/system/string_utils.h>  // unitsFormat()
 
 #include <iostream>
+
+#include "../libcfgpath/cfgpath.h"
 
 constexpr const char* APP_NAME      = "mm-viewer";
 constexpr int         MID_FONT_SIZE = 14;
@@ -101,9 +104,14 @@ static void main_show_gui()
 
     if (argMapFile.isSet()) { loadMapFile(argMapFile.getValue()); }
 
+    // Get user app config file
+    char appCfgFile[1024];
+    ::get_user_config_file(appCfgFile, sizeof(appCfgFile), APP_NAME);
+    mrpt::config::CConfigFile appCfg(appCfgFile);
+
     /*
      * -------------------------------------------------------------------
-     * Plot 3D:
+     * GUI
      * --------------------------------------------------------------------
      */
     nanogui::init();
@@ -237,8 +245,8 @@ static void main_show_gui()
         cbKeepOriginalCloudColors =
             tab1->add<nanogui::CheckBox>("Keep original cloud colors");
         cbKeepOriginalCloudColors->setChecked(false);
-        cbKeepOriginalCloudColors->setCallback(
-            [&](bool) { rebuild_3d_view(); });
+        cbKeepOriginalCloudColors->setCallback([&](bool)
+                                               { rebuild_3d_view(); });
 
         cbShowGroundGrid = tab1->add<nanogui::CheckBox>("Show ground grid");
         cbShowGroundGrid->setChecked(true);
@@ -253,18 +261,19 @@ static void main_show_gui()
         w->add<nanogui::Button>("Quit", ENTYPO_ICON_ARROW_BOLD_LEFT)
             ->setCallback([]() { win->setVisible(false); });
 
-        win->setKeyboardCallback([&](int key, [[maybe_unused]] int scancode,
-                                     int                  action,
-                                     [[maybe_unused]] int modifiers) {
-            if (action != GLFW_PRESS && action != GLFW_REPEAT) return false;
-
-            switch (key)
+        win->setKeyboardCallback(
+            [&](int key, [[maybe_unused]] int scancode, int action,
+                [[maybe_unused]] int modifiers)
             {
-                // case GLFW_KEY_LEFT: xxx; break;
-            };
+                if (action != GLFW_PRESS && action != GLFW_REPEAT) return false;
 
-            return false;
-        });
+                switch (key)
+                {
+                    // case GLFW_KEY_LEFT: xxx; break;
+                };
+
+                return false;
+            });
     }
 
     win->performLayout();
@@ -273,6 +282,75 @@ static void main_show_gui()
     win->camera().setElevationDegrees(15.0f);
     win->camera().setZoomDistance(50.0f);
 
+    // save and load UI state:
+#define LOAD_CB_STATE(CB_NAME__) do_cb(CB_NAME__, #CB_NAME__)
+#define SAVE_CB_STATE(CB_NAME__) \
+    appCfg.write("", #CB_NAME__, CB_NAME__->checked())
+
+#define LOAD_SL_STATE(SL_NAME__) do_sl(SL_NAME__, #SL_NAME__)
+#define SAVE_SL_STATE(SL_NAME__) \
+    appCfg.write("", #SL_NAME__, SL_NAME__->value())
+
+    auto load_UI_state_from_user_config = [&]()
+    {
+        auto do_cb = [&](nanogui::CheckBox* cb, const std::string& name)
+        { cb->setChecked(appCfg.read_bool("", name, cb->checked())); };
+        auto do_sl = [&](nanogui::Slider* sl, const std::string& name)
+        { sl->setValue(appCfg.read_float("", name, sl->value())); };
+
+        LOAD_CB_STATE(cbApplyGeoRef);
+        LOAD_CB_STATE(cbViewOrtho);
+        LOAD_CB_STATE(cbView2D);
+        LOAD_CB_STATE(cbViewVoxelsAsPoints);
+        LOAD_CB_STATE(cbViewVoxelsFreeSpace);
+        LOAD_CB_STATE(cbColorizeMap);
+        LOAD_CB_STATE(cbKeepOriginalCloudColors);
+        LOAD_CB_STATE(cbShowGroundGrid);
+
+        LOAD_SL_STATE(slPointSize);
+        LOAD_SL_STATE(slMidDepthField);
+        LOAD_SL_STATE(slThicknessDepthField);
+        LOAD_SL_STATE(slCameraFOV);
+
+        win->camera().setCameraPointing(
+            appCfg.read_float("", "cam_x", win->camera().getCameraPointingX()),
+            appCfg.read_float("", "cam_y", win->camera().getCameraPointingY()),
+            appCfg.read_float("", "cam_z", win->camera().getCameraPointingZ()));
+        win->camera().setAzimuthDegrees(
+            appCfg.read_float("", "cam_az", win->camera().getAzimuthDegrees()));
+        win->camera().setElevationDegrees(appCfg.read_float(
+            "", "cam_el", win->camera().getElevationDegrees()));
+        win->camera().setZoomDistance(
+            appCfg.read_float("", "cam_d", win->camera().getZoomDistance()));
+    };
+    auto save_UI_state_to_user_config = [&]()
+    {
+        SAVE_CB_STATE(cbApplyGeoRef);
+        SAVE_CB_STATE(cbViewOrtho);
+        SAVE_CB_STATE(cbView2D);
+        SAVE_CB_STATE(cbViewVoxelsAsPoints);
+        SAVE_CB_STATE(cbViewVoxelsFreeSpace);
+        SAVE_CB_STATE(cbColorizeMap);
+        SAVE_CB_STATE(cbKeepOriginalCloudColors);
+        SAVE_CB_STATE(cbShowGroundGrid);
+
+        SAVE_SL_STATE(slPointSize);
+        SAVE_SL_STATE(slMidDepthField);
+        SAVE_SL_STATE(slThicknessDepthField);
+        SAVE_SL_STATE(slCameraFOV);
+
+        appCfg.write("", "cam_x", win->camera().getCameraPointingX());
+        appCfg.write("", "cam_y", win->camera().getCameraPointingY());
+        appCfg.write("", "cam_z", win->camera().getCameraPointingZ());
+        appCfg.write("", "cam_az", win->camera().getAzimuthDegrees());
+        appCfg.write("", "cam_el", win->camera().getElevationDegrees());
+        appCfg.write("", "cam_d", win->camera().getZoomDistance());
+    };
+
+    // load UI state from last session:
+    load_UI_state_from_user_config();
+
+    // Build 3D:
     rebuild_3d_view();
 
     // Main loop
@@ -280,13 +358,18 @@ static void main_show_gui()
     win->drawAll();
     win->setVisible(true);
 
-    win->addLoopCallback([&]() {
-        // None
-    });
+    win->addLoopCallback(
+        [&]()
+        {
+            // None
+        });
 
     nanogui::mainloop(1 /*refresh Hz*/);
 
     nanogui::shutdown();
+
+    // save UI state:
+    save_UI_state_to_user_config();
 }
 
 // ==============================
@@ -328,10 +411,7 @@ void rebuild_3d_view()
                 const auto bb = pc->boundingBox();
                 if (!mapBbox.has_value())
                     mapBbox = bb;
-                else
-                {
-                    mapBbox = mapBbox->unionWith(bb);
-                }
+                else { mapBbox = mapBbox->unionWith(bb); }
             }
             else
             {
@@ -390,10 +470,7 @@ void rebuild_3d_view()
     {
         glVizMap->setPose(theMap.georeferencing->T_enu_to_map);
     }
-    else
-    {
-        glVizMap->setPose(mrpt::poses::CPose3D::Identity());
-    }
+    else { glVizMap->setPose(mrpt::poses::CPose3D::Identity()); }
 
     // ground grid:
     if (mapBbox)
