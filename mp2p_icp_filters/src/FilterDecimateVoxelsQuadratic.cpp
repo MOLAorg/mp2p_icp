@@ -121,70 +121,74 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
     // TODO?: rng.randomize(seed);
 
     // Inverse nonlinear transformation:
-    auto lambdaInsertPt = [&outPc](float x, float y, float z) {
-        outPc->insertPointFast(x, y, z);
-    };
+    auto lambdaInsertPt = [&outPc](float x, float y, float z)
+    { outPc->insertPointFast(x, y, z); };
 
     size_t nonEmptyVoxels = 0;
-    for (const auto& vxl_pts : filter_grid_.pts_voxels)
-    {
-        if (vxl_pts.second.indices.empty()) continue;
 
-        nonEmptyVoxels++;
-
-        if (params_.use_voxel_average || params_.use_closest_to_voxel_average)
+    filter_grid_.visit_voxels(
+        [&](const PointCloudToVoxelGrid::indices_t&,
+            const PointCloudToVoxelGrid::voxel_t& vxl)
         {
-            // Analyze the voxel contents:
-            auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
-            const float inv_n = (1.0f / vxl_pts.second.indices.size());
-            for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
-            {
-                const auto pt_idx = vxl_pts.second.indices[i];
-                mean.x += xs[pt_idx];
-                mean.y += ys[pt_idx];
-                mean.z += zs[pt_idx];
-            }
-            mean *= inv_n;
+            if (vxl.indices.empty()) return;
 
-            if (params_.use_closest_to_voxel_average)
-            {
-                std::optional<float>  minSqrErr;
-                std::optional<size_t> bestIdx;
+            nonEmptyVoxels++;
 
-                for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
+            if (params_.use_voxel_average ||
+                params_.use_closest_to_voxel_average)
+            {
+                // Analyze the voxel contents:
+                auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
+                const float inv_n = (1.0f / vxl.indices.size());
+                for (size_t i = 0; i < vxl.indices.size(); i++)
                 {
-                    const auto  pt_idx = vxl_pts.second.indices[i];
-                    const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
-                                         mrpt::square(ys[pt_idx] - mean.y) +
-                                         mrpt::square(zs[pt_idx] - mean.z);
-
-                    if (!minSqrErr.has_value() || sqrErr < *minSqrErr)
-                    {
-                        minSqrErr = sqrErr;
-                        bestIdx   = pt_idx;
-                    }
+                    const auto pt_idx = vxl.indices[i];
+                    mean.x += xs[pt_idx];
+                    mean.y += ys[pt_idx];
+                    mean.z += zs[pt_idx];
                 }
-                // Insert the closest to the mean:
-                lambdaInsertPt(xs[*bestIdx], ys[*bestIdx], zs[*bestIdx]);
+                mean *= inv_n;
+
+                if (params_.use_closest_to_voxel_average)
+                {
+                    std::optional<float>  minSqrErr;
+                    std::optional<size_t> bestIdx;
+
+                    for (size_t i = 0; i < vxl.indices.size(); i++)
+                    {
+                        const auto  pt_idx = vxl.indices[i];
+                        const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
+                                             mrpt::square(ys[pt_idx] - mean.y) +
+                                             mrpt::square(zs[pt_idx] - mean.z);
+
+                        if (!minSqrErr.has_value() || sqrErr < *minSqrErr)
+                        {
+                            minSqrErr = sqrErr;
+                            bestIdx   = pt_idx;
+                        }
+                    }
+                    // Insert the closest to the mean:
+                    lambdaInsertPt(xs[*bestIdx], ys[*bestIdx], zs[*bestIdx]);
+                }
+                else
+                {
+                    // Insert the mean:
+                    lambdaInsertPt(mean.x, mean.y, mean.z);
+                }
             }
             else
             {
-                // Insert the mean:
-                lambdaInsertPt(mean.x, mean.y, mean.z);
-            }
-        }
-        else
-        {
-            // Insert a randomly-picked point:
-            const auto idxInVoxel =
-                params_.use_random_point_within_voxel
-                    ? (rng.drawUniform64bit() % vxl_pts.second.indices.size())
-                    : 0UL;
+                // Insert a randomly-picked point:
+                const auto idxInVoxel =
+                    params_.use_random_point_within_voxel
+                        ? (rng.drawUniform64bit() % vxl.indices.size())
+                        : 0UL;
 
-            const auto pt_idx = vxl_pts.second.indices.at(idxInVoxel);
-            lambdaInsertPt(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
-        }
-    }
+                const auto pt_idx = vxl.indices.at(idxInVoxel);
+                lambdaInsertPt(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
+            }
+        });
+
     outPc->mark_as_modified();
 
     MRPT_LOG_DEBUG_STREAM("Voxel counts: total=" << nonEmptyVoxels);

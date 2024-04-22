@@ -11,14 +11,26 @@
  */
 
 #include <mp2p_icp_filters/PointCloudToVoxelGridSingle.h>
+// Used in the PIMP:
+#include <tsl/robin_map.h>
 
 using namespace mp2p_icp_filters;
+
+struct PointCloudToVoxelGridSingle::Impl
+{
+    tsl::robin_map<indices_t, voxel_t, IndicesHash> pts_voxels;
+};
+
+PointCloudToVoxelGridSingle::PointCloudToVoxelGridSingle()
+    : impl_(mrpt::make_impl<Impl>())
+{
+}
 
 void PointCloudToVoxelGridSingle::setResolution(const float voxel_size)
 {
     MRPT_START
 
-    pts_voxels.clear();
+    impl_->pts_voxels.clear();
     resolution_ = voxel_size;
 
     MRPT_END
@@ -34,6 +46,8 @@ void PointCloudToVoxelGridSingle::processPointCloud(
     const auto& ys   = p.getPointsBufferRef_y();
     const auto& zs   = p.getPointsBufferRef_z();
     const auto  npts = xs.size();
+
+    auto& pts_voxels = impl_->pts_voxels;
 
     pts_voxels.reserve(pts_voxels.size() + npts);
 
@@ -68,6 +82,18 @@ void PointCloudToVoxelGridSingle::processPointCloud(
 void PointCloudToVoxelGridSingle::clear()
 {
     //
-    pts_voxels.min_load_factor(0.01f);
-    pts_voxels.clear();
+    impl_->pts_voxels.min_load_factor(0.01f);
+    impl_->pts_voxels.clear();
+}
+
+void PointCloudToVoxelGridSingle::visit_voxels(
+    const std::function<void(const indices_t idx, const voxel_t& vxl)>&
+        userCode) const
+{
+    for (const auto& [idx, vxl] : impl_->pts_voxels) userCode(idx, vxl);
+}
+
+size_t PointCloudToVoxelGridSingle::size() const
+{
+    return impl_->pts_voxels.size();
 }

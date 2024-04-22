@@ -12,8 +12,8 @@
 
 #pragma once
 
+#include <mrpt/core/pimpl.h>
 #include <mrpt/maps/CPointsMap.h>
-#include <tsl/robin_map.h>
 
 #include <optional>
 
@@ -28,7 +28,7 @@ namespace mp2p_icp_filters
 class PointCloudToVoxelGridSingle
 {
    public:
-    PointCloudToVoxelGridSingle() = default;
+    PointCloudToVoxelGridSingle();
     ~PointCloudToVoxelGridSingle() {}
 
     /** Changes the voxel resolution, clearing past contents */
@@ -98,18 +98,26 @@ class PointCloudToVoxelGridSingle
         }
     };
 
-    /** The point indices in each voxel. Directly access to each desired cell,
-     * use its iterator, etc. */
-    tsl::robin_map<indices_t, voxel_t, IndicesHash> pts_voxels;
-
     inline int32_t coord2idx(float xyz) const
     {
         return static_cast<int32_t>(xyz / resolution_);
     }
 
+    void visit_voxels(
+        const std::function<void(const indices_t idx, const voxel_t& vxl)>&
+            userCode) const;
+
+    /// Returns the number of occupied voxels.
+    size_t size() const;
+
    private:
     /** Voxel size (meters) or resolution. */
     float resolution_ = 0.20f;
+
+    /** The actual hash map. Hidden inside a PIMP to prevent problems with
+     * duplicated TSL library copies in the user space */
+    struct Impl;
+    mrpt::pimpl<Impl> impl_;
 };
 
 }  // namespace mp2p_icp_filters

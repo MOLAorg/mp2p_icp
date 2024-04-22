@@ -92,119 +92,124 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     const float min_e1  = params_.voxel_filter_min_e1;
 
     std::size_t nEdgeVoxels = 0, nPlaneVoxels = 0, nTotalVoxels = 0;
-    for (const auto& vxl_pts : filter_grid_.pts_voxels)
-    {
-        if (!vxl_pts.second.indices.empty()) nTotalVoxels++;
-        if (vxl_pts.second.indices.size() < 5) continue;
 
-        // Analyze the voxel contents:
-        mrpt::math::TPoint3Df mean{0, 0, 0};
-        const float           inv_n = (1.0f / vxl_pts.second.indices.size());
-        for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
+    filter_grid_.visit_voxels(
+        [&](const PointCloudToVoxelGrid::indices_t&,
+            const PointCloudToVoxelGrid::voxel_t& vxl)
         {
-            const auto pt_idx = vxl_pts.second.indices[i];
-            mean.x += xs[pt_idx];
-            mean.y += ys[pt_idx];
-            mean.z += zs[pt_idx];
-        }
-        mean.x *= inv_n;
-        mean.y *= inv_n;
-        mean.z *= inv_n;
+            if (!vxl.indices.empty()) nTotalVoxels++;
+            if (vxl.indices.size() < 5) return;
 
-        mrpt::math::CMatrixFixed<double, 3, 3> mat_a;
-        mat_a.setZero();
-        for (size_t i = 0; i < vxl_pts.second.indices.size(); i++)
-        {
-            const auto                  pt_idx = vxl_pts.second.indices[i];
-            const mrpt::math::TPoint3Df a(
-                xs[pt_idx] - mean.x, ys[pt_idx] - mean.y, zs[pt_idx] - mean.z);
-            mat_a(0, 0) += a.x * a.x;
-            mat_a(1, 0) += a.x * a.y;
-            mat_a(2, 0) += a.x * a.z;
-            mat_a(1, 1) += a.y * a.y;
-            mat_a(2, 1) += a.y * a.z;
-            mat_a(2, 2) += a.z * a.z;
-        }
-        mat_a *= inv_n;
-
-        // Find eigenvalues & eigenvectors:
-        // This only looks at the lower-triangular part of the cov matrix.
-        mrpt::math::CMatrixFixed<double, 3, 3> eig_vectors;
-        std::vector<double>                    eig_vals;
-        mat_a.eig_symmetric(eig_vectors, eig_vals);
-
-        const float e0 = eig_vals[0], e1 = eig_vals[1], e2 = eig_vals[2];
-
-        mrpt::maps::CPointsMap* dest = nullptr;
-        if (e2 < max_e20 * e0 && e1 < max_e10 * e0)
-        {
-            // Classified as EDGE
-            // ------------------------
-            nEdgeVoxels++;
-            dest = pc_edges.get();
-        }
-        else if (e2 > min_e20 * e0 && e1 > min_e10 * e0 && e1 > min_e1)
-        {
-            // Classified as PLANE
-            // ------------------------
-            nPlaneVoxels++;
-
-            // Define a plane from its centroid + a normal:
-            const auto pl_c = mrpt::math::TPoint3D(mean);
-
-            // Normal = largest eigenvector:
-            const auto ev0 =
-                eig_vectors.extractColumn<mrpt::math::TVector3D>(0);
-            auto pl_n = mrpt::math::TVector3D(ev0.x, ev0.y, ev0.z);
-
-            // Normal direction criterion: make it to face towards the vehicle.
-            // We can use the dot product to find it out, since pointclouds are
-            // given in vehicle-frame coordinates.
+            // Analyze the voxel contents:
+            mrpt::math::TPoint3Df mean{0, 0, 0};
+            const float           inv_n = (1.0f / vxl.indices.size());
+            for (size_t i = 0; i < vxl.indices.size(); i++)
             {
-                // Unit vector: vehicle -> plane centroid:
-                ASSERT_GT_(pl_c.norm(), 1e-3);
-                const auto u = pl_c * (1.0 / pl_c.norm());
-                const auto dot_prod =
-                    mrpt::math::dotProduct<3, double>(u, pl_n);
-
-                // It should be <0 if the normal is pointing to the vehicle.
-                // Otherwise, reverse the normal.
-                if (dot_prod > 0) pl_n = -pl_n;
+                const auto pt_idx = vxl.indices[i];
+                mean.x += xs[pt_idx];
+                mean.y += ys[pt_idx];
+                mean.z += zs[pt_idx];
             }
+            mean.x *= inv_n;
+            mean.y *= inv_n;
+            mean.z *= inv_n;
 
-            // Add plane & centroid:
-            const auto pl = mrpt::math::TPlane3D(pl_c, pl_n);
-            inOut.planes.emplace_back(pl, pl_c);
-
-            // Also: add the centroid to this special layer:
-            pc_plane_centroids->insertPointFast(pl_c.x, pl_c.y, pl_c.z);
-
-            // Filter out horizontal planes, since their uneven density
-            // makes ICP fail to converge.
-            // A plane on the ground has its 0'th eigenvector like [0 0 1]
-            if (std::abs(ev0.z) < 0.9f) { dest = pc_planes.get(); }
-        }
-        if (dest != nullptr)
-        {
-            for (size_t i = 0; i < vxl_pts.second.indices.size();
-                 i += params_.voxel_filter_decimation)
+            mrpt::math::CMatrixFixed<double, 3, 3> mat_a;
+            mat_a.setZero();
+            for (size_t i = 0; i < vxl.indices.size(); i++)
             {
-                const auto pt_idx = vxl_pts.second.indices[i];
-                dest->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
+                const auto                  pt_idx = vxl.indices[i];
+                const mrpt::math::TPoint3Df a(
+                    xs[pt_idx] - mean.x, ys[pt_idx] - mean.y,
+                    zs[pt_idx] - mean.z);
+                mat_a(0, 0) += a.x * a.x;
+                mat_a(1, 0) += a.x * a.y;
+                mat_a(2, 0) += a.x * a.z;
+                mat_a(1, 1) += a.y * a.y;
+                mat_a(2, 1) += a.y * a.z;
+                mat_a(2, 2) += a.z * a.z;
             }
-        }
-        // full_pointcloud_decimation=0 means dont use this layer
-        if (params_.full_pointcloud_decimation > 0)
-        {
-            for (size_t i = 0; i < vxl_pts.second.indices.size();
-                 i += params_.full_pointcloud_decimation)
+            mat_a *= inv_n;
+
+            // Find eigenvalues & eigenvectors:
+            // This only looks at the lower-triangular part of the cov matrix.
+            mrpt::math::CMatrixFixed<double, 3, 3> eig_vectors;
+            std::vector<double>                    eig_vals;
+            mat_a.eig_symmetric(eig_vectors, eig_vals);
+
+            const float e0 = eig_vals[0], e1 = eig_vals[1], e2 = eig_vals[2];
+
+            mrpt::maps::CPointsMap* dest = nullptr;
+            if (e2 < max_e20 * e0 && e1 < max_e10 * e0)
             {
-                const auto pt_idx = vxl_pts.second.indices[i];
-                pc_full_decim->insertPointFast(
-                    xs[pt_idx], ys[pt_idx], zs[pt_idx]);
+                // Classified as EDGE
+                // ------------------------
+                nEdgeVoxels++;
+                dest = pc_edges.get();
             }
-        }
-    }
+            else if (e2 > min_e20 * e0 && e1 > min_e10 * e0 && e1 > min_e1)
+            {
+                // Classified as PLANE
+                // ------------------------
+                nPlaneVoxels++;
+
+                // Define a plane from its centroid + a normal:
+                const auto pl_c = mrpt::math::TPoint3D(mean);
+
+                // Normal = largest eigenvector:
+                const auto ev0 =
+                    eig_vectors.extractColumn<mrpt::math::TVector3D>(0);
+                auto pl_n = mrpt::math::TVector3D(ev0.x, ev0.y, ev0.z);
+
+                // Normal direction criterion: make it to face towards the
+                // vehicle. We can use the dot product to find it out, since
+                // pointclouds are given in vehicle-frame coordinates.
+                {
+                    // Unit vector: vehicle -> plane centroid:
+                    ASSERT_GT_(pl_c.norm(), 1e-3);
+                    const auto u = pl_c * (1.0 / pl_c.norm());
+                    const auto dot_prod =
+                        mrpt::math::dotProduct<3, double>(u, pl_n);
+
+                    // It should be <0 if the normal is pointing to the vehicle.
+                    // Otherwise, reverse the normal.
+                    if (dot_prod > 0) pl_n = -pl_n;
+                }
+
+                // Add plane & centroid:
+                const auto pl = mrpt::math::TPlane3D(pl_c, pl_n);
+                inOut.planes.emplace_back(pl, pl_c);
+
+                // Also: add the centroid to this special layer:
+                pc_plane_centroids->insertPointFast(pl_c.x, pl_c.y, pl_c.z);
+
+                // Filter out horizontal planes, since their uneven density
+                // makes ICP fail to converge.
+                // A plane on the ground has its 0'th eigenvector like [0 0 1]
+                if (std::abs(ev0.z) < 0.9f) { dest = pc_planes.get(); }
+            }
+            if (dest != nullptr)
+            {
+                for (size_t i = 0; i < vxl.indices.size();
+                     i += params_.voxel_filter_decimation)
+                {
+                    const auto pt_idx = vxl.indices[i];
+                    dest->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
+                }
+            }
+            // full_pointcloud_decimation=0 means dont use this layer
+            if (params_.full_pointcloud_decimation > 0)
+            {
+                for (size_t i = 0; i < vxl.indices.size();
+                     i += params_.full_pointcloud_decimation)
+                {
+                    const auto pt_idx = vxl.indices[i];
+                    pc_full_decim->insertPointFast(
+                        xs[pt_idx], ys[pt_idx], zs[pt_idx]);
+                }
+            }
+        });
+
     MRPT_LOG_DEBUG_STREAM(
         "[VoxelGridFilter] Voxel counts: total=" << nTotalVoxels
                                                  << " edges=" << nEdgeVoxels

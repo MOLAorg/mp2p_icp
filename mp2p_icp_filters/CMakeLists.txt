@@ -10,10 +10,11 @@ mola_add_library(
 	SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
 	PUBLIC_LINK_LIBRARIES
 		mp2p_icp_map
+	PRIVATE_LINK_LIBRARIES
 		tsl::robin_map
 	CMAKE_DEPENDENCIES
 		mp2p_icp
-		robin_map
+		#robin_map
 )
 
 if (TBB_FOUND AND MP2PICP_USE_TBB)

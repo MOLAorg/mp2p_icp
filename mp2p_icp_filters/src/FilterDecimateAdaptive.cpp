@@ -99,16 +99,18 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     // A list of all "valid" voxels:
     std::vector<DataPerVoxel> voxels;
-    voxels.reserve(filter_grid_.pts_voxels.size());
+    voxels.reserve(filter_grid_.size());
 
     std::size_t nTotalVoxels = 0;
-    for (const auto& [idx, data] : filter_grid_.pts_voxels)
-    {
-        if (!data.indices.empty()) nTotalVoxels++;
-        if (data.indices.size() < _.minimum_input_points_per_voxel) continue;
+    filter_grid_.visit_voxels(
+        [&](const PointCloudToVoxelGrid::indices_t&,
+            const PointCloudToVoxelGrid::voxel_t& data)
+        {
+            if (!data.indices.empty()) nTotalVoxels++;
+            if (data.indices.size() < _.minimum_input_points_per_voxel) return;
 
-        voxels.emplace_back().voxel = &data;
-    }
+            voxels.emplace_back().voxel = &data;
+        });
 
     // Perform resampling:
     // -------------------
@@ -144,8 +146,9 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
             if (!anyInsertInTheRound)
             {
-                // This means there is no more points and we must end despite
-                // we didn't reached the user's desired number of points:
+                // This means there is no more points and we must end
+                // despite we didn't reached the user's desired number of
+                // points:
                 break;
             }
 
