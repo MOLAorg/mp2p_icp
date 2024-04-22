@@ -6,8 +6,8 @@
 # Released under BSD 3-Clause License. See COPYING.
 # ------------------------------------------------------------------------------
 
-# Minimum CMake vesion: limited by CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS
-cmake_minimum_required(VERSION 3.4)
+# Minimum CMake version: deprecated if <3.5 (as of Apr 2024)
+cmake_minimum_required(VERSION 3.5)
 
 # Tell CMake we'll use C++ for use in its tests/flags
 project(mp2p_icp_all LANGUAGES CXX)
