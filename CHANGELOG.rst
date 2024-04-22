@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.3.2 (2024-04-22)
+------------------
 * tsl::robin_map library is no longer exposed neither in the public API nor as public headers (PIMPL pattern)
   This is to prevent Debian-level collisions with other packages also exposing it.
 * add first icp-log-viewer docs
