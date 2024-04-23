@@ -305,8 +305,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     // First time we see this (x,y) cell:
                     flattenUsedBins.insert(flattenIdx);
 
-                    insertPt.emplace(
-                        xs[insertPtIdx], ys[insertPtIdx], zs[insertPtIdx]);
+                    if (!insertPt)
+                        insertPt.emplace(
+                            xs[insertPtIdx], ys[insertPtIdx], zs[insertPtIdx]);
                     outPc->insertPointFast(
                         insertPt->x, insertPt->y, *params_.flatten_to);
                 }
