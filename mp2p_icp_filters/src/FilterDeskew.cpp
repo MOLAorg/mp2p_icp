@@ -51,7 +51,7 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
     ASSERT_(c.has("twist") && c["twist"].isSequence());
     ASSERT_EQUAL_(c["twist"].asSequence().size(), 6UL);
 
-    const auto& yamlTwist = c["twist"].asSequence();
+    const auto yamlTwist = c["twist"].asSequence();
 
     for (int i = 0; i < 6; i++)
         Parameterizable::parseAndDeclareParameter(

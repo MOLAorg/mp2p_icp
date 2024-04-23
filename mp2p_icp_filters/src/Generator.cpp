@@ -57,7 +57,8 @@ void Generator::Parameters::load_from_yaml(
         const std::set<std::string> allowedTopKeys = {"class", "plugin"};
 
         ASSERT_(c["metric_map_definition"].isMap());
-        for (const auto& [k, v] : c["metric_map_definition"].asMap())
+        const auto mmd = c["metric_map_definition"].asMap();
+        for (const auto& [k, v] : mmd)
         {
             const auto key = k.as<std::string>();
             if (v.isNullNode()) continue;  // ignore
@@ -155,10 +156,7 @@ void Generator::process(
     {
         implProcessDefault(o, out, robotPose);
     }
-    else
-    {
-        implProcessCustomMap(o, out, robotPose);
-    }
+    else { implProcessCustomMap(o, out, robotPose); }
 
     MRPT_END
 }
