@@ -97,14 +97,16 @@ class metric_map_t : public mrpt::serialization::CSerializable,
 
     struct Georeferencing
     {
-        /** The geodetic coordinates (on WGS-84) of the metric map origin of
-         * coordinates */
+        /** The geodetic coordinates (on WGS-84) of the metric map ENU frame of
+         * reference. */
         mrpt::topography::TGeodeticCoords geo_coord;
 
-        /** The SE(3) transformation from the ENU (earth-north-up) frame at the
-         * origin point, to the metric map local frame of reference.
-         * If this is the identity (default) it means the map is ENU coordinates
-         * (i.e. +X is East, +Y is North, +Z is up).
+        /** The SE(3) transformation from the ENU (earth-north-up) frame
+         * to the metric map local frame of reference.
+         * If this is the identity (default) it means the map is already in
+         * ENU coordinates (i.e. +X is East, +Y is North, +Z is up) and
+         * the point (0,0,0) is the one having the geodetic coordinates
+         * geo_coord
          */
         mrpt::poses::CPose3D T_enu_to_map;
     };
