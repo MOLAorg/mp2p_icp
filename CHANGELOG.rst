@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.3.3 (2024-04-30)
+------------------
 * Add minimum_input_points_to_filter option to FilterDecimateVoxels
 * FIX: QualityEvaluator_PairedRatio throws when one of the reference maps is empty
 * FIX BUG: Won't try to match 2D pointclouds if their height is different
