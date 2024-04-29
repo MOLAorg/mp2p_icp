@@ -72,7 +72,7 @@ void Matcher_Adaptive::implMatchOneLayer(
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(
             {tl.localMin, tl.localMax},
-            bounding_box_intersection_check_epsilon_))
+            /* threshold?? */ +bounding_box_intersection_check_epsilon_))
         return;
 
     // Prepare output: no correspondences initially:
@@ -100,19 +100,20 @@ void Matcher_Adaptive::implMatchOneLayer(
 
     const auto lambdaAddPair =
         [&](const size_t localIdx, const mrpt::math::TPoint3Df& globalPt,
-            const uint64_t globalIdxOrID, const float errSqr) {
-            auto& ps = matchesPerLocal_.at(localIdx);
-            if (ps.size() >= MAX_CORRS_PER_LOCAL) return;
+            const uint64_t globalIdxOrID, const float errSqr)
+    {
+        auto& ps = matchesPerLocal_.at(localIdx);
+        if (ps.size() >= MAX_CORRS_PER_LOCAL) return;
 
-            mrpt::tfest::TMatchingPair p;
-            p.globalIdx = globalIdxOrID;
-            p.localIdx  = localIdx;
-            p.global    = globalPt;
-            p.local     = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
-            p.errorSquareAfterTransformation = errSqr;
+        mrpt::tfest::TMatchingPair p;
+        p.globalIdx = globalIdxOrID;
+        p.localIdx  = localIdx;
+        p.global    = globalPt;
+        p.local     = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
+        p.errorSquareAfterTransformation = errSqr;
 
-            ps.push_back(p);
-        };
+        ps.push_back(p);
+    };
 
     const uint32_t nn_search_max_points =
         enableDetectPlanes ? planeSearchPoints : maxPt2PtCorrespondences;

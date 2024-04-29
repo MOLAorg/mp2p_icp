@@ -90,7 +90,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(
             {tl.localMin, tl.localMax},
-            bounding_box_intersection_check_epsilon_))
+            searchRadius + bounding_box_intersection_check_epsilon_))
         return;
 
     // Prepare output: no correspondences initially:

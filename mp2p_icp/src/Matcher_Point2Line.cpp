@@ -59,7 +59,7 @@ void Matcher_Point2Line::implMatchOneLayer(
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(
             {tl.localMin, tl.localMax},
-            bounding_box_intersection_check_epsilon_))
+            distanceThreshold + bounding_box_intersection_check_epsilon_))
         return;
 
     // Prepare output: no correspondences initially:
@@ -150,7 +150,7 @@ void Matcher_Point2Line::implMatchOneLayer(
 
         const auto& normal = eig.eigVectors[2];
         p.ln_global.pBase  = {
-            eig.meanCov.mean.x(), eig.meanCov.mean.y(), eig.meanCov.mean.z()};
+             eig.meanCov.mean.x(), eig.meanCov.mean.y(), eig.meanCov.mean.z()};
         p.ln_global.director = normal.unitarize();
 
         // Mark local point as already paired:

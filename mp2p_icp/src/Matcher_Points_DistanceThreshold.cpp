@@ -69,7 +69,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(
             {tl.localMin, tl.localMax},
-            bounding_box_intersection_check_epsilon_))
+            threshold + bounding_box_intersection_check_epsilon_))
         return;
 
     // Prepare output: no correspondences initially:
@@ -90,13 +90,12 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     // single-thread call before entering into parallelization:
     nnGlobal.nn_prepare_for_3d_queries();
 
-    const auto lambdaAddPair = [this, &ms, &globalName, &localName, &lxs, &lys,
-                                &lzs](
-                                   mrpt::tfest::TMatchingPairList& outPairs,
-                                   const size_t                    localIdx,
-                                   const mrpt::math::TPoint3Df&    globalPt,
-                                   const uint64_t globalIdxOrID,
-                                   const float    errSqr) {
+    const auto lambdaAddPair =
+        [this, &ms, &globalName, &localName, &lxs, &lys, &lzs](
+            mrpt::tfest::TMatchingPairList& outPairs, const size_t localIdx,
+            const mrpt::math::TPoint3Df& globalPt, const uint64_t globalIdxOrID,
+            const float errSqr)
+    {
         // Filter out if global alread assigned, in another matcher up the
         // pipeline, for example.
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
@@ -134,7 +133,8 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         // Identity
         Result(),
         // 1st lambda: Parallel computation
-        [&](const tbb::blocked_range<size_t>& r, Result res) -> Result {
+        [&](const tbb::blocked_range<size_t>& r, Result res) -> Result
+        {
             res.reserve(r.size());
             std::vector<size_t>                neighborIndices;
             std::vector<float>                 neighborSqrDists;
@@ -202,7 +202,8 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
             return res;
         },
         // 2nd lambda: Parallel reduction
-        [](Result a, const Result& b) -> Result {
+        [](Result a, const Result& b) -> Result
+        {
             a.insert(
                 a.end(), std::make_move_iterator(b.begin()),
                 std::make_move_iterator(b.end()));
