@@ -52,6 +52,7 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
     MCP_LOAD_REQ(c, decimate_method);
 
     MCP_LOAD_REQ(c, output_pointcloud_layer);
+    MCP_LOAD_OPT(c, minimum_input_points_to_filter);
 
     DECLARE_PARAMETER_IN_REQ(c, voxel_filter_resolution, parent);
 
@@ -139,6 +140,39 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         pcPtrs.at(0)->GetRuntimeClass()->className);
 
     outPc->reserve(outPc->size() + reserveSize);
+
+    // Skip filtering for layers with less than
+    // "minimum_input_points_to_filter":
+    if (params_.minimum_input_points_to_filter > 0)
+    {
+        std::vector<size_t> idxsToRemove;
+        for (size_t mapIdx = 0; mapIdx < pcPtrs.size(); mapIdx++)
+        {
+            if (pcPtrs[mapIdx]->size() > params_.minimum_input_points_to_filter)
+            {  // just proceed as standard with this large map:
+                continue;
+            }
+            // Remove this one from the list of maps to filter,
+            // and just add all points:
+            idxsToRemove.push_back(mapIdx);
+
+            const auto& xs = pcPtrs[mapIdx]->getPointsBufferRef_x();
+            const auto& ys = pcPtrs[mapIdx]->getPointsBufferRef_y();
+
+            for (size_t i = 0; i < xs.size(); i++)
+            {
+                if (params_.flatten_to.has_value())
+                {
+                    outPc->insertPointFast(xs[i], ys[i], *params_.flatten_to);
+                }
+                else
+                    outPc->insertPointFrom(*pcPtrs[mapIdx], i);
+            }
+        }
+        for (auto it = idxsToRemove.rbegin(); it != idxsToRemove.rend(); ++it)
+            pcPtrs.erase(pcPtrs.begin() + *it);
+
+    }  // end handle special case minimum_input_points_to_filter
 
     // Do filter:
     size_t nonEmptyVoxels = 0;

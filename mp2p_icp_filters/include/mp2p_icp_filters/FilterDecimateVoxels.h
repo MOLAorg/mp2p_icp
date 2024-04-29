@@ -51,6 +51,12 @@ enum class DecimateMethod : uint8_t
  * If the parameter `flatten_to` is defined, this filter will also "flatten" or
  * "summarize" the 3D points into a 2D planar (constant height `z`) cloud.
  *
+ * Additional input point fields (ring, intensity, timestamp) will be copied
+ * into the output target cloud, except when using the `flatten_to` option.
+ *
+ * If `minimum_input_points_to_filter` is defined, input clouds smaller than
+ * that size will not be decimated at all.
+ *
  * Not compatible with calling from different threads simultaneously for
  * different input point clouds. Use independent instances for each thread if
  * needed.
@@ -89,6 +95,11 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
 
         /** Size of each voxel edge [meters] */
         double voxel_filter_resolution = 1.0;  // [m]
+
+        /** If !=0 and there are less input points that this number,
+         *  all points will be just moved through without decimation.
+         */
+        uint32_t minimum_input_points_to_filter = 0;
 
         /// See description on top of this page.
         std::optional<double> flatten_to;
