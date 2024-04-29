@@ -2,6 +2,18 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Add minimum_input_points_to_filter option to FilterDecimateVoxels
+* FIX: QualityEvaluator_PairedRatio throws when one of the reference maps is empty
+* FIX BUG: Won't try to match 2D pointclouds if their height is different
+* Clarify comments in metricmap.h about geodetic references
+* Fix printing metric_map_t contents when it only has a gridmap
+* Fix potential dangling references (g++ 13 warning)
+* Fix potential use of uninitialized point index
+* Bump cmake_minimum_required to 3.5
+* Contributors: Jose Luis Blanco-Claraco
+
 1.3.2 (2024-04-22)
 ------------------
 * tsl::robin_map library is no longer exposed neither in the public API nor as public headers (PIMPL pattern)
