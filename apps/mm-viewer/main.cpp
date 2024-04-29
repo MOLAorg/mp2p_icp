@@ -52,6 +52,8 @@ static TCLAP::ValueArg<std::string> arg_plugins(
 
 auto glVizMap = mrpt::opengl::CSetOfObjects::Create();
 auto glGrid   = mrpt::opengl::CGridPlaneXY::Create();
+mrpt::opengl::CSetOfObjects::Ptr glENUCorner, glMapCorner;
+
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
 std::array<nanogui::TextBox*, 2> lbMapStats                = {nullptr, nullptr};
@@ -127,10 +129,14 @@ static void main_show_gui()
         scene->insert(glGrid);
     }
 
-    auto gl_base = mrpt::opengl::stock_objects::CornerXYZ(1.0f);
-    gl_base->setName("map");
-    gl_base->enableShowName();
-    scene->insert(gl_base);
+    glMapCorner = mrpt::opengl::stock_objects::CornerXYZ(1.0f);
+    glMapCorner->setName("map");
+    glMapCorner->enableShowName();
+
+    glENUCorner = mrpt::opengl::stock_objects::CornerXYZ(2.0f);
+    glENUCorner->setName("ENU");
+    glENUCorner->enableShowName();
+    scene->insert(glENUCorner);
 
     scene->insert(glVizMap);
 
@@ -464,13 +470,22 @@ void rebuild_3d_view()
             mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
 
         glVizMap->insert(glPts);
+
+        glVizMap->insert(glMapCorner);
     }
 
     if (cbApplyGeoRef->checked() && theMap.georeferencing.has_value())
     {
         glVizMap->setPose(theMap.georeferencing->T_enu_to_map);
+        glGrid->setPose(theMap.georeferencing->T_enu_to_map);
+        glENUCorner->setVisibility(true);
     }
-    else { glVizMap->setPose(mrpt::poses::CPose3D::Identity()); }
+    else
+    {
+        glVizMap->setPose(mrpt::poses::CPose3D::Identity());
+        glGrid->setPose(mrpt::poses::CPose3D::Identity());
+        glENUCorner->setVisibility(false);
+    }
 
     // ground grid:
     if (mapBbox)
