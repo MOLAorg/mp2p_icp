@@ -56,7 +56,8 @@ double QualityEvaluator_PairedRatio::evaluate(
     }
 
     const auto nEffectiveLocalPoints = pairings->potential_pairings;
-    ASSERT_(nEffectiveLocalPoints != 0);
 
-    return pairings->size() / double(nEffectiveLocalPoints);
+    return nEffectiveLocalPoints
+               ? pairings->size() / double(nEffectiveLocalPoints)
+               : .0;
 }
