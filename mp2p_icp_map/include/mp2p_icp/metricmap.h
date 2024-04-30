@@ -19,7 +19,7 @@
 #include <mrpt/math/TLine3D.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/math/geometry.h>
-#include <mrpt/poses/CPose3D.h>
+#include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <mrpt/serialization/CSerializable.h>
 #include <mrpt/topography/data_types.h>
 
@@ -108,7 +108,7 @@ class metric_map_t : public mrpt::serialization::CSerializable,
          * the point (0,0,0) is the one having the geodetic coordinates
          * geo_coord
          */
-        mrpt::poses::CPose3D T_enu_to_map;
+        mrpt::poses::CPose3DPDFGaussian T_enu_to_map;
     };
 
     /** If provided, gives the placement of the map with respect to the Earth.

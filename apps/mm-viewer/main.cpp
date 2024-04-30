@@ -476,8 +476,8 @@ void rebuild_3d_view()
 
     if (cbApplyGeoRef->checked() && theMap.georeferencing.has_value())
     {
-        glVizMap->setPose(theMap.georeferencing->T_enu_to_map);
-        glGrid->setPose(theMap.georeferencing->T_enu_to_map);
+        glVizMap->setPose(theMap.georeferencing->T_enu_to_map.mean);
+        glGrid->setPose(theMap.georeferencing->T_enu_to_map.mean);
         glENUCorner->setVisibility(true);
     }
     else
