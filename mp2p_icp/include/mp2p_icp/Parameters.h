@@ -68,7 +68,6 @@ struct Parameters : public mrpt::serialization::CSerializable
      */
     uint32_t decimationIterationDetails = 10;
 
-
     /** If set to N>1, only 1 out of N log files will be actually generated.
      *  Useful to save tons of disk space for large datasets (!).
      */
@@ -80,6 +79,11 @@ struct Parameters : public mrpt::serialization::CSerializable
         "global-$GLOBAL_ID$GLOBAL_LABEL.icplog";
 
     bool debugPrintIterationProgress = false;
+
+    /** Quality checkpoints: if the quality is smaller than the given threshold
+     * at the prescribed iteration, ICP will be aborted. */
+    std::map<uint32_t, double> quality_checkpoints = {
+        {50U, 0.05}, {100U, 0.10}};
 
     /** @} */
 

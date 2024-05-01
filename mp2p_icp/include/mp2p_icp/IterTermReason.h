@@ -21,7 +21,8 @@ enum class IterTermReason : uint8_t
     NoPairings,
     SolverError,
     MaxIterations,
-    Stalled
+    Stalled,
+    QualityCheckpointFailed
 };
 
 }  // namespace mp2p_icp
@@ -32,4 +33,5 @@ MRPT_FILL_ENUM(IterTermReason::NoPairings);
 MRPT_FILL_ENUM(IterTermReason::SolverError);
 MRPT_FILL_ENUM(IterTermReason::MaxIterations);
 MRPT_FILL_ENUM(IterTermReason::Stalled);
+MRPT_FILL_ENUM(IterTermReason::QualityCheckpointFailed);
 MRPT_ENUM_TYPE_END()
