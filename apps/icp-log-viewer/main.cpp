@@ -103,7 +103,8 @@ nanogui::TextBox *tbLogPose = nullptr, *tbInitialGuess = nullptr,
 
 nanogui::Slider* slPairingsPl2PlSize   = nullptr;
 nanogui::Slider* slPairingsPl2LnSize   = nullptr;
-nanogui::Slider* slPointSize           = nullptr;
+nanogui::Slider* slGlobalPointSize     = nullptr;
+nanogui::Slider* slLocalPointSize      = nullptr;
 nanogui::Slider* slMidDepthField       = nullptr;
 nanogui::Slider* slThicknessDepthField = nullptr;
 nanogui::Label * lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
@@ -521,23 +522,46 @@ static void main_show_gui()
         pn->setLayout(new nanogui::GridLayout(
             nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
-        pn->add<nanogui::Label>("Point size");
+        pn->add<nanogui::Label>("Global map point size");
 
-        slPointSize = pn->add<nanogui::Slider>();
-        slPointSize->setRange({1.0f, 10.0f});
-        slPointSize->setValue(2.0f);
-        slPointSize->setCallback([&](float) { rebuild_3d_view(); });
+        slGlobalPointSize = pn->add<nanogui::Slider>();
+        slGlobalPointSize->setRange({1.0f, 10.0f});
+        slGlobalPointSize->setValue(2.0f);
+        slGlobalPointSize->setCallback([&](float) { rebuild_3d_view(); });
     }
+    {
+        auto pn = tab5->add<nanogui::Widget>();
+        pn->setLayout(new nanogui::GridLayout(
+            nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
-    lbDepthFieldMid = tab5->add<nanogui::Label>("Center depth clip plane:");
-    slMidDepthField = tab5->add<nanogui::Slider>();
+        pn->add<nanogui::Label>("Local map point size");
+
+        slLocalPointSize = pn->add<nanogui::Slider>();
+        slLocalPointSize->setRange({1.0f, 10.0f});
+        slLocalPointSize->setValue(2.0f);
+        slLocalPointSize->setCallback([&](float) { rebuild_3d_view(); });
+    }
+    {
+        auto pn = tab5->add<nanogui::Widget>();
+        pn->setLayout(new nanogui::GridLayout(
+            nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+
+        lbDepthFieldMid = pn->add<nanogui::Label>("Center depth clip plane:");
+        slMidDepthField = pn->add<nanogui::Slider>();
+    }
     slMidDepthField->setRange({-2.0, 3.0});
     slMidDepthField->setValue(1.0f);
     slMidDepthField->setCallback([&](float) { rebuild_3d_view_fast(); });
 
-    lbDepthFieldThickness =
-        tab5->add<nanogui::Label>("Max-Min depth thickness:");
-    slThicknessDepthField = tab5->add<nanogui::Slider>();
+    {
+        auto pn = tab5->add<nanogui::Widget>();
+        pn->setLayout(new nanogui::GridLayout(
+            nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+
+        lbDepthFieldThickness =
+            pn->add<nanogui::Label>("Max-Min depth thickness:");
+        slThicknessDepthField = pn->add<nanogui::Slider>();
+    }
     slThicknessDepthField->setRange({-2.0, 4.0});
     slThicknessDepthField->setValue(3.0);
     slThicknessDepthField->setCallback([&](float) { rebuild_3d_view_fast(); });
@@ -641,7 +665,8 @@ static void main_show_gui()
 
         LOAD_SL_STATE(slPairingsPl2PlSize);
         LOAD_SL_STATE(slPairingsPl2LnSize);
-        LOAD_SL_STATE(slPointSize);
+        LOAD_SL_STATE(slGlobalPointSize);
+        LOAD_SL_STATE(slLocalPointSize);
         LOAD_SL_STATE(slMidDepthField);
         LOAD_SL_STATE(slThicknessDepthField);
 
@@ -671,7 +696,8 @@ static void main_show_gui()
 
         SAVE_SL_STATE(slPairingsPl2PlSize);
         SAVE_SL_STATE(slPairingsPl2LnSize);
-        SAVE_SL_STATE(slPointSize);
+        SAVE_SL_STATE(slGlobalPointSize);
+        SAVE_SL_STATE(slLocalPointSize);
         SAVE_SL_STATE(slMidDepthField);
         SAVE_SL_STATE(slThicknessDepthField);
 
@@ -925,7 +951,7 @@ void rebuild_3d_view(bool regenerateMaps)
         rpGlobal.points.visible = true;
 
         auto& rpL                      = rpGlobal.points.perLayer[lyName];
-        rpL.pointSize                  = slPointSize->value();
+        rpL.pointSize                  = slGlobalPointSize->value();
         rpL.render_voxelmaps_as_points = cbViewVoxelsAsPoints->checked();
 
         if (cbColorizeGlobalMap->checked())
@@ -994,7 +1020,7 @@ void rebuild_3d_view(bool regenerateMaps)
         rpLocal.points.visible = true;
 
         auto& rpL                      = rpLocal.points.perLayer[lyName];
-        rpL.pointSize                  = slPointSize->value();
+        rpL.pointSize                  = slLocalPointSize->value();
         rpL.render_voxelmaps_as_points = cbViewVoxelsAsPoints->checked();
         if (cbColorizeLocalMap->checked())
         {
@@ -1046,11 +1072,11 @@ void rebuild_3d_view(bool regenerateMaps)
         const auto clipFar = depthFieldMid + 0.5 * depthFieldThickness;
 
         lbDepthFieldMid->setCaption(
-            mrpt::format("Center depth clip plane: %f", depthFieldMid));
-        lbDepthFieldThickness->setCaption(
-            mrpt::format("Max-Min depth thickness: %f", depthFieldThickness));
-        lbDepthFieldValues->setCaption(mrpt::format(
-            "Depth field: near plane=%f far plane=%f", clipNear, clipFar));
+            mrpt::format("Frustrum depth center: %.03f", depthFieldMid));
+        lbDepthFieldThickness->setCaption(mrpt::format(
+            "Frustum depth thickness: %.03f", depthFieldThickness));
+        lbDepthFieldValues->setCaption(
+            mrpt::format("Frustum: near=%.02f far=%.02f", clipNear, clipFar));
 
         win->background_scene->getViewport()->setViewportClipDistances(
             clipNear, clipFar);
