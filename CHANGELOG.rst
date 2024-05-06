@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.0 (2024-05-06)
+------------------
 * Update commit for robin-map to latest version (patch contributed upstream)
 * icp-log-viewer: UI now has a slider for each map point size
 * ICP: Add a new quality_checkpoint parameter to early abort ICP attempts
