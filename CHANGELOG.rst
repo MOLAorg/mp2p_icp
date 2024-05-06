@@ -2,6 +2,15 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update commit for robin-map to latest version (patch contributed upstream)
+* icp-log-viewer: UI now has a slider for each map point size
+* ICP: Add a new quality_checkpoint parameter to early abort ICP attempts
+* georeferenced maps: T_enu_to_map now has a covariance field
+* mm-viewer: display ENU frame too
+* Contributors: Jose Luis Blanco-Claraco
+
 1.3.3 (2024-04-30)
 ------------------
 * Add minimum_input_points_to_filter option to FilterDecimateVoxels
