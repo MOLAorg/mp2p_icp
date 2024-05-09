@@ -562,7 +562,7 @@ static void main_show_gui()
             pn->add<nanogui::Label>("Max-Min depth thickness:");
         slThicknessDepthField = pn->add<nanogui::Slider>();
     }
-    slThicknessDepthField->setRange({-2.0, 4.0});
+    slThicknessDepthField->setRange({-2.0, 6.0});
     slThicknessDepthField->setValue(3.0);
     slThicknessDepthField->setCallback([&](float) { rebuild_3d_view_fast(); });
     lbDepthFieldValues = tab5->add<nanogui::Label>(" ");
@@ -1080,6 +1080,7 @@ void rebuild_3d_view(bool regenerateMaps)
 
         win->background_scene->getViewport()->setViewportClipDistances(
             clipNear, clipFar);
+        win->camera().setMaximumZoom(std::max<double>(1000, 3.0 * clipFar));
     }
 
     // Pairings ------------------
