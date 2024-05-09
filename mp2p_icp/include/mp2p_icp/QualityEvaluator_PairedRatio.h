@@ -43,6 +43,12 @@ class QualityEvaluator_PairedRatio : public QualityEvaluator
         const mrpt::poses::CPose3D& localPose,
         const Pairings&             pairingsFromICP) const override;
 
+    void attachToParameterSource(ParameterSource& source) override
+    {
+        source.attach(*this);
+        source.attach(matcher_);
+    }
+
    private:
     Matcher_Points_DistanceThreshold matcher_;
     bool                             reuse_icp_pairings = true;

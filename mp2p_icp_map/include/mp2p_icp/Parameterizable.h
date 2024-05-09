@@ -84,7 +84,7 @@ class Parameterizable
     /**
      * Each parameterizable object can be attached to one source at a given time
      */
-    void attachToParameterSource(ParameterSource& source)
+    virtual void attachToParameterSource(ParameterSource& source)
     {
         source.attach(*this);
     }

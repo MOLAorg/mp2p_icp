@@ -123,6 +123,7 @@ void ICP::align(
         // ...and via programmable formulas:
         for (auto& obj : matchers_) lambdaAddOwnParams(*obj);
         for (auto& obj : solvers_) lambdaAddOwnParams(*obj);
+        for (auto& [obj, _] : quality_evaluators_) lambdaAddOwnParams(*obj);
         lambdaRealizeParamSources();
 
         // Matchings
