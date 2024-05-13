@@ -36,7 +36,7 @@ IMPLEMENTS_MRPT_OBJECT(
 using namespace mp2p_icp;
 
 // Implementation of the CSerializable virtual interface:
-uint8_t metric_map_t::serializeGetVersion() const { return 2; }
+uint8_t metric_map_t::serializeGetVersion() const { return 3; }
 void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << lines;
@@ -59,6 +59,8 @@ void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
         out << georeferencing->geo_coord.lat.decimal_value
             << georeferencing->geo_coord.lon.decimal_value
             << georeferencing->geo_coord.height << georeferencing->T_enu_to_map;
+        // v3: T_enu_to_map: mrpt::poses::CPose3D =>
+        // mrpt::poses::CPose3DPDFGaussian
     }
 
     // Optional user data:
@@ -72,6 +74,7 @@ void metric_map_t::serializeFrom(
         case 0:
         case 1:
         case 2:
+        case 3:
         {
             in >> lines;
             const auto nPls = in.ReadAs<uint32_t>();
@@ -103,8 +106,9 @@ void metric_map_t::serializeFrom(
             {
                 auto& g = georeferencing.emplace();
                 in >> g.geo_coord.lat.decimal_value >>
-                    g.geo_coord.lon.decimal_value >> g.geo_coord.height >>
-                    g.T_enu_to_map;
+                    g.geo_coord.lon.decimal_value >> g.geo_coord.height;
+                if (version >= 3) { in >> g.T_enu_to_map; }
+                else { in >> g.T_enu_to_map.mean; }
             }
             else
                 georeferencing.reset();
