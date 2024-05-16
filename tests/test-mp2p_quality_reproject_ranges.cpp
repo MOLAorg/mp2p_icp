@@ -18,12 +18,11 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 
 #include <cstdlib>
-#include <sstream>
-
-const std::string datasetDir = MP2P_DATASET_DIR;
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
+    const std::string datasetDir = MP2P_DATASET_DIR;
+
     try
     {
         const auto inFile = std::string("happy_buddha_decim.xyz.gz");

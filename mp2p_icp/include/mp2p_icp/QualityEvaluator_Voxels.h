@@ -33,13 +33,9 @@ class QualityEvaluator_Voxels : public QualityEvaluator
         const mrpt::poses::CPose3D& localPose,
         const Pairings&             pairingsFromICP) const override;
 
-    double resolution                  = 0.25;  //!< voxel size [meters]
-    double maxOccupancyUpdateCertainty = 0.65;  //! <[0.5,1.0]
-    double maxFreenessUpdateCertainty  = 0.55;
-    double dist2quality_scale          = 0.1;
-
-    /** Evaluate points only in these layers */
-    std::set<std::string> pointLayers = {mp2p_icp::metric_map_t::PT_LAYER_RAW};
+    /** The name of the input maps layer that is of type CVoxelMap */
+    std::string voxel_layer_name;
+    double      dist2quality_scale = 0.1;
 };
 
 }  // namespace mp2p_icp

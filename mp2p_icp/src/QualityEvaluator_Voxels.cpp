@@ -11,9 +11,7 @@
  */
 
 #include <mp2p_icp/QualityEvaluator_Voxels.h>
-#include <mrpt/maps/COccupancyGridMap3D.h>
-#include <mrpt/maps/CSimplePointsMap.h>
-#include <mrpt/version.h>
+#include <mrpt/maps/CVoxelMap.h>
 
 IMPLEMENTS_MRPT_OBJECT(QualityEvaluator_Voxels, QualityEvaluator, mp2p_icp)
 
@@ -27,138 +25,123 @@ QualityEvaluator_Voxels::QualityEvaluator_Voxels()
 void QualityEvaluator_Voxels::initialize(  //
     const mrpt::containers::yaml& params)
 {
-    MCP_LOAD_OPT(params, resolution);
-    MCP_LOAD_OPT(params, maxOccupancyUpdateCertainty);
-    MCP_LOAD_OPT(params, maxFreenessUpdateCertainty);
+    MCP_LOAD_REQ(params, voxel_layer_name);
     MCP_LOAD_OPT(params, dist2quality_scale);
 }
 
-static double loss(double x, double y)
+namespace
+{
+double loss(double x, double y)
 {
     /*
 
-    D=[0 0 +1;0 0.5 0; 0 1 -1;...
+    D=[0 0 +1;0 0.5 0; 0 1 -10;...
        0.5 0 0; 0.5 0.5 0; 0.5 1 0;...
-       1 0 -1; 1 0.5 0; 1 1 +1];
-    x=D(:,1); Y=D(:,2); z=D(:,3);
+       1 0 -10; 1 0.5 0; 1 1 +1];
+    x=D(:,1); y=D(:,2); z=D(:,3);
 
     sf = fit([x, y],z,'poly22')
     plot(sf,[x,y],z)
 
      */
 
-    return 1.0 - 2 * x - 2 * y + 4 * x * y;
+    // return 1.0 - 2 * x - 2 * y + 4 * x * y;
+    return 1.5 + x + y - 12 * x * x + 22 * x * y - 12 * y * y;
 }
+}  // namespace
 
 double QualityEvaluator_Voxels::evaluate(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D&      localPose,
     [[maybe_unused]] const Pairings& pairingsFromICP) const
 {
-    // Build both voxel maps:
-    // ----------------------------------
-    const auto r = resolution;
+    // Take both voxel maps from each map:
+    // ------------------------------------
+    if (pcGlobal.layers.count(voxel_layer_name) == 0)
+        THROW_EXCEPTION_FMT(
+            "Input global map was expected to contain a layer named '%s'",
+            voxel_layer_name.c_str());
 
-    mrpt::maps::COccupancyGridMap3D voxelsGlo({-r, -r, -r}, {r, r, r}, r);
-    mrpt::maps::COccupancyGridMap3D voxelsLoc({-r, -r, -r}, {r, r, r}, r);
-    // voxels default occupancy probability: 0.5
+    if (pcLocal.layers.count(voxel_layer_name) == 0)
+        THROW_EXCEPTION_FMT(
+            "Input local map was expected to contain a layer named '%s'",
+            voxel_layer_name.c_str());
 
-    auto& io = voxelsGlo.insertionOptions;
+    const mrpt::maps::CVoxelMap::Ptr globalVoxels =
+        std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(
+            pcGlobal.layers.at(voxel_layer_name));
+    if (!globalVoxels)
+        THROW_EXCEPTION_FMT(
+            "Input global map was expected to contain a layer named '%s' of "
+            "type 'CVoxelMap'",
+            voxel_layer_name.c_str());
 
-    io.maxOccupancyUpdateCertainty = maxOccupancyUpdateCertainty;
-    io.maxFreenessUpdateCertainty  = maxFreenessUpdateCertainty;
+    const mrpt::maps::CVoxelMap::Ptr localVoxels =
+        std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(
+            pcLocal.layers.at(voxel_layer_name));
 
-    for (const auto& ly : pointLayers)
-    {
-        auto itG = pcGlobal.layers.find(ly);
-        auto itL = pcLocal.layers.find(ly);
-        if (itG == pcGlobal.layers.end() || itL == pcLocal.layers.end())
-        {
-            MRPT_LOG_ERROR_FMT(
-                "Layer `%s` not found in both global/local layers.",
-                ly.c_str());
-            return 0;
-        }
-
-        auto ptsG = mp2p_icp::MapToPointsMap(*itG->second);
-        auto ptsL = mp2p_icp::MapToPointsMap(*itL->second);
-        ASSERT_(ptsG);
-        ASSERT_(ptsL);
-
-        mrpt::maps::CSimplePointsMap localTransformed;
-        localTransformed.insertAnotherMap(ptsL, localPose);
-
-        // resize voxel grids?
-        // TODO(jlbc): Check against current size too, for many layers
-        {
-            const auto bb = ptsG->boundingBox();
-            voxelsGlo.resizeGrid(bb.min, bb.max);
-        }
-        {
-            const auto bb = localTransformed.boundingBox();
-            voxelsLoc.resizeGrid(bb.min, bb.max);
-        }
-        // insert:
-        voxelsGlo.insertPointCloud({0, 0, 0}, *ptsG);
-        voxelsLoc.insertPointCloud(
-            mrpt::math::TPoint3D(localPose.asTPose()), localTransformed);
-    }
+    if (!localVoxels)
+        THROW_EXCEPTION_FMT(
+            "Input local map was expected to contain a layer named '%s' of "
+            "type 'CVoxelMap'",
+            voxel_layer_name.c_str());
 
     // Compare them:
     // ----------------------------------
-    const auto& g = voxelsGlo.m_grid;
-    const auto& l = voxelsLoc.m_grid;
+
+    // TODO(jlbc): Contribute upstream to Bonxai a "forEachCell() const":
+
+    // get Bonxai grids:
+    auto& g = const_cast<Bonxai::VoxelGrid<mrpt::maps::VoxelNodeOccupancy>&>(
+        globalVoxels->grid());
+    auto& l = const_cast<Bonxai::VoxelGrid<mrpt::maps::VoxelNodeOccupancy>&>(
+        localVoxels->grid());
+
+    auto gAccessor = g.createAccessor();
 
     // Kullback-Leibler distance:
     double dist       = 0;
     size_t dist_cells = 0;
 
-    for (size_t igx = 0; igx < g.getSizeX(); igx++)
-    {
-        const int ilx = l.x2idx(g.idx2x(igx));
-        if (ilx < 0 || static_cast<size_t>(ilx) >= l.getSizeX()) continue;
+    auto lmbdPerLocalVoxel = [&](mrpt::maps::CVoxelMap::voxel_node_t& data,
+                                 const Bonxai::CoordT&                coord) {
+        // get the corresponding cell in the global map:
+        const auto ptLocal = Bonxai::CoordToPos(coord, l.resolution);
+        const auto ptGlobal =
+            localPose.composePoint({ptLocal.x, ptLocal.y, ptLocal.z});
 
-        for (size_t igy = 0; igy < g.getSizeY(); igy++)
-        {
-            const int ily = l.y2idx(g.idx2y(igy));
-            if (ily < 0 || static_cast<size_t>(ily) >= l.getSizeY()) continue;
+        auto* cell = gAccessor.value(Bonxai::PosToCoord(
+            {ptGlobal.x, ptGlobal.y, ptGlobal.z}, g.inv_resolution));
+        if (!cell) return;  // cell not observed in global grid
 
-            for (size_t igz = 0; igz < g.getSizeZ(); igz++)
-            {
-                const int ilz = l.z2idx(g.idx2z(igz));
-                if (ilz < 0 || static_cast<size_t>(ilz) >= l.getSizeZ())
-                    continue;
+        const float localOcc  = localVoxels->l2p(data.occupancy);
+        const float globalOcc = globalVoxels->l2p(cell->occupancy);
 
-                // derreferencing should be safe given all checks above: don't
-                // throw exceptions to allow compiler optimizations:
-                const auto gCell = *g.cellByIndex(igx, igy, igz);
-                const auto lCell = *l.cellByIndex(ilx, ily, ilz);
+        // barely observed cells?
+        if (std::abs(globalOcc - 0.5f) < 0.01f ||
+            std::abs(localOcc - 0.5f) < 0.01f)
+            return;
 
-                const float gProb = voxelsGlo.l2p(gCell);
-                const float lProb = voxelsLoc.l2p(lCell);
+        const double d = loss(localOcc, globalOcc);
+        dist += d;
+        dist_cells++;
+    };  // end lambda for each voxel
 
-                if (std::abs(gProb - 0.5) < 0.01 ||
-                    std::abs(lProb - 0.5) < 0.01)
-                    continue;
+    // run it:
+    l.forEachCell(lmbdPerLocalVoxel);
 
-                const double d = loss(lProb, gProb);
-                dist += d;
-
-                dist_cells++;
-            }
-        }
-    }
-
-    double quality = 0;
-
+    const auto nTotalLocalCells = l.activeCellsCount();
+    double     quality          = 0;
     if (dist_cells)
     {
         dist /= dist_cells;
         quality = 1.0 / (1.0 + std::exp(-dist2quality_scale * dist));
     }
-#if 0
+#if 1
     MRPT_LOG_WARN_STREAM(
         "dist: " << dist << " dist_cells: " << dist_cells
+                 << " nTotalLocalCells:" << nTotalLocalCells
+                 << " ratio=" << (1.0 * dist_cells) / nTotalLocalCells
                  << " quality: " << quality);
 #endif
 

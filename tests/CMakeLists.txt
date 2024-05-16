@@ -8,6 +8,8 @@
 
 include_directories(".") # for "test-common.h"
 
+find_package(mola_test_datasets QUIET)
+
 # ---------------------------------------------------------------------------
 # Usage: mp2p_add_test(foo) to define a test named "test_mp2p_icp_foo"
 #   from "test-foo.cpp". Additional extra .cpp files can be added as argv
@@ -22,6 +24,12 @@ function(mp2p_add_test NAME)
   target_compile_definitions(test-${NAME}
     PRIVATE
     MP2P_DATASET_DIR="${mp2p_icp_all_SOURCE_DIR}/demos/")
+  if (mola_test_datasets_FOUND)
+      target_compile_definitions(test-${NAME}
+          PRIVATE
+          MOLA_TEST_DATASET_DIR="${mola_test_datasets_DIR}/../datasets/")
+      #message(STATUS "mola_test_datasets_DIR: ${mola_test_datasets_DIR}")
+  endif()
 endfunction()
 
 mp2p_add_test(mp2p_error_terms_jacobians)
@@ -34,3 +42,7 @@ mp2p_add_test(mp2p_optimize_pt2ln)
 mp2p_add_test(mp2p_optimize_pt2pl)
 mp2p_add_test(mp2p_optimize_with_prior)
 mp2p_add_test(mp2p_quality_reproject_ranges)
+
+if (mola_test_datasets_FOUND)
+  mp2p_add_test(mp2p_quality_voxels)
+endif()
