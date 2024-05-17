@@ -104,7 +104,8 @@ double QualityEvaluator_Voxels::evaluate(
     size_t dist_cells = 0;
 
     auto lmbdPerLocalVoxel = [&](mrpt::maps::CVoxelMap::voxel_node_t& data,
-                                 const Bonxai::CoordT&                coord) {
+                                 const Bonxai::CoordT&                coord)
+    {
         // get the corresponding cell in the global map:
         const auto ptLocal = Bonxai::CoordToPos(coord, l.resolution);
         const auto ptGlobal =
@@ -137,13 +138,11 @@ double QualityEvaluator_Voxels::evaluate(
         dist /= dist_cells;
         quality = 1.0 / (1.0 + std::exp(-dist2quality_scale * dist));
     }
-#if 1
-    MRPT_LOG_WARN_STREAM(
+    MRPT_LOG_DEBUG_STREAM(
         "dist: " << dist << " dist_cells: " << dist_cells
                  << " nTotalLocalCells:" << nTotalLocalCells
                  << " ratio=" << (1.0 * dist_cells) / nTotalLocalCells
                  << " quality: " << quality);
-#endif
 
     return quality;
 }
