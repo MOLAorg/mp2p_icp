@@ -14,7 +14,11 @@
 #include <mp2p_icp/QualityEvaluator_Voxels.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/core/get_env.h>
 #include <mrpt/system/filesystem.h>  // pathJoin()
+
+const bool   VERBOSE = mrpt::get_env<bool>("VERBOSE", false);
+const double SCALE   = mrpt::get_env<double>("SCALE", 3.0);
 
 void unit_test()
 {
@@ -37,7 +41,7 @@ void unit_test()
     /// Initialize quality evaluator module:
     mrpt::containers::yaml params;
     params["voxel_layer_name"]   = "localmap_voxels";
-    params["dist2quality_scale"] = 2.0;
+    params["dist2quality_scale"] = SCALE;
 
     mp2p_icp::QualityEvaluator_Voxels q;
     q.initialize(params);
@@ -88,12 +92,14 @@ void unit_test()
         const double quality =
             q.evaluate(pcG, pcL, e.local_pose_wrt_global, {});
 
-#if 0
-        std::cout << "global: " << e.global << "\n"
-                  << "local: " << e.local << "\n"
-                  << "is_good: " << e.is_good_lc << "\n"
-                  << "result_quality: " << quality << "\n";
-#endif
+        if (VERBOSE)
+        {
+            std::cout << "- global: " << e.global << "\n"
+                      << "  local: " << e.local << "\n"
+                      << "  is_good: " << e.is_good_lc << "\n"
+                      << "  result_quality: " << quality << "\n";
+        }
+
         if ((quality < 0.2 && e.is_good_lc) ||
             (quality >= 0.5 && !e.is_good_lc))
         {
