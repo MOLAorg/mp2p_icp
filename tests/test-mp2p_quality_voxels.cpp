@@ -37,7 +37,7 @@ void unit_test()
     /// Initialize quality evaluator module:
     mrpt::containers::yaml params;
     params["voxel_layer_name"]   = "localmap_voxels";
-    params["dist2quality_scale"] = 0.1;
+    params["dist2quality_scale"] = 2.0;
 
     mp2p_icp::QualityEvaluator_Voxels q;
     q.initialize(params);
@@ -88,22 +88,22 @@ void unit_test()
         const double quality =
             q.evaluate(pcG, pcL, e.local_pose_wrt_global, {});
 
+#if 0
         std::cout << "global: " << e.global << "\n"
                   << "local: " << e.local << "\n"
                   << "is_good: " << e.is_good_lc << "\n"
                   << "result_quality: " << quality << "\n";
-
-#if 0
-if (std::abs(quality - expectedVal) > 0.1)
+#endif
+        if ((quality < 0.2 && e.is_good_lc) ||
+            (quality >= 0.5 && !e.is_good_lc))
         {
             std::cerr << "Failed for test case:\n"
-                      << " relPoseGT   : " << relPoseGT << "\n"
-                      << " relPoseTest : " << relPoseTest << "\n"
-                      << " expectedVal : " << expectedVal << "\n"
+                      << " local       : " << e.local << "\n"
+                      << " global      : " << e.global << "\n"
+                      << " is_good     : " << e.is_good_lc << "\n"
                       << " quality     : " << quality << "\n";
             throw std::runtime_error("test failed (see cerr above)");
         }
-#endif
     }
 }
 

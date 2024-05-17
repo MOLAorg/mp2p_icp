@@ -35,7 +35,7 @@ class QualityEvaluator_Voxels : public QualityEvaluator
 
     /** The name of the input maps layer that is of type CVoxelMap */
     std::string voxel_layer_name;
-    double      dist2quality_scale = 0.1;
+    double      dist2quality_scale = 2.0;
 };
 
 }  // namespace mp2p_icp
