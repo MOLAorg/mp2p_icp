@@ -20,6 +20,7 @@ void QualityEvaluator_PairedRatio::initialize(
     const mrpt::containers::yaml& params)
 {
     MCP_LOAD_OPT(params, reuse_icp_pairings);
+    MCP_LOAD_OPT(params, absolute_minimum_pairing_ratio);
 
     if (!reuse_icp_pairings)
     {
@@ -34,7 +35,7 @@ void QualityEvaluator_PairedRatio::initialize(
     }
 }
 
-double QualityEvaluator_PairedRatio::evaluate(
+QualityEvaluator::Result QualityEvaluator_PairedRatio::evaluate(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D& localPose,
     const Pairings&             pairingsFromICP) const
@@ -57,7 +58,12 @@ double QualityEvaluator_PairedRatio::evaluate(
 
     const auto nEffectiveLocalPoints = pairings->potential_pairings;
 
-    return nEffectiveLocalPoints
-               ? pairings->size() / double(nEffectiveLocalPoints)
-               : .0;
+    Result r;
+    r.quality = nEffectiveLocalPoints
+                    ? pairings->size() / double(nEffectiveLocalPoints)
+                    : .0;
+
+    r.hard_discard = r.quality < absolute_minimum_pairing_ratio;
+
+    return r;
 }

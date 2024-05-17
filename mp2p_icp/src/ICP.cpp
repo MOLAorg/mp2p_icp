@@ -533,9 +533,12 @@ double ICP::evaluate_quality(
     {
         const double w = e.relativeWeight;
         ASSERT_GT_(w, 0);
-        const double eval =
+        const auto evalResult =
             e.obj->evaluate(pcGlobal, pcLocal, localPose, finalPairings);
-        sumEvals += w * eval;
+
+        if (evalResult.hard_discard) return 0;  // hard limit
+
+        sumEvals += w * evalResult.quality;
         sumW += w;
     }
     ASSERT_(sumW > 0);

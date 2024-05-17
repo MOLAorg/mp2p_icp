@@ -89,8 +89,8 @@ void unit_test()
         mp2p_icp::metric_map_t pcL;
         pcL.load_from_file(mrpt::system::pathJoin({datasetDir, e.local}));
 
-        const double quality =
-            q.evaluate(pcG, pcL, e.local_pose_wrt_global, {});
+        const auto   res = q.evaluate(pcG, pcL, e.local_pose_wrt_global, {});
+        const double quality = res.quality;
 
         if (VERBOSE)
         {

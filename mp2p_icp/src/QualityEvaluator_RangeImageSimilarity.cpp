@@ -38,7 +38,7 @@ void QualityEvaluator_RangeImageSimilarity::initialize(
     MCP_LOAD_OPT(params, debug_save_all_matrices);
 }
 
-double QualityEvaluator_RangeImageSimilarity::evaluate(
+QualityEvaluator::Result QualityEvaluator_RangeImageSimilarity::evaluate(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D&      localPose,
     [[maybe_unused]] const Pairings& pairingsFromICP) const
@@ -101,7 +101,9 @@ double QualityEvaluator_RangeImageSimilarity::evaluate(
         mrpt::io::vectorToTextFile(s2, mrpt::format("I2_scores_%05i.txt", i));
     }
 
-    return finalScore;
+    Result r;
+    r.quality = finalScore;
+    return r;
 }
 
 // Adapted from mrpt::vision::pinhole::projectPoint_with_distortion()

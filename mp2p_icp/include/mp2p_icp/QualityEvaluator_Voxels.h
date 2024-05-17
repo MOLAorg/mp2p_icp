@@ -28,7 +28,7 @@ class QualityEvaluator_Voxels : public QualityEvaluator
 
     // See base class
     void   initialize(const mrpt::containers::yaml& params) override;
-    double evaluate(
+    Result evaluate(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
         const Pairings&             pairingsFromICP) const override;

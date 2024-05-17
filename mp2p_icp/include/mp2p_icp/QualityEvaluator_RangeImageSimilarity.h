@@ -56,7 +56,7 @@ class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
      * This implementation does NOT use `pairingsFromICP` at all, it can be
      * empty.
      */
-    double evaluate(
+    Result evaluate(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
         const Pairings&             pairingsFromICP) const override;

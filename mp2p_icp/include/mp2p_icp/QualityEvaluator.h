@@ -31,11 +31,21 @@ class QualityEvaluator : public mrpt::system::COutputLogger,
     DEFINE_VIRTUAL_MRPT_OBJECT(QualityEvaluator)
 
    public:
+    struct Result
+    {
+        /// The resulting quality measure, in the range [0,1]
+        double quality = .0;
+
+        /// If true, the match is bad and all other quality measurements should
+        /// be discarded
+        bool hard_discard = false;
+    };
+
     /** Check each derived class to see required and optional parameters. */
     virtual void initialize(const mrpt::containers::yaml& params) = 0;
 
     /** Finds correspondences between the two point clouds. */
-    virtual double evaluate(
+    virtual Result evaluate(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose,
         const Pairings&             pairingsFromICP) const = 0;

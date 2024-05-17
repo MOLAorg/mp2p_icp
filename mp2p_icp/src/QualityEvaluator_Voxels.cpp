@@ -50,7 +50,7 @@ double loss(double x, double y)
 }
 }  // namespace
 
-double QualityEvaluator_Voxels::evaluate(
+QualityEvaluator::Result QualityEvaluator_Voxels::evaluate(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
     const mrpt::poses::CPose3D&      localPose,
     [[maybe_unused]] const Pairings& pairingsFromICP) const
@@ -160,15 +160,16 @@ double QualityEvaluator_Voxels::evaluate(
     g.forEachCell(lmbdPerGlobalVoxel);
 
     // const auto nTotalLocalCells = l.activeCellsCount();
-    double quality = 0;
+    Result r;
+    r.quality = 0;
     if (dist_cells)
     {
         dist /= dist_cells;
-        quality = 1.0 / (1.0 + std::exp(-dist2quality_scale * dist));
+        r.quality = 1.0 / (1.0 + std::exp(-dist2quality_scale * dist));
     }
     MRPT_LOG_DEBUG_STREAM(
         "dist: " << dist << " dist_cells: " << dist_cells
-                 << " quality: " << quality);
+                 << " quality: " << r.quality);
 
-    return quality;
+    return r;
 }
