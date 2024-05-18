@@ -19,6 +19,9 @@
   <depend>mrpt2</depend>
   <depend>mola_common</depend>
 
+  <!-- optional for part of the tests -->
+  <!-- depend>mola_test_datasets</depend>  -->
+
   <doc_depend>doxygen</doc_depend>
 
   <!-- Minimum entries to release non-catkin pkgs: -->
