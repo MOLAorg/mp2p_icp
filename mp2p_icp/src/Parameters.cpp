@@ -66,6 +66,26 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
     MCP_LOAD_OPT(p, saveIterationDetails);
     MCP_LOAD_OPT(p, decimationIterationDetails);
 
+    if (p.has("quality_checkpoints"))
+    {
+        ASSERT_(
+            p["quality_checkpoints"].isSequence() &&
+            !p["quality_checkpoints"].asSequenceRange().empty());
+
+        quality_checkpoints.clear();
+        for (const auto& e : p["quality_checkpoints"].asSequenceRange())
+        {
+            ASSERTMSG_(
+                e.isMap(),
+                "Entries within 'quality_checkpoints' must be a Map. See "
+                "mp2p_icp::Parameters docs.");
+
+            quality_checkpoints.emplace(
+                e.asMap().at("iteration").as<size_t>(),
+                e.asMap().at("minimum_quality").as<double>());
+        }
+    }
+
     generateDebugFiles = generateDebugFiles || MP2P_ICP_GENERATE_DEBUG_FILES;
 }
 
