@@ -2,6 +2,17 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix build for older mrpt versions
+* ICP pipelines: Implement loading ``quality_checkpoints`` parameter from YAML config file
+* Quality evaluators: add the option for 'hard discard'
+* Update QualityEvaluator_Voxels to use prebuilt voxel layers from input maps. Add unit tests.
+* BUGFIX: Fix deserializing georeferenced .mm files stored in <1.4.0 format
+* ICP: quality evaluators can now have formulas in their parameters too
+* mm-viewer and icp-log-viewer: extend zoom range so maps of tens of kms can be viewed at once
+* Contributors: Jose Luis Blanco-Claraco
+
 1.4.0 (2024-05-06)
 ------------------
 * Update commit for robin-map to latest version (patch contributed upstream)
