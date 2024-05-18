@@ -71,7 +71,7 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
     {
         ASSERT_(
             p["quality_checkpoints"].isSequence() &&
-#if MRPT_VERSION >= 0x020c00
+#if MRPT_VERSION >= 0x020d00
             !p["quality_checkpoints"].asSequenceRange().empty()
 #else
             !p["quality_checkpoints"].asSequence().empty()
@@ -79,7 +79,7 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
         );
 
         quality_checkpoints.clear();
-#if MRPT_VERSION >= 0x020c00
+#if MRPT_VERSION >= 0x020d00
         for (const auto& e : p["quality_checkpoints"].asSequenceRange())
 #else
         for (const auto& e : p["quality_checkpoints"].asSequence())
