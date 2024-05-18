@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.1 (2024-05-19)
+------------------
 * Fix build for older mrpt versions
 * ICP pipelines: Implement loading ``quality_checkpoints`` parameter from YAML config file
 * Quality evaluators: add the option for 'hard discard'
