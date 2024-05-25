@@ -96,6 +96,15 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             input_pointcloud_layer.c_str());
     }
 
+    // If the input is empty, just move on:
+    if (inPc->empty())
+    {
+        MRPT_LOG_DEBUG_STREAM(
+            "Silently ignoring empty input layer: '" << input_pointcloud_layer
+                                                     << "'");
+        return;
+    }
+
     // mandatory fields:
     const auto&  xs = inPc->getPointsBufferRef_x();
     const auto&  ys = inPc->getPointsBufferRef_y();
@@ -121,18 +130,16 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             const size_t n0 = outPc->size();
             outPc->resize(n0 + n);
             for (size_t i = 0; i < n; i++)
-            {
-                outPc->setPointFast(n0 + i, xs[i], ys[i], zs[i]);
-                if (Is && out_Is) (*out_Is)[n0 + i] = (*Is)[i];
-                if (Rs && out_Rs) (*out_Rs)[n0 + i] = (*Rs)[i];
+            {  // copy the point, including all optional attributes:
+                outPc->insertPointFrom(*inPc, i);
             }
         }
         else
         {
             THROW_EXCEPTION_FMT(
                 "Input layer '%s' does not contain per-point timestamps, "
-                "cannot do scan deskew.",
-                input_pointcloud_layer.c_str());
+                "cannot do scan deskew. Input contents: '%s'",
+                input_pointcloud_layer.c_str(), inPc->asString().c_str());
         }
     }
     else
