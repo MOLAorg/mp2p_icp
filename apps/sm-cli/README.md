@@ -11,6 +11,7 @@ Available commands:
     sm-cli export-rawlog      Export KFs as rawlog for inspection.
     sm-cli info               Analyze a .simplemap file.
     sm-cli level              Makes a .simplemap file level (horizontal).
+    sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli --version          Shows program version.
     sm-cli --help             Shows this information.
 
