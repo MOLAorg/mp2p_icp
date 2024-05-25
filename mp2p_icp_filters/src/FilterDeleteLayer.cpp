@@ -50,7 +50,10 @@ void FilterDeleteLayer::Parameters::load_from_yaml(
     MCP_LOAD_OPT(c, error_on_missing_input_layer);
 }
 
-FilterDeleteLayer::FilterDeleteLayer() = default;
+FilterDeleteLayer::FilterDeleteLayer()
+{
+    mrpt::system::COutputLogger::setLoggerName("FilterDeleteLayer");
+}
 
 void FilterDeleteLayer::initialize(const mrpt::containers::yaml& c)
 {
@@ -77,6 +80,7 @@ void FilterDeleteLayer::filter(mp2p_icp::metric_map_t& inOut) const
                 mrpt::format(
                     "Point cloud layer '%s' was not found.", layer.c_str()));
         }
+        MRPT_LOG_DEBUG_STREAM("Deleted layer: '" << layer << "'");
     }
     MRPT_END
 }
