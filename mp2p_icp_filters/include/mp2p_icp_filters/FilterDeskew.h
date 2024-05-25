@@ -50,9 +50,9 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      *   output_pointcloud_layer: 'deskewed'
      *   # silently_ignore_no_timestamps: false
      *   # skip_deskew: false  # Can be enabled to bypass deskew
-     *   # These (vx,...wz) are variable names that must be defined via the
+     *   # These (vx,...,wz) are variable names that must be defined via the
      *   # mp2p_icp::Parameterizable API to update them dynamically.
-     *   twist: [VX,VY,VZ,WX,WY,WZ]
+     *   twist: [vx,vy,vz,wx,wy,wz]
      * \endcode
      *
      */
