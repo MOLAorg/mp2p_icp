@@ -21,6 +21,8 @@
 #include <mrpt/config.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/core/round.h>
+#include <mrpt/math/TObject3D.h>
+#include <mrpt/math/geometry.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/opengl/stock_objects.h>
@@ -32,8 +34,9 @@
 
 #include "../libcfgpath/cfgpath.h"
 
-constexpr const char* APP_NAME      = "mm-viewer";
-constexpr int         MID_FONT_SIZE = 14;
+constexpr const char* APP_NAME        = "mm-viewer";
+constexpr int         MID_FONT_SIZE   = 14;
+constexpr int         SMALL_FONT_SIZE = 13;
 
 // =========== Declare supported cli switches ===========
 static TCLAP::CmdLine cmd(APP_NAME);
@@ -70,6 +73,7 @@ nanogui::Slider*                 slMidDepthField           = nullptr;
 nanogui::Slider*                 slThicknessDepthField     = nullptr;
 nanogui::Slider*                 slCameraFOV               = nullptr;
 nanogui::Label*                  lbCameraFOV               = nullptr;
+nanogui::Label*                  lbMousePos                = nullptr;
 nanogui::Label *lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr, *lbPointSize = nullptr;
 
@@ -98,6 +102,31 @@ static void loadMapFile(const std::string& mapFile)
     std::cout << "Loaded map: " << theMap.contents_summary() << std::endl;
 
     for (const auto& [name, map] : theMap.layers) layerNames.push_back(name);
+}
+
+static void updateMouseCoordinates()
+{
+    const auto mousexY = win->mousePos();
+
+    mrpt::math::TLine3D mouse_ray;
+    win->background_scene->getViewport("main")->get3DRayForPixelCoord(
+        mousexY.x(), mousexY.y(), mouse_ray);
+
+    // Create a 3D plane, e.g. Z=0
+    using mrpt::math::TPoint3D;
+
+    const mrpt::math::TPlane ground_plane(
+        TPoint3D(0, 0, 0), TPoint3D(1, 0, 0), TPoint3D(0, 1, 0));
+    // Intersection of the line with the plane:
+    mrpt::math::TObject3D inters;
+    mrpt::math::intersect(mouse_ray, ground_plane, inters);
+    // Interpret the intersection as a point, if there is an intersection:
+    mrpt::math::TPoint3D inters_pt;
+    if (inters.getPoint(inters_pt))
+    {
+        lbMousePos->setCaption(mrpt::format(
+            "Mouse pointing to: X=%6.03f Y=%6.03f", inters_pt.x, inters_pt.y));
+    }
 }
 
 static void main_show_gui()
@@ -147,12 +176,12 @@ static void main_show_gui()
 
     // Control GUI sub-window:
     {
-        auto w = win->createManagedSubWindow("Control");
+        auto w = win->createManagedSubWindow("Map viewer");
         w->setPosition({5, 25});
         w->requestFocus();
         w->setLayout(new nanogui::BoxLayout(
             nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 5, 2));
-        w->setFixedWidth(400);
+        w->setFixedWidth(350);
 
         for (auto& lb : lbMapStats)
         {
@@ -182,7 +211,7 @@ static void main_show_gui()
             auto cb = tab2->add<nanogui::CheckBox>(layerNames.at(i));
             cb->setChecked(true);
             cb->setCallback([](bool) { rebuild_3d_view(); });
-            cb->setFontSize(13);
+            cb->setFontSize(SMALL_FONT_SIZE);
 
             cbLayersByName[layerNames.at(i)] = cb;
         }
@@ -191,6 +220,7 @@ static void main_show_gui()
             tab2->add<nanogui::Label>(" ");  // separator
             auto btnSave =
                 tab2->add<nanogui::Button>("Export marked layers...");
+            btnSave->setFontSize(MID_FONT_SIZE);
             btnSave->setCallback([]() { onSaveLayers(); });
         }
 
@@ -201,6 +231,7 @@ static void main_show_gui()
                 nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
             lbPointSize = pn->add<nanogui::Label>("Point size");
+            lbPointSize->setFontSize(MID_FONT_SIZE);
 
             slPointSize = pn->add<nanogui::Slider>();
             slPointSize->setRange({1.0f, 10.0f});
@@ -215,6 +246,8 @@ static void main_show_gui()
 
             lbDepthFieldMid =
                 pn->add<nanogui::Label>("Center depth clip plane:");
+            lbDepthFieldMid->setFontSize(MID_FONT_SIZE);
+
             slMidDepthField = pn->add<nanogui::Slider>();
             slMidDepthField->setRange({-2.0, 3.0});
             slMidDepthField->setValue(1.0f);
@@ -228,6 +261,8 @@ static void main_show_gui()
 
             lbDepthFieldThickness =
                 pn->add<nanogui::Label>("Max-Min depth thickness:");
+            lbDepthFieldThickness->setFontSize(MID_FONT_SIZE);
+
             slThicknessDepthField = pn->add<nanogui::Slider>();
             slThicknessDepthField->setRange({-2.0, 6.0});
             slThicknessDepthField->setValue(3.0);
@@ -235,45 +270,65 @@ static void main_show_gui()
                                                { rebuild_3d_view(); });
         }
         lbDepthFieldValues = tab1->add<nanogui::Label>(" ");
+        lbDepthFieldValues->setFontSize(MID_FONT_SIZE);
 
-        lbCameraFOV = tab1->add<nanogui::Label>("Camera FOV:");
-        slCameraFOV = tab1->add<nanogui::Slider>();
-        slCameraFOV->setRange({20.0f, 170.0f});
-        slCameraFOV->setValue(90.0f);
-        slCameraFOV->setCallback([&](float) { rebuild_3d_view(); });
+        {
+            auto pn = tab1->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+
+            lbCameraFOV = pn->add<nanogui::Label>("Camera FOV:");
+            lbCameraFOV->setFontSize(MID_FONT_SIZE);
+            slCameraFOV = pn->add<nanogui::Slider>();
+            slCameraFOV->setRange({20.0f, 170.0f});
+            slCameraFOV->setValue(90.0f);
+            slCameraFOV->setCallback([&](float) { rebuild_3d_view(); });
+        }
+
+        lbMousePos = tab1->add<nanogui::Label>("Mouse pointing to:");
+        lbMousePos->setFontSize(MID_FONT_SIZE);
 
         cbViewOrtho = tab1->add<nanogui::CheckBox>("Orthogonal view");
+        cbViewOrtho->setFontSize(MID_FONT_SIZE);
         cbViewOrtho->setCallback([&](bool) { rebuild_3d_view(); });
+        cbViewOrtho->setFontSize(MID_FONT_SIZE);
 
         cbView2D = tab1->add<nanogui::CheckBox>("Force 2D view");
+        cbView2D->setFontSize(MID_FONT_SIZE);
         cbView2D->setCallback([&](bool) { rebuild_3d_view(); });
 
         cbViewVoxelsAsPoints =
             tab1->add<nanogui::CheckBox>("Render voxel maps as point clouds");
+        cbViewVoxelsAsPoints->setFontSize(MID_FONT_SIZE);
         cbViewVoxelsAsPoints->setChecked(false);
         cbViewVoxelsAsPoints->setCallback([&](bool) { rebuild_3d_view(); });
 
         cbViewVoxelsFreeSpace =
             tab1->add<nanogui::CheckBox>("Render free space of voxel maps");
+        cbViewVoxelsFreeSpace->setFontSize(MID_FONT_SIZE);
         cbViewVoxelsFreeSpace->setChecked(false);
         cbViewVoxelsFreeSpace->setCallback([&](bool) { rebuild_3d_view(); });
 
         cbColorizeMap = tab1->add<nanogui::CheckBox>("Recolorize map points");
+        cbColorizeMap->setFontSize(MID_FONT_SIZE);
         cbColorizeMap->setChecked(true);
         cbColorizeMap->setCallback([&](bool) { rebuild_3d_view(); });
 
         cbKeepOriginalCloudColors =
             tab1->add<nanogui::CheckBox>("Keep original cloud colors");
+        cbKeepOriginalCloudColors->setFontSize(MID_FONT_SIZE);
         cbKeepOriginalCloudColors->setChecked(false);
         cbKeepOriginalCloudColors->setCallback([&](bool)
                                                { rebuild_3d_view(); });
 
         cbShowGroundGrid = tab1->add<nanogui::CheckBox>("Show ground grid");
+        cbShowGroundGrid->setFontSize(MID_FONT_SIZE);
         cbShowGroundGrid->setChecked(true);
         cbShowGroundGrid->setCallback([&](bool) { rebuild_3d_view(); });
 
         cbApplyGeoRef = tab1->add<nanogui::CheckBox>(
             "Apply georeferenced pose (if available)");
+        cbApplyGeoRef->setFontSize(MID_FONT_SIZE);
         cbApplyGeoRef->setCallback([&](bool) { rebuild_3d_view(); });
 
         // ----
@@ -378,11 +433,7 @@ static void main_show_gui()
     win->drawAll();
     win->setVisible(true);
 
-    win->addLoopCallback(
-        [&]()
-        {
-            // None
-        });
+    win->addLoopCallback([&]() { updateMouseCoordinates(); });
 
     nanogui::mainloop(1 /*refresh Hz*/);
 
@@ -537,9 +588,9 @@ void rebuild_3d_view()
         lbDepthFieldValues->setCaption(
             mrpt::format("Depth field: near=%f far=%f", clipNear, clipFar));
         lbDepthFieldMid->setCaption(
-            mrpt::format("Frustrum depth center: %.03f", depthFieldMid));
-        lbDepthFieldThickness->setCaption(mrpt::format(
-            "Frustum depth thickness: %.03f", depthFieldThickness));
+            mrpt::format("Frustrum center: %.03f", depthFieldMid));
+        lbDepthFieldThickness->setCaption(
+            mrpt::format("Frustum thickness: %.03f", depthFieldThickness));
 
         lbDepthFieldValues->setCaption(
             mrpt::format("Frustum: near=%.02f far=%.02f", clipNear, clipFar));
