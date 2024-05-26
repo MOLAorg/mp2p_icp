@@ -23,9 +23,11 @@
 #include <mrpt/core/round.h>
 #include <mrpt/math/TObject3D.h>
 #include <mrpt/math/geometry.h>
+#include <mrpt/opengl/CArrow.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/opengl/stock_objects.h>
+#include <mrpt/poses/CPose3DInterpolator.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>  // loadPluginModules()
 #include <mrpt/system/string_utils.h>  // unitsFormat()
@@ -50,12 +52,18 @@ static TCLAP::ValueArg<std::string> arg_plugins(
     "One or more (comma separated) *.so files to load as plugins", false,
     "foobar.so", "foobar.so", cmd);
 
+static TCLAP::ValueArg<std::string> arg_tumTrajectory(
+    "t", "trajectory",
+    "Also draw a trajectory, given by a TUM file trajectory.", false,
+    "trajectory.tum", "trajectory.tum", cmd);
+
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
 
 auto glVizMap = mrpt::opengl::CSetOfObjects::Create();
 auto glGrid   = mrpt::opengl::CGridPlaneXY::Create();
 mrpt::opengl::CSetOfObjects::Ptr glENUCorner, glMapCorner;
+mrpt::opengl::CSetOfObjects::Ptr glTrajectory;
 
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
@@ -69,6 +77,7 @@ nanogui::CheckBox*               cbColorizeMap             = nullptr;
 nanogui::CheckBox*               cbKeepOriginalCloudColors = nullptr;
 nanogui::CheckBox*               cbShowGroundGrid          = nullptr;
 nanogui::Slider*                 slPointSize               = nullptr;
+nanogui::Slider*                 slTrajectoryThickness     = nullptr;
 nanogui::Slider*                 slMidDepthField           = nullptr;
 nanogui::Slider*                 slThicknessDepthField     = nullptr;
 nanogui::Slider*                 slCameraFOV               = nullptr;
@@ -76,12 +85,15 @@ nanogui::Label*                  lbCameraFOV               = nullptr;
 nanogui::Label*                  lbMousePos                = nullptr;
 nanogui::Label *lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr, *lbPointSize = nullptr;
+nanogui::Label* lbTrajThick = nullptr;
 
 std::vector<std::string>                  layerNames;
 std::map<std::string, nanogui::CheckBox*> cbLayersByName;
 
 mp2p_icp::metric_map_t theMap;
 std::string            theMapFileName = "unnamed.mm";
+
+mrpt::poses::CPose3DInterpolator trajectory;
 
 static void rebuild_3d_view();
 static void onSaveLayers();
@@ -176,6 +188,8 @@ void main_show_gui()
     glMapCorner->setName("map");
     glMapCorner->enableShowName();
 
+    glTrajectory = mrpt::opengl::CSetOfObjects::Create();
+
     glENUCorner = mrpt::opengl::stock_objects::CornerXYZ(2.0f);
     glENUCorner->setName("ENU");
     glENUCorner->enableShowName();
@@ -251,6 +265,27 @@ void main_show_gui()
             slPointSize->setRange({1.0f, 10.0f});
             slPointSize->setValue(2.0f);
             slPointSize->setCallback([&](float) { rebuild_3d_view(); });
+        }
+
+        // tab
+        {
+            auto pn = tab1->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+
+            lbTrajThick = pn->add<nanogui::Label>("Trajectory thickness:");
+            lbTrajThick->setFontSize(MID_FONT_SIZE);
+
+            slTrajectoryThickness = pn->add<nanogui::Slider>();
+            slTrajectoryThickness->setEnabled(trajectory.size() >= 2);
+            slTrajectoryThickness->setRange({std::log(0.005f), std::log(2.0f)});
+            slTrajectoryThickness->setValue(std::log(0.05f));
+            slTrajectoryThickness->setCallback(
+                [&](float)
+                {
+                    glTrajectory->clear();  // force rebuild
+                    rebuild_3d_view();
+                });
         }
 
         {
@@ -397,6 +432,7 @@ void main_show_gui()
         LOAD_CB_STATE(cbShowGroundGrid);
 
         LOAD_SL_STATE(slPointSize);
+        LOAD_SL_STATE(slTrajectoryThickness);
         LOAD_SL_STATE(slMidDepthField);
         LOAD_SL_STATE(slThicknessDepthField);
         LOAD_SL_STATE(slCameraFOV);
@@ -424,6 +460,7 @@ void main_show_gui()
         SAVE_CB_STATE(cbShowGroundGrid);
 
         SAVE_SL_STATE(slPointSize);
+        SAVE_SL_STATE(slTrajectoryThickness);
         SAVE_SL_STATE(slMidDepthField);
         SAVE_SL_STATE(slThicknessDepthField);
         SAVE_SL_STATE(slCameraFOV);
@@ -555,8 +592,8 @@ void rebuild_3d_view()
             mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
 
         glVizMap->insert(glPts);
-
         glVizMap->insert(glMapCorner);
+        glVizMap->insert(glTrajectory);
     }
 
     if (cbApplyGeoRef->checked() && theMap.georeferencing.has_value())
@@ -579,6 +616,33 @@ void rebuild_3d_view()
             mapBbox->min.x, mapBbox->max.x, mapBbox->min.y, mapBbox->max.y);
     }
     glGrid->setVisibility(cbShowGroundGrid->checked());
+
+    // glTrajectory:
+    if (glTrajectory->empty() && trajectory.size() >= 2)
+    {
+        const float trajCylRadius = std::exp(slTrajectoryThickness->value());
+        lbTrajThick->setCaption(
+            "Traj. thickness: " + std::to_string(trajCylRadius));
+
+        std::optional<mrpt::math::TPose3D> prevPose;
+        for (const auto& [t, p] : trajectory)
+        {
+            if (prevPose)
+            {
+                const auto& p0 = prevPose.value();
+
+                auto glSegment = mrpt::opengl::CArrow::Create();
+                glSegment->setArrowEnds(p0.translation(), p.translation());
+                glSegment->setHeadRatio(.0);
+                glSegment->setLargeRadius(trajCylRadius);
+                glSegment->setSmallRadius(trajCylRadius);
+                glSegment->setColor_u8(0x30, 0x30, 0x30, 0xff);
+
+                glTrajectory->insert(glSegment);
+            }
+            prevPose = p;
+        }
+    }
 
     // XYZ corner overlay viewport:
     {
@@ -690,6 +754,17 @@ int main(int argc, char** argv)
                 std::cerr << errMsg << std::endl;
                 return 1;
             }
+        }
+
+        // load trajectory?
+        if (arg_tumTrajectory.isSet())
+        {
+            ASSERT_FILE_EXISTS_(arg_tumTrajectory.getValue());
+            bool trajectoryReadOk =
+                trajectory.loadFromTextFile_TUM(arg_tumTrajectory.getValue());
+            ASSERT_(trajectoryReadOk);
+            std::cout << "Read trajectory with " << trajectory.size()
+                      << " keyframes.\n";
         }
 
         main_show_gui();
