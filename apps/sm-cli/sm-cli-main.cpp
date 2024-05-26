@@ -107,7 +107,7 @@ int printListCommands()
 
 Available commands:
     sm-cli cut                Cut part of a .simplemap file into a new file.
-    sm-cli export-keyframes   Export KF poses as TUM format.
+    sm-cli export-keyframes   Export KF poses (opt: twist too) as TUM format.
     sm-cli export-rawlog      Export KFs as rawlog for inspection.
     sm-cli info               Analyze a .simplemap file.
     sm-cli level              Makes a .simplemap file level (horizontal).

@@ -54,6 +54,17 @@ struct cli_flags
     TCLAP::ValueArg<std::string> arg_output{
         "o", "output", "Output file", false, "output", "output", cmd};
 
+    TCLAP::ValueArg<std::string> arg_output_twist{
+        "",
+        "output-twist",
+        "Output file for twist (linear and angular velocity). Output file will "
+        "contain one row per frame, with these fields: "
+        "'time vx vy vz wx wy wz'",
+        false,
+        "",
+        "twist.txt",
+        cmd};
+
     TCLAP::SwitchArg argHelp{
         "h", "help", "Shows more detailed help for command", cmd};
 

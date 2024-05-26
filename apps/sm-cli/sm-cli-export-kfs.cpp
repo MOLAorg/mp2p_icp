@@ -11,6 +11,8 @@
 #include <mrpt/maps/CSimpleMap.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
 
+#include <fstream>
+
 #include "sm-cli.h"
 
 static int printCommandsExportKF(bool showErrorMsg);
@@ -27,7 +29,14 @@ int commandExportKF()
 
     const mrpt::maps::CSimpleMap sm = read_input_sm_from_cli(file);
 
-    const auto outFil = cli->arg_output.getValue();
+    const auto outFil      = cli->arg_output.getValue();
+    const auto outTwistFil = cli->arg_output_twist.getValue();
+
+    std::optional<std::ofstream> outTwist;
+    if (!outTwistFil.empty())
+    {
+        outTwist.emplace(outTwistFil, std::ofstream::out);
+    }
 
     mrpt::poses::CPose3DInterpolator kfs;
 
@@ -54,6 +63,17 @@ int commandExportKF()
         }
 
         kfs.insert(*tim, pose);
+
+        if (outTwist && twist)
+        {
+            const auto& tw = *twist;
+            *outTwist << mrpt::format(
+                "%.06f %f %f %f %f %f %f\n",  //
+                mrpt::Clock::toDouble(*tim),  // time
+                tw.vx, tw.vy, tw.vz,  // linear vel
+                tw.wx, tw.wy, tw.wz  // angular vel
+            );
+        }
     }
 
     if (kfsWithoutTimestamp)
@@ -85,7 +105,7 @@ int printCommandsExportKF(bool showErrorMsg)
         stderr,
         R"XXX(Usage:
 
-    sm-cli export-keyframes <filename> --output <OUTPUT.tum>
+    sm-cli export-keyframes <filename> --output <OUTPUT.tum> [--output-twist <TWIST.txt>]
 
 )XXX");
 
