@@ -454,7 +454,7 @@ void main_show_gui()
             updateMiniCornerView();
         });
 
-    nanogui::mainloop(1 /*refresh Hz*/);
+    nanogui::mainloop(1 /*loop callbacks Hz*/, -1 /* no force repaint */);
 
     nanogui::shutdown();
 
