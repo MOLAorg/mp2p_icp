@@ -153,9 +153,39 @@ std::vector<DelayedLoadLog> logRecords;
 
 static void rebuild_3d_view(bool regenerateMaps = true);
 
-static void rebuild_3d_view_fast() { rebuild_3d_view(false); }
+namespace
+{
+void rebuild_3d_view_fast() { rebuild_3d_view(false); }
 
-static void main_show_gui()
+void processAutoPlay()
+{
+    if (!isAutoPlayActive) return;
+
+    const double tNow = mrpt::Clock::nowDouble();
+    if (tNow - lastAutoPlayTime < argAutoPlayPeriod.getValue()) return;
+
+    lastAutoPlayTime = tNow;
+
+    if (slSelectorICP->value() < slSelectorICP->range().second - 0.01f)
+    {
+        slSelectorICP->setValue(slSelectorICP->value() + 1);
+        rebuild_3d_view();
+    }
+}
+
+void updateMiniCornerView()
+{
+    auto gl_view = win->background_scene->getViewport("small-view");
+    if (!gl_view) return;
+
+    mrpt::opengl::CCamera& view_cam = gl_view->getCamera();
+
+    view_cam.setAzimuthDegrees(win->camera().getAzimuthDegrees());
+    view_cam.setElevationDegrees(win->camera().getElevationDegrees());
+    view_cam.setZoomDistance(5);
+}
+
+void main_show_gui()
 {
     using namespace std::string_literals;
 
@@ -722,18 +752,8 @@ static void main_show_gui()
     win->addLoopCallback(
         [&]()
         {
-            if (!isAutoPlayActive) return;
-
-            const double tNow = mrpt::Clock::nowDouble();
-            if (tNow - lastAutoPlayTime < argAutoPlayPeriod.getValue()) return;
-
-            lastAutoPlayTime = tNow;
-
-            if (slSelectorICP->value() < slSelectorICP->range().second - 0.01f)
-            {
-                slSelectorICP->setValue(slSelectorICP->value() + 1);
-                rebuild_3d_view();
-            }
+            processAutoPlay();
+            updateMiniCornerView();
         });
 
     nanogui::mainloop(10 /*refresh Hz*/);
@@ -743,6 +763,8 @@ static void main_show_gui()
     // save UI state:
     save_UI_state_to_user_config();
 }
+
+}  // namespace
 
 template <class MATRIX>  //
 double conditionNumber(const MATRIX& m)
@@ -1105,6 +1127,30 @@ void rebuild_3d_view(bool regenerateMaps)
     {
         tbPairings->setValue(
             "None selected (mark one of the checkboxes below)");
+    }
+
+    // XYZ corner overlay viewport:
+    {
+        auto gl_view = win->background_scene->createViewport("small-view");
+
+        gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
+        gl_view->setTransparent(true);
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+            obj->setLocation(1.1, 0, 0);
+            gl_view->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+            obj->setLocation(0, 1.1, 0);
+            gl_view->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+            obj->setLocation(0, 0, 1.1);
+            gl_view->insert(obj);
+        }
+        gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
     }
 }
 

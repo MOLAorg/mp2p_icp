@@ -86,7 +86,9 @@ std::string            theMapFileName = "unnamed.mm";
 static void rebuild_3d_view();
 static void onSaveLayers();
 
-static void loadMapFile(const std::string& mapFile)
+namespace
+{
+void loadMapFile(const std::string& mapFile)
 {
     // Load one single file:
     std::cout << "Loading map file: " << mapFile << std::endl;
@@ -104,7 +106,7 @@ static void loadMapFile(const std::string& mapFile)
     for (const auto& [name, map] : theMap.layers) layerNames.push_back(name);
 }
 
-static void updateMouseCoordinates()
+void updateMouseCoordinates()
 {
     const auto mousexY = win->mousePos();
 
@@ -129,7 +131,19 @@ static void updateMouseCoordinates()
     }
 }
 
-static void main_show_gui()
+void updateMiniCornerView()
+{
+    auto gl_view = win->background_scene->getViewport("small-view");
+    if (!gl_view) return;
+
+    mrpt::opengl::CCamera& view_cam = gl_view->getCamera();
+
+    view_cam.setAzimuthDegrees(win->camera().getAzimuthDegrees());
+    view_cam.setElevationDegrees(win->camera().getElevationDegrees());
+    view_cam.setZoomDistance(5);
+}
+
+void main_show_gui()
 {
     using namespace std::string_literals;
 
@@ -433,7 +447,12 @@ static void main_show_gui()
     win->drawAll();
     win->setVisible(true);
 
-    win->addLoopCallback([&]() { updateMouseCoordinates(); });
+    win->addLoopCallback(
+        [&]()
+        {
+            updateMouseCoordinates();
+            updateMiniCornerView();
+        });
 
     nanogui::mainloop(1 /*refresh Hz*/);
 
@@ -443,6 +462,7 @@ static void main_show_gui()
     save_UI_state_to_user_config();
 }
 
+}  // namespace
 // ==============================
 // rebuild_3d_view
 // ==============================
@@ -559,6 +579,30 @@ void rebuild_3d_view()
             mapBbox->min.x, mapBbox->max.x, mapBbox->min.y, mapBbox->max.y);
     }
     glGrid->setVisibility(cbShowGroundGrid->checked());
+
+    // XYZ corner overlay viewport:
+    {
+        auto gl_view = win->background_scene->createViewport("small-view");
+
+        gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
+        gl_view->setTransparent(true);
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+            obj->setLocation(1.1, 0, 0);
+            gl_view->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+            obj->setLocation(0, 1.1, 0);
+            gl_view->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+            obj->setLocation(0, 0, 1.1);
+            gl_view->insert(obj);
+        }
+        gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
+    }
 
     // Global view options:
     {
