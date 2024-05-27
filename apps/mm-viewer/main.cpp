@@ -333,7 +333,7 @@ void processCameraTravelling()
     const auto interpMethod =
         cbTravellingInterp->selectedIndex() == 0
             ? mrpt::poses::TInterpolatorMethod::imLinear2Neig
-            : mrpt::poses::TInterpolatorMethod::imSplineSlerp;
+            : mrpt::poses::TInterpolatorMethod::imSSLSLL;
     camTravelling.setInterpolationMethod(interpMethod);
 
     mrpt::math::TPose3D p;
