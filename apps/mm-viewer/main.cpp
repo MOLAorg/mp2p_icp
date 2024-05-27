@@ -86,8 +86,13 @@ nanogui::Label*                  lbMousePos                = nullptr;
 nanogui::Label*                  lbCameraPointing          = nullptr;
 nanogui::Label *lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr, *lbPointSize = nullptr;
-nanogui::Label*  lbTrajThick = nullptr;
-nanogui::Widget* panelLayers = nullptr;
+nanogui::Label*    lbTrajThick      = nullptr;
+nanogui::Widget*   panelLayers      = nullptr;
+nanogui::ComboBox* cbTravellingKeys = nullptr;
+nanogui::TextBox*  edAnimFPS        = nullptr;
+nanogui::Slider*   slAnimProgress   = nullptr;
+nanogui::Button *  btnAnimate = nullptr, *btnAnimStop = nullptr;
+nanogui::ComboBox* cbTravellingInterp = nullptr;
 
 std::vector<std::string>                  layerNames;
 std::map<std::string, nanogui::CheckBox*> cbLayersByName;
@@ -95,7 +100,14 @@ std::map<std::string, nanogui::CheckBox*> cbLayersByName;
 mp2p_icp::metric_map_t theMap;
 std::string            theMapFileName = "unnamed.mm";
 
+// Robot path to display (optional):
 mrpt::poses::CPose3DInterpolator trajectory;
+
+// Camera travelling trajectory:
+mrpt::poses::CPose3DInterpolator camTravelling;
+std::optional<double>            camTravellingCurrentTime;
+
+constexpr float TRAV_ZOOM2ROLL = 1e-4;
 
 static void rebuild_3d_view();
 static void onSaveLayers();
@@ -193,6 +205,25 @@ void rebuildLayerCheckboxes()
     }
 }
 
+void rebuildCamTravellingCombo()
+{
+    std::vector<std::string> lst, lstShort;
+    for (size_t i = 0; i < camTravelling.size(); i++)
+    {
+        auto it = camTravelling.begin();
+        std::advance(it, i);
+
+        lstShort.push_back(std::to_string(i));
+        lst.push_back(mrpt::format(
+            "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
+            mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
+    }
+    cbTravellingKeys->setItems(lst, lstShort);
+
+    if (!lst.empty()) cbTravellingKeys->setSelectedIndex(lst.size() - 1);
+    win->performLayout();
+}
+
 void onKeyboardAction(int key)
 {
     using mrpt::DEG2RAD;
@@ -272,6 +303,55 @@ void onKeyboardAction(int key)
         }
         break;
     };
+}
+
+void camTravellingStop()
+{
+    camTravellingCurrentTime.reset();
+    btnAnimate->setEnabled(true);
+    btnAnimStop->setEnabled(false);
+}
+
+void processCameraTravelling()
+{
+    if (!camTravellingCurrentTime.has_value()) return;
+    double& t = camTravellingCurrentTime.value();
+
+    // Time range:
+    const double t0 = mrpt::Clock::toDouble(camTravelling.begin()->first);
+    const double t1 = mrpt::Clock::toDouble(camTravelling.rbegin()->first);
+    slAnimProgress->setRange(std::make_pair<float>(t0, t1));
+    slAnimProgress->setValue(t);
+
+    if (t >= t1)
+    {
+        camTravellingStop();
+        return;
+    }
+
+    // Interpolate camera params:
+    const auto interpMethod =
+        cbTravellingInterp->selectedIndex() == 0
+            ? mrpt::poses::TInterpolatorMethod::imLinear2Neig
+            : mrpt::poses::TInterpolatorMethod::imSplineSlerp;
+    camTravelling.setInterpolationMethod(interpMethod);
+
+    mrpt::math::TPose3D p;
+    bool                valid = false;
+    camTravelling.interpolate(mrpt::Clock::fromDouble(t), p, valid);
+    if (valid)
+    {
+        win->camera().setCameraPointing(p.x, p.y, p.z);
+        win->camera().setAzimuthDegrees(mrpt::RAD2DEG(p.yaw));
+        win->camera().setElevationDegrees(mrpt::RAD2DEG(p.pitch));
+        win->camera().setZoomDistance(p.roll / TRAV_ZOOM2ROLL);
+    }
+
+    // Move to next time step:
+    const double FPS = std::stod(edAnimFPS->value());
+    ASSERT_(FPS > 0);
+    const double dt = 1.0 / FPS;
+    t += dt;
 }
 
 void main_show_gui()
@@ -384,7 +464,8 @@ void main_show_gui()
             nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
         auto* tab3 = tabWidget->createTab("Travelling");
-        tab3->setLayout(new nanogui::GroupLayout());
+        tab3->setLayout(new nanogui::BoxLayout(
+            nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
         tabWidget->setActiveTab(0);
 
@@ -554,22 +635,111 @@ void main_show_gui()
             auto lb = pn->add<nanogui::Label>("Keyframes:");
             lb->setFontSize(MID_FONT_SIZE);
 
-            auto* cbTravellingKeys = tab3->add<nanogui::ComboBox>();
+            cbTravellingKeys = tab3->add<nanogui::ComboBox>();
             cbTravellingKeys->setFontSize(MID_FONT_SIZE);
+        }
+        rebuildCamTravellingCombo();
+
+        tab3->add<nanogui::Label>("");
+
+        nanogui::TextBox* edTime;
+        {
+            auto pn = tab3->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
+
+            pn->add<nanogui::Label>("New keyframe:")
+                ->setFontSize(MID_FONT_SIZE);
+
+            edTime = pn->add<nanogui::TextBox>();
+            edTime->setAlignment(nanogui::TextBox::Alignment::Left);
+            edTime->setValue("0.0");
+            edTime->setEditable(true);
+            edTime->setPlaceholder("Time for this keyframe [s]");
+            edTime->setFormat("[0-9\\.]*");
+            edTime->setFontSize(MID_FONT_SIZE);
+
+            auto btnAdd =
+                pn->add<nanogui::Button>("Add", ENTYPO_ICON_ADD_TO_LIST);
+            btnAdd->setFontSize(MID_FONT_SIZE);
+            btnAdd->setCallback(
+                [edTime]()
+                {
+                    const auto p = mrpt::math::TPose3D(
+                        win->camera().cameraParams().cameraPointingX,
+                        win->camera().cameraParams().cameraPointingY,
+                        win->camera().cameraParams().cameraPointingZ,
+                        mrpt::DEG2RAD(
+                            win->camera().cameraParams().cameraAzimuthDeg),
+                        mrpt::DEG2RAD(
+                            win->camera().cameraParams().cameraElevationDeg),
+                        win->camera().cameraParams().cameraZoomDistance *
+                            TRAV_ZOOM2ROLL);
+                    camTravelling.insert(
+                        mrpt::Clock::fromDouble(std::stod(edTime->value())), p);
+                    rebuildCamTravellingCombo();
+
+                    edTime->setValue(
+                        std::to_string(std::stod(edTime->value()) + 1));
+                });
         }
 
         tab3->add<nanogui::Label>("");
-        tab3->add<nanogui::Label>("New keyframe:")->setFontSize(MID_FONT_SIZE);
 
-        auto btnAdd =
-            tab3->add<nanogui::Button>("Add", ENTYPO_ICON_ADD_TO_LIST);
-        btnAdd->setFontSize(MID_FONT_SIZE);
+        {
+            auto pn = tab3->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
 
-        tab3->add<nanogui::Label>("");
-        tab3->add<nanogui::Label>("Playback:");
-        auto btnAnimate =
-            tab3->add<nanogui::Button>("Animate now", ENTYPO_ICON_FORWARD);
-        btnAnimate->setFontSize(MID_FONT_SIZE);
+            pn->add<nanogui::Label>("Playback:");
+            btnAnimate =
+                pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_PLAY);
+            btnAnimate->setFontSize(MID_FONT_SIZE);
+            btnAnimate->setCallback(
+                []()
+                {
+                    if (camTravelling.empty()) return;
+                    camTravellingCurrentTime.emplace(
+                        mrpt::Clock::toDouble(camTravelling.begin()->first));
+                    btnAnimate->setEnabled(false);
+                    btnAnimStop->setEnabled(true);
+                });
+            btnAnimStop =
+                pn->add<nanogui::Button>("", ENTYPO_ICON_CIRCLE_WITH_CROSS);
+            btnAnimStop->setFontSize(MID_FONT_SIZE);
+            btnAnimStop->setEnabled(false);
+            btnAnimStop->setCallback([]() { camTravellingStop(); });
+        }
+
+        {
+            auto pn = tab3->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+
+            auto lb = pn->add<nanogui::Label>("Animation FPS:");
+            lb->setFontSize(MID_FONT_SIZE);
+
+            edAnimFPS = pn->add<nanogui::TextBox>("30.0");
+            edAnimFPS->setFontSize(MID_FONT_SIZE);
+            edAnimFPS->setFormat("[0-9\\.]*");
+            edAnimFPS->setEditable(true);
+        }
+        {
+            auto pn = tab3->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+
+            auto lb = pn->add<nanogui::Label>("Interpolation:");
+            lb->setFontSize(MID_FONT_SIZE);
+
+            cbTravellingInterp = pn->add<nanogui::ComboBox>();
+            cbTravellingInterp->setFontSize(MID_FONT_SIZE);
+            cbTravellingInterp->setItems({"Linear", "Spline"});
+            cbTravellingInterp->setSelectedIndex(0);
+        }
+
+        slAnimProgress = tab3->add<nanogui::Slider>();
+        slAnimProgress->setEnabled(false);
 
         // ---
         lbMousePos = w->add<nanogui::Label>("Mouse pointing to:");
@@ -686,6 +856,7 @@ void main_show_gui()
             updateCameraLookCoordinates();
             observeViewOptions();
             updateMiniCornerView();
+            processCameraTravelling();
         });
 
     nanogui::mainloop(1 /*loop callbacks Hz*/, -1 /* no force repaint */);
