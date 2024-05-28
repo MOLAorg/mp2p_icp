@@ -513,7 +513,34 @@ void main_show_gui()
                                                { rebuild_3d_view(); });
 
         tab2->add<nanogui::Label>(" ");
-        tab2->add<nanogui::Label>("Visible layers:");
+        {
+            auto pn = tab2->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 4, nanogui::Alignment::Fill));
+            pn->add<nanogui::Label>("Visible layers:");
+
+            auto* btnCheckAll = pn->add<nanogui::Button>("", ENTYPO_ICON_CHECK);
+            btnCheckAll->setFontSize(SMALL_FONT_SIZE);
+            btnCheckAll->setCallback(
+                []()
+                {
+                    for (auto& [name, cb] : cbLayersByName)
+                        cb->setChecked(true);
+
+                    rebuild_3d_view();
+                });
+
+            auto* btnCheckNone =
+                pn->add<nanogui::Button>("", ENTYPO_ICON_CIRCLE_WITH_CROSS);
+            btnCheckNone->setFontSize(SMALL_FONT_SIZE);
+            btnCheckNone->setCallback(
+                []()
+                {
+                    for (auto& [name, cb] : cbLayersByName)
+                        cb->setChecked(false);
+                    rebuild_3d_view();
+                });
+        }
 
         panelLayers = tab2->add<nanogui::Widget>();
         panelLayers->setLayout(new nanogui::BoxLayout(
