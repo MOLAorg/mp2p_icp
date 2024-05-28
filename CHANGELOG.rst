@@ -2,6 +2,23 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mm-viewer: add check-all, check-none to layer filters
+* Add new filter: FilterRemoveByVoxelOccupancy
+* mm-viewer: camera travelling keyframes-based animations
+* mm-viewer: navigate the map with keyboard arrows; add a load button
+* mm-viewer: can now also draws a TUM trajectory overlaid with the map
+* UI apps: smoother rendering
+* icp-log-viewer and mm-viewer: the UI now has a XYZ corner overlay
+* sm-cli: command "export-kfs" now has an optional flag '--output-twist'
+* FilterDeskew: ignore empty input maps
+* More debug-level traces
+* deskew filter: Fix case of variable names in docs
+* sm-cli app: Add new command 'trim' to cut simplemaps by bounding box
+* mm-viewer: show mouse pointing coordinates
+* Contributors: Jose Luis Blanco-Claraco
+
 1.4.1 (2024-05-19)
 ------------------
 * Fix build for older mrpt versions
