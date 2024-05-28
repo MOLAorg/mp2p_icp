@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.2 (2024-05-28)
+------------------
 * mm-viewer: add check-all, check-none to layer filters
 * Add new filter: FilterRemoveByVoxelOccupancy
 * mm-viewer: camera travelling keyframes-based animations
