@@ -37,8 +37,10 @@
 
 #include "../libcfgpath/cfgpath.h"
 
-constexpr const char* APP_NAME      = "icp-log-viewer";
-constexpr int         MID_FONT_SIZE = 14;
+constexpr const char* APP_NAME           = "icp-log-viewer";
+constexpr int         MID_FONT_SIZE      = 14;
+constexpr int         SMALL_FONT_SIZE    = 12;
+constexpr int         WINDOW_FIXED_WIDTH = 400;
 
 // =========== Declare supported cli switches ===========
 static TCLAP::CmdLine cmd(APP_NAME);
@@ -84,6 +86,9 @@ std::array<nanogui::TextBox*, 5> lbICPStats = {
 nanogui::CheckBox* cbShowInitialPose  = nullptr;
 nanogui::Label*    lbICPIteration     = nullptr;
 nanogui::Slider*   slIterationDetails = nullptr;
+
+const size_t                   MAX_VARIABLE_LIST = 100;
+std::vector<nanogui::TextBox*> lbDynVariables;
 
 nanogui::CheckBox* cbViewOrtho          = nullptr;
 nanogui::CheckBox* cbCameraFollowsLocal = nullptr;
@@ -289,7 +294,7 @@ void main_show_gui()
     w->requestFocus();
     w->setLayout(new nanogui::BoxLayout(
         nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 5, 2));
-    w->setFixedWidth(400);
+    w->setFixedWidth(WINDOW_FIXED_WIDTH);
 
     cbShowInitialPose = w->add<nanogui::CheckBox>("Show at INITIAL GUESS pose");
     cbShowInitialPose->setCallback(
@@ -373,10 +378,12 @@ void main_show_gui()
     auto tabWidget = w->add<nanogui::TabWidget>();
 
     auto* tab1 = tabWidget->createTab("Summary");
-    tab1->setLayout(new nanogui::GroupLayout());
+    tab1->setLayout(new nanogui::BoxLayout(
+        nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
-    auto* tab2 = tabWidget->createTab("Uncertainty");
-    tab2->setLayout(new nanogui::GroupLayout());
+    auto* tab2 = tabWidget->createTab("Variables");
+    tab2->setLayout(new nanogui::BoxLayout(
+        nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
     auto* tab3 = tabWidget->createTab("Maps");
     tab3->setLayout(new nanogui::GroupLayout());
@@ -387,37 +394,50 @@ void main_show_gui()
     auto* tab5 = tabWidget->createTab("View");
     tab5->setLayout(new nanogui::GroupLayout());
 
+    auto* tab6 = tabWidget->createTab("Manual");
+    tab6->setLayout(new nanogui::GroupLayout());
+
     tabWidget->setActiveTab(0);
 
+    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
     tab1->add<nanogui::Label>(
-        "ICP result pose [x y z yaw(deg) pitch(deg) roll(deg)]:");
+            "ICP result pose [x y z yaw(deg) pitch(deg) roll(deg)]:")
+        ->setFontSize(MID_FONT_SIZE);
     tbLogPose = tab1->add<nanogui::TextBox>();
     tbLogPose->setFontSize(MID_FONT_SIZE);
     tbLogPose->setEditable(true);
     tbLogPose->setAlignment(nanogui::TextBox::Alignment::Left);
+    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
 
-    tab1->add<nanogui::Label>("Initial -> final pose change:");
+    tab1->add<nanogui::Label>("Initial -> final pose change:")
+        ->setFontSize(MID_FONT_SIZE);
     tbInit2Final = tab1->add<nanogui::TextBox>();
     tbInit2Final->setFontSize(MID_FONT_SIZE);
     tbInit2Final->setEditable(false);
+    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
 
-    tab2->add<nanogui::Label>(
-        "Uncertainty: diagonal sigmas (x y z yaw pitch roll)");
-    tbCovariance = tab2->add<nanogui::TextBox>();
+    tab1->add<nanogui::Label>(
+            "Uncertainty: diagonal sigmas (x y z yaw pitch roll)")
+        ->setFontSize(MID_FONT_SIZE);
+    tbCovariance = tab1->add<nanogui::TextBox>();
     tbCovariance->setFontSize(MID_FONT_SIZE);
     tbCovariance->setEditable(false);
+    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
 
-    tab2->add<nanogui::Label>("Uncertainty: Covariance condition numbers");
-    tbConditionNumber = tab2->add<nanogui::TextBox>();
+    tab1->add<nanogui::Label>("Uncertainty: Covariance condition numbers")
+        ->setFontSize(MID_FONT_SIZE);
+    tbConditionNumber = tab1->add<nanogui::TextBox>();
     tbConditionNumber->setFontSize(MID_FONT_SIZE);
     tbConditionNumber->setEditable(false);
+    tab1->add<nanogui::Label>(" ");
 
+    tab6->add<nanogui::Label>("Manual solution modification:");
     const float handTunedRange[6] = {4.0,        4.0,         10.0,
                                      0.5 * M_PI, 0.25 * M_PI, 0.5};
 
     for (int i = 0; i < 6; i++)
     {
-        slGTPose[i] = tab2->add<nanogui::Slider>();
+        slGTPose[i] = tab6->add<nanogui::Slider>();
         slGTPose[i]->setRange({-handTunedRange[i], handTunedRange[i]});
         slGTPose[i]->setValue(0.0f);
 
@@ -439,6 +459,7 @@ void main_show_gui()
     tbInitialGuess = tab1->add<nanogui::TextBox>();
     tbInitialGuess->setFontSize(14);
     tbInitialGuess->setEditable(true);
+    tbInitialGuess->setAlignment(nanogui::TextBox::Alignment::Left);
 
     // Save map buttons:
     auto lambdaSave = [&](const mp2p_icp::metric_map_t& m)
@@ -450,7 +471,30 @@ void main_show_gui()
         m.save_to_file(outFile);
     };
 
-    // tab 3:
+    // tab 2: variables
+    {
+        tab2->add<nanogui::Label>("Dynamic variables:");
+
+        auto vscroll = tab2->add<nanogui::VScrollPanel>();
+        vscroll->setFixedSize({WINDOW_FIXED_WIDTH - 15, 300});
+
+        auto wrapper = vscroll->add<nanogui::Widget>();
+
+        wrapper->setFixedSize({WINDOW_FIXED_WIDTH - 30, 300});
+        wrapper->setLayout(new nanogui::BoxLayout(
+            nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
+
+        for (size_t i = 0; i < MAX_VARIABLE_LIST; i++)
+        {
+            auto* tb = wrapper->add<nanogui::TextBox>("aaaa");
+            tb->setAlignment(nanogui::TextBox::Alignment::Left);
+            tb->setEditable(true);
+            tb->setFontSize(MID_FONT_SIZE);
+            lbDynVariables.push_back(tb);
+        }
+    }
+
+    // tab 3: maps
     {
         auto pn = tab3->add<nanogui::Widget>();
         pn->setLayout(new nanogui::BoxLayout(
@@ -829,6 +873,19 @@ void rebuild_3d_view(bool regenerateMaps)
     tbInitialGuess->setValue(lr.initialGuessLocalWrtGlobal.asString());
 
     tbLogPose->setValue(lr.icpResult.optimal_tf.mean.asString());
+
+    // dyn variables:
+    {
+        for (auto* lb : lbDynVariables) lb->setValue("");
+
+        size_t lbIdx = 0;
+        for (const auto& [name, value] : lr.dynamicVariables)
+        {
+            lbDynVariables[lbIdx++]->setValue(
+                mrpt::format("%s = %g", name.c_str(), value));
+            if (lbIdx >= MAX_VARIABLE_LIST) break;
+        }
+    }
 
     {
         const auto poseChange =

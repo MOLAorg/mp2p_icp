@@ -324,15 +324,30 @@ void ICP::align(
     // ----------------------------
     mrpt::system::CTimeLoggerEntry tle8(profiler_, "align.5_save_log");
 
-    // Store results into log struct:
-    if (currentLog) currentLog->icpResult = result;
+    if (currentLog)
+    {
+        // Store results into log struct:
+        currentLog->icpResult = result;
 
-    // Save log to disk:
-    if (currentLog.has_value()) save_log_file(*currentLog, p);
+        // Store dynamic variables:
+        if (!matchers().empty())
+        {
+            currentLog->dynamicVariables = matchers()
+                                               .begin()
+                                               ->get()
+                                               ->attachedSource()
+                                               ->getVariableValues();
+        }
 
-    // return log info:
-    if (currentLog && outputDebugInfo.has_value())
-        outputDebugInfo.value().get() = std::move(currentLog.value());
+        currentLog->icpResult = result;
+
+        // Save log to disk (if enabled):
+        save_log_file(*currentLog, p);
+
+        // return log info:
+        if (outputDebugInfo.has_value())
+            outputDebugInfo.value().get() = std::move(currentLog.value());
+    }
 
     MRPT_END
 }

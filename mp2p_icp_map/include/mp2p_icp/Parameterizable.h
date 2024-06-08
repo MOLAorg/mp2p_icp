@@ -65,6 +65,12 @@ class ParameterSource
 
     std::string printVariableValues() const;
 
+    /** Returns a copy of the current variable values */
+    auto getVariableValues() const -> std::map<std::string, double>
+    {
+        return variables_;
+    }
+
    private:
     // Attached clients.
     std::map<std::string, double>     variables_;

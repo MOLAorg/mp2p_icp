@@ -43,8 +43,9 @@ class LogRecord : public mrpt::serialization::CSerializable
 
     mrpt::math::TPose3D initialGuessLocalWrtGlobal;
 
-    mp2p_icp::Parameters icpParameters;
-    mp2p_icp::Results    icpResult;
+    mp2p_icp::Parameters          icpParameters;
+    mp2p_icp::Results             icpResult;
+    std::map<std::string, double> dynamicVariables;
 
     struct DebugInfoPerIteration
     {
