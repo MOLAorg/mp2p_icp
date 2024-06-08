@@ -15,6 +15,7 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/lock_helper.h>
 #include <mrpt/poses/Lie/SE.h>
+#include <mrpt/system/filesystem.h>
 #include <mrpt/tfest/se3.h>
 
 #include <regex>
@@ -399,11 +400,31 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
 
+    // make sure directory exist:
+    const auto baseDir = mrpt::system::extractFileDirectory(filename);
+    if (!mrpt::system::directoryExists(baseDir))
+    {
+        const bool ok = mrpt::system::createDirectory(baseDir);
+        if (!ok)
+        {
+            std::cerr << "[ICP::save_log_file] Could not create directory to "
+                         "save icp log file: '"
+                      << baseDir << "'" << std::endl;
+        }
+        else
+        {
+            std::cerr
+                << "[ICP::save_log_file] Created output directory for logs: '"
+                << baseDir << "'" << std::endl;
+        }
+    }
+
+    // Save it:
     const bool saveOk = log.save_to_file(filename);
     if (!saveOk)
     {
-        std::cerr << "[ERROR] Could not save icp log file to '" << filename
-                  << "'" << std::endl;
+        std::cerr << "[ICP::save_log_file] Could not save icp log file to '"
+                  << filename << "'" << std::endl;
     }
 }
 

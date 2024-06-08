@@ -24,19 +24,13 @@ void    LogRecord::serializeTo(mrpt::serialization::CArchive& out) const
         out.WriteAs<bool>(true);
         out << *pcGlobal;
     }
-    else
-    {
-        out.WriteAs<bool>(false);
-    }
+    else { out.WriteAs<bool>(false); }
     if (pcLocal)
     {
         out.WriteAs<bool>(true);
         out << *pcLocal;
     }
-    else
-    {
-        out.WriteAs<bool>(false);
-    }
+    else { out.WriteAs<bool>(false); }
     out << initialGuessLocalWrtGlobal;
     out << icpParameters;
     out << icpResult;
@@ -73,24 +67,40 @@ void LogRecord::serializeFrom(
 
 bool LogRecord::save_to_file(const std::string& fileName) const
 {
-    auto f = mrpt::io::CFileGZOutputStream(fileName);
-    if (!f.is_open()) return false;
+    try
+    {
+        auto f = mrpt::io::CFileGZOutputStream(fileName);
+        if (!f.is_open()) return false;
 
-    auto arch = mrpt::serialization::archiveFrom(f);
-    arch << *this;
+        auto arch = mrpt::serialization::archiveFrom(f);
+        arch << *this;
 
-    return true;
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[LogRecord::save_to_file] Error: " << e.what();
+        return false;
+    }
 }
 
 bool LogRecord::load_from_file(const std::string& fileName)
 {
-    auto f = mrpt::io::CFileGZInputStream(fileName);
-    if (!f.is_open()) return false;
+    try
+    {
+        auto f = mrpt::io::CFileGZInputStream(fileName);
+        if (!f.is_open()) return false;
 
-    auto arch = mrpt::serialization::archiveFrom(f);
-    arch >> *this;
+        auto arch = mrpt::serialization::archiveFrom(f);
+        arch >> *this;
 
-    return true;
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[LogRecord::save_to_file] Error: " << e.what();
+        return false;
+    }
 }
 
 static const uint8_t DIPI_SERIALIZATION_VERSION = 0;
