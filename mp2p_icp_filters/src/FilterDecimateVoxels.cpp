@@ -16,10 +16,74 @@
 #include <mrpt/math/ops_containers.h>  // dotProduct
 #include <mrpt/random/RandomGenerators.h>
 
+//
+#include <mrpt/maps/CPointsMapXYZI.h>
+#include <mrpt/maps/CPointsMapXYZIRT.h>
+
 IMPLEMENTS_MRPT_OBJECT(
     FilterDecimateVoxels, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
+
+namespace
+{
+/// Returns false (and prints a warning to std::cerr) if the point cloud fields
+/// are not correctly sized.
+[[nodiscard]] bool sanity_check_pointcloud_fields(
+    const mrpt::maps::CPointsMap& pc, bool printWarning = true)
+{
+    bool         ok = true;
+    const size_t n  = pc.size();
+
+    if (auto* pcIRT = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(&pc);
+        pcIRT)
+    {
+        if (pcIRT->hasIntensityField() &&
+            pcIRT->getPointsBufferRef_intensity()->size() != n)
+        {
+            ASSERT_EQUAL_(pcIRT->getPointsBufferRef_intensity()->size(), n);
+            ok = false;
+            if (printWarning)
+                std::cerr << "[mp2p_icp] WARNING: Intensity channel has "
+                             "incorrect length."
+                          << std::endl;
+        }
+        if (pcIRT->hasRingField() &&
+            pcIRT->getPointsBufferRef_ring()->size() != n)
+        {
+            ok = false;
+            if (printWarning)
+                std::cerr << "[mp2p_icp] WARNING: Ring channel has "
+                             "incorrect length."
+                          << std::endl;
+        }
+        if (pcIRT->hasTimeField() &&
+            pcIRT->getPointsBufferRef_timestamp()->size() != n)
+        {
+            ok = false;
+            if (printWarning)
+                std::cerr << "[mp2p_icp] WARNING: Timestamp channel has "
+                             "incorrect length."
+                          << std::endl;
+        }
+    }
+    else if (auto* pcI = dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(&pc);
+             pcI)
+    {
+        if (pcI->getPointsBufferRef_intensity() &&
+            pcI->getPointsBufferRef_intensity()->size() != n)
+        {
+            ok = false;
+            if (printWarning)
+                std::cerr << "[mp2p_icp] WARNING: Intensity channel has "
+                             "incorrect length."
+                          << std::endl;
+        }
+    }
+    return ok;
+}
+
+}  // namespace
 
 void FilterDecimateVoxels::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c, FilterDecimateVoxels& parent)
@@ -192,6 +256,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         {
             const auto& pc = *pcPtr;
             grid.processPointCloud(pc);
+
+            const bool sanityPassed = sanity_check_pointcloud_fields(pc);
         }
 
         // 2nd) collect grid results:
