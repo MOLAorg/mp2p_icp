@@ -92,7 +92,7 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
      * This method dispatches the observation by type to the corresponding
      * virtual method
      */
-    virtual void process(
+    virtual bool process(
         const mrpt::obs::CObservation& input_raw, mp2p_icp::metric_map_t& inOut,
         const std::optional<mrpt::poses::CPose3D>& robotPose =
             std::nullopt) const;
@@ -182,12 +182,12 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     std::regex process_sensor_labels_regex_;
 
    private:
-    void implProcessDefault(
+    bool implProcessDefault(
         const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose =
             std::nullopt) const;
 
-    void implProcessCustomMap(
+    bool implProcessCustomMap(
         const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose =
             std::nullopt) const;
@@ -204,8 +204,9 @@ using GeneratorSet = std::vector<Generator::Ptr>;
  *  \note The former contents on the output metric_map_t object are untouched,
  *  so calling this function several times can be used to accumulate point cloud
  * elements from different sensors.
+ * \return true if any of the generators actually processed "obs"
  */
-void apply_generators(
+bool apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
     mp2p_icp::metric_map_t&                    output,
     const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt);
@@ -215,13 +216,16 @@ void apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
     const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt);
 
-/// \overload (version with an input CSensoryFrame)
-void apply_generators(
+/** \overload (version with an input CSensoryFrame)
+ *  \return true if any of the generators actually processed any of the
+ *          observations in the SF.
+ */
+bool apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf,
     mp2p_icp::metric_map_t&                    output,
     const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt);
 
-/// \overload (functional version returning the metric_map_t)
+/** \overload (functional version returning the metric_map_t) */
 [[nodiscard]] mp2p_icp::metric_map_t apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf,
     const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt);

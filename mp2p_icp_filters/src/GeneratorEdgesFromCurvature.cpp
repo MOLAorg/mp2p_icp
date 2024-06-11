@@ -38,7 +38,7 @@ void GeneratorEdgesFromCurvature::initialize(const mrpt::containers::yaml& c)
     paramsEdges_.load_from_yaml(c, *this);
 }
 
-void GeneratorEdgesFromCurvature::process(
+bool GeneratorEdgesFromCurvature::process(
     const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
     const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
@@ -59,14 +59,16 @@ void GeneratorEdgesFromCurvature::process(
     bool processed = false;
 
     // user-given filters: Done *AFTER* creating the map, if needed.
-    if (!std::regex_match(obsClassName, process_class_names_regex_)) return;
-    if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_)) return;
+    if (!std::regex_match(obsClassName, process_class_names_regex_))
+        return false;
+    if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
+        return false;
 
     if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
         processed = filterRotatingScan(*oRS, out, robotPose);
 
     // done?
-    if (processed) return;  // we are done.
+    if (processed) return true;  // we are done.
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc;
@@ -89,6 +91,8 @@ void GeneratorEdgesFromCurvature::process(
 
     // Leave output point cloud empty, since it was not handled by the
     // rotating scan handler above.
+
+    return false;
 
     MRPT_END
 }

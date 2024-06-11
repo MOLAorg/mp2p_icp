@@ -47,7 +47,7 @@ class GeneratorEdgesFromCurvature : public mp2p_icp_filters::Generator
 
     ParametersEdges paramsEdges_;
 
-    void process(
+    bool process(
         const mrpt::obs::CObservation& input_raw, mp2p_icp::metric_map_t& inOut,
         const std::optional<mrpt::poses::CPose3D>& robotPose =
             std::nullopt) const override;

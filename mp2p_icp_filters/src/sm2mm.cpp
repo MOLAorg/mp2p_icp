@@ -140,9 +140,13 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             ASSERT_(obs);
             obs->load();
 
-            mp2p_icp_filters::apply_generators(generators, *obs, mm, robotPose);
-            mp2p_icp_filters::apply_filter_pipeline(filters, mm);
+            bool handled = mp2p_icp_filters::apply_generators(
+                generators, *obs, mm, robotPose);
 
+            if (!handled) continue;
+
+            // process it:
+            mp2p_icp_filters::apply_filter_pipeline(filters, mm);
             obs->unload();
         }
 

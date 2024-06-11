@@ -134,7 +134,7 @@ void Generator::initialize(const mrpt::containers::yaml& c)
     MRPT_END
 }
 
-void Generator::process(
+bool Generator::process(
     const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
     const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
@@ -156,9 +156,12 @@ void Generator::process(
     if (params_.metric_map_definition_ini_file.empty() &&
         params_.metric_map_definition.empty())
     {
-        implProcessDefault(o, out, robotPose);
+        return implProcessDefault(o, out, robotPose);
     }
-    else { implProcessCustomMap(o, out, robotPose); }
+    else
+    {  //
+        return implProcessCustomMap(o, out, robotPose);
+    }
 
     MRPT_END
 }
@@ -245,17 +248,20 @@ bool Generator::filterRotatingScan(  //
     return false;  // Not implemented
 }
 
-void mp2p_icp_filters::apply_generators(
+bool mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
     mp2p_icp::metric_map_t&                    output,
     const std::optional<mrpt::poses::CPose3D>& robotPose)
 {
     ASSERT_(!generators.empty());
+    bool anyHandled = false;
     for (const auto& g : generators)
     {
         ASSERT_(g.get() != nullptr);
-        g->process(obs, output, robotPose);
+        bool handled = g->process(obs, output, robotPose);
+        anyHandled   = anyHandled || handled;
     }
+    return anyHandled;
 }
 
 mp2p_icp::metric_map_t mp2p_icp_filters::apply_generators(
@@ -276,21 +282,25 @@ mp2p_icp::metric_map_t mp2p_icp_filters::apply_generators(
     return pc;
 }
 
-void mp2p_icp_filters::apply_generators(
+bool mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CSensoryFrame& sf,
     mp2p_icp::metric_map_t&                    output,
     const std::optional<mrpt::poses::CPose3D>& robotPose)
 {
     ASSERT_(!generators.empty());
+    bool anyHandled = false;
     for (const auto& g : generators)
     {
         ASSERT_(g.get() != nullptr);
         for (const auto& obs : sf)
         {
             if (!obs) continue;
-            g->process(*obs, output, robotPose);
+            const bool handled = g->process(*obs, output, robotPose);
+
+            anyHandled = anyHandled || handled;
         }
     }
+    return anyHandled;
 }
 
 GeneratorSet mp2p_icp_filters::generators_from_yaml(
@@ -337,7 +347,7 @@ GeneratorSet mp2p_icp_filters::generators_from_yaml_file(
     return generators_from_yaml(yamlContent["generators"], vLevel);
 }
 
-void Generator::implProcessDefault(
+bool Generator::implProcessDefault(
     const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
     const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
@@ -354,7 +364,7 @@ void Generator::implProcessDefault(
         !std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
     {
         MRPT_LOG_DEBUG_STREAM("Skipping this observation");
-        return;
+        return false;
     }
 
     // load lazy-load from disk:
@@ -379,7 +389,7 @@ void Generator::implProcessDefault(
     if (processed)
     {
         // o.unload();  // DON'T! We don't know who else is using the data
-        return;  // we are done.
+        return true;  // we are done.
     }
 
     // Create if new: Append to existing layer, if already existed.
@@ -410,6 +420,8 @@ void Generator::implProcessDefault(
             tmpMap, pp);
 
         outPc->insertAnotherMap(&tmpMap, mrpt::poses::CPose3D::Identity());
+
+        return true;
     }
     else
     {
@@ -424,12 +436,13 @@ void Generator::implProcessDefault(
                 "so I do not know what to do with this observation!",
                 obsClassName);
         }
+        return insertDone;
     }
 
     // o.unload();  // DON'T! We don't know who else is using the data
 }
 
-void Generator::implProcessCustomMap(
+bool Generator::implProcessCustomMap(
     const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
     const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
@@ -530,7 +543,7 @@ void Generator::implProcessCustomMap(
         !std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
     {
         MRPT_LOG_DEBUG_STREAM("Skipping this observation");
-        return;
+        return false;
     }
 
     // Observation format:
@@ -549,6 +562,7 @@ void Generator::implProcessCustomMap(
     }
 
     // o.unload();  // DON'T! We don't know who else is using the data
+    return insertDone;  // handled
 }
 
 namespace
