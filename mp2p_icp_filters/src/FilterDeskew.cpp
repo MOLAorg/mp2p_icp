@@ -126,13 +126,9 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         // not possible to do de-skew:
         if (silently_ignore_no_timestamps || skip_deskew)
         {
-            // just copy points:
-            const size_t n0 = outPc->size();
-            outPc->resize(n0 + n);
-            for (size_t i = 0; i < n; i++)
-            {  // copy the point, including all optional attributes:
+            // just copy all points, including all optional attributes:
+            for (size_t i = 0; i < n; i++)  //
                 outPc->insertPointFrom(*inPc, i);
-            }
         }
         else
         {
