@@ -2,6 +2,17 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Add pointcloud_sanity_check() auxiliary function
+* Generator: more DEBUG level traces
+* BUGFIX: FilterDeskew generated buggy output points if the input does not contain timestamps
+* Add sanity checks for point cloud fields
+* ICP log records now also store the dynamic variables. icp-log-viewer displays them.
+* ICP log files: automatically create output directory if it does not exist
+* Update ros2 badges (added Jazzy)
+* Contributors: Jose Luis Blanco-Claraco
+
 1.4.2 (2024-05-28)
 ------------------
 * mm-viewer: add check-all, check-none to layer filters
