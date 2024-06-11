@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.3 (2024-06-11)
+------------------
 * Add pointcloud_sanity_check() auxiliary function
 * Generator: more DEBUG level traces
 * BUGFIX: FilterDeskew generated buggy output points if the input does not contain timestamps
