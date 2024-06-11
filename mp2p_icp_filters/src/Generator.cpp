@@ -156,10 +156,7 @@ void Generator::process(
     {
         implProcessDefault(o, out, robotPose);
     }
-    else
-    {
-        implProcessCustomMap(o, out, robotPose);
-    }
+    else { implProcessCustomMap(o, out, robotPose); }
 
     MRPT_END
 }
@@ -381,11 +378,19 @@ void Generator::implProcessDefault(
             THROW_EXCEPTION_FMT(
                 "Layer '%s' must be of point cloud type.",
                 params_.target_layer.c_str());
+
+        MRPT_LOG_DEBUG_FMT(
+            "Reusing existing output layer '%s' of type '%s'",
+            params_.target_layer.c_str(), outPc->GetRuntimeClass()->className);
     }
     else
     {
         outPc = mrpt::maps::CSimplePointsMap::Create();
         out.layers[params_.target_layer] = outPc;
+
+        MRPT_LOG_DEBUG_FMT(
+            "Creating new output layer '%s' of type '%s'",
+            params_.target_layer.c_str(), outPc->GetRuntimeClass()->className);
     }
 
     if (!outPc) outPc = mrpt::maps::CSimplePointsMap::Create();
