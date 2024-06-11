@@ -11,11 +11,13 @@
  */
 
 #include <mp2p_icp_filters/Generator.h>
+#include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/get_env.h>
 #include <mrpt/maps/CMultiMetricMap.h>
+#include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservation3DRangeScan.h>
@@ -170,11 +172,23 @@ bool Generator::filterScan2D(  //
 }
 
 bool Generator::filterVelodyneScan(  //
-    [[maybe_unused]] const mrpt::obs::CObservationVelodyneScan& pc,
-    [[maybe_unused]] mp2p_icp::metric_map_t&                    out,
-    [[maybe_unused]] const std::optional<mrpt::poses::CPose3D>& robotPose) const
+    const mrpt::obs::CObservationVelodyneScan& pc, mp2p_icp::metric_map_t& out,
+    const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
-    return false;  // Not implemented
+    mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
+        out, params_.target_layer, false /*does not allow empty name*/,
+        "mrpt::maps::CPointsMapXYZIRT" /* creation class if not existing */);
+    ASSERT_(outPc);
+
+    auto m = std::dynamic_pointer_cast<mrpt::maps::CPointsMapXYZIRT>(outPc);
+    ASSERTMSG_(
+        m,
+        "Output layer must be of type mrpt::maps::CPointsMapXYZIRT for the "
+        "specialized filterVelodyneScan() generator.");
+
+    m->insertObservation(pc, robotPose);
+
+    return true;  // implemented
 }
 
 bool Generator::filterScan3D(  //
@@ -369,31 +383,15 @@ void Generator::implProcessDefault(
     }
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap::Ptr outPc;
-    if (auto itLy = out.layers.find(params_.target_layer);
-        itLy != out.layers.end())
-    {
-        outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
-        if (!outPc)
-            THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.",
-                params_.target_layer.c_str());
+    mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
+        out, params_.target_layer, false /*does not allow empty name*/,
+        "mrpt::maps::CSimplePointsMap" /* creation class if not existing */);
 
-        MRPT_LOG_DEBUG_FMT(
-            "Reusing existing output layer '%s' of type '%s'",
-            params_.target_layer.c_str(), outPc->GetRuntimeClass()->className);
-    }
-    else
-    {
-        outPc = mrpt::maps::CSimplePointsMap::Create();
-        out.layers[params_.target_layer] = outPc;
+    ASSERT_(outPc);
 
-        MRPT_LOG_DEBUG_FMT(
-            "Creating new output layer '%s' of type '%s'",
-            params_.target_layer.c_str(), outPc->GetRuntimeClass()->className);
-    }
-
-    if (!outPc) outPc = mrpt::maps::CSimplePointsMap::Create();
+    MRPT_LOG_DEBUG_FMT(
+        "Using output layer '%s' of type '%s'", params_.target_layer.c_str(),
+        outPc->GetRuntimeClass()->className);
 
     // Observation format:
 
