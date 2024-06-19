@@ -58,7 +58,7 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
 
     auto* TsPtr = pc.getPointsBufferRef_timestamp();
 
-    if (TsPtr == nullptr || (!TsPtr->empty() && !pc.empty()))
+    if (TsPtr == nullptr || (TsPtr->empty() && !pc.empty()))
     {
         // we don't have timestamps:
         if (params_.silently_ignore_no_timestamps)
