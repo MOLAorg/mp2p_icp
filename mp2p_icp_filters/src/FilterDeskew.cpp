@@ -129,6 +129,11 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             // just copy all points, including all optional attributes:
             for (size_t i = 0; i < n; i++)  //
                 outPc->insertPointFrom(*inPc, i);
+
+            MRPT_LOG_DEBUG_STREAM(
+                "Skipping de-skewing in input cloud '"
+                << input_pointcloud_layer
+                << "' with contents: " << inPc->asString());
         }
         else
         {

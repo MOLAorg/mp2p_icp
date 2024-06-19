@@ -20,7 +20,6 @@
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
 
-#include <cstdint>
 #include <regex>
 #include <stdexcept>
 

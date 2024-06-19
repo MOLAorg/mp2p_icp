@@ -15,6 +15,7 @@
  *
  */
 
+#include <mp2p_icp_filters/FilterAdjustTimestamps.h>
 #include <mp2p_icp_filters/FilterBoundingBox.h>
 #include <mp2p_icp_filters/FilterByIntensity.h>
 #include <mp2p_icp_filters/FilterByRange.h>
@@ -44,6 +45,7 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::GeneratorEdgesFromCurvature));
 
     // Filters:
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterAdjustTimestamps));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterBase));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterBoundingBox));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterByIntensity));
