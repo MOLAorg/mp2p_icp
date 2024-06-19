@@ -286,6 +286,27 @@ void ICP::align(
             }
         }
 
+        // Process user hooks:
+        if (iteration_hook_)
+        {
+            IterationHook_Input hi;
+            hi.currentIteration = state.currentIteration;
+            hi.currentPairings  = &state.currentPairings;
+            hi.currentSolution  = &state.currentSolution;
+            hi.pcGlobal         = &state.pcGlobal;
+            hi.pcLocal          = &state.pcLocal;
+
+            const auto ho = iteration_hook_(hi);
+
+            if (ho.request_stop)
+            {
+                // abort ICP
+                result.terminationReason = IterTermReason::HookRequest;
+                break;
+            }
+        }
+
+        // roll values back:
         prev2_solution = prev_solution;
         prev_solution  = state.currentSolution.optimalPose;
     }

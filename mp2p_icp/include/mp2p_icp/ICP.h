@@ -28,8 +28,7 @@
 #include <mrpt/system/CTimeLogger.h>
 
 #include <cstdint>
-#include <functional>  //reference_wrapper
-#include <memory>
+#include <functional>
 
 namespace mp2p_icp
 {
@@ -203,6 +202,31 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         // Default: do nothing
     }
 
+    struct IterationHook_Input
+    {
+        IterationHook_Input() = default;
+
+        const metric_map_t*     pcGlobal         = nullptr;
+        const metric_map_t*     pcLocal          = nullptr;
+        const Pairings*         currentPairings  = nullptr;
+        const OptimalTF_Result* currentSolution  = nullptr;
+        uint32_t                currentIteration = 0;
+    };
+    struct IterationHook_Output
+    {
+        IterationHook_Output() = default;
+        
+        bool request_stop = false;
+    };
+
+    using iteration_hook_t =
+        std::function<IterationHook_Output(const IterationHook_Input&)>;
+
+    void setIterationHook(const iteration_hook_t& ih)
+    {
+        iteration_hook_ = ih;
+    }
+
     const mrpt::system::CTimeLogger& profiler() const { return profiler_; }
     mrpt::system::CTimeLogger&       profiler() { return profiler_; }
 
@@ -211,6 +235,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     matcher_list_t      matchers_;
     quality_eval_list_t quality_evaluators_ = {
         {QualityEvaluator_PairedRatio::Create(), 1.0}};
+
+    iteration_hook_t iteration_hook_;
 
     mrpt::system::CTimeLogger profiler_{false /*disabled*/, "mp2p_icp::ICP"};
 
@@ -225,7 +251,6 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
         const metric_map_t& pcGlobal;
         const metric_map_t& pcLocal;
-        std::string         layerOfLargestPc;
         Pairings            currentPairings;
         OptimalTF_Result    currentSolution;
         uint32_t            currentIteration = 0;

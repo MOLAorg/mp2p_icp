@@ -22,7 +22,8 @@ enum class IterTermReason : uint8_t
     SolverError,
     MaxIterations,
     Stalled,
-    QualityCheckpointFailed
+    QualityCheckpointFailed,
+    HookRequest
 };
 
 }  // namespace mp2p_icp
