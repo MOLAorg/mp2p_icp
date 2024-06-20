@@ -10,6 +10,7 @@
  * @date   Jun 10, 2019
  */
 
+#include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/Generator.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/config/CConfigFile.h>
@@ -236,6 +237,9 @@ bool Generator::filterPointCloud(  //
         robotPose ? robotPose.value() + sensorPose : sensorPose;
 
     outPc->insertAnotherMap(&pc, p);
+
+    const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*outPc);
+    ASSERT_(sanityPassed);
 
     return true;
 }
