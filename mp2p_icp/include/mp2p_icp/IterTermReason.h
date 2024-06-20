@@ -35,4 +35,5 @@ MRPT_FILL_ENUM(IterTermReason::SolverError);
 MRPT_FILL_ENUM(IterTermReason::MaxIterations);
 MRPT_FILL_ENUM(IterTermReason::Stalled);
 MRPT_FILL_ENUM(IterTermReason::QualityCheckpointFailed);
+MRPT_FILL_ENUM(IterTermReason::HookRequest);
 MRPT_ENUM_TYPE_END()
