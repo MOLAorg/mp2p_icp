@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.0 (2024-06-21)
+------------------
 * ICP: Add optional user-provided per-iteration hooks
 * Add new filter: FilterByRing
 * Add new filter: FilterAdjustTimestamps
