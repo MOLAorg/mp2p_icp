@@ -2,6 +2,17 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* ICP: Add optional user-provided per-iteration hooks
+* Add new filter: FilterByRing
+* Add new filter: FilterAdjustTimestamps
+* Add sanity checks for point cloud fields.
+* Fix typo in default class for FilterDeskew
+* generators API: add bool return type to detect if observation was actually processed
+* generic Generator: handle velodyne observations so timestamps are generated
+* Contributors: Jose Luis Blanco-Claraco
+
 1.4.3 (2024-06-11)
 ------------------
 * Add pointcloud_sanity_check() auxiliary function
