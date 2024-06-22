@@ -832,6 +832,8 @@ void rebuild_3d_view(bool regenerateMaps)
     btnSelectorForw->setEnabled(
         !logRecords.empty() && idx < logRecords.size() - 1);
 
+    if (idx >= logRecords.size()) return;
+
     glVizICP->clear();
 
     // Free memory
