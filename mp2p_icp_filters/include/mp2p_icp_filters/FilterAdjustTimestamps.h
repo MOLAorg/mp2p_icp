@@ -36,7 +36,10 @@ enum class TimestampAdjustMethod : uint8_t
 };
 
 /** Modifies the per-point timestamps of a map layer according to one of a set
- * of criteria.
+ * of criteria (see TimestampAdjustMethod).
+ *
+ * An optional time offset to be added on top of that adjustment is available
+ * via Parameters::time_offset
  *
  * \ingroup mp2p_icp_filters_grp
  */
@@ -54,7 +57,8 @@ class FilterAdjustTimestamps : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(const mrpt::containers::yaml& c);
+        void load_from_yaml(
+            const mrpt::containers::yaml& c, FilterAdjustTimestamps& parent);
 
         std::string pointcloud_layer;
 
@@ -62,6 +66,9 @@ class FilterAdjustTimestamps : public mp2p_icp_filters::FilterBase
          * contain timestamps.
          */
         bool silently_ignore_no_timestamps = false;
+
+        /** Additional time offset, useful when synchronizing several sensors */
+        double time_offset = .0;
 
         /** The criterion to adjust timestamps. */
         TimestampAdjustMethod method = TimestampAdjustMethod::MiddleIsZero;

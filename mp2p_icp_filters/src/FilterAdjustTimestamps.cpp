@@ -21,11 +21,13 @@ IMPLEMENTS_MRPT_OBJECT(
 using namespace mp2p_icp_filters;
 
 void FilterAdjustTimestamps::Parameters::load_from_yaml(
-    const mrpt::containers::yaml& c)
+    const mrpt::containers::yaml& c, FilterAdjustTimestamps& parent)
 {
     MCP_LOAD_REQ(c, pointcloud_layer);
     MCP_LOAD_REQ(c, method);
     MCP_LOAD_REQ(c, silently_ignore_no_timestamps);
+
+    DECLARE_PARAMETER_IN_OPT(c, time_offset, parent);
 }
 
 FilterAdjustTimestamps::FilterAdjustTimestamps()
@@ -38,7 +40,7 @@ void FilterAdjustTimestamps::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params_.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -46,6 +48,8 @@ void FilterAdjustTimestamps::initialize(const mrpt::containers::yaml& c)
 void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
+
+    checkAllParametersAreRealized();
 
     // In/out:
     auto pcPtr = inOut.point_layer(params_.pointcloud_layer);
@@ -95,13 +99,13 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
     {
         case TimestampAdjustMethod::MiddleIsZero:
         {
-            const float dt = 0.5f * (*maxT + *minT);
+            const float dt = 0.5f * (*maxT + *minT) + params_.time_offset;
             for (auto& t : Ts) t -= dt;
         }
         break;
         case TimestampAdjustMethod::EarliestIsZero:
         {
-            const float dt = *minT;
+            const float dt = *minT + params_.time_offset;
             for (auto& t : Ts) t -= dt;
         }
         break;
@@ -109,7 +113,7 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
         {
             const float m = *minT;
             const float k = *maxT != *minT ? 1.0f / (*maxT - *minT) : 1.0f;
-            for (auto& t : Ts) t = (t - m) * k;
+            for (auto& t : Ts) t = (t - m) * k + params_.time_offset;
         }
         break;
 
