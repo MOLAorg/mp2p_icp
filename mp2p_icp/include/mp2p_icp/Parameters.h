@@ -11,13 +11,14 @@
 #include <mrpt/core/bits_math.h>  // DEG2RAD()
 #include <mrpt/serialization/CSerializable.h>
 
-#include <cstddef>
 #include <cstdint>
-#include <map>
+#include <functional>
 #include <string>
 
 namespace mp2p_icp
 {
+class metric_map_t;  // Frwd decl
+
 /** ICP parameters.
  * \sa ICP_Base
  * \ingroup mp2p_icp_grp
@@ -77,6 +78,12 @@ struct Parameters : public mrpt::serialization::CSerializable
     std::string debugFileNameFormat =
         "icp-run-$UNIQUE_ID-local-$LOCAL_ID$LOCAL_LABEL-"
         "global-$GLOBAL_ID$GLOBAL_LABEL.icplog";
+
+    /** Function to apply to the local and global maps before saving the map to
+     * a log file. Useful to apply deletion filters to save space and time.
+     */
+    std::function<void(mp2p_icp::metric_map_t&)> functor_before_logging_local,
+        functor_before_logging_global;
 
     bool debugPrintIterationProgress = false;
 

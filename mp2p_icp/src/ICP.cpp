@@ -362,7 +362,22 @@ void ICP::align(
 
         currentLog->icpResult = result;
 
-        // Save log to disk (if enabled):
+        // Save log to disk (if enabled), applying filters beforehand:
+        if (p.functor_before_logging_local)
+        {
+            auto pc = mp2p_icp::metric_map_t::Create();
+            *pc     = *currentLog->pcLocal;
+            p.functor_before_logging_local(*pc);
+            currentLog->pcLocal = pc;
+        }
+        if (p.functor_before_logging_global)
+        {
+            auto pc = mp2p_icp::metric_map_t::Create();
+            *pc     = *currentLog->pcGlobal;
+            p.functor_before_logging_global(*pc);
+            currentLog->pcGlobal = pc;
+        }
+
         save_log_file(*currentLog, p);
 
         // return log info:
