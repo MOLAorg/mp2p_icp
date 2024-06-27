@@ -26,6 +26,17 @@ Pairings
 .. image:: imgs/Pairings.png
   :width: 400
 
+Simple-maps
+---------------------------------------
+Although the corresponding C++ class 
+(`mrpt::maps::CSimpleMap <https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html>`_) 
+is defined in the MRPT project,
+we enumerate it here as it is a fundamental data structure for this package.
+
+Simple-maps represent tuples of robot poses (keyframes) along with 
+raw sensor observations gathered from that pose.
+
+
 
 2. Algorithms
 ##################

@@ -17,11 +17,8 @@ How to cite it
 
 `mp2p_icp <https://github.com/MOLAorg/mp2p_icp>`_ has been used in these papers:
 
-MOLA Lidar-Odometry paper:
-
-    mola_lidar_odometry: TBD!
-
-It was initially used in 2019 in (`PDF <http://www.roboticsproceedings.org/rss15/p43.pdf>`_):
+The ``mola_lidar_odometry`` system, presented in :cite:`blanco2024mola_lo`.
+Formerly, it was used in 2019 in (`PDF <http://www.roboticsproceedings.org/rss15/p43.pdf>`_):
 
 .. code-block:: bibtex
 
