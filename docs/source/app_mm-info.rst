@@ -1,3 +1,4 @@
+.. _app_mm-info:
 
 ===============================
 Application: ``mm-info``

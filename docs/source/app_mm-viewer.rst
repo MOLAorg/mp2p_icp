@@ -1,3 +1,4 @@
+.. _app_mm-viewer:
 
 ===============================
 Application: ``mm-viewer``

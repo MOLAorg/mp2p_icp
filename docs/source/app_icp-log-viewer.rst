@@ -1,3 +1,4 @@
+.. _app_icp-log-viewer:
 
 =====================================
 Application: ``icp-log-viewer``
