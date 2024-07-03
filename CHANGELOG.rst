@@ -2,6 +2,14 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update docs
+* ICP: Add optional functors for before-logging maps
+* icp-log-viewer UI: fix potential out-of-range exception when autoplay is on
+* FilterAdjustTimestamps: add new param 'time_offset' useful for multiple LiDARs setups
+* Contributors: Jose Luis Blanco-Claraco
+
 1.5.0 (2024-06-21)
 ------------------
 * ICP: Add optional user-provided per-iteration hooks
