@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.1 (2024-07-03)
+------------------
 * Update docs
 * ICP: Add optional functors for before-logging maps
 * icp-log-viewer UI: fix potential out-of-range exception when autoplay is on
