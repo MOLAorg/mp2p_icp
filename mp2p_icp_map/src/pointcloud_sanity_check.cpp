@@ -28,12 +28,12 @@ bool mp2p_icp::pointcloud_sanity_check(
         if (pcIRT->hasIntensityField() &&
             pcIRT->getPointsBufferRef_intensity()->size() != n)
         {
-            ASSERT_EQUAL_(pcIRT->getPointsBufferRef_intensity()->size(), n);
             ok = false;
             if (printWarnings)
                 std::cerr << "[mp2p_icp] WARNING: Intensity channel has "
-                             "incorrect length."
-                          << std::endl;
+                             "incorrect length="
+                          << pcIRT->getPointsBufferRef_intensity()->size()
+                          << " expected=" << n << std::endl;
         }
         if (pcIRT->hasRingField() &&
             pcIRT->getPointsBufferRef_ring()->size() != n)
@@ -41,8 +41,9 @@ bool mp2p_icp::pointcloud_sanity_check(
             ok = false;
             if (printWarnings)
                 std::cerr << "[mp2p_icp] WARNING: Ring channel has "
-                             "incorrect length."
-                          << std::endl;
+                             "incorrect length="
+                          << pcIRT->getPointsBufferRef_ring()->size()
+                          << " expected=" << n << std::endl;
         }
         if (pcIRT->hasTimeField() &&
             pcIRT->getPointsBufferRef_timestamp()->size() != n)
@@ -50,8 +51,9 @@ bool mp2p_icp::pointcloud_sanity_check(
             ok = false;
             if (printWarnings)
                 std::cerr << "[mp2p_icp] WARNING: Timestamp channel has "
-                             "incorrect length."
-                          << std::endl;
+                             "incorrect length="
+                          << pcIRT->getPointsBufferRef_timestamp()->size()
+                          << " expected=" << n << std::endl;
         }
     }
     else if (auto* pcI = dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(&pc);
@@ -63,8 +65,9 @@ bool mp2p_icp::pointcloud_sanity_check(
             ok = false;
             if (printWarnings)
                 std::cerr << "[mp2p_icp] WARNING: Intensity channel has "
-                             "incorrect length."
-                          << std::endl;
+                             "incorrect length="
+                          << pcIRT->getPointsBufferRef_intensity()->size()
+                          << " expected=" << n << std::endl;
         }
     }
     return ok;

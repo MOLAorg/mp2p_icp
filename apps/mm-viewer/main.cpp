@@ -17,6 +17,7 @@
 #include <mrpt/gui/CDisplayWindowGUI.h>
 
 // other deps:
+#include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/config.h>
 #include <mrpt/config/CConfigFile.h>
@@ -130,6 +131,18 @@ void loadMapFile(const std::string& mapFile)
     std::cout << "Loaded map: " << theMap.contents_summary() << std::endl;
 
     for (const auto& [name, map] : theMap.layers) layerNames.push_back(name);
+
+    // sanity checks:
+    for (const auto& [name, map] : theMap.layers)
+    {
+        const auto* pc = mp2p_icp::MapToPointsMap(*map);
+        if (!pc) continue;  // not a point map
+        const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*pc);
+        ASSERTMSG_(
+            sanityPassed,
+            mrpt::format(
+                "sanity check did not pass for layer: '%s'", name.c_str()));
+    }
 }
 
 void updateMouseCoordinates()

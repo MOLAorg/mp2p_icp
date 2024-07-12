@@ -10,6 +10,7 @@
  * @date   Dec 18, 2023
  */
 
+#include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/Generator.h>
 #include <mp2p_icp_filters/sm2mm.h>
@@ -149,6 +150,20 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             mp2p_icp_filters::apply_filter_pipeline(filters, mm);
             obs->unload();
         }
+
+#if 0
+        // sanity checks:
+        for (const auto& [name, map] : mm.layers)
+        {
+            const auto* pc = mp2p_icp::MapToPointsMap(*map);
+            if (!pc) continue;  // not a point map
+            const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*pc);
+            ASSERTMSG_(
+                sanityPassed,
+                mrpt::format(
+                    "Sanity check did not pass for layer: '%s'", name.c_str()));
+        }
+#endif
 
         // progress bar:
         if (options.showProgressBar)
