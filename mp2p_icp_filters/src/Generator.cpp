@@ -364,6 +364,8 @@ bool Generator::implProcessDefault(
 
     // user-given filters: Done *AFTER* creating the map, if needed.
     if (obsClassName == "mrpt::obs::CObservationComment"s ||
+        obsClassName == "mrpt::obs::CObservationGPS"s ||
+        obsClassName == "mrpt::obs::CObservationRobotPose"s ||
         !std::regex_match(obsClassName, process_class_names_regex_) ||
         !std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
     {
