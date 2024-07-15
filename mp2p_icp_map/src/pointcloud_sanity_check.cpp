@@ -66,7 +66,7 @@ bool mp2p_icp::pointcloud_sanity_check(
             if (printWarnings)
                 std::cerr << "[mp2p_icp] WARNING: Intensity channel has "
                              "incorrect length="
-                          << pcIRT->getPointsBufferRef_intensity()->size()
+                          << pcI->getPointsBufferRef_intensity()->size()
                           << " expected=" << n << std::endl;
         }
     }
