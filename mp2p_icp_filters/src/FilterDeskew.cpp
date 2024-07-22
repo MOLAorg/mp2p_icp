@@ -139,7 +139,9 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         {
             THROW_EXCEPTION_FMT(
                 "Input layer '%s' does not contain per-point timestamps, "
-                "cannot do scan deskew. Input contents: '%s'",
+                "cannot do scan deskew. Set "
+                "'silently_ignore_no_timestamps=true' to skip de-skew."
+                "Input map contents: '%s'",
                 input_pointcloud_layer.c_str(), inPc->asString().c_str());
         }
     }
