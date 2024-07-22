@@ -48,9 +48,26 @@ generators:
 # 2) Per local frame filtering
 # --------------------------------------------------------
 filters:
-  - class_name: mp2p_icp_filters::FilterByRange
+  - class_name: mp2p_icp_filters::FilterAdjustTimestamps
+    params:
+      pointcloud_layer: 'raw'
+      silently_ignore_no_timestamps: true
+      method: 'TimestampAdjustMethod::MiddleIsZero'
+
+  - class_name: mp2p_icp_filters::FilterDeskew
     params:
       input_pointcloud_layer: 'raw'
+      output_pointcloud_layer: 'deskewed'
+      #silently_ignore_no_timestamps: true # To handle more dataset types
+      output_layer_class: 'mrpt::maps::CPointsMapXYZIRT'  # Keep intensity & ring channels
+      
+      # These (vx,...,wz) are variable names that must be defined via the
+      # mp2p_icp::Parameterizable API to update them dynamically.
+      twist: [vx,vy,vz,wx,wy,wz]
+
+  - class_name: mp2p_icp_filters::FilterByRange
+    params:
+      input_pointcloud_layer: 'deskewed'
       output_layer_between: 'filtered'
       range_min: 3.0
       range_max: 100
@@ -72,7 +89,7 @@ filters:
   # Remove layers not intended for map insertion:
   - class_name: mp2p_icp_filters::FilterDeleteLayer
     params:
-      pointcloud_layer_to_remove: ['raw', 'filtered','localmap_pre']
+      pointcloud_layer_to_remove: ['raw', 'deskewed', 'filtered','localmap_pre']
 
 
 # -------------------------------------------------------------------
