@@ -2,6 +2,16 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Add sm2mm yaml example for dynamic/static obstacles
+* Update sample sm2mm pipelines to use de-skew
+* docs: add mm-filter example
+* Fix pointcloud ptr typo
+* More safety sanity checks added in mm-viewer and sm2mm
+* BUGFIX: Generator should not create empty maps for GPS observations
+* Contributors: Jose Luis Blanco-Claraco, Raúl Aguilera López
+
 1.5.1 (2024-07-03)
 ------------------
 * Update docs
