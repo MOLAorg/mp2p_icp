@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.2 (2024-07-24)
+------------------
 * Add sm2mm yaml example for dynamic/static obstacles
 * Update sample sm2mm pipelines to use de-skew
 * docs: add mm-filter example
