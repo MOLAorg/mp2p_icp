@@ -695,6 +695,12 @@ void main_show_gui()
                     isAutoPlayActive = !isAutoPlayActive;
                     btnSelectorAutoplay->setPushed(isAutoPlayActive);
                     break;
+                case 'i':
+                case 'I':
+                    cbShowInitialPose->setChecked(
+                        !cbShowInitialPose->checked());
+                    cbShowInitialPose->callback()(cbShowInitialPose->checked());
+                    break;
             };
 
             if (increment != 0)
