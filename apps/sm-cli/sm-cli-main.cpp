@@ -36,6 +36,7 @@ const std::map<std::string, cmd_t> cliCommands = {
     {"cut", cmd_t(&commandCut)},
     {"level", cmd_t(&commandLevel)},
     {"trim", cmd_t(&commandTrim)},
+    {"join", cmd_t(&commandJoin)},
 };
 
 void setConsoleErrorColor()
@@ -112,6 +113,7 @@ Available commands:
     sm-cli info               Analyze a .simplemap file.
     sm-cli level              Makes a .simplemap file level (horizontal).
     sm-cli trim               Extracts part of a .simplemap inside a given box.
+    sm-cli join               Join two or more .simplemap files into one.
     sm-cli --version          Shows program version.
     sm-cli --help             Shows this information.
 
