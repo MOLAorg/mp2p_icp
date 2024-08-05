@@ -30,7 +30,7 @@ bool mp2p_icp::pointcloud_sanity_check(
         {
             ok = false;
             if (printWarnings)
-                std::cerr << "[mp2p_icp] WARNING: Intensity channel has "
+                std::cerr << "[mp2p_icp] XYZIRT WARNING: Intensity channel has "
                              "incorrect length="
                           << pcIRT->getPointsBufferRef_intensity()->size()
                           << " expected=" << n << std::endl;
@@ -40,7 +40,7 @@ bool mp2p_icp::pointcloud_sanity_check(
         {
             ok = false;
             if (printWarnings)
-                std::cerr << "[mp2p_icp] WARNING: Ring channel has "
+                std::cerr << "[mp2p_icp] XYZIRT WARNING: Ring channel has "
                              "incorrect length="
                           << pcIRT->getPointsBufferRef_ring()->size()
                           << " expected=" << n << std::endl;
@@ -50,7 +50,7 @@ bool mp2p_icp::pointcloud_sanity_check(
         {
             ok = false;
             if (printWarnings)
-                std::cerr << "[mp2p_icp] WARNING: Timestamp channel has "
+                std::cerr << "[mp2p_icp] XYZIRT WARNING: Timestamp channel has "
                              "incorrect length="
                           << pcIRT->getPointsBufferRef_timestamp()->size()
                           << " expected=" << n << std::endl;
@@ -64,7 +64,7 @@ bool mp2p_icp::pointcloud_sanity_check(
         {
             ok = false;
             if (printWarnings)
-                std::cerr << "[mp2p_icp] WARNING: Intensity channel has "
+                std::cerr << "[mp2p_icp] XYZI WARNING: Intensity channel has "
                              "incorrect length="
                           << pcI->getPointsBufferRef_intensity()->size()
                           << " expected=" << n << std::endl;
