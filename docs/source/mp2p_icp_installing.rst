@@ -1,8 +1,14 @@
 ======================
-Installation
+Install mp2p_icp
 ======================
 
-How to install `mp2p_icp`:
+.. note::
+
+    You are reading installation instructions for the mp2p_icp package only.
+    For installing the complete MOLA odometry and SLAM system, see :ref:`installing`.
+
+
+How to install the C++ mp2p_icp libraries and :ref:`applications <mp2p_icp_applications>`:
 
 .. tab-set::
     .. tab-item:: From ROS
