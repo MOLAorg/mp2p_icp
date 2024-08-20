@@ -50,7 +50,9 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     const auto nPl2Pl = in.paired_pl2pl.size();
     const auto nLn2Ln = in.paired_ln2ln.size();
 
-    Eigen::Vector<double, 6>    g = Eigen::Vector<double, 6>::Zero();
+    // Note: Using Matrix<N,1> instead of Vector<N> for compatibility
+    //       with Eigen<=3.4 in ROS Noetic.
+    Eigen::Matrix<double, 6, 1> g = Eigen::Matrix<double, 6, 1>::Zero();
     Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
 
     auto w = gnParams.pairWeights;
@@ -86,7 +88,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             }
 
             Eigen::Matrix<double, 6, 6> H;
-            Eigen::Vector<double, 6>    g;
+            Eigen::Matrix<double, 6, 1> g;
         };
 
         const auto& [H_tbb, g_tbb] = tbb::parallel_reduce(
@@ -95,7 +97,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             // Identity
             Result(),
             // 1st lambda: Parallel computation
-            [&](const tbb::blocked_range<size_t>& r, Result res) -> Result {
+            [&](const tbb::blocked_range<size_t>& r, Result res) -> Result
+            {
                 auto& [H_local, g_local] = res;
                 for (size_t idx_pt = r.begin(); idx_pt < r.end(); idx_pt++)
                 {
