@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.3 (2024-08-20)
+------------------
 * Re-add ROS1 Noetic as supported distribution
 * Generator sanity check asserts: more informative error messages
 * sm-cli: new command 'join' to merge simplemaps
