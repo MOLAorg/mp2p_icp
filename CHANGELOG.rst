@@ -2,6 +2,15 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Re-add ROS1 Noetic as supported distribution
+* Generator sanity check asserts: more informative error messages
+* sm-cli: new command 'join' to merge simplemaps
+* icp-log-viewer UI: new keybind 'I' to switch initial/final pose
+* icp-log-viewer UI: add option to visualize voxelmaps empty space
+* Contributors: Jose Luis Blanco-Claraco
+
 1.5.2 (2024-07-24)
 ------------------
 * Add sm2mm yaml example for dynamic/static obstacles
