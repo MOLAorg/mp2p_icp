@@ -193,7 +193,7 @@ void Matcher_Adaptive::implMatchOneLayer(
         *minSqrErrorForHistogram, *maxSqrErrorForHistogram, 50);
 
     for (const auto& mspl : matchesPerLocal_)
-        for (size_t i = 0; i < std::min(mspl.size(), 2UL); i++)
+        for (size_t i = 0; i < std::min<size_t>(mspl.size(), 2UL); i++)
             hist.add(mspl[i].errorSquareAfterTransformation);
 
     hist.getHistogramNormalized(histXs_, histValues_);

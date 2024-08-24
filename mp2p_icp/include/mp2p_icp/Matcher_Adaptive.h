@@ -67,7 +67,7 @@ class Matcher_Adaptive : public Matcher_Points_Base
     double         minimumCorrDist           = 0.1;  // m
 
     // Declared here to avoid memory reallocations:
-    mutable std::vector<size_t>                neighborIndices_;
+    mutable std::vector<uint64_t>              neighborIndices_;
     mutable std::vector<float>                 neighborSqrDists_;
     mutable std::vector<mrpt::math::TPoint3Df> neighborPts_;
     mutable std::vector<float>                 kddXs, kddYs, kddZs;

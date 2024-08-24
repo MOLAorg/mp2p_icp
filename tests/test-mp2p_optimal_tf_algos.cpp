@@ -210,7 +210,7 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
 
                     const auto R33 = mrpt::poses::Lie::SO<3>::exp(vv);
                     const auto p   = mrpt::poses::CPose3D(
-                        R33, mrpt::math::CVectorFixed<double, 3>::Zero());
+                          R33, mrpt::math::CVectorFixed<double, 3>::Zero());
 
                     // Noisy plane normal:
                     ul = p.rotateVector(ul);
@@ -247,7 +247,7 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>>
         mp2p_icp::point_plane_pair_t pt2pl;
         pt2pl.pl_global = plA[i];
         pt2pl.pt_local  = mrpt::math::TPoint3Df(
-            plB[i].centroid.x, plB[i].centroid.y, plB[i].centroid.z);
+             plB[i].centroid.x, plB[i].centroid.y, plB[i].centroid.z);
 
         pt2plPairs.push_back(pt2pl);
     }
@@ -282,7 +282,6 @@ bool test_icp_algos(
 
     const auto max_allowed_error =
         std::min(1.0, 0.2 + 10 * xyz_noise_std + 50 * n_err_std);
-    // 0.01;
 
     // Collect stats: columns are (see write TXT to file code at the bottom)
     mrpt::math::CMatrixDouble stats(num_reps, 1 + 3 + 3 + 3);

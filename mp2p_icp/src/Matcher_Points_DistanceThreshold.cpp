@@ -136,7 +136,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         [&](const tbb::blocked_range<size_t>& r, Result res) -> Result
         {
             res.reserve(r.size());
-            std::vector<size_t>                neighborIndices;
+            std::vector<uint64_t>              neighborIndices;
             std::vector<float>                 neighborSqrDists;
             std::vector<mrpt::math::TPoint3Df> neighborPts;
             for (size_t i = r.begin(); i < r.end(); i++)
@@ -217,7 +217,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 
     out.paired_pt2pt.reserve(nLocalPts);
 
-    std::vector<size_t>                neighborIndices;
+    std::vector<uint64_t>              neighborIndices;
     std::vector<float>                 neighborSqrDists;
     std::vector<mrpt::math::TPoint3Df> neighborPts;
 
