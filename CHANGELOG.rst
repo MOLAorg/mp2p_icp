@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.5 (2024-08-27)
+------------------
 * Explicitly add tbb as dependency in package.xml
 * Depend on new mrpt_lib packages (deprecate mrpt2)
 * FIX: build errors in armhf arch
