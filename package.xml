@@ -15,8 +15,14 @@
 
 
   <!-- Deps required by user code (they are in public headers or built as ROS (vs system) packages -->
-  <depend>mrpt2</depend>
   <depend>mola_common</depend>
+
+  <depend>mrpt_libbase</depend>
+  <depend>mrpt_libobs</depend>
+  <depend>mrpt_libposes</depend>
+  <depend>mrpt_libmaps</depend>
+  <depend>mrpt_libgui</depend>
+  <depend>mrpt_libtclap</depend>
 
   <!-- optional for part of the tests -->
   <!-- depend>mola_test_datasets</depend>  -->
