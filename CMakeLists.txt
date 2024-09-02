@@ -18,10 +18,16 @@ find_package(mola_common QUIET)
 if (NOT mola_common_FOUND)
 	message(STATUS "Standalone ${PROJECT_NAME} build: using mola_common from submodule.")
 	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mola_common-build")
-	execute_process(COMMAND "${CMAKE_COMMAND}" "${PROJECT_SOURCE_DIR}/3rdparty/mola_common"
-	                WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mola_common-build")
+	execute_process(COMMAND
+		${CMAKE_COMMAND} ${PROJECT_SOURCE_DIR}/3rdparty/mola_common -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/mola_common-install
+		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mola_common-build
+	)
+	execute_process(COMMAND
+		${CMAKE_COMMAND} --build . --target install
+		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mola_common-build
+	)
 	# 2nd attempt:
-	set(mola_common_DIR "${CMAKE_BINARY_DIR}/mola_common-build")
+	set(mola_common_DIR ${CMAKE_CURRENT_BINARY_DIR}/mola_common-install/share/mola_common/cmake/)
 	find_package(mola_common REQUIRED)
 endif()
 
