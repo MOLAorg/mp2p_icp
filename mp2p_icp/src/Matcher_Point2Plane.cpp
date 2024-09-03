@@ -105,7 +105,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
     const auto& lzs = pcLocal.getPointsBufferRef_z();
 
     std::vector<float>                 kddSqrDist, kddSqrDistLocal;
-    std::vector<size_t>                kddIdxs, kddIdxsLocal;
+    std::vector<uint64_t>              kddIdxs, kddIdxsLocal;
     std::vector<mrpt::math::TPoint3Df> kddPts, kddPtsLocal;
     std::vector<float>                 kddXs, kddYs, kddZs;
 
