@@ -22,26 +22,9 @@
 # 2) Per local frame filtering
 # --------------------------------------------------------
 filters:
-  - class_name: mp2p_icp_filters::FilterAdjustTimestamps
-    params:
-      pointcloud_layer: 'raw'
-      silently_ignore_no_timestamps: true
-      method: 'TimestampAdjustMethod::MiddleIsZero'
-
-  - class_name: mp2p_icp_filters::FilterDeskew
-    params:
-      input_pointcloud_layer: 'raw'
-      output_pointcloud_layer: 'deskewed'
-      #silently_ignore_no_timestamps: true # To handle more dataset types
-      output_layer_class: 'mrpt::maps::CPointsMapXYZIRT'  # Keep intensity & ring channels
-
-      # These (vx,...,wz) are variable names that must be defined via the
-      # mp2p_icp::Parameterizable API to update them dynamically.
-      twist: [vx,vy,vz,wx,wy,wz]
-
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
-      input_pointcloud_layer: 'deskewed'
+      input_pointcloud_layer: 'raw'
       output_pointcloud_layer: 'decimated'
       voxel_filter_resolution: 0.10  # [m]
       decimate_method: DecimateMethod::FirstPoint
@@ -58,7 +41,7 @@ filters:
   - class_name: mp2p_icp_filters::FilterDeleteLayer
     params:
       # one or more layers to remove
-      pointcloud_layer_to_remove: ['raw', 'deskewed', 'decimated']
+      pointcloud_layer_to_remove: ['raw', 'decimated']
 
 # -------------------------------------------------------------------
 # 3) Final, overall filter pipeline to apply to the whole metric map
