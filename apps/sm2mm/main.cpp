@@ -121,6 +121,8 @@ void run_sm_to_mm()
     // Create the map:
     mp2p_icp_filters::simplemap_to_metricmap(sm, mm, yamlData, opts);
 
+    std::cout << "[sm2mm] Final map: " << mm.contents_summary() << std::endl;
+
     // Save as mm file:
     const auto filOut = argOutput.getValue();
     std::cout << "[sm2mm] Writing metric map to: '" << filOut << "'..."
