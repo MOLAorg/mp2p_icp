@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.6 (2024-09-07)
+------------------
 * sm2mm cli: show map contents before writing to disk
 * add another demo sm2mm file for the mola tutorials
 * Add another sm2mm demo file w/o deskew for the mola mapping tutorial
