@@ -2,6 +2,16 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* sm2mm cli: show map contents before writing to disk
+* add another demo sm2mm file for the mola tutorials
+* Add another sm2mm demo file w/o deskew for the mola mapping tutorial
+* Matcher_Point2Plane: fix build error in armhf
+* Fix build with embedded mola_common
+* README: Add ROS badges for all architectures
+* Contributors: Jose Luis Blanco-Claraco
+
 1.5.5 (2024-08-27)
 ------------------
 * Explicitly add tbb as dependency in package.xml
