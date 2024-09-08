@@ -3,13 +3,14 @@ project(mp2p_icp_map LANGUAGES CXX)
 # -----------------------
 # define lib:
 set(LIB_SRCS
-	src/register.cpp
 	src/load_xyz_file.cpp
 	src/pointcloud_sanity_check.cpp
 	src/NearestPlaneCapable.cpp
 	src/metricmap.cpp
 	src/Parameterizable.cpp
 	src/estimate_points_eigen.cpp
+	#
+	src/register.cpp # This must be last
 )
 
 set(LIB_PUBLIC_HDRS

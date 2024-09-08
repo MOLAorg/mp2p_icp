@@ -7,7 +7,6 @@ set(LIB_SRCS
 	src/Results.cpp
 	src/Solver_GaussNewton.cpp
 	src/Parameters.cpp
-	src/register.cpp
 	src/Matcher_Point2Plane.cpp
 	src/optimal_tf_olae.cpp
 	src/LogRecord.cpp
@@ -36,6 +35,8 @@ set(LIB_SRCS
 	src/Matcher_Points_Base.cpp
 	src/Matcher.cpp
 	src/visit_correspondences.h
+	#
+	src/register.cpp # This must be last
 )
 set(LIB_PUBLIC_HDRS
 	include/mp2p_icp/Pairings.h

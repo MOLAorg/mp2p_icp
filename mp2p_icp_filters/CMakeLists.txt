@@ -8,7 +8,6 @@ set(LIB_SRCS
 	src/FilterCurvature.cpp
 	src/FilterByIntensity.cpp
 	src/FilterDecimateAdaptive.cpp
-	src/register.cpp
 	src/FilterByRange.cpp
 	src/GeneratorEdgesFromCurvature.cpp
 	src/FilterVoxelSlice.cpp
@@ -28,6 +27,8 @@ set(LIB_SRCS
 	src/FilterByRing.cpp
 	src/FilterMerge.cpp
 	src/FilterBoundingBox.cpp
+	#
+	src/register.cpp # This must be last
 )
 
 set(LIB_PUBLIC_HDRS
