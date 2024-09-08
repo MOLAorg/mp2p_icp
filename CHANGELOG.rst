@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.0 (2024-09-08)
+------------------
 * Port Point2Plane matcher to use the new NN-for-planes API
 * mp2p_icp_map library: add NearestPlaneCapable virtual API
 * cmake: move from glob expressions to explicit lists of source files
