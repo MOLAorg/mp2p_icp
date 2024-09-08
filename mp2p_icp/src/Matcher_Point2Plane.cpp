@@ -154,8 +154,8 @@ void Matcher_Point2Plane::implMatchOneLayer(
                   << " eigvec2: " << eig.eigVectors[2].asString() << "\n";
 #endif
 
-        // e0/e2 must be < planeEigenThreshold:
-        if (eig.eigVals[0] > planeEigenThreshold * eig.eigVals[2]) continue;
+        // e0/e1 (and hence, e0/e2) must be < planeEigenThreshold:
+        if (eig.eigVals[0] > planeEigenThreshold * eig.eigVals[1]) continue;
 
         const auto&                normal        = eig.eigVectors[0];
         const mrpt::math::TPoint3D planeCentroid = {

@@ -34,7 +34,7 @@ struct PointCloudEigen
     mrpt::poses::CPointPDFGaussian       meanCov;
     std::array<mrpt::math::TVector3D, 3> eigVectors = {
         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}};
-    std::array<double, 3> eigVals = {0, 0, 0};
+    std::array<double, 3> eigVals = {0, 0, 0};  //!< sorted in ascending order
 };
 
 /** Calculate mean, covariance, eigenvectors, and eigenvalues from a set of
