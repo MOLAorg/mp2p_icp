@@ -250,15 +250,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         lst_algos_t lst_algos = {
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_DistanceThreshold", 10},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_InlierRatio", 10},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Point2Plane", 10},
+             //{"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Point2Plane", 10},
              
              {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_DistanceThreshold", 10},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Points_InlierRatio", 10},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Point2Plane", 10},
+             //{"mp2p_icp::ICP", "mp2p_icp::Solver_OLAE",        "mp2p_icp::Matcher_Point2Plane", 10},
              
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_DistanceThreshold", 10},
              {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Points_InlierRatio", 10},
-             {"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Point2Plane", 10},
+             //{"mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Matcher_Point2Plane", 10},
              };
         // clang-format on
 

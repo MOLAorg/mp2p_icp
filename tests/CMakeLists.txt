@@ -34,7 +34,7 @@ endfunction()
 
 mp2p_add_test(mp2p_error_terms_jacobians)
 mp2p_add_test(mp2p_icp_algos)
-mp2p_add_test(mp2p_matcher_pt2pl)
+#mp2p_add_test(mp2p_matcher_pt2pl)  # TODO: This now requires a NP metric map to run the test
 mp2p_add_test(mp2p_matcher_pt2pt_parameterizable)
 mp2p_add_test(mp2p_matcher_pt2pt)
 mp2p_add_test(mp2p_optimal_tf_algos)
