@@ -257,6 +257,14 @@ mrpt::maps::CPointsMap* MapToPointsMap(mrpt::maps::CMetricMap& map);
 const mrpt::maps::NearestNeighborsCapable* MapToNN(
     const mrpt::maps::CMetricMap& map, bool throwIfNotImplemented);
 
+/** Returns the dynamic_cast<> of the metric map as a
+ * mp2p_icp::NearestPlaneCapable.
+ * If the interface is not implemented it returns nullptr, or throws
+ * an exception if it `throwIfNotImplemented` is `true`.
+ */
+const mp2p_icp::NearestPlaneCapable *MapToNP(
+    const mrpt::maps::CMetricMap& map, bool throwIfNotImplemented);
+
 /** @} */
 
 }  // namespace mp2p_icp

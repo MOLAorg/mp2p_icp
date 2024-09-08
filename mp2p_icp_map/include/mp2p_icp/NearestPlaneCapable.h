@@ -32,12 +32,16 @@ class NearestPlaneCapable
     {
         NearestPlaneResult() = default;
 
-        float                             distance_squared = 0;
+        /// Found pairing:
         std::optional<point_plane_pair_t> pairing;
+
+        /// Absolute value of plane-point distance, if a pairing is found:
+        float distance = 0;
     };
 
     virtual NearestPlaneResult nn_search_pt2pl(
-        const mrpt::math::TPoint3Df& point) const = 0;
+        const mrpt::math::TPoint3Df& point,
+        const float                  max_search_distance) const = 0;
 };
 
 /** @} */

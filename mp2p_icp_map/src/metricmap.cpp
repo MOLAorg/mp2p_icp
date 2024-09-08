@@ -701,3 +701,17 @@ const mrpt::maps::NearestNeighborsCapable* mp2p_icp::MapToNN(
         "mrpt::maps::NearestNeighborsCapable",
         map.GetRuntimeClass()->className);
 }
+
+const mp2p_icp::NearestPlaneCapable* mp2p_icp::MapToNP(
+    const mrpt::maps::CMetricMap& map, bool throwIfNotImplemented)
+{
+    const auto* ptr = dynamic_cast<const mp2p_icp::NearestPlaneCapable*>(&map);
+
+    if (ptr) return ptr;
+    if (!throwIfNotImplemented) return nullptr;
+
+    THROW_EXCEPTION_FMT(
+        "The map of type '%s' does not implement the expected interface "
+        "mp2p_icp::NearestPlaneCapable",
+        map.GetRuntimeClass()->className);
+}

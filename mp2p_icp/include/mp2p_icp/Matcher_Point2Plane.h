@@ -36,19 +36,6 @@ class Matcher_Point2Plane : public Matcher_Points_Base
 
     /** Parameters:
      * - `distanceThreshold`: Max. inliers pt-plane distance [meters][mandatory]
-     * - `knn`: Number of neighbors to look for [mandatory]
-     * - `minimumPlanePoints`: Minimum number of found points [mandatory]
-     * - `searchRadius`: Max radius search for neighbors [meters][mandatory]
-     * - `planeEigenThreshold`: maximum e0/e2 ratio [mandatory]
-     * - `localPointMustFitPlaneToo`: if `true`, each local point must also
-     *    fulfill the plane-like condition to generate a pt-plane pairing
-     *    [optional] (Default: false)
-     * - `localToGlobalPlaneMinAbsCosine`: If `localPointMustFitPlaneToo` is
-     *    `true`, the minimum absolute value of the cosine of the plane-to-plane
-     *    angles to generate a valid pairing [optional] (Default: 0.8)
-     *
-     * Where e0 and e2 are the smallest and largest eigenvalues of the Gaussian
-     * covariance fitting the knn closest global points for each local point.
      *
      * Plus: the parameters of Matcher_Points_Base::initialize()
      */
@@ -56,12 +43,6 @@ class Matcher_Point2Plane : public Matcher_Points_Base
 
    private:
     double   distanceThreshold              = 0.50;
-    double   searchRadius                   = 0.50;
-    uint32_t knn                            = 5;
-    uint32_t minimumPlanePoints             = 5;
-    double   planeEigenThreshold            = 0.01;
-    bool     localPointMustFitPlaneToo      = false;
-    double   localToGlobalPlaneMinAbsCosine = 0.8;
 
     void implMatchOneLayer(
         const mrpt::maps::CMetricMap& pcGlobal,
