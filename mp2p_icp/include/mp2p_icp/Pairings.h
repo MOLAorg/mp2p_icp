@@ -12,6 +12,7 @@
 #pragma once
 
 #include <mp2p_icp/plane_patch.h>
+#include <mp2p_icp/point_plane_pair_t.h>
 #include <mp2p_icp/render_params.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/TLine3D.h>
@@ -47,23 +48,6 @@ struct matched_line_t
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::matched_line_t)
 };
 using MatchedLineList = std::vector<matched_line_t>;
-
-/** Point-to-plane pair */
-struct point_plane_pair_t
-{
-    plane_patch_t         pl_global;
-    mrpt::math::TPoint3Df pt_local;
-
-    point_plane_pair_t() = default;
-    point_plane_pair_t(
-        const plane_patch_t& p_global, const mrpt::math::TPoint3Df& p_local)
-        : pl_global(p_global), pt_local(p_local)
-    {
-    }
-
-    DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::point_plane_pair_t)
-};
-using MatchedPointPlaneList = std::vector<point_plane_pair_t>;
 
 /** Point-to-line pair */
 struct point_line_pair_t

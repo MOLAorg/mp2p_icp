@@ -11,6 +11,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/NearestPlaneCapable.h>
 #include <mp2p_icp/layer_name_t.h>
 #include <mp2p_icp/plane_patch.h>
 #include <mp2p_icp/render_params.h>

@@ -2,8 +2,29 @@ project(mp2p_icp_map LANGUAGES CXX)
 
 # -----------------------
 # define lib:
-file(GLOB_RECURSE LIB_SRCS src/*.cpp src/*.h)
-file(GLOB_RECURSE LIB_PUBLIC_HDRS include/*.h)
+set(LIB_SRCS
+	src/register.cpp
+	src/load_xyz_file.cpp
+	src/pointcloud_sanity_check.cpp
+	src/NearestPlaneCapable.cpp
+	src/metricmap.cpp
+	src/Parameterizable.cpp
+	src/estimate_points_eigen.cpp
+)
+
+set(LIB_PUBLIC_HDRS
+	include/mp2p_icp/Parameterizable.h
+	include/mp2p_icp/pointcloud_bitfield.h
+	include/mp2p_icp/pointcloud_sanity_check.h
+	include/mp2p_icp/point_plane_pair_t.h
+	include/mp2p_icp/plane_patch.h
+	include/mp2p_icp/layer_name_t.h
+	include/mp2p_icp/render_params.h
+	include/mp2p_icp/estimate_points_eigen.h
+	include/mp2p_icp/metricmap.h
+	include/mp2p_icp/NearestPlaneCapable.h
+	include/mp2p_icp/load_xyz_file.h
+)
 
 mola_add_library(
 	TARGET ${PROJECT_NAME}
