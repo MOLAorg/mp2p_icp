@@ -146,8 +146,8 @@ mrpt::math::CMatrixDouble QualityEvaluator_RangeImageSimilarity::projectPoints(
     const auto& ys = pts.getPointsBufferRef_y();
     const auto& zs = pts.getPointsBufferRef_z();
 
-    const auto nPoints      = xs.size();
-    size_t     nValidPoints = 0;
+    const auto nPoints = xs.size();
+    // size_t     nValidPoints = 0;
     for (size_t i = 0; i < nPoints; i++)
     {
         mrpt::math::TPoint3D p(xs[i], ys[i], zs[i]);
@@ -168,7 +168,7 @@ mrpt::math::CMatrixDouble QualityEvaluator_RangeImageSimilarity::projectPoints(
 
         if (storedRange == 0 || newRange < storedRange) storedRange = newRange;
 
-        nValidPoints++;
+        // nValidPoints++;
     }
 
     // std::cout << "Points: " << nValidPoints << "/" << nPoints << "\n";
