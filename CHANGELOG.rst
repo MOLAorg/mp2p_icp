@@ -2,6 +2,14 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Port Point2Plane matcher to use the new NN-for-planes API
+* mp2p_icp_map library: add NearestPlaneCapable virtual API
+* cmake: move from glob expressions to explicit lists of source files
+* clarify eigenvalues order in headers
+* Contributors: Jose Luis Blanco-Claraco
+
 1.5.6 (2024-09-07)
 ------------------
 * sm2mm cli: show map contents before writing to disk
