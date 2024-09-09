@@ -18,6 +18,7 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
+#include <mrpt/version.h>
 
 namespace mp2p_icp
 {
@@ -73,7 +74,11 @@ class Matcher : public mrpt::system::COutputLogger,
                 public mrpt::rtti::CObject,
                 public mp2p_icp::Parameterizable
 {
+#if MRPT_VERSION < 0x020e00
     DEFINE_VIRTUAL_MRPT_OBJECT(Matcher)
+#else
+    DEFINE_VIRTUAL_MRPT_OBJECT(Matcher, mp2p_icp)
+#endif
 
    public:
     /** Check each derived class to see required and optional parameters. */

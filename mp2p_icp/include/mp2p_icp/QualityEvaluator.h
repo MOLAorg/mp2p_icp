@@ -17,6 +17,7 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
+#include <mrpt/version.h>
 
 namespace mp2p_icp
 {
@@ -28,7 +29,11 @@ class QualityEvaluator : public mrpt::system::COutputLogger,
                          public mrpt::rtti::CObject,
                          public mp2p_icp::Parameterizable
 {
+#if MRPT_VERSION < 0x020e00
     DEFINE_VIRTUAL_MRPT_OBJECT(QualityEvaluator)
+#else
+    DEFINE_VIRTUAL_MRPT_OBJECT(QualityEvaluator, mp2p_icp)
+#endif
 
    public:
     struct Result
