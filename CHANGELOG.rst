@@ -2,6 +2,12 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix missing catkin buildtoo_depend for ROS1 builds
+* Update RTTI macros for upcoming MRPT 2.14.0
+* Contributors: Jose Luis Blanco-Claraco
+
 1.6.0 (2024-09-08)
 ------------------
 * Port Point2Plane matcher to use the new NN-for-planes API
