@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.1 (2024-09-11)
+------------------
 * Fix missing catkin buildtoo_depend for ROS1 builds
 * Update RTTI macros for upcoming MRPT 2.14.0
 * Contributors: Jose Luis Blanco-Claraco
