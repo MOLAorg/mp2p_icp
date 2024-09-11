@@ -23,7 +23,7 @@ function(mp2p_add_test NAME)
   )
   target_compile_definitions(test-${NAME}
     PRIVATE
-    MP2P_DATASET_DIR="${mp2p_icp_all_SOURCE_DIR}/demos/")
+    MP2P_DATASET_DIR="${mp2p_icp_SOURCE_DIR}/demos/")
   if (mola_test_datasets_FOUND)
       target_compile_definitions(test-${NAME}
           PRIVATE
