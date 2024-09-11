@@ -1,4 +1,4 @@
-project(mp2p_icp LANGUAGES CXX)
+#project(mp2p_icp LANGUAGES CXX)
 
 # -----------------------
 # define lib:
@@ -100,3 +100,5 @@ if (TBB_FOUND AND MP2PICP_USE_TBB)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_TBB)
 	target_link_libraries(${PROJECT_NAME} PRIVATE TBB::tbb)
 endif()
+
+

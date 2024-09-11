@@ -14,7 +14,11 @@
   <url type="website">https://github.com/MOLAorg/mp2p_icp</url>
 
   <!-- COMMON DEPS -->
-  <build_depend>ros_environment</build_depend> <!-- Required for ROS_VERSION -->
+  <build_depend>ros_environment</build_depend>  <!-- Required for ROS_VERSION -->
+
+  <buildtool_depend>cmake</buildtool_depend>
+  <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
+  <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
 
   <!-- Deps required by user code (they are in public headers or built as ROS (vs system) packages -->
   <depend>mola_common</depend>
@@ -33,13 +37,9 @@
 
   <doc_depend>doxygen</doc_depend>
 
-  <!-- Minimum entries to release non-catkin pkgs: -->
-  <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
-  <buildtool_depend condition="$ROS_VERSION == 2">cmake</buildtool_depend>
   <export>
     <!-- We need catkin installed during builds so debian/rules finds /opt/*/setup.bash -->
     <build_type condition="$ROS_VERSION == 1">catkin</build_type>
-
     <build_type condition="$ROS_VERSION == 2">cmake</build_type>
   </export>
   <!-- End -->
