@@ -13,6 +13,8 @@
 
   <url type="website">https://github.com/MOLAorg/mp2p_icp</url>
 
+  <!-- COMMON DEPS -->
+  <build_depend>ros_environment</build_depend> <!-- Required for ROS_VERSION -->
 
   <!-- Deps required by user code (they are in public headers or built as ROS (vs system) packages -->
   <depend>mola_common</depend>
