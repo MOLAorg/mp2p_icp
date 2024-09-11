@@ -35,6 +35,8 @@
   <!-- optional for part of the tests -->
   <!-- depend>mola_test_datasets</depend>  -->
 
+  <test_depend condition="$ROS_VERSION == 1">catkin</test_depend>
+
   <doc_depend>doxygen</doc_depend>
 
   <export>
