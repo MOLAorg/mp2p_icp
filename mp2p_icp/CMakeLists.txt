@@ -1,4 +1,6 @@
-#project(mp2p_icp LANGUAGES CXX)
+project(mp2p_icp_lib LANGUAGES CXX)
+
+set(lib_name mp2p_icp) # we cannot use PROJECT_NAME here, since catkin requires that name for the top-level project()
 
 # -----------------------
 # define lib:
@@ -75,7 +77,7 @@ set(LIB_PUBLIC_HDRS
 )
 
 mola_add_library(
-	TARGET ${PROJECT_NAME}
+	TARGET ${lib_name}
 	SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
 	PUBLIC_LINK_LIBRARIES
 		mp2p_icp_map
@@ -92,13 +94,13 @@ mola_add_library(
 )
 
 if (MP2PICP_BUILD_POINTMATCHER)
-	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_LIBPOINTMATCHER)
-	target_link_libraries(${PROJECT_NAME} PRIVATE libpointmatcher::libpointmatcher)
+	target_compile_definitions(${lib_name} PRIVATE MP2P_HAS_LIBPOINTMATCHER)
+	target_link_libraries(${lib_name} PRIVATE libpointmatcher::libpointmatcher)
 endif()
 
 if (TBB_FOUND AND MP2PICP_USE_TBB)
-	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_TBB)
-	target_link_libraries(${PROJECT_NAME} PRIVATE TBB::tbb)
+	target_compile_definitions(${lib_name} PRIVATE MP2P_HAS_TBB)
+	target_link_libraries(${lib_name} PRIVATE TBB::tbb)
 endif()
 
 
