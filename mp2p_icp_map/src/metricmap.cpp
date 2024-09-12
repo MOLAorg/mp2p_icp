@@ -36,7 +36,7 @@ IMPLEMENTS_MRPT_OBJECT(
 using namespace mp2p_icp;
 
 // Implementation of the CSerializable virtual interface:
-uint8_t metric_map_t::serializeGetVersion() const { return 3; }
+uint8_t metric_map_t::serializeGetVersion() const { return 4; }
 void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << lines;
@@ -52,16 +52,8 @@ void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
 
     out << id << label;  // new in v1
 
-    // new in v2:
-    out.WriteAs<bool>(georeferencing.has_value());
-    if (georeferencing)
-    {
-        out << georeferencing->geo_coord.lat.decimal_value
-            << georeferencing->geo_coord.lon.decimal_value
-            << georeferencing->geo_coord.height << georeferencing->T_enu_to_map;
-        // v3: T_enu_to_map: mrpt::poses::CPose3D =>
-        // mrpt::poses::CPose3DPDFGaussian
-    }
+    // new in v4: delegate to external function:
+    out << georeferencing;
 
     // Optional user data:
     derivedSerializeTo(out);
@@ -75,6 +67,7 @@ void metric_map_t::serializeFrom(
         case 1:
         case 2:
         case 3:
+        case 4:
         {
             in >> lines;
             const auto nPls = in.ReadAs<uint32_t>();
@@ -102,7 +95,9 @@ void metric_map_t::serializeFrom(
                 label.reset();
             }
 
-            if (version >= 2 && in.ReadAs<bool>())
+            georeferencing.reset();
+
+            if ((version >= 2 && version < 4) && in.ReadAs<bool>())
             {
                 auto& g = georeferencing.emplace();
                 in >> g.geo_coord.lat.decimal_value >>
@@ -110,8 +105,9 @@ void metric_map_t::serializeFrom(
                 if (version >= 3) { in >> g.T_enu_to_map; }
                 else { in >> g.T_enu_to_map.mean; }
             }
-            else
-                georeferencing.reset();
+
+            // delegated function:
+            if (version >= 4) { in >> georeferencing; }
 
             // Optional user data:
             derivedSerializeFrom(in);
@@ -714,4 +710,51 @@ const mp2p_icp::NearestPlaneCapable* mp2p_icp::MapToNP(
         "The map of type '%s' does not implement the expected interface "
         "mp2p_icp::NearestPlaneCapable",
         map.GetRuntimeClass()->className);
+}
+
+// Serialization of geo-reference information:
+constexpr const char* GEOREF_MAGIC_STR = "mp2p_icp::Georeferencing";
+
+mrpt::serialization::CArchive& mp2p_icp::operator>>(
+    mrpt::serialization::CArchive&               in,
+    std::optional<metric_map_t::Georeferencing>& g)
+{
+    std::string georef_stream_signature;
+    in >> georef_stream_signature;
+    ASSERT_EQUAL_(georef_stream_signature, std::string(GEOREF_MAGIC_STR));
+    const uint8_t version = in.ReadAs<uint8_t>();
+    switch (version)
+    {
+        case 0:
+            if (in.ReadAs<bool>())
+            {
+                auto& gg = g.emplace();
+                in >> gg.geo_coord.lat.decimal_value >>
+                    gg.geo_coord.lon.decimal_value >> gg.geo_coord.height;
+                in >> gg.T_enu_to_map;
+            }
+            break;
+        default:
+            MRPT_THROW_UNKNOWN_SERIALIZATION_VERSION(version);
+    };
+
+    return in;
+}
+
+mrpt::serialization::CArchive& mp2p_icp::operator<<(
+    mrpt::serialization::CArchive&                     out,
+    const std::optional<metric_map_t::Georeferencing>& g)
+{
+    out << std::string(GEOREF_MAGIC_STR);
+    constexpr uint8_t serial_version = 0;
+    out.WriteAs<uint8_t>(serial_version);
+
+    out.WriteAs<bool>(g.has_value());
+    if (g)
+    {
+        out << g->geo_coord.lat.decimal_value << g->geo_coord.lon.decimal_value
+            << g->geo_coord.height;
+        out << g->T_enu_to_map;
+    }
+    return out;
 }

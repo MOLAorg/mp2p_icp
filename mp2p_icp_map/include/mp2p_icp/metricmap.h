@@ -262,8 +262,16 @@ const mrpt::maps::NearestNeighborsCapable* MapToNN(
  * If the interface is not implemented it returns nullptr, or throws
  * an exception if it `throwIfNotImplemented` is `true`.
  */
-const mp2p_icp::NearestPlaneCapable *MapToNP(
+const mp2p_icp::NearestPlaneCapable* MapToNP(
     const mrpt::maps::CMetricMap& map, bool throwIfNotImplemented);
+
+// Serialization of geo-reference information:
+mrpt::serialization::CArchive& operator>>(
+    mrpt::serialization::CArchive&               in,
+    std::optional<metric_map_t::Georeferencing>& g);
+mrpt::serialization::CArchive& operator<<(
+    mrpt::serialization::CArchive&                     out,
+    const std::optional<metric_map_t::Georeferencing>& g);
 
 /** @} */
 
