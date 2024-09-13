@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.2 (2024-09-14)
+------------------
 * Expose << and >> operators for geo-reference data structures
 * Fix missing build_dep
 * Contributors: Jose Luis Blanco-Claraco
