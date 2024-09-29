@@ -37,6 +37,7 @@ const std::map<std::string, cmd_t> cliCommands = {
     {"level", cmd_t(&commandLevel)},
     {"trim", cmd_t(&commandTrim)},
     {"join", cmd_t(&commandJoin)},
+    {"tf", cmd_t(&commandTf)},
 };
 
 void setConsoleErrorColor()
@@ -111,9 +112,10 @@ Available commands:
     sm-cli export-keyframes   Export KF poses (opt: twist too) as TUM format.
     sm-cli export-rawlog      Export KFs as rawlog for inspection.
     sm-cli info               Analyze a .simplemap file.
-    sm-cli level              Makes a .simplemap file level (horizontal).
-    sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli join               Join two or more .simplemap files into one.
+    sm-cli level              Makes a .simplemap file level (horizontal).
+    sm-cli tf                 Applies a SE(3) transform by the left to a map.
+    sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli --version          Shows program version.
     sm-cli --help             Shows this information.
 

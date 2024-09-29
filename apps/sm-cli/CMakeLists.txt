@@ -16,6 +16,7 @@ mola_add_executable(
     sm-cli-info.cpp
     sm-cli-join.cpp
     sm-cli-level.cpp
+    sm-cli-tf.cpp
     sm-cli-trim.cpp
   LINK_LIBRARIES
     mp2p_icp_filters

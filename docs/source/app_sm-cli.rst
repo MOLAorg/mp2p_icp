@@ -14,9 +14,10 @@ Available commands:
     sm-cli export-keyframes   Export KF poses (opt: twist too) as TUM format.
     sm-cli export-rawlog      Export KFs as rawlog for inspection.
     sm-cli info               Analyze a .simplemap file.
-    sm-cli level              Makes a .simplemap file level (horizontal).
-    sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli join               Join two or more .simplemap files into one.
+    sm-cli level              Makes a .simplemap file level (horizontal).
+    sm-cli tf                 Applies a SE(3) transform by the left to a map.
+    sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli --version          Shows program version.
     sm-cli --help             Shows this information.
 
@@ -88,6 +89,16 @@ saving the result in another simple-map file. This can be used when a map has an
 .. code-block:: bash
 
     sm-cli level <input.simplemap> <output.simplemap>
+
+|
+
+sm-cli tf
+----------------------
+Transforms a given simple-map by applying a SE(3) transformation by the left (=left-multiplying homogeneous matrices).
+
+.. code-block:: bash
+
+    sm-cli tf <input.simplemap> <output.simplemap> "[x y z yaw_deg pitch_deg roll_deg]"
 
 |
 
