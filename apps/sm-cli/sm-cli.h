@@ -65,11 +65,6 @@ struct cli_flags
         "twist.txt",
         cmd};
 
-    TCLAP::ValueArg<std::string> arg_tf{
-        "",    "tf", "SE(3) transform",
-        false, "",   "\"[x y z yaw_deg pitch_deg roll_deg]\"",
-        cmd};
-
     TCLAP::SwitchArg argHelp{
         "h", "help", "Shows more detailed help for command", cmd};
 
