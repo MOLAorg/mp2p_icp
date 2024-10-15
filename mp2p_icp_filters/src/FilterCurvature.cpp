@@ -138,7 +138,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
 #ifdef DEBUG_GL
         auto ringId = ringPerPt[i];
         auto col    = mrpt::img::colormap(
-            mrpt::img::cmJET, static_cast<double>(ringId) / nRings);
+               mrpt::img::cmJET, static_cast<double>(ringId) / nRings);
         glRawPts->insertPoint({xs[i], ys[i], zs[i], col.R, col.G, col.B});
 #endif
 
@@ -181,11 +181,25 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     {
         const auto& idxs = idxPerRing.at(ri);
 
-        for (size_t idx = 1; idx + 1 < idxs.size(); idx++)
+        if (idxs.size() <= 3)
         {
-            const size_t im1 = idxs[idx - 1];
+            // If we have too few points, just accept them as they are so few we
+            // cannot run the clasification method below.
+            for (size_t idx = 0; idx < idxs.size(); idx++)
+            {
+                const size_t i = idxs[idx];
+                counterLarger++;
+                if (outPcLarger) outPcLarger->insertPointFrom(pc, i);
+            }
+            continue;
+        }
+
+        // Regular algorithm:
+        for (size_t idx = 0; idx < idxs.size(); idx++)
+        {
+            const size_t im1 = idxs[idx > 0 ? idx - 1 : idxs.size() - 1];
             const size_t i   = idxs[idx];
-            const size_t ip1 = idxs[idx + 1];
+            const size_t ip1 = idxs[idx < idxs.size() - 1 ? idx + 1 : 0];
 
             const auto pt   = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
             const auto ptm1 = mrpt::math::TPoint3Df(xs[im1], ys[im1], zs[im1]);
