@@ -915,7 +915,7 @@ void main_show_gui()
             processCameraTravelling();
         });
 
-    nanogui::mainloop(1 /*loop callbacks Hz*/, -1 /* no force repaint */);
+    nanogui::mainloop(1000 /*idleLoopPeriod ms*/, 25 /* minRepaintPeriod ms */);
 
     nanogui::shutdown();
 
