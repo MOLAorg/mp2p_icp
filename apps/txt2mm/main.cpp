@@ -13,6 +13,7 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
+#include <mrpt/maps/CColouredPointsMap.h>
 #include <mrpt/maps/CPointsMapXYZI.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
@@ -20,63 +21,103 @@
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/system/filesystem.h>
 
+const char* VALID_FORMATS = "(xyz|xyzi|xyzirt|xyzrgb)";
+
+using namespace std::string_literals;
+
 // CLI flags:
-static TCLAP::CmdLine cmd("txt2mm");
+struct Cli
+{
+    TCLAP::CmdLine cmd{"txt2mm"};
 
-static TCLAP::ValueArg<std::string> argInput(
-    "i", "input",
-    "Path to input TXT or CSV file. One point per row. Columns separated by "
-    "spaces or commas. See docs for supported formats.",
-    true, "input.txt", "input.txt", cmd);
+    TCLAP::ValueArg<std::string> argInput{
+        "i",
+        "input",
+        "Path to input TXT or CSV file. One point per row. Columns separated "
+        "by "
+        "spaces or commas. See docs for supported formats.",
+        true,
+        "input.txt",
+        "input.txt",
+        cmd};
 
-static TCLAP::ValueArg<std::string> argOutput(
-    "o", "output", "Output file to write to.", true, "out.mm", "out.mm", cmd);
+    TCLAP::ValueArg<std::string> argOutput{
+        "o",      "output", "Output file to write to.", true, "out.mm",
+        "out.mm", cmd};
 
-static TCLAP::ValueArg<std::string> argFormat(
-    "f", "format",
-    "Point cloud format. Mandatory flag.\n"
-    "Options: (xyz|xyzi|xyzirt)",
-    true, "xyz", "(xyz|xyzi|xyzirt)", cmd);
+    TCLAP::ValueArg<std::string> argFormat{
+        "f",
+        "format",
+        "Point cloud format. Mandatory flag.\n"s
+        "Options: "s +
+            VALID_FORMATS,
+        true,
+        "xyz",
+        VALID_FORMATS,
+        cmd};
 
-static TCLAP::ValueArg<std::string> argLayer(
-    "l", "layer", "Target layer name (Default: \"raw\").", false, "raw", "raw",
-    cmd);
+    TCLAP::ValueArg<std::string> argLayer{
+        "l",   "layer", "Target layer name (Default: \"raw\").", false, "raw",
+        "raw", cmd};
 
-static TCLAP::ValueArg<int> argIndexXYZ(
-    "", "column-x",
-    "Column index for the X coordinate in the input data (Default: 0).", false,
-    0, "column index", cmd);
+    TCLAP::ValueArg<int> argIndexXYZ{
+        "",
+        "column-x",
+        "Column index for the X coordinate in the input data (Default: 0).",
+        false,
+        0,
+        "column index",
+        cmd};
 
-static TCLAP::ValueArg<int> argIndexI(
-    "", "column-i",
-    "Column index for the Intensity channel in the input data (Default: 3).",
-    false, 3, "column index", cmd);
+    TCLAP::ValueArg<int> argIndexI{
+        "",
+        "column-i",
+        "Column index for the Intensity channel in the input data (Default: "
+        "3).",
+        false,
+        3,
+        "column index",
+        cmd};
 
-static TCLAP::ValueArg<int> argIndexR(
-    "", "column-r",
-    "Column index for the Ring channel in the input data (Default: 4).", false,
-    4, "column index", cmd);
+    TCLAP::ValueArg<int> argIndexR{
+        "",
+        "column-r",
+        "Column index for the Ring channel in the input data (Default: 4).",
+        false,
+        4,
+        "column index",
+        cmd};
 
-static TCLAP::ValueArg<int> argIndexT(
-    "", "column-t",
-    "Column index for the Timestamp channel in the input data (Default: 5).",
-    false, 5, "column index", cmd);
+    TCLAP::ValueArg<int> argIndexT{
+        "",
+        "column-t",
+        "Column index for the Timestamp channel in the input data (Default: "
+        "5).",
+        false,
+        5,
+        "column index",
+        cmd};
 
-static TCLAP::ValueArg<uint64_t> argID(
-    "", "id", "Metric map numeric ID (Default: none).", false, 0, "[ID]", cmd);
+    TCLAP::ValueArg<uint64_t> argID{
+        "",     "id", "Metric map numeric ID (Default: none).", false, 0,
+        "[ID]", cmd};
 
-static TCLAP::ValueArg<std::string> argLabel(
-    "", "label", "Metric map label string (Default: none).", false, "label",
-    "[label]", cmd);
+    TCLAP::ValueArg<std::string> argLabel{
+        "",    "label", "Metric map label string (Default: none).",
+        false, "label", "[label]",
+        cmd};
+};
 
 int main(int argc, char** argv)
 {
     try
     {
-        // Parse arguments:
-        if (!cmd.parse(argc, argv)) return 1;  // should exit.
+        Cli cli;
 
-        const auto& f = argInput.getValue();
+        // Parse arguments:
+        if (!cli.cmd.parse(argc, argv)) return 1;  // should exit.
+
+        const auto& f = cli.argInput.getValue();
         ASSERT_FILE_EXISTS_(f);
 
         std::cout << "Reading data from '" << f << "'..." << std::endl;
@@ -90,12 +131,12 @@ int main(int argc, char** argv)
                   << std::endl;
 
         mrpt::maps::CPointsMap::Ptr pc;
-        const auto                  format = argFormat.getValue();
+        const auto                  format = cli.argFormat.getValue();
 
-        const auto idxX = argIndexXYZ.getValue();
-        const auto idxI = argIndexI.getValue();
-        const auto idxR = argIndexR.getValue();
-        const auto idxT = argIndexT.getValue();
+        const auto idxX = cli.argIndexXYZ.getValue();
+        const auto idxI = cli.argIndexI.getValue();
+        const auto idxR = cli.argIndexR.getValue();
+        const auto idxT = cli.argIndexT.getValue();
 
         if (format == "xyz")
         {
@@ -151,27 +192,50 @@ int main(int argc, char** argv)
 
             pc = pts;
         }
+        else if (format == "xyzrgb")
+        {
+            ASSERT_GE_(nCols, 6U);
+            auto pts = mrpt::maps::CColouredPointsMap::Create();
+            pts->reserve(nRows);
+            if (nCols > 6)
+                std::cout << "Warning: Only the first 6 columns from the file "
+                             "will be used for the output format 'xyzrgb'"
+                          << std::endl;
+
+            const size_t idxRed = 3, idxGreen = 4, idxBlue = 5;
+
+            for (size_t i = 0; i < nRows; i++)
+            {
+                pts->insertPointFast(
+                    data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
+                pts->insertPointField_color_R(mrpt::u8tof(data(i, idxRed)));
+                pts->insertPointField_color_G(mrpt::u8tof(data(i, idxGreen)));
+                pts->insertPointField_color_B(mrpt::u8tof(data(i, idxBlue)));
+            }
+
+            pc = pts;
+        }
         else
         {
             THROW_EXCEPTION_FMT(
-                "Invalid --format set to '%s'. Valid values: (xyz|xyzi|xyzirt)",
-                format.c_str());
+                "Invalid --format set to '%s'. Valid values: %s",
+                format.c_str(), VALID_FORMATS);
         }
 
         // Save as mm file:
         mp2p_icp::metric_map_t mm;
         mm.layers["raw"] = std::move(pc);
 
-        if (argID.isSet()) mm.id = argID.getValue();
-        if (argLabel.isSet()) mm.label = argLabel.getValue();
+        if (cli.argID.isSet()) mm.id = cli.argID.getValue();
+        if (cli.argLabel.isSet()) mm.label = cli.argLabel.getValue();
 
         std::cout << "Map contents: " << mm.contents_summary() << std::endl;
-        std::cout << "Saving map to: " << argOutput.getValue() << std::endl;
+        std::cout << "Saving map to: " << cli.argOutput.getValue() << std::endl;
 
-        if (!mm.save_to_file(argOutput.getValue()))
+        if (!mm.save_to_file(cli.argOutput.getValue()))
             THROW_EXCEPTION_FMT(
                 "Error writing to target file '%s'",
-                argOutput.getValue().c_str());
+                cli.argOutput.getValue().c_str());
     }
     catch (const std::exception& e)
     {
