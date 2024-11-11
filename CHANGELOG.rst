@@ -2,6 +2,17 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* icp-log-viewer: also reduce GUI refresh rate
+* mm-viewer: avoid useless GUI refresh (CPU usage reduction)
+* txt2mm: Add input filter xyzrgb
+* mm-viewer: add a 'fit view to map' button
+* New cli app rawlog-filter
+* FilterCurvature: better handling scans with <=3 points in some rings
+* new subcommand 'sm-cli tf'
+* Contributors: Jose Luis Blanco-Claraco
+
 1.6.2 (2024-09-14)
 ------------------
 * Expose << and >> operators for geo-reference data structures
