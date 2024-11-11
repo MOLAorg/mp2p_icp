@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.3 (2024-11-11)
+------------------
 * icp-log-viewer: also reduce GUI refresh rate
 * mm-viewer: avoid useless GUI refresh (CPU usage reduction)
 * txt2mm: Add input filter xyzrgb
