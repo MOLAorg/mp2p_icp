@@ -97,6 +97,7 @@ nanogui::ComboBox* cbTravellingInterp = nullptr;
 
 std::vector<std::string>                  layerNames;
 std::map<std::string, nanogui::CheckBox*> cbLayersByName;
+bool                                      doFitView = false;
 
 mp2p_icp::metric_map_t theMap;
 std::string            theMapFileName = "unnamed.mm";
@@ -652,10 +653,25 @@ void main_show_gui()
             cbView2D->setCallback([&](bool) { rebuild_3d_view(); });
         }
 
-        cbShowGroundGrid = tab1->add<nanogui::CheckBox>("Show ground grid");
-        cbShowGroundGrid->setFontSize(MID_FONT_SIZE);
-        cbShowGroundGrid->setChecked(true);
-        cbShowGroundGrid->setCallback([&](bool) { rebuild_3d_view(); });
+        {
+            auto pn = tab1->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+
+            cbShowGroundGrid = pn->add<nanogui::CheckBox>("Show ground grid");
+            cbShowGroundGrid->setFontSize(MID_FONT_SIZE);
+            cbShowGroundGrid->setChecked(true);
+            cbShowGroundGrid->setCallback([&](bool) { rebuild_3d_view(); });
+
+            auto btnFitView = pn->add<nanogui::Button>("Fit view to map");
+            btnFitView->setFontSize(MID_FONT_SIZE);
+            btnFitView->setCallback(
+                [&]()
+                {
+                    doFitView = true;
+                    rebuild_3d_view();
+                });
+        }
 
         cbApplyGeoRef = tab1->add<nanogui::CheckBox>(
             "Apply georeferenced pose (if available)");
@@ -908,6 +924,7 @@ void main_show_gui()
 }
 
 }  // namespace
+
 // ==============================
 // rebuild_3d_view
 // ==============================
@@ -1024,6 +1041,17 @@ void rebuild_3d_view()
             mapBbox->min.x, mapBbox->max.x, mapBbox->min.y, mapBbox->max.y);
     }
     glGrid->setVisibility(cbShowGroundGrid->checked());
+
+    // Fit view to map:
+    if (mapBbox && doFitView)
+    {
+        const auto midPt  = (mapBbox->min + mapBbox->max) * 0.5;
+        const auto mapLen = (mapBbox->max - mapBbox->min).norm();
+
+        win->camera().setCameraPointing(midPt.x, midPt.y, midPt.z);
+        win->camera().setZoomDistance(mapLen);
+    }
+    doFitView = false;
 
     // glTrajectory:
     if (glTrajectory->empty() && trajectory.size() >= 2)
