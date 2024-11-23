@@ -91,7 +91,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             Eigen::Matrix<double, 6, 1> g;
         };
 
-        const auto& [H_tbb, g_tbb] = tbb::parallel_reduce(
+        const auto& [H_tbb_pt2pt, g_tbb_pt2pt] = tbb::parallel_reduce(
             // Range
             tbb::blocked_range<size_t>{0, nPt2Pt},
             // Identity
@@ -143,8 +143,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             // 2nd lambda: Parallel reduction
             [](Result a, const Result& b) -> Result { return a + b; });
 
-        H = std::move(H_tbb);
-        g = std::move(g_tbb);
+        H = std::move(H_tbb_pt2pt);
+        g = std::move(g_tbb_pt2pt);
 #else
         // Point-to-point:
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
@@ -232,6 +232,48 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             H.noalias() += weight * Ji.transpose() * Ji;
         }
 
+#if defined(MP2P_HAS_TBB)
+        // Point-to-plane:
+        const auto& [H_tbb_pt2pl, g_tbb_pt2pl] = tbb::parallel_reduce(
+            // Range
+            tbb::blocked_range<size_t>{0, nPt2Pl},
+            // Identity
+            Result(),
+            // 1st lambda: Parallel computation
+            [&](const tbb::blocked_range<size_t>& r, Result res) -> Result
+            {
+                auto& [H_local, g_local] = res;
+                for (size_t idx_pl = r.begin(); idx_pl < r.end(); idx_pl++)
+                {
+                    // Error:
+                    const auto& p = in.paired_pt2pl[idx_pl];
+                    mrpt::math::CMatrixFixed<double, 3, 12> J1;
+                    mrpt::math::CVectorFixedDouble<3>       ret =
+                        mp2p_icp::error_point2plane(p, result.optimalPose, J1);
+
+                    // Apply robust kernel?
+                    double weight     = w.pt2pl,
+                           retSqrNorm = ret.asEigen().squaredNorm();
+                    if (robustSqrtWeightFunc)
+                        weight *= robustSqrtWeightFunc(retSqrNorm);
+
+                    // Error and Jacobian:
+                    const Eigen::Vector3d err_i = ret.asEigen();
+                    errNormSqr += weight * retSqrNorm;
+
+                    const Eigen::Matrix<double, 3, 6> Ji =
+                        J1.asEigen() * dDexpe_de.asEigen();
+                    g_local.noalias() += weight * Ji.transpose() * err_i;
+                    H_local.noalias() += weight * Ji.transpose() * Ji;
+                }
+                return res;
+            },
+            // 2nd lambda: Parallel reduction
+            [](Result a, const Result& b) -> Result { return a + b; });
+
+        H += H_tbb_pt2pl;
+        g += g_tbb_pt2pl;
+#else
         // Point-to-plane:
         for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
         {
@@ -255,6 +297,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             g.noalias() += weight * Ji.transpose() * err_i;
             H.noalias() += weight * Ji.transpose() * Ji;
         }
+#endif
 
         // Plane-to-plane (only direction of normal vectors):
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
