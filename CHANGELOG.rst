@@ -2,6 +2,13 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* merge two docs pages in one to shorten the docs TOC
+* Update README.md: Mark ROS2 Iron as EOL
+* Also use TBB for parallel solving point-to-plane pairings
+* Contributors: Jose Luis Blanco-Claraco
+
 1.6.3 (2024-11-11)
 ------------------
 * icp-log-viewer: also reduce GUI refresh rate
