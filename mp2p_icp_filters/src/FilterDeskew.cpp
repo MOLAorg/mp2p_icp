@@ -147,6 +147,8 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     }
     else
     {
+        ASSERT_EQUAL_(Ts->size(), n);
+
         // Yes, we have timestamps, apply de-skew:
         const size_t n0 = outPc->size();
         outPc->resize(n0 + n);
