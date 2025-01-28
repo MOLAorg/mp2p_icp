@@ -114,7 +114,7 @@ class PointCloudToVoxelGrid
     void visit_voxels(
         const std::function<void(const indices_t idx, const voxel_t& vxl)>&
             userCode) const;
-    
+
     /// Returns the number of occupied voxels.
     size_t size() const;
 

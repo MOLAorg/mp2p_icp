@@ -17,11 +17,14 @@
 #include <mrpt/system/filesystem.h>
 
 // CLI flags:
-static TCLAP::CmdLine cmd("mm-filter");
+namespace
+{
+TCLAP::CmdLine cmd("mm-filter");
 
-static TCLAP::UnlabeledValueArg<std::string> argMapFile(
+TCLAP::UnlabeledValueArg<std::string> argMapFile(
     "input", "Load this metric map file (*.mm)", true, "myMap.mm", "myMap.mm",
     cmd);
+}  // namespace
 
 void run_mm_info()
 {

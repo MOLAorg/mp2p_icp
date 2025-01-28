@@ -76,7 +76,8 @@ static OLAE_LinearSystems olae_build_linear_system(
     // Lambda: process each pairing:
     auto lambda_each_pair = [&](const mrpt::math::TVector3D& bi,
                                 const mrpt::math::TVector3D& ri,
-                                const double                 wi) {
+                                const double                 wi)
+    {
 // We will evaluate M from an alternative expression below from the
 // attitude profile matrix B instead, since it seems to be slightly more
 // stable, numerically. The original code for M is left here for
@@ -149,7 +150,8 @@ static OLAE_LinearSystems olae_build_linear_system(
     };  // end lambda for visit_correspondences()
 
     // Lambda for the final stage after visiting all corres:
-    auto lambda_final = [&](const double w_sum) {
+    auto lambda_final = [&](const double w_sum)
+    {
         // Normalize weights. OLAE assumes \sum(w_i) = 1.0
         if (w_sum > .0)
         {

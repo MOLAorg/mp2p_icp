@@ -80,7 +80,8 @@ static void test_Jacob_error_point2point()
                 /* Lambda, capturing the pair data */
                 [pair](
                     const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<3>& err) {
+                    CVectorFixedDouble<3>& err)
+                {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
@@ -152,7 +153,8 @@ static void test_Jacob_error_point2line()
                 /* Lambda, capturing the pair data */
                 [pair](
                     const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<3>& err) {
+                    CVectorFixedDouble<3>& err)
+                {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
@@ -233,7 +235,8 @@ static void test_Jacob_error_point2plane()
                 /* Lambda, capturing the pair data */
                 [pair](
                     const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<3>& err) {
+                    CVectorFixedDouble<3>& err)
+                {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
@@ -386,7 +389,8 @@ static void test_Jacob_error_plane2plane()
                 /* Lambda, capturing the pair data */
                 [pair](
                     const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<3>& err) {
+                    CVectorFixedDouble<3>& err)
+                {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
@@ -475,7 +479,8 @@ static void test_error_line2line()
                 /* Lambda, capturing the pair data */
                 [pair](
                     const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<4>& err) {
+                    CVectorFixedDouble<4>& err)
+                {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;

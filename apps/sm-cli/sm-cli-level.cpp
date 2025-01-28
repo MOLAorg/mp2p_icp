@@ -46,21 +46,23 @@ int commandLevel()
     auto myCostFunction =
         [&](const mrpt::math::CVectorDouble&                  x,
             [[maybe_unused]] const mrpt::math::CVectorDouble& params,
-            mrpt::math::CVectorDouble&                        err) {
-            const auto delta =
-                mrpt::poses::CPose3D::FromYawPitchRoll(x[0], x[1], x[2]);
+            mrpt::math::CVectorDouble&                        err)
+    {
+        const auto delta =
+            mrpt::poses::CPose3D::FromYawPitchRoll(x[0], x[1], x[2]);
 
-            const double z0 = poses.at(0).translation().z;
+        const double z0 = poses.at(0).translation().z;
 
-            // cost=non-horizontality after transformation:
-            err.resize(0);
-            std::transform(
-                poses.cbegin(), poses.cend(), std::back_inserter(err),
-                [&delta, z0](const mrpt::poses::CPose3D& p) {
-                    auto newPose = delta + p;
-                    return newPose.translation().z - z0;
-                });
-        };
+        // cost=non-horizontality after transformation:
+        err.resize(0);
+        std::transform(
+            poses.cbegin(), poses.cend(), std::back_inserter(err),
+            [&delta, z0](const mrpt::poses::CPose3D& p)
+            {
+                auto newPose = delta + p;
+                return newPose.translation().z - z0;
+            });
+    };
 
     mrpt::math::CVectorDouble optimal_x, initial_x, params;
 

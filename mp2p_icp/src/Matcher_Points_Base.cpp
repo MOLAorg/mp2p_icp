@@ -179,7 +179,8 @@ Matcher_Points_Base::TransformedLocalPointCloud
     MRPT_START
     TransformedLocalPointCloud r;
 
-    const auto lambdaKeepBBox = [&](float x, float y, float z) {
+    const auto lambdaKeepBBox = [&](float x, float y, float z)
+    {
         mrpt::keep_max(r.localMax.x, x);
         mrpt::keep_max(r.localMax.y, y);
         mrpt::keep_max(r.localMax.z, z);
