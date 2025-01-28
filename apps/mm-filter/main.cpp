@@ -16,6 +16,9 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/system/filesystem.h>
 
+namespace
+{
+
 // CLI flags:
 struct Cli
 {
@@ -27,6 +30,15 @@ struct Cli
     TCLAP::ValueArg<std::string> argOutput{
         "o",      "output", "Output .mm file to write to", true, "out.mm",
         "out.mm", cmd};
+
+    TCLAP::ValueArg<std::string> arg_plugins{
+        "l",
+        "load-plugins",
+        "One or more (comma separated) *.so files to load as plugins",
+        false,
+        "foobar.so",
+        "foobar.so",
+        cmd};
 
     TCLAP::ValueArg<std::string> argPipeline{
         "p",
@@ -66,6 +78,16 @@ void run_mm_filter(Cli& cli)
         cli.argPipeline.isSet() || cli.argRename.isSet(),
         "It is mandatory to set at least one of these CLI arguments (run with "
         "--help) for further details: --pipeline or --rename");
+
+    // Load plugins:
+    if (cli.arg_plugins.isSet())
+    {
+        std::string errMsg;
+        const auto  plugins = cli.arg_plugins.getValue();
+        std::cout << "Loading plugin(s): " << plugins << std::endl;
+        if (!mrpt::system::loadPluginModules(plugins, errMsg))
+            throw std::runtime_error(errMsg);
+    }
 
     const auto& filInput = cli.argInput.getValue();
 
@@ -132,6 +154,7 @@ void run_mm_filter(Cli& cli)
         THROW_EXCEPTION_FMT(
             "Error writing to target file '%s'", filOut.c_str());
 }
+}  // namespace
 
 int main(int argc, char** argv)
 {
