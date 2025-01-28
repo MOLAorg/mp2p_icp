@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.5 (2025-01-28)
+------------------
 * Add GitHub actions
 * Add pole-detector filter
 * mm-filter app: add --load-plugins flag too
