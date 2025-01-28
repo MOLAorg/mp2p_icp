@@ -14,7 +14,7 @@ set +e
 set +x
 
 DIRS_IN="apps mp2p_icp mp2p_icp_filters mp2p_icp_map tests"
-DIRS_OUT="docs 3rdparty"
+DIRS_OUT="docs 3rdparty apps/libcfgpath"
 LANGS=cpp
 FORMAT_CODE_BIN=".github/clang_git_format/format_code.py"
 
