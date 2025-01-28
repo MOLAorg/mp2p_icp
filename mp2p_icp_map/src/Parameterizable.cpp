@@ -58,7 +58,8 @@ void ParameterSource::realize()
         const double val = p->compiled->eval();
 
         std::visit(
-            [val](auto&& arg) {
+            [val](auto&& arg)
+            {
                 using T = std::decay_t<decltype(arg)>;
 
                 if constexpr (std::is_same_v<T, std::monostate>)
@@ -67,10 +68,7 @@ void ParameterSource::realize()
                         "[ParameterSource] Attached parameter target is "
                         "monostate!");
                 }
-                else if constexpr (std::is_same_v<T, double*>)
-                {
-                    *arg = val;
-                }
+                else if constexpr (std::is_same_v<T, double*>) { *arg = val; }
                 else if constexpr (std::is_same_v<T, float*>)
                 {
                     *arg = static_cast<float>(val);

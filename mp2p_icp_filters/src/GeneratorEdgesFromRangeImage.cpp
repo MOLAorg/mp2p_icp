@@ -221,7 +221,8 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
 
     const int MIN_SPACE_BETWEEN_PLANE_POINTS = nColsDecim / 16;
 
-    auto lambdaUnprojectPoint = [&](const int rd, const int cd) {
+    auto lambdaUnprojectPoint = [&](const int rd, const int cd)
+    {
         // unproject range -> 3D:
         const float D = R(rd, cd) * rgbd.rangeUnits;
         // LUT projection coefs:

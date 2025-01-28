@@ -42,7 +42,7 @@ class Matcher_Point2Plane : public Matcher_Points_Base
     void initialize(const mrpt::containers::yaml& params) override;
 
    private:
-    double   distanceThreshold              = 0.50;
+    double distanceThreshold = 0.50;
 
     void implMatchOneLayer(
         const mrpt::maps::CMetricMap& pcGlobal,

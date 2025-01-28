@@ -65,9 +65,8 @@ inline robust_sqrt_weight_func_t create_robust_kernel(
              *
              * with the loss function ρ(x) = (x²/2)/(c²+x²)
              */
-            return [kernelParamSqr, kernelParam](double errorSqr) -> double {
-                return (kernelParamSqr) / mrpt::square(errorSqr + kernelParam);
-            };
+            return [kernelParamSqr, kernelParam](double errorSqr) -> double
+            { return (kernelParamSqr) / mrpt::square(errorSqr + kernelParam); };
 
         case RobustKernel::Cauchy:
             /**
@@ -78,9 +77,8 @@ inline robust_sqrt_weight_func_t create_robust_kernel(
              * with the loss function ρ(x) = 0.5 c² log(1+x²/c²)
              *
              */
-            return [kernelParamSqr](double errorSqr) -> double {
-                return (kernelParamSqr) / (errorSqr + kernelParamSqr);
-            };
+            return [kernelParamSqr](double errorSqr) -> double
+            { return (kernelParamSqr) / (errorSqr + kernelParamSqr); };
 
         default:
             throw std::invalid_argument("Unknown kernel type");

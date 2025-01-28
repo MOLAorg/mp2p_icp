@@ -215,17 +215,14 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     struct IterationHook_Output
     {
         IterationHook_Output() = default;
-        
+
         bool request_stop = false;
     };
 
     using iteration_hook_t =
         std::function<IterationHook_Output(const IterationHook_Input&)>;
 
-    void setIterationHook(const iteration_hook_t& ih)
-    {
-        iteration_hook_ = ih;
-    }
+    void setIterationHook(const iteration_hook_t& ih) { iteration_hook_ = ih; }
 
     const mrpt::system::CTimeLogger& profiler() const { return profiler_; }
     mrpt::system::CTimeLogger&       profiler() { return profiler_; }

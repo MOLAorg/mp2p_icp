@@ -50,8 +50,8 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
     LambdaParams lmbParams;
 
     auto errorLambda = [&](const mrpt::math::CMatrixDouble61& x,
-                           const LambdaParams&,
-                           mrpt::math::CVectorDouble& err) {
+                           const LambdaParams&, mrpt::math::CVectorDouble& err)
+    {
         mrpt::poses::CPose3D pose;
         pose.setFromValues(x[0], x[1], x[2], x[3], x[4], x[5]);
 

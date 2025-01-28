@@ -106,7 +106,8 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
 
         // Go thru all voxels:
         auto lmbdPerVoxel = [&](mrpt::maps::CVoxelMap::voxel_node_t& data,
-                                const Bonxai::CoordT&                coord) {
+                                const Bonxai::CoordT&                coord)
+        {
             // are we at the correct height?
             if (coord.z < zCoordMin.z || coord.z > zCoordMax.z) return;
             const auto pt = Bonxai::CoordToPos(coord, grid.resolution);

@@ -95,7 +95,8 @@ static bool se3_l2_internal(
     // Lambda: process each pairing:
     auto lambda_each_pair = [&](const mrpt::math::TVector3D& bi,
                                 const mrpt::math::TVector3D& ri,
-                                const double                 wi) {
+                                const double                 wi)
+    {
         // These vectors are already direction vectors, or the
         // centroids-centered relative positions of points. Compute the S matrix
         // of cross products.
@@ -112,7 +113,8 @@ static bool se3_l2_internal(
         S(2, 2) += wi * ri.z * bi.z;
     };
 
-    auto lambda_final = [&](const double w_sum) {
+    auto lambda_final = [&](const double w_sum)
+    {
         // Normalize weights. OLAE assumes \sum(w_i) = 1.0
         if (w_sum > .0) S *= (1.0 / w_sum);
     };

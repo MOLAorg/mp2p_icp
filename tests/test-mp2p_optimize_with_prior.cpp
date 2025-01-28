@@ -62,7 +62,7 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
 
         auto& prior = sc.prior.emplace();
         prior.mean  = mrpt::poses::CPose3D::FromXYZYawPitchRoll(
-            2.0, 3.0, 4.0, 10.0_deg, 10.0_deg, 10.0_deg);
+             2.0, 3.0, 4.0, 10.0_deg, 10.0_deg, 10.0_deg);
         prior.cov_inv.fill(0);
 
         mrpt::poses::CPose3D      expected;
@@ -73,7 +73,8 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
             case 0:
                 sc.prior.reset();  // no prior. Delete it
                 expected = groundTruth;
-                checkFn  = [&]() {
+                checkFn  = [&]()
+                {
                     ASSERT_NEAR_(
                         mrpt::poses::Lie::SE<3>::log(
                             result.optimalPose - expected)
@@ -84,7 +85,8 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
             case 1:
                 expected = prior.mean;
                 for (int i = 0; i < 3; i++) prior.cov_inv(i, i) = 100.0;
-                checkFn = [&]() {
+                checkFn = [&]()
+                {
                     for (int i = 0; i < 3; i++)
                         ASSERT_NEAR_(
                             result.optimalPose[i], prior.mean[i], 0.05);
@@ -93,7 +95,8 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
             case 2:
                 expected = prior.mean;
                 for (int i = 3; i < 6; i++) prior.cov_inv(i, i) = 100.0;
-                checkFn = [&]() {
+                checkFn = [&]()
+                {
                     for (int i = 3; i < 6; i++)
                         ASSERT_NEAR_(
                             result.optimalPose[i], prior.mean[i], 0.05);

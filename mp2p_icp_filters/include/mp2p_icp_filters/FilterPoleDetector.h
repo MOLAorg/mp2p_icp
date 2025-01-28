@@ -57,7 +57,7 @@ class FilterPoleDetector : public mp2p_icp_filters::FilterBase
         float minimum_relative_height = 2.5f;
         float maximum_relative_height = 25.0f;
 
-        uint32_t minimum_pole_points = 5;
+        uint32_t minimum_pole_points              = 5;
         uint32_t minimum_neighbors_checks_to_pass = 3;
     };
 
