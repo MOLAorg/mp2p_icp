@@ -2,6 +2,14 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Add GitHub actions
+* Add pole-detector filter
+* mm-filter app: add --load-plugins flag too
+* Add sanity check assert in FilterDeskew
+* Contributors: Jose Luis Blanco-Claraco
+
 1.6.4 (2024-12-18)
 ------------------
 * merge two docs pages in one to shorten the docs TOC
