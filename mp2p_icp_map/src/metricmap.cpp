@@ -507,11 +507,16 @@ std::string metric_map_t::contents_summary() const
     if (label) ret += "label='"s + *label + "' "s;
 
     if (georeferencing)
-        ret += "georeferenced: lat="s +
-               georeferencing->geo_coord.lat.getAsString() + " lon="s +
-               georeferencing->geo_coord.lon.getAsString() + " h="s +
-               std::to_string(georeferencing->geo_coord.height) +
-               " T_enu_map="s + georeferencing->T_enu_to_map.asString();
+    {
+        const auto& gc = georeferencing->geo_coord;
+        ret += "georeferenced: "s + "lat="s + gc.lat.getAsString() + " lon="s +
+               gc.lon.getAsString() +
+               mrpt::format(
+                   " (%.09f  %.09f) ", gc.lat.getDecimalValue(),
+                   gc.lon.getDecimalValue()) +
+               " h="s + std::to_string(gc.height) + " T_enu_map="s +
+               georeferencing->T_enu_to_map.asString();
+    }
 
     if (empty()) return {ret + "empty"s};
 
