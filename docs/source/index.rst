@@ -17,7 +17,7 @@ How to cite it
 
 `mp2p_icp <https://github.com/MOLAorg/mp2p_icp>`_ has been used in these papers:
 
-- The ``mola_lidar_odometry`` system, presented in :cite:`blanco2024mola_lo`.
+- The ``mola_lidar_odometry`` system, presented in :cite:`blanco2025mola_lo`.
 - Formerly, it was used in 2019 in :cite:`blanco2019modular`.
 
 .. _mp2p_icp-install:
