@@ -15,9 +15,10 @@ Applications
   :maxdepth: 2
   :caption: Handling metric maps:
 
-  app_mm-viewer
-  app_mm-filter
   app_mm-info
+  app_mm-filter
+  app_mm-georef
+  app_mm-viewer
   app_mm2txt
   app_txt2mm
 
