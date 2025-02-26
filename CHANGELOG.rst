@@ -2,6 +2,14 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Docs: add page for mm-georef
+* docs: Update 2025 paper citation
+* print metric_map_t as string: show lat/lon coordinates in a format directly compatible with Google Map searches.
+* New cli tool: mm-georef, to manipulate the geo-referencing metadata of metric map files
+* Contributors: Jose Luis Blanco-Claraco
+
 1.6.5 (2025-01-28)
 ------------------
 * Add GitHub actions
