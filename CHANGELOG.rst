@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.6 (2025-02-26)
+------------------
 * Docs: add page for mm-georef
 * docs: Update 2025 paper citation
 * print metric_map_t as string: show lat/lon coordinates in a format directly compatible with Google Map searches.
