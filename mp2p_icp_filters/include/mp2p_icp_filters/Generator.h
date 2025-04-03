@@ -93,8 +93,7 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
      */
     virtual bool process(
         const mrpt::obs::CObservation& input_raw, mp2p_icp::metric_map_t& inOut,
-        const std::optional<mrpt::poses::CPose3D>& robotPose =
-            std::nullopt) const;
+        const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt) const;
 
     struct Parameters
     {
@@ -152,28 +151,23 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     // To be overrided in derived classes, if implemented:
     /** Process a 2D lidar scan. \return false if not implemented */
     virtual bool filterScan2D(
-        const mrpt::obs::CObservation2DRangeScan&  pc,
-        mp2p_icp::metric_map_t&                    out,
+        const mrpt::obs::CObservation2DRangeScan& pc, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose) const;
     /** Process a depth camera observation. \return false if not implemented */
     virtual bool filterScan3D(
-        const mrpt::obs::CObservation3DRangeScan&  pc,
-        mp2p_icp::metric_map_t&                    out,
+        const mrpt::obs::CObservation3DRangeScan& pc, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose) const;
     /** Process a 3D lidar scan. \return false if not implemented   */
     virtual bool filterVelodyneScan(
-        const mrpt::obs::CObservationVelodyneScan& pc,
-        mp2p_icp::metric_map_t&                    out,
+        const mrpt::obs::CObservationVelodyneScan& pc, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose) const;
     /** Process a 2D/3D point-cloud. \return false if not implemented  */
     virtual bool filterPointCloud(
-        const mrpt::maps::CPointsMap& pc,
-        const mrpt::poses::CPose3D& sensorPose, mp2p_icp::metric_map_t& out,
-        const std::optional<mrpt::poses::CPose3D>& robotPose) const;
+        const mrpt::maps::CPointsMap& pc, const mrpt::poses::CPose3D& sensorPose,
+        mp2p_icp::metric_map_t& out, const std::optional<mrpt::poses::CPose3D>& robotPose) const;
     /** Process a 3D lidar scan. \return false if not implemented   */
     virtual bool filterRotatingScan(
-        const mrpt::obs::CObservationRotatingScan& pc,
-        mp2p_icp::metric_map_t&                    out,
+        const mrpt::obs::CObservationRotatingScan& pc, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose) const;
 
     bool       initialized_ = false;
@@ -183,13 +177,11 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
    private:
     bool implProcessDefault(
         const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
-        const std::optional<mrpt::poses::CPose3D>& robotPose =
-            std::nullopt) const;
+        const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt) const;
 
     bool implProcessCustomMap(
         const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
-        const std::optional<mrpt::poses::CPose3D>& robotPose =
-            std::nullopt) const;
+        const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt) const;
 
     void internalLoadUserPlugin(const std::string& moduleToLoad) const;
 };

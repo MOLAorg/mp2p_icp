@@ -67,10 +67,9 @@ using namespace mp2p_icp;
 
 // Returns false if the number of pairings is not >=3
 static bool se3_l2_internal(
-    const mp2p_icp::Pairings& in, const WeightParameters& wp,
-    const mrpt::math::TPoint3D& ct_local, const mrpt::math::TPoint3D& ct_global,
-    mrpt::math::CQuaternionDouble& out_attitude,
-    OutlierIndices&                in_out_outliers)
+    const mp2p_icp::Pairings& in, const WeightParameters& wp, const mrpt::math::TPoint3D& ct_local,
+    const mrpt::math::TPoint3D& ct_global, mrpt::math::CQuaternionDouble& out_attitude,
+    OutlierIndices& in_out_outliers)
 {
     MRPT_START
 
@@ -81,10 +80,8 @@ static bool se3_l2_internal(
     const auto nLn2Ln = in.paired_ln2ln.size();
     const auto nPl2Pl = in.paired_pl2pl.size();
 
-    ASSERTMSG_(
-        nPt2Ln == 0, "This solver cannot handle point-to-line pairings.");
-    ASSERTMSG_(
-        nPt2Pl == 0, "This solver cannot handle point-to-plane pairings yet.");
+    ASSERTMSG_(nPt2Ln == 0, "This solver cannot handle point-to-line pairings.");
+    ASSERTMSG_(nPt2Pl == 0, "This solver cannot handle point-to-plane pairings yet.");
     const auto nAllMatches = nPt2Pt + nLn2Ln + nPl2Pl;
 
     // Horn method needs at least 3 references
@@ -93,9 +90,8 @@ static bool se3_l2_internal(
     auto S = mrpt::math::CMatrixDouble33::Zero();
 
     // Lambda: process each pairing:
-    auto lambda_each_pair = [&](const mrpt::math::TVector3D& bi,
-                                const mrpt::math::TVector3D& ri,
-                                const double                 wi)
+    auto lambda_each_pair =
+        [&](const mrpt::math::TVector3D& bi, const mrpt::math::TVector3D& ri, const double wi)
     {
         // These vectors are already direction vectors, or the
         // centroids-centered relative positions of points. Compute the S matrix
@@ -122,8 +118,7 @@ static bool se3_l2_internal(
     visit_correspondences(
         in, wp, ct_local, ct_global, in_out_outliers /*in/out*/,
         // Operations to run on pairs:
-        lambda_each_pair, lambda_final,
-        false /* do not make unit point vectors for Horn */);
+        lambda_each_pair, lambda_final, false /* do not make unit point vectors for Horn */);
 
     // Construct the N matrix
     auto N = mrpt::math::CMatrixDouble44::Zero();
@@ -156,10 +151,7 @@ static bool se3_l2_internal(
 
     auto v = Z.blockCopy<4, 1>(0, 3);
 
-    ASSERTDEB_(
-        fabs(
-            sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2] + v[3] * v[3]) - 1.0) <
-        0.1);
+    ASSERTDEB_(fabs(sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2] + v[3] * v[3]) - 1.0) < 0.1);
 
     // Make q_r > 0
     if (v[0] < 0)
@@ -199,8 +191,7 @@ static bool se3_l2_internal(
 }
 
 bool mp2p_icp::optimal_tf_horn(
-    const mp2p_icp::Pairings& in, const WeightParameters& wp,
-    OptimalTF_Result& result)
+    const mp2p_icp::Pairings& in, const WeightParameters& wp, OptimalTF_Result& result)
 {
     MRPT_START
 
@@ -213,31 +204,25 @@ bool mp2p_icp::optimal_tf_horn(
     ASSERT_(wp.pair_weights.pl2pl >= .0);
 
     // Compute the centroids:
-    auto [ct_local, ct_global] =
-        eval_centroids_robust(in, result.outliers /* in: empty for now  */);
+    auto [ct_local, ct_global] = eval_centroids_robust(in, result.outliers /* in: empty for now */);
 
     mrpt::math::CQuaternionDouble optimal_q;
 
     // Build the linear system & solves for optimal quaternion:
-    if (!se3_l2_internal(
-            in, wp, ct_local, ct_global, optimal_q,
-            result.outliers /* in/out */))
+    if (!se3_l2_internal(in, wp, ct_local, ct_global, optimal_q, result.outliers /* in/out */))
         return false;
 
     // Re-evaluate the centroids, now that we have a guess on outliers.
     if (wp.use_scale_outlier_detector && !result.outliers.empty())
     {
         // Re-evaluate the centroids:
-        const auto [new_ct_local, new_ct_global] =
-            eval_centroids_robust(in, result.outliers);
+        const auto [new_ct_local, new_ct_global] = eval_centroids_robust(in, result.outliers);
 
         ct_local  = new_ct_local;
         ct_global = new_ct_global;
 
         // And rebuild the linear system with the new values:
-        if (!se3_l2_internal(
-                in, wp, ct_local, ct_global, optimal_q,
-                result.outliers /* in/out */))
+        if (!se3_l2_internal(in, wp, ct_local, ct_global, optimal_q, result.outliers /* in/out */))
             return false;
     }
 
@@ -246,8 +231,7 @@ bool mp2p_icp::optimal_tf_horn(
 
     // Use centroids to solve for optimal translation:
     mrpt::math::TPoint3D pp;
-    result.optimalPose.composePoint(
-        ct_local.x, ct_local.y, ct_local.z, pp.x, pp.y, pp.z);
+    result.optimalPose.composePoint(ct_local.x, ct_local.y, ct_local.z, pp.x, pp.y, pp.z);
     // Scale, if used, was: pp *= s;
 
     result.optimalPose.x(ct_global.x - pp.x);

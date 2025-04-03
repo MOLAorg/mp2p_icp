@@ -26,8 +26,7 @@
 using namespace mp2p_icp;
 
 bool mp2p_icp::optimal_tf_gauss_newton(
-    const Pairings& in, OptimalTF_Result& result,
-    const OptimalTF_GN_Parameters& gnParams)
+    const Pairings& in, OptimalTF_Result& result, const OptimalTF_GN_Parameters& gnParams)
 {
     using std::size_t;
 
@@ -36,8 +35,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     // Run Gauss-Newton steps, using SE(3) relinearization at the current
     // solution:
     ASSERTMSG_(
-        gnParams.linearizationPoint.has_value(),
-        "This method requires a linearization point");
+        gnParams.linearizationPoint.has_value(), "This method requires a linearization point");
 
     result.optimalPose = gnParams.linearizationPoint.value();
 
@@ -64,8 +62,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     for (size_t iter = 0; iter < gnParams.maxInnerLoopIterations; iter++)
     {
         // (12x6 Jacobian)
-        const auto dDexpe_de =
-            mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(result.optimalPose);
+        const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(result.optimalPose);
 
         double errNormSqr = 0;
 
@@ -103,7 +100,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 for (size_t idx_pt = r.begin(); idx_pt < r.end(); idx_pt++)
                 {
                     // Error:
-                    const auto& p = in.paired_pt2pt[idx_pt];
+                    const auto&                             p = in.paired_pt2pt[idx_pt];
                     mrpt::math::CMatrixFixed<double, 3, 12> J1;
                     mrpt::math::CVectorFixedDouble<3>       ret =
                         mp2p_icp::error_point2point(p, result.optimalPose, J1);
@@ -111,12 +108,9 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     // Get point weight:
                     if (has_per_pt_weight)
                     {
-                        if (idx_pt >= cur_point_block_start +
-                                          cur_point_block_weights->first)
+                        if (idx_pt >= cur_point_block_start + cur_point_block_weights->first)
                         {
-                            ASSERT_(
-                                cur_point_block_weights !=
-                                in.point_weights.end());
+                            ASSERT_(cur_point_block_weights != in.point_weights.end());
                             ++cur_point_block_weights;  // move to next block
                             cur_point_block_start = idx_pt;
                         }
@@ -124,17 +118,14 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     }
 
                     // Apply robust kernel?
-                    double weight     = w.pt2pt,
-                           retSqrNorm = ret.asEigen().squaredNorm();
-                    if (robustSqrtWeightFunc)
-                        weight *= robustSqrtWeightFunc(retSqrNorm);
+                    double weight = w.pt2pt, retSqrNorm = ret.asEigen().squaredNorm();
+                    if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
                     errNormSqr += weight * retSqrNorm;
 
-                    const Eigen::Matrix<double, 3, 6> Ji =
-                        J1.asEigen() * dDexpe_de.asEigen();
+                    const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
                     g_local.noalias() += weight * Ji.transpose() * err_i;
                     H_local.noalias() += weight * Ji.transpose() * Ji;
                 }
@@ -158,8 +149,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             // Get point weight:
             if (has_per_pt_weight)
             {
-                if (idx_pt >=
-                    cur_point_block_start + cur_point_block_weights->first)
+                if (idx_pt >= cur_point_block_start + cur_point_block_weights->first)
                 {
                     ASSERT_(cur_point_block_weights != in.point_weights.end());
                     ++cur_point_block_weights;  // move to next block
@@ -170,15 +160,13 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.pt2pt, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
             errNormSqr += weight * retSqrNorm;
 
-            const Eigen::Matrix<double, 3, 6> Ji =
-                J1.asEigen() * dDexpe_de.asEigen();
+            const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
             H.noalias() += weight * Ji.transpose() * Ji;
         }
@@ -195,15 +183,13 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.pt2ln, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
             errNormSqr += weight * weight * retSqrNorm;
 
-            const Eigen::Matrix<double, 3, 6> Ji =
-                J1.asEigen() * dDexpe_de.asEigen();
+            const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
             H.noalias() += weight * Ji.transpose() * Ji;
         }
@@ -219,15 +205,13 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.ln2ln, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector4d err_i = ret.asEigen();
             errNormSqr += weight * weight * retSqrNorm;
 
-            const Eigen::Matrix<double, 4, 6> Ji =
-                J1.asEigen() * dDexpe_de.asEigen();
+            const Eigen::Matrix<double, 4, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
             H.noalias() += weight * Ji.transpose() * Ji;
         }
@@ -246,23 +230,20 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 for (size_t idx_pl = r.begin(); idx_pl < r.end(); idx_pl++)
                 {
                     // Error:
-                    const auto& p = in.paired_pt2pl[idx_pl];
+                    const auto&                             p = in.paired_pt2pl[idx_pl];
                     mrpt::math::CMatrixFixed<double, 3, 12> J1;
                     mrpt::math::CVectorFixedDouble<3>       ret =
                         mp2p_icp::error_point2plane(p, result.optimalPose, J1);
 
                     // Apply robust kernel?
-                    double weight     = w.pt2pl,
-                           retSqrNorm = ret.asEigen().squaredNorm();
-                    if (robustSqrtWeightFunc)
-                        weight *= robustSqrtWeightFunc(retSqrNorm);
+                    double weight = w.pt2pl, retSqrNorm = ret.asEigen().squaredNorm();
+                    if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
                     errNormSqr += weight * retSqrNorm;
 
-                    const Eigen::Matrix<double, 3, 6> Ji =
-                        J1.asEigen() * dDexpe_de.asEigen();
+                    const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
                     g_local.noalias() += weight * Ji.transpose() * err_i;
                     H_local.noalias() += weight * Ji.transpose() * Ji;
                 }
@@ -285,15 +266,13 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.pt2pl, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
             errNormSqr += weight * weight * retSqrNorm;
 
-            const Eigen::Matrix<double, 3, 6> Ji =
-                J1.asEigen() * dDexpe_de.asEigen();
+            const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
             H.noalias() += weight * Ji.transpose() * Ji;
         }
@@ -310,14 +289,12 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.pl2pl, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
 
             const Eigen::Vector3d err_i = ret.asEigen();
             errNormSqr += weight * weight * retSqrNorm;
 
-            const Eigen::Matrix<double, 3, 6> Ji =
-                J1.asEigen() * dDexpe_de.asEigen();
+            const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
             H.noalias() += weight * Ji.transpose() * Ji;
         }
@@ -334,7 +311,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             //             = (P_current \ominus P_prior)
 
             const mrpt::poses::CPose3D P1invP2 = result.optimalPose - priorMean;
-            const auto err_i = mrpt::poses::Lie::SE<3>::log(P1invP2);
+            const auto                 err_i   = mrpt::poses::Lie::SE<3>::log(P1invP2);
 
             mrpt::math::CMatrixDouble66 df_de2;
 
@@ -350,11 +327,9 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 // df_de2
                 df_de2);
 
-            g.noalias() +=
-                (df_de2.transpose() * priorInf.asEigen()) * err_i.asEigen();
+            g.noalias() += (df_de2.transpose() * priorInf.asEigen()) * err_i.asEigen();
 
-            H.noalias() +=
-                (df_de2.transpose() * priorInf.asEigen()) * df_de2.asEigen();
+            H.noalias() += (df_de2.transpose() * priorInf.asEigen()) * df_de2.asEigen();
         }
 
         // Target error?
@@ -368,8 +343,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         const Eigen::Matrix<double, 6, 1> delta = -H.ldlt().solve(g);
 
         // 4) add SE(3) increment:
-        const auto dE = mrpt::poses::Lie::SE<3>::exp(
-            mrpt::math::CVectorFixed<double, 6>(delta));
+        const auto dE = mrpt::poses::Lie::SE<3>::exp(mrpt::math::CVectorFixed<double, 6>(delta));
 
         result.optimalPose = result.optimalPose + dE;
 

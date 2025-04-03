@@ -56,9 +56,7 @@ struct point_line_pair_t
     mrpt::math::TPoint3D pt_local;
 
     point_line_pair_t() = default;
-    point_line_pair_t(
-        const mrpt::math::TLine3D&  l_global,
-        const mrpt::math::TPoint3D& p_local)
+    point_line_pair_t(const mrpt::math::TLine3D& l_global, const mrpt::math::TPoint3D& p_local)
         : ln_global(l_global), pt_local(p_local)
     {
     }
@@ -110,9 +108,8 @@ struct Pairings
 
     virtual bool empty() const
     {
-        return paired_pt2pt.empty() && paired_pl2pl.empty() &&
-               paired_ln2ln.empty() && paired_pt2ln.empty() &&
-               paired_pt2pl.empty();
+        return paired_pt2pt.empty() && paired_pl2pl.empty() && paired_ln2ln.empty() &&
+               paired_pt2ln.empty() && paired_pt2pl.empty();
     }
 
     /** Overall number of element-to-element pairings (points, lines, planes) */
@@ -146,31 +143,26 @@ struct Pairings
 
     /** Used inside get_visualization(), renders pt-to-pt pairings only. */
     virtual void get_visualization_pt2pt(
-        mrpt::opengl::CSetOfObjects&          o,
-        const mrpt::poses::CPose3D&           localWrtGlobal,
+        mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
         const render_params_pairings_pt2pt_t& p) const;
 
     /** Used inside get_visualization(), renders pt-to-pl pairings only. */
     virtual void get_visualization_pt2pl(
-        mrpt::opengl::CSetOfObjects&          o,
-        const mrpt::poses::CPose3D&           localWrtGlobal,
+        mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
         const render_params_pairings_pt2pl_t& p) const;
 
     /** Used inside get_visualization(), renders pt-to-ln pairings only. */
     virtual void get_visualization_pt2ln(
-        mrpt::opengl::CSetOfObjects&          o,
-        const mrpt::poses::CPose3D&           localWrtGlobal,
+        mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
         const render_params_pairings_pt2ln_t& p) const;
 
     /** @} */
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::Pairings)
 };
 
-mrpt::serialization::CArchive& operator<<(
-    mrpt::serialization::CArchive& out, const Pairings& obj);
+mrpt::serialization::CArchive& operator<<(mrpt::serialization::CArchive& out, const Pairings& obj);
 
-mrpt::serialization::CArchive& operator>>(
-    mrpt::serialization::CArchive& in, Pairings& obj);
+mrpt::serialization::CArchive& operator>>(mrpt::serialization::CArchive& in, Pairings& obj);
 
 /** Vector of pairings that are considered outliers, from those in the
  * corresponding `Pairings` structure.

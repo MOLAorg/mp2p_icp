@@ -62,9 +62,7 @@ static void test_opt_pt2ln(const mrpt::poses::CPose3D& groundTruth)
     std::cout << "Found    optimalPose: " << result.optimalPose << std::endl;
     std::cout << "Expected optimalPose: " << groundTruth << std::endl;
 
-    ASSERT_NEAR_(
-        mrpt::poses::Lie::SE<3>::log(result.optimalPose - groundTruth).norm(),
-        0.0, 1e-3);
+    ASSERT_NEAR_(mrpt::poses::Lie::SE<3>::log(result.optimalPose - groundTruth).norm(), 0.0, 1e-3);
 
     // check results:
     ASSERT_(solvedOk);
@@ -99,8 +97,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_opt_pt2ln(CPose3D::FromYawPitchRoll(0.0_deg, 0.0_deg, -15.0_deg));
 
         test_opt_pt2ln(CPose3D::FromTranslation(1.0, 2.0, 3.0));
-        test_opt_pt2ln(CPose3D::FromXYZYawPitchRoll(
-            1.0, 2.0, 3.0, -10.0_deg, 5.0_deg, 30.0_deg));
+        test_opt_pt2ln(CPose3D::FromXYZYawPitchRoll(1.0, 2.0, 3.0, -10.0_deg, 5.0_deg, 30.0_deg));
     }
     catch (std::exception& e)
     {

@@ -40,8 +40,7 @@ class NearestPlaneCapable
     };
 
     virtual NearestPlaneResult nn_search_pt2pl(
-        const mrpt::math::TPoint3Df& point,
-        const float                  max_search_distance) const = 0;
+        const mrpt::math::TPoint3Df& point, const float max_search_distance) const = 0;
 };
 
 /** @} */

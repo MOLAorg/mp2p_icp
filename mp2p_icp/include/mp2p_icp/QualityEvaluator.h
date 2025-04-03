@@ -52,8 +52,7 @@ class QualityEvaluator : public mrpt::system::COutputLogger,
     /** Finds correspondences between the two point clouds. */
     virtual Result evaluate(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-        const mrpt::poses::CPose3D& localPose,
-        const Pairings&             pairingsFromICP) const = 0;
+        const mrpt::poses::CPose3D& localPose, const Pairings& pairingsFromICP) const = 0;
 };
 
 }  // namespace mp2p_icp

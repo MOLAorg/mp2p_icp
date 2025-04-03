@@ -26,15 +26,13 @@ void Solver::initialize(const mrpt::containers::yaml& params)
 }
 
 bool Solver::optimal_pose(
-    const Pairings& pairings, OptimalTF_Result& out,
-    const SolverContext& sc) const
+    const Pairings& pairings, OptimalTF_Result& out, const SolverContext& sc) const
 {
     if (!enabled) return false;
 
     const auto iter = sc.icpIteration;
     if (iter.has_value() && *iter < runFromIteration) return false;
-    if (iter.has_value() && runUpToIteration > 0 && *iter > runUpToIteration)
-        return false;
+    if (iter.has_value() && runUpToIteration > 0 && *iter > runUpToIteration) return false;
 
     if (runUntilTranslationCorrectionSmallerThan > 0)
     {
@@ -43,9 +41,8 @@ bool Solver::optimal_pose(
         if (myData.count("finished") != 0) return false;
 
         // Detect threshold:
-        if (sc.lastIcpStepIncrement &&
-            sc.lastIcpStepIncrement.value().translation().norm() <
-                runUntilTranslationCorrectionSmallerThan)
+        if (sc.lastIcpStepIncrement && sc.lastIcpStepIncrement.value().translation().norm() <
+                                           runUntilTranslationCorrectionSmallerThan)
         {
             // Yes, stop using this solver.
             // Store  the condition and quit.

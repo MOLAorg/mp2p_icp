@@ -15,13 +15,11 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterEdgesPlanes, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterEdgesPlanes, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
-void FilterEdgesPlanes::Parameters::load_from_yaml(
-    const mrpt::containers::yaml& c)
+void FilterEdgesPlanes::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_OPT(c, input_pointcloud_layer);
 
@@ -56,9 +54,9 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     // In:
     const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
-        pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.input_pointcloud_layer.c_str()));
+        pcPtr,
+        mrpt::format(
+            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
@@ -94,8 +92,7 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     std::size_t nEdgeVoxels = 0, nPlaneVoxels = 0, nTotalVoxels = 0;
 
     filter_grid_.visit_voxels(
-        [&](const PointCloudToVoxelGrid::indices_t&,
-            const PointCloudToVoxelGrid::voxel_t& vxl)
+        [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& vxl)
         {
             if (!vxl.indices.empty()) nTotalVoxels++;
             if (vxl.indices.size() < 5) return;
@@ -120,8 +117,7 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
             {
                 const auto                  pt_idx = vxl.indices[i];
                 const mrpt::math::TPoint3Df a(
-                    xs[pt_idx] - mean.x, ys[pt_idx] - mean.y,
-                    zs[pt_idx] - mean.z);
+                    xs[pt_idx] - mean.x, ys[pt_idx] - mean.y, zs[pt_idx] - mean.z);
                 mat_a(0, 0) += a.x * a.x;
                 mat_a(1, 0) += a.x * a.y;
                 mat_a(2, 0) += a.x * a.z;
@@ -157,9 +153,8 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
                 const auto pl_c = mrpt::math::TPoint3D(mean);
 
                 // Normal = largest eigenvector:
-                const auto ev0 =
-                    eig_vectors.extractColumn<mrpt::math::TVector3D>(0);
-                auto pl_n = mrpt::math::TVector3D(ev0.x, ev0.y, ev0.z);
+                const auto ev0  = eig_vectors.extractColumn<mrpt::math::TVector3D>(0);
+                auto       pl_n = mrpt::math::TVector3D(ev0.x, ev0.y, ev0.z);
 
                 // Normal direction criterion: make it to face towards the
                 // vehicle. We can use the dot product to find it out, since
@@ -167,9 +162,8 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
                 {
                     // Unit vector: vehicle -> plane centroid:
                     ASSERT_GT_(pl_c.norm(), 1e-3);
-                    const auto u = pl_c * (1.0 / pl_c.norm());
-                    const auto dot_prod =
-                        mrpt::math::dotProduct<3, double>(u, pl_n);
+                    const auto u        = pl_c * (1.0 / pl_c.norm());
+                    const auto dot_prod = mrpt::math::dotProduct<3, double>(u, pl_n);
 
                     // It should be <0 if the normal is pointing to the vehicle.
                     // Otherwise, reverse the normal.
@@ -190,8 +184,7 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
             }
             if (dest != nullptr)
             {
-                for (size_t i = 0; i < vxl.indices.size();
-                     i += params_.voxel_filter_decimation)
+                for (size_t i = 0; i < vxl.indices.size(); i += params_.voxel_filter_decimation)
                 {
                     const auto pt_idx = vxl.indices[i];
                     dest->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
@@ -200,19 +193,16 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
             // full_pointcloud_decimation=0 means dont use this layer
             if (params_.full_pointcloud_decimation > 0)
             {
-                for (size_t i = 0; i < vxl.indices.size();
-                     i += params_.full_pointcloud_decimation)
+                for (size_t i = 0; i < vxl.indices.size(); i += params_.full_pointcloud_decimation)
                 {
                     const auto pt_idx = vxl.indices[i];
-                    pc_full_decim->insertPointFast(
-                        xs[pt_idx], ys[pt_idx], zs[pt_idx]);
+                    pc_full_decim->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
                 }
             }
         });
 
     MRPT_LOG_DEBUG_STREAM(
-        "[VoxelGridFilter] Voxel counts: total=" << nTotalVoxels
-                                                 << " edges=" << nEdgeVoxels
+        "[VoxelGridFilter] Voxel counts: total=" << nTotalVoxels << " edges=" << nEdgeVoxels
                                                  << " planes=" << nPlaneVoxels);
 
     MRPT_END

@@ -15,8 +15,7 @@
 
 #include <optional>
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterAdjustTimestamps, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterAdjustTimestamps, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
@@ -54,9 +53,9 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
     // In/out:
     auto pcPtr = inOut.point_layer(params_.pointcloud_layer);
     ASSERTMSG_(
-        pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.pointcloud_layer.c_str()));
+        pcPtr,
+        mrpt::format(
+            "Input point cloud layer '%s' was not found.", params_.pointcloud_layer.c_str()));
 
     auto& pc = *pcPtr;
 
@@ -68,9 +67,9 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
         if (params_.silently_ignore_no_timestamps)
         {
             MRPT_LOG_DEBUG_STREAM(
-                "Skipping time adjusting in input cloud '"
-                << params_.pointcloud_layer << "' with contents: "
-                << pc.asString() << " due to missing timestamps.");
+                "Skipping time adjusting in input cloud '" << params_.pointcloud_layer
+                                                           << "' with contents: " << pc.asString()
+                                                           << " due to missing timestamps.");
             return;
         }
         else

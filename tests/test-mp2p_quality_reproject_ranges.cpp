@@ -28,8 +28,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const auto inFile = std::string("happy_buddha_decim.xyz.gz");
 
         const auto                        fileFullPath = datasetDir + inFile;
-        mrpt::maps::CSimplePointsMap::Ptr pts =
-            mp2p_icp::load_xyz_file(fileFullPath);
+        mrpt::maps::CSimplePointsMap::Ptr pts          = mp2p_icp::load_xyz_file(fileFullPath);
 
         mrpt::containers::yaml params;
 
@@ -54,16 +53,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         }
 
         // Pairs: ground-truth transformation (xyz yaw pitch roll) + test pose:
-        std::vector<
-            std::tuple<mrpt::poses::CPose3D, mrpt::poses::CPose3D, double>>
-            testPairs = {
-                // #1:
-                {{.0, .0, .0, .0, .0, .0}, {.0, .0, .0, .0, .0, .0}, 1.0},
-                // #1:
-                {{1.0, 1.0, .0, .0, .0, .0}, {1.0, 1.0, .0, .0, .0, .0}, 1.0},
-                // #2:
-                {{.1, .1, .2, .0, .0, .0}, {.101, .1, .2, .0, .0, .0}, 0.93},
-            };
+        std::vector<std::tuple<mrpt::poses::CPose3D, mrpt::poses::CPose3D, double>> testPairs = {
+            // #1:
+            {{.0, .0, .0, .0, .0, .0}, {.0, .0, .0, .0, .0, .0}, 1.0},
+            // #1:
+            {{1.0, 1.0, .0, .0, .0, .0}, {1.0, 1.0, .0, .0, .0, .0}, 1.0},
+            // #2:
+            {{.1, .1, .2, .0, .0, .0}, {.101, .1, .2, .0, .0, .0}, 0.93},
+        };
 
         // Test 1: quality for identity pose:
         for (const auto& p : testPairs)

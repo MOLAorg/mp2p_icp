@@ -21,10 +21,7 @@ struct PointCloudToVoxelGridSingle::Impl
     tsl::robin_map<indices_t, voxel_t, IndicesHash> pts_voxels;
 };
 
-PointCloudToVoxelGridSingle::PointCloudToVoxelGridSingle()
-    : impl_(mrpt::make_impl<Impl>())
-{
-}
+PointCloudToVoxelGridSingle::PointCloudToVoxelGridSingle() : impl_(mrpt::make_impl<Impl>()) {}
 
 void PointCloudToVoxelGridSingle::setResolution(const float voxel_size)
 {
@@ -36,8 +33,7 @@ void PointCloudToVoxelGridSingle::setResolution(const float voxel_size)
     MRPT_END
 }
 
-void PointCloudToVoxelGridSingle::processPointCloud(
-    const mrpt::maps::CPointsMap& p)
+void PointCloudToVoxelGridSingle::processPointCloud(const mrpt::maps::CPointsMap& p)
 {
     using mrpt::max3;
     using std::abs;
@@ -87,13 +83,9 @@ void PointCloudToVoxelGridSingle::clear()
 }
 
 void PointCloudToVoxelGridSingle::visit_voxels(
-    const std::function<void(const indices_t idx, const voxel_t& vxl)>&
-        userCode) const
+    const std::function<void(const indices_t idx, const voxel_t& vxl)>& userCode) const
 {
     for (const auto& [idx, vxl] : impl_->pts_voxels) userCode(idx, vxl);
 }
 
-size_t PointCloudToVoxelGridSingle::size() const
-{
-    return impl_->pts_voxels.size();
-}
+size_t PointCloudToVoxelGridSingle::size() const { return impl_->pts_voxels.size(); }

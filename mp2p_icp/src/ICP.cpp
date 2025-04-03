@@ -26,8 +26,7 @@ using namespace mp2p_icp;
 
 void ICP::align(
     const metric_map_t& pcLocal, const metric_map_t& pcGlobal,
-    const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p,
-    Results&                                                 result,
+    const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p, Results& result,
     const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior,
     const mrpt::optional_ref<LogRecord>&                     outputDebugInfo)
 {
@@ -57,14 +56,13 @@ void ICP::align(
     // Prepare output debug records:
     std::optional<LogRecord> currentLog;
 
-    const bool generateDebugRecord =
-        outputDebugInfo.has_value() || p.generateDebugFiles;
+    const bool generateDebugRecord = outputDebugInfo.has_value() || p.generateDebugFiles;
 
     if (generateDebugRecord)
     {
         currentLog.emplace();
-        currentLog->pcGlobal = pcGlobal.get_shared_from_this_or_clone();
-        currentLog->pcLocal  = pcLocal.get_shared_from_this_or_clone();
+        currentLog->pcGlobal                   = pcGlobal.get_shared_from_this_or_clone();
+        currentLog->pcLocal                    = pcLocal.get_shared_from_this_or_clone();
         currentLog->initialGuessLocalWrtGlobal = initialGuessLocalWrtGlobal;
         currentLog->icpParameters              = p;
     }
@@ -107,14 +105,13 @@ void ICP::align(
 
     state.currentSolution.optimalPose = initGuess;
 
-    mrpt::poses::CPose3D prev_solution = state.currentSolution.optimalPose;
+    mrpt::poses::CPose3D                prev_solution = state.currentSolution.optimalPose;
     std::optional<mrpt::poses::CPose3D> prev2_solution;  // 2 steps ago
     std::optional<mrpt::poses::CPose3D> lastCorrection;
     SolverContext                       sc;
     sc.prior = prior;
 
-    for (result.nIterations = 0; result.nIterations < p.maxIterations;
-         result.nIterations++)
+    for (result.nIterations = 0; result.nIterations < p.maxIterations; result.nIterations++)
     {
         mrpt::system::CTimeLoggerEntry tle3(profiler_, "align.3_iter");
 
@@ -135,8 +132,7 @@ void ICP::align(
         mrpt::system::CTimeLoggerEntry tle4(profiler_, "align.3.1_matchers");
 
         state.currentPairings = run_matchers(
-            matchers_, state.pcGlobal, state.pcLocal,
-            state.currentSolution.optimalPose, mc);
+            matchers_, state.pcGlobal, state.pcLocal, state.currentSolution.optimalPose, mc);
 
         tle4.stop();
 
@@ -158,13 +154,12 @@ void ICP::align(
 
         sc.icpIteration = state.currentIteration;
         sc.guessRelativePose.emplace(state.currentSolution.optimalPose);
-        sc.currentCorrectionFromInitialGuess =
-            state.currentSolution.optimalPose - initGuess;
-        sc.lastIcpStepIncrement = lastCorrection;
+        sc.currentCorrectionFromInitialGuess = state.currentSolution.optimalPose - initGuess;
+        sc.lastIcpStepIncrement              = lastCorrection;
 
         // Compute the optimal pose:
-        const bool solvedOk = run_solvers(
-            solvers_, state.currentPairings, state.currentSolution, sc);
+        const bool solvedOk =
+            run_solvers(solvers_, state.currentPairings, state.currentSolution, sc);
 
         tle5.stop();
 
@@ -181,17 +176,15 @@ void ICP::align(
         }
 
         // Updated solution is already in "state.currentSolution".
-        mrpt::system::CTimeLoggerEntry tle6(
-            profiler_, "align.3.3_end_criterions");
+        mrpt::system::CTimeLoggerEntry tle6(profiler_, "align.3.3_end_criterions");
 
         // Termination criterion: small delta:
-        auto lambdaCalcIncrs = [](const mrpt::poses::CPose3D& deltaSol)
-            -> std::tuple<double, double>
+        auto lambdaCalcIncrs =
+            [](const mrpt::poses::CPose3D& deltaSol) -> std::tuple<double, double>
         {
-            const mrpt::math::CVectorFixed<double, 6> dSol =
-                mrpt::poses::Lie::SE<3>::log(deltaSol);
-            const double delta_xyz = dSol.blockCopy<3, 1>(0, 0).norm();
-            const double delta_rot = dSol.blockCopy<3, 1>(3, 0).norm();
+            const mrpt::math::CVectorFixed<double, 6> dSol = mrpt::poses::Lie::SE<3>::log(deltaSol);
+            const double                              delta_xyz = dSol.blockCopy<3, 1>(0, 0).norm();
+            const double                              delta_rot = dSol.blockCopy<3, 1>(3, 0).norm();
             return {delta_xyz, delta_rot};
         };
 
@@ -205,8 +198,8 @@ void ICP::align(
 
         if (prev2_solution.has_value())
         {
-            auto [delta_xyz2, delta_rot2] = lambdaCalcIncrs(
-                state.currentSolution.optimalPose - *prev2_solution);
+            auto [delta_xyz2, delta_rot2] =
+                lambdaCalcIncrs(state.currentSolution.optimalPose - *prev2_solution);
 
             mrpt::keep_min(delta_xyz, delta_xyz2);
             mrpt::keep_min(delta_rot, delta_rot2);
@@ -217,27 +210,23 @@ void ICP::align(
             printf(
                 "[ICP] Iter=%3u Δt=%9.02e, ΔR=%6.03f deg, "
                 "(xyzypr)=%s pairs=%s\n",
-                static_cast<unsigned int>(state.currentIteration),
-                std::abs(delta_xyz), mrpt::RAD2DEG(std::abs(delta_rot)),
+                static_cast<unsigned int>(state.currentIteration), std::abs(delta_xyz),
+                mrpt::RAD2DEG(std::abs(delta_rot)),
                 state.currentSolution.optimalPose.asString().c_str(),
                 state.currentPairings.contents_summary().c_str());
         }
 
         const bool stalled =
-            (std::abs(delta_xyz) < p.minAbsStep_trans &&
-             std::abs(delta_rot) < p.minAbsStep_rot);
+            (std::abs(delta_xyz) < p.minAbsStep_trans && std::abs(delta_rot) < p.minAbsStep_rot);
 
         // store partial solutions for logging/debuging?
         if (p.saveIterationDetails &&
             (p.decimationIterationDetails == 0 ||
-             state.currentIteration % p.decimationIterationDetails == 0 ||
-             stalled))
+             state.currentIteration % p.decimationIterationDetails == 0 || stalled))
         {
-            if (!currentLog->iterationsDetails.has_value())
-                currentLog->iterationsDetails.emplace();
+            if (!currentLog->iterationsDetails.has_value()) currentLog->iterationsDetails.emplace();
 
-            auto& id =
-                currentLog->iterationsDetails.value()[state.currentIteration];
+            auto& id       = currentLog->iterationsDetails.value()[state.currentIteration];
             id.optimalPose = state.currentSolution.optimalPose;
             id.pairings    = state.currentPairings;
         }
@@ -267,20 +256,18 @@ void ICP::align(
             lambdaRealizeParamSources();
 
             const double quality = evaluate_quality(
-                quality_evaluators_, pcGlobal, pcLocal,
-                state.currentSolution.optimalPose, state.currentPairings);
+                quality_evaluators_, pcGlobal, pcLocal, state.currentSolution.optimalPose,
+                state.currentPairings);
 
             if (quality < minQuality)
             {
-                result.terminationReason =
-                    IterTermReason::QualityCheckpointFailed;
+                result.terminationReason = IterTermReason::QualityCheckpointFailed;
                 if (p.debugPrintIterationProgress)
                 {
                     printf(
                         "[ICP] Iter=%3u quality checkpoint did not pass: %f < "
                         "%f\n",
-                        static_cast<unsigned int>(state.currentIteration),
-                        quality, minQuality);
+                        static_cast<unsigned int>(state.currentIteration), quality, minQuality);
                 }
                 break;  // abort ICP
             }
@@ -324,8 +311,8 @@ void ICP::align(
     lambdaRealizeParamSources();
 
     result.quality = evaluate_quality(
-        quality_evaluators_, pcGlobal, pcLocal,
-        state.currentSolution.optimalPose, state.currentPairings);
+        quality_evaluators_, pcGlobal, pcLocal, state.currentSolution.optimalPose,
+        state.currentPairings);
 
     tle7.stop();
 
@@ -337,8 +324,8 @@ void ICP::align(
     // Covariance:
     mp2p_icp::CovarianceParameters covParams;
 
-    result.optimal_tf.cov = mp2p_icp::covariance(
-        result.finalPairings, result.optimal_tf.mean, covParams);
+    result.optimal_tf.cov =
+        mp2p_icp::covariance(result.finalPairings, result.optimal_tf.mean, covParams);
 
     // ----------------------------
     // Log records
@@ -353,11 +340,8 @@ void ICP::align(
         // Store dynamic variables:
         if (!matchers().empty())
         {
-            currentLog->dynamicVariables = matchers()
-                                               .begin()
-                                               ->get()
-                                               ->attachedSource()
-                                               ->getVariableValues();
+            currentLog->dynamicVariables =
+                matchers().begin()->get()->attachedSource()->getVariableValues();
         }
 
         currentLog->icpResult = result;
@@ -403,8 +387,7 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
 
         RECORD_UNIQUE_ID = logFileCounter++;
 
-        if (p.decimationDebugFiles > 1 &&
-            (RECORD_UNIQUE_ID % p.decimationDebugFiles) != 0)
+        if (p.decimationDebugFiles > 1 && (RECORD_UNIQUE_ID % p.decimationDebugFiles) != 0)
             return;  // skip due to decimation
     }
 
@@ -413,41 +396,37 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$UNIQUE_ID";
         const auto        value = mrpt::format("%05u", RECORD_UNIQUE_ID);
-        filename = std::regex_replace(filename, std::regex(expr), value);
+        filename                = std::regex_replace(filename, std::regex(expr), value);
     }
 
     {
         const std::string expr  = "\\$GLOBAL_ID";
         const auto        value = mrpt::format(
-                   "%05u", static_cast<unsigned int>(
-                        (log.pcGlobal && log.pcGlobal->id.has_value())
-                                   ? log.pcGlobal->id.value()
-                                   : 0));
+                   "%05u",
+                   static_cast<unsigned int>(
+                (log.pcGlobal && log.pcGlobal->id.has_value()) ? log.pcGlobal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
 
     {
         const std::string expr = "\\$GLOBAL_LABEL";
-        const auto value = (log.pcGlobal && log.pcGlobal->label.has_value())
-                               ? log.pcGlobal->label.value()
-                               : ""s;
+        const auto        value =
+            (log.pcGlobal && log.pcGlobal->label.has_value()) ? log.pcGlobal->label.value() : ""s;
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
     {
         const std::string expr  = "\\$LOCAL_ID";
         const auto        value = mrpt::format(
-                   "%05u", static_cast<unsigned int>(
-                        (log.pcLocal && log.pcLocal->id.has_value())
-                                   ? log.pcLocal->id.value()
-                                   : 0));
+                   "%05u",
+                   static_cast<unsigned int>(
+                (log.pcLocal && log.pcLocal->id.has_value()) ? log.pcLocal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
 
     {
         const std::string expr = "\\$LOCAL_LABEL";
-        const auto value       = (log.pcLocal && log.pcLocal->label.has_value())
-                                     ? log.pcLocal->label.value()
-                                     : ""s;
+        const auto        value =
+            (log.pcLocal && log.pcLocal->label.has_value()) ? log.pcLocal->label.value() : ""s;
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
 
@@ -464,9 +443,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
         }
         else
         {
-            std::cerr
-                << "[ICP::save_log_file] Created output directory for logs: '"
-                << baseDir << "'" << std::endl;
+            std::cerr << "[ICP::save_log_file] Created output directory for logs: '" << baseDir
+                      << "'" << std::endl;
         }
     }
 
@@ -474,14 +452,14 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     const bool saveOk = log.save_to_file(filename);
     if (!saveOk)
     {
-        std::cerr << "[ICP::save_log_file] Could not save icp log file to '"
-                  << filename << "'" << std::endl;
+        std::cerr << "[ICP::save_log_file] Could not save icp log file to '" << filename << "'"
+                  << std::endl;
     }
 }
 
 bool ICP::run_solvers(
-    const solver_list_t& solvers, const Pairings& pairings,
-    OptimalTF_Result& out, const SolverContext& sc)
+    const solver_list_t& solvers, const Pairings& pairings, OptimalTF_Result& out,
+    const SolverContext& sc)
 {
     for (const auto& solver : solvers)
     {
@@ -496,8 +474,7 @@ void ICP::initialize_solvers(const mrpt::containers::yaml& params)
     initialize_solvers(params, solvers_);
 }
 
-void ICP::initialize_solvers(
-    const mrpt::containers::yaml& params, ICP::solver_list_t& lst)
+void ICP::initialize_solvers(const mrpt::containers::yaml& params, ICP::solver_list_t& lst)
 {
     lst.clear();
 
@@ -514,9 +491,7 @@ void ICP::initialize_solvers(
 
         auto m = std::dynamic_pointer_cast<Solver>(o);
         ASSERTMSG_(
-            m, mrpt::format(
-                   "`%s` class seems not to be derived from Solver",
-                   sClass.c_str()));
+            m, mrpt::format("`%s` class seems not to be derived from Solver", sClass.c_str()));
 
         m->initialize(e.at("params"));
         lst.push_back(m);
@@ -528,8 +503,7 @@ void ICP::initialize_matchers(const mrpt::containers::yaml& params)
     initialize_matchers(params, matchers_);
 }
 
-void ICP::initialize_matchers(
-    const mrpt::containers::yaml& params, matcher_list_t& lst)
+void ICP::initialize_matchers(const mrpt::containers::yaml& params, matcher_list_t& lst)
 {
     lst.clear();
 
@@ -546,9 +520,7 @@ void ICP::initialize_matchers(
 
         auto m = std::dynamic_pointer_cast<Matcher>(o);
         ASSERTMSG_(
-            m, mrpt::format(
-                   "`%s` class seems not to be derived from Matcher",
-                   sClass.c_str()));
+            m, mrpt::format("`%s` class seems not to be derived from Matcher", sClass.c_str()));
 
         m->initialize(e.at("params"));
         lst.push_back(m);
@@ -576,14 +548,12 @@ void ICP::initialize_quality_evaluators(
         auto m = std::dynamic_pointer_cast<QualityEvaluator>(o);
         ASSERTMSG_(
             m, mrpt::format(
-                   "`%s` class seems not to be derived from QualityEvaluator",
-                   sClass.c_str()));
+                   "`%s` class seems not to be derived from QualityEvaluator", sClass.c_str()));
 
         m->initialize(e.at("params"));
 
         double weight = 1.0;
-        if (numEntries > 0 && e.count("weight") > 0)
-            weight = e.at("weight").as<double>();
+        if (numEntries > 0 && e.count("weight") > 0) weight = e.at("weight").as<double>();
         lst.emplace_back(m, weight);
     }
 }
@@ -605,8 +575,7 @@ double ICP::evaluate_quality(
     {
         const double w = e.relativeWeight;
         ASSERT_GT_(w, 0);
-        const auto evalResult =
-            e.obj->evaluate(pcGlobal, pcLocal, localPose, finalPairings);
+        const auto evalResult = e.obj->evaluate(pcGlobal, pcLocal, localPose, finalPairings);
 
         if (evalResult.hard_discard) return 0;  // hard limit
 

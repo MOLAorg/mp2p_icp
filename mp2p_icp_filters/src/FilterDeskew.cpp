@@ -27,15 +27,11 @@
 #include <tbb/parallel_for.h>
 #endif
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterDeskew, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterDeskew, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
-FilterDeskew::FilterDeskew()
-{
-    mrpt::system::COutputLogger::setLoggerName("FilterDeskew");
-}
+FilterDeskew::FilterDeskew() { mrpt::system::COutputLogger::setLoggerName("FilterDeskew"); }
 
 void FilterDeskew::initialize(const mrpt::containers::yaml& c)
 {
@@ -54,8 +50,7 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
     const auto yamlTwist = c["twist"].asSequence();
 
     for (int i = 0; i < 6; i++)
-        Parameterizable::parseAndDeclareParameter(
-            yamlTwist.at(i).as<std::string>(), twist[i]);
+        Parameterizable::parseAndDeclareParameter(yamlTwist.at(i).as<std::string>(), twist[i]);
 }
 
 void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
@@ -70,21 +65,18 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
-        inOut, output_pointcloud_layer, false /*dont allow empty names*/,
-        output_layer_class);
+        inOut, output_pointcloud_layer, false /*dont allow empty names*/, output_layer_class);
 
     // In:
     ASSERT_(!input_pointcloud_layer.empty());
 
     const mrpt::maps::CPointsMap* inPc = nullptr;
-    if (auto itLy = inOut.layers.find(input_pointcloud_layer);
-        itLy != inOut.layers.end())
+    if (auto itLy = inOut.layers.find(input_pointcloud_layer); itLy != inOut.layers.end())
     {
         inPc = mp2p_icp::MapToPointsMap(*itLy->second);
         if (!inPc)
             THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.",
-                input_pointcloud_layer.c_str());
+                "Layer '%s' must be of point cloud type.", input_pointcloud_layer.c_str());
 
         outPc->reserve(outPc->size() + inPc->size());
     }
@@ -92,16 +84,14 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     {
         // Input layer doesn't exist:
         THROW_EXCEPTION_FMT(
-            "Input layer '%s' not found on input map.",
-            input_pointcloud_layer.c_str());
+            "Input layer '%s' not found on input map.", input_pointcloud_layer.c_str());
     }
 
     // If the input is empty, just move on:
     if (inPc->empty())
     {
         MRPT_LOG_DEBUG_STREAM(
-            "Silently ignoring empty input layer: '" << input_pointcloud_layer
-                                                     << "'");
+            "Silently ignoring empty input layer: '" << input_pointcloud_layer << "'");
         return;
     }
 
@@ -131,9 +121,8 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
                 outPc->insertPointFrom(*inPc, i);
 
             MRPT_LOG_DEBUG_STREAM(
-                "Skipping de-skewing in input cloud '"
-                << input_pointcloud_layer
-                << "' with contents: " << inPc->asString());
+                "Skipping de-skewing in input cloud '" << input_pointcloud_layer
+                                                       << "' with contents: " << inPc->asString());
         }
         else
         {
@@ -171,13 +160,11 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
                     const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
                     const mrpt::math::TVector3D w_dt = w * (*Ts)[i];
 
-                    const auto p =
-                        mrpt::poses::CPose3D::FromRotationAndTranslation(
-                            // Rotation: From Lie group SO(3) exponential:
-                            mrpt::poses::Lie::SO<3>::exp(
-                                mrpt::math::CVectorFixedDouble<3>(w_dt)),
-                            // Translation: simple constant velocity model:
-                            v_dt);
+                    const auto p = mrpt::poses::CPose3D::FromRotationAndTranslation(
+                        // Rotation: From Lie group SO(3) exponential:
+                        mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt)),
+                        // Translation: simple constant velocity model:
+                        v_dt);
 
                     const auto corrPt = p.composePoint(pt);
 

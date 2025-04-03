@@ -59,11 +59,9 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      */
     virtual void align(
         const metric_map_t& pcLocal, const metric_map_t& pcGlobal,
-        const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
-        const Parameters& p, Results& result,
-        const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior =
-            std::nullopt,
-        const mrpt::optional_ref<LogRecord>& outputDebugInfo = std::nullopt);
+        const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p, Results& result,
+        const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior           = std::nullopt,
+        const mrpt::optional_ref<LogRecord>&                     outputDebugInfo = std::nullopt);
 
     /** @name Module: Solver instances
      * @{ */
@@ -90,16 +88,15 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      */
     void initialize_solvers(const mrpt::containers::yaml& params);
 
-    static void initialize_solvers(
-        const mrpt::containers::yaml& params, ICP::solver_list_t& lst);
+    static void initialize_solvers(const mrpt::containers::yaml& params, ICP::solver_list_t& lst);
 
     const solver_list_t& solvers() const { return solvers_; }
     solver_list_t&       solvers() { return solvers_; }
 
     /** Runs a set of solvers. */
     static bool run_solvers(
-        const solver_list_t& solvers, const Pairings& pairings,
-        OptimalTF_Result& out, const SolverContext& sc = {});
+        const solver_list_t& solvers, const Pairings& pairings, OptimalTF_Result& out,
+        const SolverContext& sc = {});
 
     /** @} */
 
@@ -124,8 +121,7 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      */
     void initialize_matchers(const mrpt::containers::yaml& params);
 
-    static void initialize_matchers(
-        const mrpt::containers::yaml& params, matcher_list_t& lst);
+    static void initialize_matchers(const mrpt::containers::yaml& params, matcher_list_t& lst);
 
     const matcher_list_t& matchers() const { return matchers_; }
     matcher_list_t&       matchers() { return matchers_; }
@@ -169,11 +165,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     static void initialize_quality_evaluators(
         const mrpt::containers::yaml& params, quality_eval_list_t& lst);
 
-    const quality_eval_list_t& quality_evaluators() const
-    {
-        return quality_evaluators_;
-    }
-    quality_eval_list_t& quality_evaluators() { return quality_evaluators_; }
+    const quality_eval_list_t& quality_evaluators() const { return quality_evaluators_; }
+    quality_eval_list_t&       quality_evaluators() { return quality_evaluators_; }
 
     static double evaluate_quality(
         const quality_eval_list_t& evaluators, const metric_map_t& pcGlobal,
@@ -186,8 +179,7 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     {
         for (auto& o : matchers()) o->attachToParameterSource(source);
         for (auto& o : solvers()) o->attachToParameterSource(source);
-        for (auto& o : quality_evaluators())
-            o.obj->attachToParameterSource(source);
+        for (auto& o : quality_evaluators()) o.obj->attachToParameterSource(source);
     }
 
     /** For whole-ICP overriden classes (e.g. external ICP library wrappers),
@@ -219,8 +211,7 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         bool request_stop = false;
     };
 
-    using iteration_hook_t =
-        std::function<IterationHook_Output(const IterationHook_Input&)>;
+    using iteration_hook_t = std::function<IterationHook_Output(const IterationHook_Input&)>;
 
     void setIterationHook(const iteration_hook_t& ih) { iteration_hook_ = ih; }
 
@@ -230,8 +221,7 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
    protected:
     solver_list_t       solvers_;
     matcher_list_t      matchers_;
-    quality_eval_list_t quality_evaluators_ = {
-        {QualityEvaluator_PairedRatio::Create(), 1.0}};
+    quality_eval_list_t quality_evaluators_ = {{QualityEvaluator_PairedRatio::Create(), 1.0}};
 
     iteration_hook_t iteration_hook_;
 

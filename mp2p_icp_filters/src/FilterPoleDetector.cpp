@@ -17,8 +17,7 @@
 
 #include <unordered_map>
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterPoleDetector, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterPoleDetector, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 namespace
 {
@@ -38,12 +37,8 @@ struct index2d_t
     {
         return cx == o.cx && cy == o.cy;
     }
-    bool operator!=(const index2d_t<cell_coord_t>& o) const noexcept
-    {
-        return !operator==(o);
-    }
-    index2d_t<cell_coord_t> operator+(
-        const index2d_t<cell_coord_t>& o) const noexcept
+    bool operator!=(const index2d_t<cell_coord_t>& o) const noexcept { return !operator==(o); }
+    index2d_t<cell_coord_t> operator+(const index2d_t<cell_coord_t>& o) const noexcept
     {
         return {cx + o.cx, cy + o.cy};
     }
@@ -51,9 +46,7 @@ struct index2d_t
 
 index2d_t<> xy_to_index(float x, float y, float resolution)
 {
-    return {
-        static_cast<int32_t>(x / resolution),
-        static_cast<int32_t>(y / resolution)};
+    return {static_cast<int32_t>(x / resolution), static_cast<int32_t>(y / resolution)};
 }
 
 /** This implement the optimized hash from this paper (adapted for 2D)
@@ -71,10 +64,8 @@ struct index2d_hash
     {
         // These are the implicit assumptions of the reinterpret cast below:
         static_assert(sizeof(cell_coord_t) == sizeof(uint32_t));
-        static_assert(
-            offsetof(index2d_t<cell_coord_t>, cx) == 0 * sizeof(uint32_t));
-        static_assert(
-            offsetof(index2d_t<cell_coord_t>, cy) == 1 * sizeof(uint32_t));
+        static_assert(offsetof(index2d_t<cell_coord_t>, cx) == 0 * sizeof(uint32_t));
+        static_assert(offsetof(index2d_t<cell_coord_t>, cy) == 1 * sizeof(uint32_t));
 
         const uint32_t* vec = reinterpret_cast<const uint32_t*>(&k);
         return ((1 << 20) - 1) & (vec[0] * 73856093 ^ vec[1] * 19349663);
@@ -82,8 +73,7 @@ struct index2d_hash
 
     /// k1 < k2? for std::map containers
     bool operator()(
-        const index2d_t<cell_coord_t>& k1,
-        const index2d_t<cell_coord_t>& k2) const noexcept
+        const index2d_t<cell_coord_t>& k1, const index2d_t<cell_coord_t>& k2) const noexcept
     {
         if (k1.cx != k2.cx) return k1.cx < k2.cx;
         return k1.cy < k2.cy;
@@ -98,14 +88,10 @@ struct GridCellData
     float                sumZ = 0;
     std::vector<size_t>  point_indices;
 
-    float mean() const
-    {
-        return point_indices.empty() ? .0f : sumZ / point_indices.size();
-    }
+    float mean() const { return point_indices.empty() ? .0f : sumZ / point_indices.size(); }
 };
 
-using grid2d_map_t =
-    std::unordered_map<index2d_t<int32_t>, GridCellData, index2d_hash<int32_t>>;
+using grid2d_map_t = std::unordered_map<index2d_t<int32_t>, GridCellData, index2d_hash<int32_t>>;
 
 }  // namespace
 
@@ -153,9 +139,9 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
     // In:
     const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
-        pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.input_pointcloud_layer.c_str()));
+        pcPtr,
+        mrpt::format(
+            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
@@ -198,9 +184,8 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
     for (const auto& [idxs, cell] : grid)
     {
         const std::array<index2d_t<>, 8> neighbors = {
-            idxs + index2d_t<>(-1, -1), idxs + index2d_t<>(-1, 0),
-            idxs + index2d_t<>(-1, +1), idxs + index2d_t<>(0, -1),
-            idxs + index2d_t<>(0, +1),  idxs + index2d_t<>(+1, -1),
+            idxs + index2d_t<>(-1, -1), idxs + index2d_t<>(-1, 0), idxs + index2d_t<>(-1, +1),
+            idxs + index2d_t<>(0, -1),  idxs + index2d_t<>(0, +1), idxs + index2d_t<>(+1, -1),
             idxs + index2d_t<>(+1, 0),  idxs + index2d_t<>(+1, +1)};
 
         // Criteria: my mean must be > than most neighbor:
@@ -218,14 +203,12 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
                 check_pass_count++;
         }
 
-        const bool isPole =
-            check_pass_count >= params_.minimum_neighbors_checks_to_pass;
+        const bool isPole = check_pass_count >= params_.minimum_neighbors_checks_to_pass;
 
         auto* targetPc = isPole ? outPoles.get() : outNoPoles.get();
         if (targetPc)
         {
-            for (const auto ptIdx : cell.point_indices)
-                targetPc->insertPointFrom(pc, ptIdx);
+            for (const auto ptIdx : cell.point_indices) targetPc->insertPointFrom(pc, ptIdx);
         }
     }
 

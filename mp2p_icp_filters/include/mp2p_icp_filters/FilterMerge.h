@@ -55,8 +55,7 @@ class FilterMerge : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(
-            const mrpt::containers::yaml& c, FilterMerge& parent);
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterMerge& parent);
 
         std::string input_pointcloud_layer;
         std::string target_layer;

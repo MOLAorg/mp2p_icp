@@ -34,8 +34,7 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
    public:
     Matcher_Points_DistanceThreshold();
 
-    Matcher_Points_DistanceThreshold(double distThreshold)
-        : Matcher_Points_DistanceThreshold()
+    Matcher_Points_DistanceThreshold(double distThreshold) : Matcher_Points_DistanceThreshold()
     {
         threshold = distThreshold;
     }
@@ -56,11 +55,9 @@ class Matcher_Points_DistanceThreshold : public Matcher_Points_Base
 
    private:
     void implMatchOneLayer(
-        const mrpt::maps::CMetricMap& pcGlobal,
-        const mrpt::maps::CPointsMap& pcLocal,
-        const mrpt::poses::CPose3D& localPose, MatchState& ms,
-        const layer_name_t& globalName, const layer_name_t& localName,
-        Pairings& out) const override;
+        const mrpt::maps::CMetricMap& pcGlobal, const mrpt::maps::CPointsMap& pcLocal,
+        const mrpt::poses::CPose3D& localPose, MatchState& ms, const layer_name_t& globalName,
+        const layer_name_t& localName, Pairings& out) const override;
 };
 
 }  // namespace mp2p_icp

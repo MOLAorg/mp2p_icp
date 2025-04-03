@@ -22,9 +22,7 @@ struct PointCloudToVoxelGrid::Impl
     tsl::robin_map<indices_t, voxel_t, IndicesHash> pts_voxels;
 };
 
-PointCloudToVoxelGrid::PointCloudToVoxelGrid() : impl_(mrpt::make_impl<Impl>())
-{
-}
+PointCloudToVoxelGrid::PointCloudToVoxelGrid() : impl_(mrpt::make_impl<Impl>()) {}
 
 void PointCloudToVoxelGrid::setResolution(const float voxel_size)
 {
@@ -81,8 +79,7 @@ void PointCloudToVoxelGrid::clear()
 }
 
 void PointCloudToVoxelGrid::visit_voxels(
-    const std::function<void(const indices_t idx, const voxel_t& vxl)>&
-        userCode) const
+    const std::function<void(const indices_t idx, const voxel_t& vxl)>& userCode) const
 {
     for (const auto& [idx, vxl] : impl_->pts_voxels) userCode(idx, vxl);
 }

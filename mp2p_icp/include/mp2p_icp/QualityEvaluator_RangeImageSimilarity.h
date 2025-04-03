@@ -58,8 +58,7 @@ class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
      */
     Result evaluate(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-        const mrpt::poses::CPose3D& localPose,
-        const Pairings&             pairingsFromICP) const override;
+        const mrpt::poses::CPose3D& localPose, const Pairings& pairingsFromICP) const override;
 
     /** Parameters for the simulated camera */
     mrpt::img::TCamera rangeCamera;
@@ -74,12 +73,10 @@ class QualityEvaluator_RangeImageSimilarity : public QualityEvaluator
 
     mrpt::math::CMatrixDouble projectPoints(
         const mrpt::maps::CPointsMap&              pts,
-        const std::optional<mrpt::poses::CPose3D>& relativePose =
-            std::nullopt) const;
+        const std::optional<mrpt::poses::CPose3D>& relativePose = std::nullopt) const;
 
     std::vector<double> scores(
-        const mrpt::math::CMatrixDouble& m1,
-        const mrpt::math::CMatrixDouble& m2) const;
+        const mrpt::math::CMatrixDouble& m1, const mrpt::math::CMatrixDouble& m2) const;
 };
 
 }  // namespace mp2p_icp

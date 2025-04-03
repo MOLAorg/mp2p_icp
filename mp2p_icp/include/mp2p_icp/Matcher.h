@@ -90,8 +90,8 @@ class Matcher : public mrpt::system::COutputLogger,
      */
     virtual bool match(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-        const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
-        MatchState& ms, Pairings& out) const;
+        const mrpt::poses::CPose3D& localPose, const MatchContext& mc, MatchState& ms,
+        Pairings& out) const;
 
     uint32_t runFromIteration = 0;
     uint32_t runUpToIteration = 0;  //!< 0: no limit
@@ -101,8 +101,8 @@ class Matcher : public mrpt::system::COutputLogger,
     /// \return true if the mather is actually invoked, false if disabled.
     virtual bool impl_match(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-        const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
-        MatchState& ms, Pairings& out) const = 0;
+        const mrpt::poses::CPose3D& localPose, const MatchContext& mc, MatchState& ms,
+        Pairings& out) const = 0;
 };
 
 using matcher_list_t = std::vector<mp2p_icp::Matcher::Ptr>;
@@ -115,9 +115,8 @@ using matcher_list_t = std::vector<mp2p_icp::Matcher::Ptr>;
  * \ingroup mp2p_icp_grp
  */
 Pairings run_matchers(
-    const matcher_list_t& matchers, const metric_map_t& pcGlobal,
-    const metric_map_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
-    const MatchContext&                   mc,
+    const matcher_list_t& matchers, const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
+    const mrpt::poses::CPose3D& local_wrt_global, const MatchContext& mc,
     const mrpt::optional_ref<MatchState>& userProvidedMS = std::nullopt);
 
 }  // namespace mp2p_icp

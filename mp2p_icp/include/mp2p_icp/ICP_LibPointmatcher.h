@@ -35,19 +35,16 @@ class ICP_LibPointmatcher : public ICP
 
     void align(
         const metric_map_t& pcLocal, const metric_map_t& pcGlobal,
-        const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
-        const Parameters& p, Results& result,
-        const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior =
-            std::nullopt,
-        const mrpt::optional_ref<LogRecord>& outputDebugInfo =
-            std::nullopt) override;
+        const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p, Results& result,
+        const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior = std::nullopt,
+        const mrpt::optional_ref<LogRecord>& outputDebugInfo           = std::nullopt) override;
 
     struct ParametersLibpointmatcher
     {
-        double       RandomSamplingDataPointsFilter_prob = 1.0;
-        unsigned int SurfaceNormalDataPointsFilter_knn   = 10;
-        unsigned int KDTreeMatcher_knn                   = 1;
-        std::string  outlierFilter = "VarTrimmedDistOutlierFilter";
+        double                        RandomSamplingDataPointsFilter_prob = 1.0;
+        unsigned int                  SurfaceNormalDataPointsFilter_knn   = 10;
+        unsigned int                  KDTreeMatcher_knn                   = 1;
+        std::string                   outlierFilter = "VarTrimmedDistOutlierFilter";
         std::map<std::string, double> outlierParams = {
             {"minRatio", 0.05},
             {"maxRatio", 0.95},

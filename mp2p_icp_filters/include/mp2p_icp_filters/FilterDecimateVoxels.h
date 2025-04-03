@@ -77,13 +77,11 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(
-            const mrpt::containers::yaml& c, FilterDecimateVoxels& parent);
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterDecimateVoxels& parent);
 
         /** One or more input layers, from which to read (and merge) input
          * points */
-        std::vector<std::string> input_pointcloud_layer = {
-            mp2p_icp::metric_map_t::PT_LAYER_RAW};
+        std::vector<std::string> input_pointcloud_layer = {mp2p_icp::metric_map_t::PT_LAYER_RAW};
 
         /** Whether to throw an exception if the input layer does not exist, or,
          * otherwise, it should be silently ignored producing an empty output.
@@ -116,18 +114,14 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
     mutable std::optional<PointCloudToVoxelGrid>       filter_grid_;
     mutable std::optional<PointCloudToVoxelGridSingle> filter_grid_single_;
 
-    bool useSingleGrid() const
-    {
-        return params_.decimate_method == DecimateMethod::FirstPoint;
-    }
+    bool useSingleGrid() const { return params_.decimate_method == DecimateMethod::FirstPoint; }
 };
 
 /** @} */
 
 }  // namespace mp2p_icp_filters
 
-MRPT_ENUM_TYPE_BEGIN_NAMESPACE(
-    mp2p_icp_filters, mp2p_icp_filters::DecimateMethod)
+MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp_filters, mp2p_icp_filters::DecimateMethod)
 MRPT_FILL_ENUM(DecimateMethod::FirstPoint);
 MRPT_FILL_ENUM(DecimateMethod::ClosestToAverage);
 MRPT_FILL_ENUM(DecimateMethod::VoxelAverage);

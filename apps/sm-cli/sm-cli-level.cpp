@@ -43,13 +43,11 @@ int commandLevel()
     // Optimize them such as the vertical variation is minimized:
 
     // The error function F(x):
-    auto myCostFunction =
-        [&](const mrpt::math::CVectorDouble&                  x,
-            [[maybe_unused]] const mrpt::math::CVectorDouble& params,
-            mrpt::math::CVectorDouble&                        err)
+    auto myCostFunction = [&](const mrpt::math::CVectorDouble&                  x,
+                              [[maybe_unused]] const mrpt::math::CVectorDouble& params,
+                              mrpt::math::CVectorDouble&                        err)
     {
-        const auto delta =
-            mrpt::poses::CPose3D::FromYawPitchRoll(x[0], x[1], x[2]);
+        const auto delta = mrpt::poses::CPose3D::FromYawPitchRoll(x[0], x[1], x[2]);
 
         const double z0 = poses.at(0).translation().z;
 
@@ -81,16 +79,14 @@ int commandLevel()
     }
 
     mrpt::math::CLevenbergMarquardt lm;
-    lm.execute(
-        optimal_x, initial_x, myCostFunction, increments_x, params, info,
-        logLevel);
+    lm.execute(optimal_x, initial_x, myCostFunction, increments_x, params, info, logLevel);
 
     std::cout << "Iterations: " << info.iterations_executed << std::endl;
-    std::cout << "Squared error (initial->final): " << info.initial_sqr_err
-              << " => " << info.final_sqr_err << std::endl;
+    std::cout << "Squared error (initial->final): " << info.initial_sqr_err << " => "
+              << info.final_sqr_err << std::endl;
 
-    const auto delta = mrpt::poses::CPose3D::FromYawPitchRoll(
-        optimal_x[0], optimal_x[1], optimal_x[2]);
+    const auto delta =
+        mrpt::poses::CPose3D::FromYawPitchRoll(optimal_x[0], optimal_x[1], optimal_x[2]);
     std::cout << "Final optimized rotation: " << delta << std::endl;
 
     // Modify KFs:

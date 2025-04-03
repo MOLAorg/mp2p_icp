@@ -26,20 +26,18 @@ void Matcher::initialize(const mrpt::containers::yaml& params)
 
 bool Matcher::match(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-    const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
-    MatchState& ms, Pairings& out) const
+    const mrpt::poses::CPose3D& localPose, const MatchContext& mc, MatchState& ms,
+    Pairings& out) const
 {
     if (!enabled) return false;
     if (mc.icpIteration < runFromIteration) return false;
-    if (runUpToIteration > 0 && mc.icpIteration > runUpToIteration)
-        return false;
+    if (runUpToIteration > 0 && mc.icpIteration > runUpToIteration) return false;
     return impl_match(pcGlobal, pcLocal, localPose, mc, ms, out);
 }
 
 Pairings mp2p_icp::run_matchers(
-    const matcher_list_t& matchers, const metric_map_t& pcGlobal,
-    const metric_map_t& pcLocal, const mrpt::poses::CPose3D& local_wrt_global,
-    const MatchContext&                   mc,
+    const matcher_list_t& matchers, const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
+    const mrpt::poses::CPose3D& local_wrt_global, const MatchContext& mc,
     const mrpt::optional_ref<MatchState>& userProvidedMS)
 {
     Pairings pairings;
@@ -66,9 +64,8 @@ Pairings mp2p_icp::run_matchers(
     {
         ASSERT_(matcher);
         Pairings pc;
-        bool     hasRun =
-            matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, *ms, pc);
-        anyRun = anyRun || hasRun;
+        bool     hasRun = matcher->match(pcGlobal, pcLocal, local_wrt_global, mc, *ms, pc);
+        anyRun          = anyRun || hasRun;
         pairings.push_back(pc);
     }
 

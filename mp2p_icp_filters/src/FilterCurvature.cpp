@@ -22,13 +22,11 @@
 #include <mrpt/opengl/Scene.h>
 #endif
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterCurvature, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterCurvature, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
-void FilterCurvature::Parameters::load_from_yaml(
-    const mrpt::containers::yaml& c)
+void FilterCurvature::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
 
@@ -56,9 +54,9 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     // In:
     const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
-        pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.input_pointcloud_layer.c_str()));
+        pcPtr,
+        mrpt::format(
+            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
@@ -78,8 +76,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
         true,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-    if (outPcSmaller)
-        outPcSmaller->reserve(outPcSmaller->size() + pc.size() / 10);
+    if (outPcSmaller) outPcSmaller->reserve(outPcSmaller->size() + pc.size() / 10);
 
     mrpt::maps::CPointsMap::Ptr outPcOther = GetOrCreatePointLayer(
         inOut, params_.output_layer_other,
@@ -111,13 +108,11 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
 
     const size_t N = xs.size();
 
-    const uint16_t nRings =
-        1 + *std::max_element(ringPerPt.begin(), ringPerPt.end());
+    const uint16_t nRings = 1 + *std::max_element(ringPerPt.begin(), ringPerPt.end());
 
     const auto estimPtsPerRing = N / nRings;
 
-    MRPT_LOG_DEBUG_STREAM(
-        "nRings: " << nRings << " estimPtsPerRing: " << estimPtsPerRing);
+    MRPT_LOG_DEBUG_STREAM("nRings: " << nRings << " estimPtsPerRing: " << estimPtsPerRing);
     ASSERT_(nRings > 0 && nRings < 5000 /*something wrong?*/);
 
     std::vector<std::vector<size_t>> idxPerRing;
@@ -137,8 +132,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
 
 #ifdef DEBUG_GL
         auto ringId = ringPerPt[i];
-        auto col    = mrpt::img::colormap(
-               mrpt::img::cmJET, static_cast<double>(ringId) / nRings);
+        auto col    = mrpt::img::colormap(mrpt::img::cmJET, static_cast<double>(ringId) / nRings);
         glRawPts->insertPoint({xs[i], ys[i], zs[i], col.R, col.G, col.B});
 #endif
 
@@ -150,8 +144,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
             const auto pt     = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
             const auto d      = pt - lastPt;
 
-            if (mrpt::max3(std::abs(d.x), std::abs(d.y), std::abs(d.z)) <
-                params_.min_clearance)
+            if (mrpt::max3(std::abs(d.x), std::abs(d.y), std::abs(d.z)) < params_.min_clearance)
                 continue;
         }
 
@@ -205,8 +198,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
             const auto ptm1 = mrpt::math::TPoint3Df(xs[im1], ys[im1], zs[im1]);
             const auto ptp1 = mrpt::math::TPoint3Df(xs[ip1], ys[ip1], zs[ip1]);
 
-            if ((pt - ptm1).sqrNorm() > maxGapSqr ||
-                (pt - ptp1).sqrNorm() > maxGapSqr)
+            if ((pt - ptm1).sqrNorm() > maxGapSqr || (pt - ptp1).sqrNorm() > maxGapSqr)
             {
                 // count borders as large curvature, if this is the edge
                 // of the discontinuity that is closer to the sensor (assumed to
@@ -244,9 +236,8 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     MRPT_LOG_DEBUG_STREAM(
-        "[FilterCurvature] Raw input points="
-        << N << " larger_curvature=" << counterLarger
-        << " smaller_curvature=" << counterLess);
+        "[FilterCurvature] Raw input points=" << N << " larger_curvature=" << counterLarger
+                                              << " smaller_curvature=" << counterLess);
 
     MRPT_END
 }

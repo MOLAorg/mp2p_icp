@@ -27,8 +27,7 @@ namespace mp2p_icp
  * solution, true on success.
  */
 [[nodiscard]] bool optimal_tf_horn(
-    const mp2p_icp::Pairings& in, const WeightParameters& wp,
-    OptimalTF_Result& result);
+    const mp2p_icp::Pairings& in, const WeightParameters& wp, OptimalTF_Result& result);
 
 /** @} */
 

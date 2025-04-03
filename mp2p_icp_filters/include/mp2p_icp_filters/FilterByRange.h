@@ -41,11 +41,9 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(
-            const mrpt::containers::yaml& c, FilterByRange& parent);
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterByRange& parent);
 
-        std::string input_pointcloud_layer =
-            mp2p_icp::metric_map_t::PT_LAYER_RAW;
+        std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
         /** Optional output point cloud layer name for points **within** the
          * [min,max] range */

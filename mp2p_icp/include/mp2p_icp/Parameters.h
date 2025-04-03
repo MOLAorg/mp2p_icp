@@ -89,8 +89,7 @@ struct Parameters : public mrpt::serialization::CSerializable
 
     /** Quality checkpoints: if the quality is smaller than the given threshold
      * at the prescribed iteration, ICP will be aborted. */
-    std::map<uint32_t, double> quality_checkpoints = {
-        {50U, 0.05}, {100U, 0.10}};
+    std::map<uint32_t, double> quality_checkpoints = {{50U, 0.05}, {100U, 0.10}};
 
     /** @} */
 

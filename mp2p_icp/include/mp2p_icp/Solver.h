@@ -49,8 +49,7 @@ struct SolverContext
     std::optional<mrpt::poses::CPose3DPDFGaussianInf> prior;
 
     // room for optional solver-specific context:
-    mutable std::map<const Solver*, std::map<std::string, std::any>>
-        perSolverPersistentData;
+    mutable std::map<const Solver*, std::map<std::string, std::any>> perSolverPersistentData;
 
     std::optional<uint32_t> icpIteration;
 };
@@ -84,8 +83,7 @@ class Solver : public mrpt::system::COutputLogger,
      * runFromIteration and runUpToIteration) and valid solution was found.
      */
     virtual bool optimal_pose(
-        const Pairings& pairings, OptimalTF_Result& out,
-        const SolverContext& sc) const;
+        const Pairings& pairings, OptimalTF_Result& out, const SolverContext& sc) const;
 
     uint32_t runFromIteration = 0;
     uint32_t runUpToIteration = 0;  //!< 0: no limit
@@ -97,8 +95,7 @@ class Solver : public mrpt::system::COutputLogger,
 
    protected:
     virtual bool impl_optimal_pose(
-        const Pairings& pairings, OptimalTF_Result& out,
-        const SolverContext& sc) const = 0;
+        const Pairings& pairings, OptimalTF_Result& out, const SolverContext& sc) const = 0;
 };
 
 }  // namespace mp2p_icp

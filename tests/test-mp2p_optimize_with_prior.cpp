@@ -61,8 +61,8 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
         sc.guessRelativePose = mrpt::poses::CPose3D::Identity();
 
         auto& prior = sc.prior.emplace();
-        prior.mean  = mrpt::poses::CPose3D::FromXYZYawPitchRoll(
-             2.0, 3.0, 4.0, 10.0_deg, 10.0_deg, 10.0_deg);
+        prior.mean =
+            mrpt::poses::CPose3D::FromXYZYawPitchRoll(2.0, 3.0, 4.0, 10.0_deg, 10.0_deg, 10.0_deg);
         prior.cov_inv.fill(0);
 
         mrpt::poses::CPose3D      expected;
@@ -73,13 +73,10 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
             case 0:
                 sc.prior.reset();  // no prior. Delete it
                 expected = groundTruth;
-                checkFn  = [&]()
-                {
+                checkFn  = [&]() {
                     ASSERT_NEAR_(
-                        mrpt::poses::Lie::SE<3>::log(
-                            result.optimalPose - expected)
-                            .norm(),
-                        0.0, 1e-3);
+                         mrpt::poses::Lie::SE<3>::log(result.optimalPose - expected).norm(), 0.0,
+                         1e-3);
                 };
                 break;
             case 1:
@@ -88,8 +85,7 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
                 checkFn = [&]()
                 {
                     for (int i = 0; i < 3; i++)
-                        ASSERT_NEAR_(
-                            result.optimalPose[i], prior.mean[i], 0.05);
+                        ASSERT_NEAR_(result.optimalPose[i], prior.mean[i], 0.05);
                 };
                 break;
             case 2:
@@ -98,8 +94,7 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
                 checkFn = [&]()
                 {
                     for (int i = 3; i < 6; i++)
-                        ASSERT_NEAR_(
-                            result.optimalPose[i], prior.mean[i], 0.05);
+                        ASSERT_NEAR_(result.optimalPose[i], prior.mean[i], 0.05);
                 };
                 break;
         };
@@ -107,8 +102,7 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
         bool solvedOk = solver.optimal_pose(p, result, sc);
 
         std::cout << "Case:" << Case << "\n"
-                  << "Found    optimalPose: " << result.optimalPose
-                  << std::endl;
+                  << "Found    optimalPose: " << result.optimalPose << std::endl;
         std::cout << "Expected optimalPose: " << expected << std::endl;
 
         checkFn();
@@ -127,8 +121,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
     try
     {
-        test_opt_prior(CPose3D::FromXYZYawPitchRoll(
-            1.0, 2.0, 3.0, 5.0_deg, 15.0_deg, 20.0_deg));
+        test_opt_prior(CPose3D::FromXYZYawPitchRoll(1.0, 2.0, 3.0, 5.0_deg, 15.0_deg, 20.0_deg));
     }
     catch (std::exception& e)
     {

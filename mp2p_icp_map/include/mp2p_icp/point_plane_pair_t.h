@@ -29,8 +29,7 @@ struct point_plane_pair_t
     mrpt::math::TPoint3Df pt_local;
 
     point_plane_pair_t() = default;
-    point_plane_pair_t(
-        const plane_patch_t& p_global, const mrpt::math::TPoint3Df& p_local)
+    point_plane_pair_t(const plane_patch_t& p_global, const mrpt::math::TPoint3Df& p_local)
         : pl_global(p_global), pt_local(p_local)
     {
     }

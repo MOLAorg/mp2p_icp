@@ -43,8 +43,7 @@ class FilterCurvature : public mp2p_icp_filters::FilterBase
     {
         void load_from_yaml(const mrpt::containers::yaml& c);
 
-        std::string input_pointcloud_layer =
-            mp2p_icp::metric_map_t::PT_LAYER_RAW;
+        std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
         /** If non-empty, points with larger curvature ("edges") will be stored
          * here. */

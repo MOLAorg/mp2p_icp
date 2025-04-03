@@ -29,17 +29,11 @@ struct Cli
     TCLAP::CmdLine cmd{"mm-georef"};
 
     TCLAP::ValueArg<std::string> argMap{
-        "m",  "mao",       "Input/Output .mm file to operate on",
-        true, "theMap.mm", "theMap.mm",
-        cmd};
+        "m", "mao", "Input/Output .mm file to operate on", true, "theMap.mm", "theMap.mm", cmd};
 
     TCLAP::ValueArg<std::string> argGeoRef{
-        "g",
-        "georef",
-        "Input/Output binary `.georef` file with geo-referencing metadata",
-        true,
-        "myMap.georef",
-        "myMap.georef",
+        "g",  "georef",       "Input/Output binary `.georef` file with geo-referencing metadata",
+        true, "myMap.georef", "myMap.georef",
         cmd};
 
     TCLAP::SwitchArg argExtract{
@@ -56,12 +50,8 @@ struct Cli
         cmd};
 
     TCLAP::ValueArg<std::string> arg_plugins{
-        "l",
-        "load-plugins",
-        "One or more (comma separated) *.so files to load as plugins",
-        false,
-        "foobar.so",
-        "foobar.so",
+        "l",   "load-plugins", "One or more (comma separated) *.so files to load as plugins",
+        false, "foobar.so",    "foobar.so",
         cmd};
 };
 
@@ -69,23 +59,20 @@ void run_mm_extract(Cli& cli)
 {
     const auto& filInput = cli.argMap.getValue();
 
-    std::cout << "[mm-georef] Reading input map from: '" << filInput << "'..."
-              << std::endl;
+    std::cout << "[mm-georef] Reading input map from: '" << filInput << "'..." << std::endl;
 
     mp2p_icp::metric_map_t mm;
     mm.load_from_file(filInput);
 
-    std::cout << "[mm-georef] Done read map:" << mm.contents_summary()
-              << std::endl;
+    std::cout << "[mm-georef] Done read map:" << mm.contents_summary() << std::endl;
     ASSERT_(!mm.empty());
 
-    std::cout << "[mm-georef] Done. Output map: " << mm.contents_summary()
-              << std::endl;
+    std::cout << "[mm-georef] Done. Output map: " << mm.contents_summary() << std::endl;
 
     // Save as .georef file:
     const auto filOut = cli.argGeoRef.getValue();
-    std::cout << "[mm-georef] Writing geo-referencing metamap to: '" << filOut
-              << "'..." << std::endl;
+    std::cout << "[mm-georef] Writing geo-referencing metamap to: '" << filOut << "'..."
+              << std::endl;
 
     mrpt::io::CFileGZOutputStream f(filOut);
     auto                          arch = mrpt::serialization::archiveFrom(f);
@@ -96,8 +83,8 @@ void run_mm_inject(Cli& cli)
 {
     // Load .georef file:
     const auto filIn = cli.argGeoRef.getValue();
-    std::cout << "[mm-georef] Reading geo-referencing metamap from: '" << filIn
-              << "'..." << std::endl;
+    std::cout << "[mm-georef] Reading geo-referencing metamap from: '" << filIn << "'..."
+              << std::endl;
 
     mrpt::io::CFileGZInputStream f(filIn);
     auto                         arch = mrpt::serialization::archiveFrom(f);
@@ -107,23 +94,20 @@ void run_mm_inject(Cli& cli)
 
     const auto& filMap = cli.argMap.getValue();
 
-    std::cout << "[mm-georef] Reading input map from: '" << filMap << "'..."
-              << std::endl;
+    std::cout << "[mm-georef] Reading input map from: '" << filMap << "'..." << std::endl;
 
     mp2p_icp::metric_map_t mm;
     mm.load_from_file(filMap);
 
-    std::cout << "[mm-georef] Done read map: " << mm.contents_summary()
-              << std::endl;
+    std::cout << "[mm-georef] Done read map: " << mm.contents_summary() << std::endl;
 
     // Set geo-ref data:
     mm.georeferencing = g;
 
-    std::cout << "[mm-georef] Set georeferencing data. Updated map data: "
-              << mm.contents_summary() << std::endl;
-
-    std::cout << "[mm-georef] Saving updated map to: '" << filMap << "'..."
+    std::cout << "[mm-georef] Set georeferencing data. Updated map data: " << mm.contents_summary()
               << std::endl;
+
+    std::cout << "[mm-georef] Saving updated map to: '" << filMap << "'..." << std::endl;
 
     mm.save_to_file(filMap);
 }
@@ -136,8 +120,7 @@ void run_mm_georef(Cli& cli)
         std::string errMsg;
         const auto  plugins = cli.arg_plugins.getValue();
         std::cout << "Loading plugin(s): " << plugins << std::endl;
-        if (!mrpt::system::loadPluginModules(plugins, errMsg))
-            throw std::runtime_error(errMsg);
+        if (!mrpt::system::loadPluginModules(plugins, errMsg)) throw std::runtime_error(errMsg);
     }
 
     if (cli.argExtract.isSet()) { return run_mm_extract(cli); }

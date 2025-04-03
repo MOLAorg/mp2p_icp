@@ -93,8 +93,7 @@ struct pointcloud_bitfield_t
             ASSERT_(kv.second);
             auto* nn = mp2p_icp::MapToNN(*kv.second, false /*dont throw*/);
             if (!nn) continue;
-            point_layers[kv.first].assign(
-                nn->nn_index_count(), nn->nn_has_indices_or_ids());
+            point_layers[kv.first].assign(nn->nn_index_count(), nn->nn_has_indices_or_ids());
         }
         std::set<layer_name_t> layersToRemove;
         for (auto& kv : point_layers)

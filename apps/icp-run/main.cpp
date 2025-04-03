@@ -41,8 +41,7 @@ static TCLAP::ValueArg<std::string> argInputLocal(
     true, "pointcloud1.txt", "pointcloud1.txt", cmd);
 
 static TCLAP::ValueArg<std::string> argInputGlobal(
-    "", "input-global",
-    "Global input point cloud/map. Same format than input-local. ", true,
+    "", "input-global", "Global input point cloud/map. Same format than input-local. ", true,
     "pointcloud2.txt", "pointcloud2.txt", cmd);
 
 static TCLAP::ValueArg<std::string> argYamlConfigFile(
@@ -102,8 +101,7 @@ static TCLAP::SwitchArg argGenerateDebugFiles(
     "`generateDebugFiles` value in the configuration YAML file.",
     cmd);
 
-static TCLAP::SwitchArg argProfile(
-    "", "profiler", "Enables the ICP profiler.", cmd);
+static TCLAP::SwitchArg argProfile("", "profiler", "Enables the ICP profiler.", cmd);
 
 // To avoid reading the same .rawlog file twice:
 static std::map<std::string, mrpt::obs::CRawlog::Ptr> rawlogsCache;
@@ -113,8 +111,7 @@ static mrpt::obs::CRawlog::Ptr load_rawlog(const std::string& filename)
     ASSERT_FILE_EXISTS_(filename);
 
     // enable loading externally-stored lazy load objects:
-    mrpt::img::CImage::setImagesPathBase(
-        mrpt::obs::CRawlog::detectImagesDirectory(filename));
+    mrpt::img::CImage::setImagesPathBase(mrpt::obs::CRawlog::detectImagesDirectory(filename));
 
     auto& r = rawlogsCache[filename];
     if (r) return r;
@@ -132,16 +129,14 @@ static mrpt::obs::CRawlog::Ptr load_rawlog(const std::string& filename)
 
 static mp2p_icp_filters::GeneratorSet generators;
 
-static mp2p_icp::metric_map_t::Ptr pc_from_rawlog(
-    const mrpt::obs::CRawlog& r, const size_t index)
+static mp2p_icp::metric_map_t::Ptr pc_from_rawlog(const mrpt::obs::CRawlog& r, const size_t index)
 {
     ASSERT_LT_(index, r.size());
 
     if (generators.empty())
     {
-        std::cout
-            << "[warning] Using default mp2p_icp_filters::Generator since no "
-               "YAML file was given describing custom generators.\n";
+        std::cout << "[warning] Using default mp2p_icp_filters::Generator since no "
+                     "YAML file was given describing custom generators.\n";
 
         auto defaultGen = mp2p_icp_filters::Generator::Create();
         defaultGen->initialize({});
@@ -158,8 +153,7 @@ static mp2p_icp::metric_map_t::Ptr pc_from_rawlog(
         // Sensory-frame format:
         mp2p_icp_filters::apply_generators(generators, *sf, *pc);
     }
-    else if (auto obs = std::dynamic_pointer_cast<mrpt::obs::CObservation>(o);
-             obs)
+    else if (auto obs = std::dynamic_pointer_cast<mrpt::obs::CObservation>(o); obs)
     {
         mp2p_icp_filters::apply_generators(generators, *obs, *pc);
     }
@@ -175,8 +169,7 @@ static mp2p_icp::metric_map_t::Ptr pc_from_rawlog(
     return pc;
 }
 
-static mp2p_icp::metric_map_t::Ptr load_input_pc(
-    const std::string& filename, bool local)
+static mp2p_icp::metric_map_t::Ptr load_input_pc(const std::string& filename, bool local)
 {
     // rawlog?
     if (auto extPos = filename.find(".rawlog:"); extPos != std::string::npos)
@@ -214,10 +207,9 @@ static mp2p_icp::metric_map_t::Ptr load_input_pc(
     }
 
     // Otherwise: assume it's an ASCII point cloud file:
-    mrpt::maps::CSimplePointsMap::Ptr points =
-        mp2p_icp::load_xyz_file(filename);
+    mrpt::maps::CSimplePointsMap::Ptr points = mp2p_icp::load_xyz_file(filename);
 
-    auto pc = mp2p_icp::metric_map_t::Create();
+    auto pc                                          = mp2p_icp::metric_map_t::Create();
     pc->layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = points;
 
     return pc;
@@ -225,8 +217,7 @@ static mp2p_icp::metric_map_t::Ptr load_input_pc(
 
 void runIcp()
 {
-    const auto cfg =
-        mrpt::containers::yaml::FromFile(argYamlConfigFile.getValue());
+    const auto cfg = mrpt::containers::yaml::FromFile(argYamlConfigFile.getValue());
 
     // ------------------------------
     // Generators set
@@ -237,8 +228,7 @@ void runIcp()
 
         generators = mp2p_icp_filters::generators_from_yaml_file(f);
 
-        std::cout << "Created " << generators.size()
-                  << " generators from: " << f << std::endl;
+        std::cout << "Created " << generators.size() << " generators from: " << f << std::endl;
     }
     else if (cfg.has("generators"))
     {
@@ -251,10 +241,8 @@ void runIcp()
     auto pcLocal  = load_input_pc(argInputLocal.getValue(), true);
     auto pcGlobal = load_input_pc(argInputGlobal.getValue(), false);
 
-    std::cout << "Input point cloud #1: " << pcLocal->contents_summary()
-              << std::endl;
-    std::cout << "Input point cloud #2: " << pcGlobal->contents_summary()
-              << std::endl;
+    std::cout << "Input point cloud #1: " << pcLocal->contents_summary() << std::endl;
+    std::cout << "Input point cloud #2: " << pcGlobal->contents_summary() << std::endl;
 
     // ------------------------------
     // Build ICP pipeline:
@@ -263,8 +251,7 @@ void runIcp()
 
     if (argGenerateDebugFiles.isSet()) icpParams.generateDebugFiles = true;
 
-    const auto initialGuess =
-        mrpt::math::TPose3D::FromString(argInitialGuess.getValue());
+    const auto initialGuess = mrpt::math::TPose3D::FromString(argInitialGuess.getValue());
 
     // -----------------------------------------
     // Apply filtering pipeline, if defined
@@ -278,14 +265,13 @@ void runIcp()
         }
         else if (cfg.has(argCfgNameFiltersLocal.getValue()))
         {
-            filtersLocal = mp2p_icp_filters::filter_pipeline_from_yaml(
-                cfg[argCfgNameFiltersLocal.getValue()]);
+            filtersLocal =
+                mp2p_icp_filters::filter_pipeline_from_yaml(cfg[argCfgNameFiltersLocal.getValue()]);
         }
         if (!filtersLocal.empty())
         {
             mp2p_icp_filters::apply_filter_pipeline(filtersLocal, *pcLocal);
-            std::cout << "Filtered local map: " << pcLocal->contents_summary()
-                      << std::endl;
+            std::cout << "Filtered local map: " << pcLocal->contents_summary() << std::endl;
         }
     }
     {
@@ -303,8 +289,7 @@ void runIcp()
         if (!filtersGlobal.empty())
         {
             mp2p_icp_filters::apply_filter_pipeline(filtersGlobal, *pcGlobal);
-            std::cout << "Filtered global map: " << pcGlobal->contents_summary()
-                      << std::endl;
+            std::cout << "Filtered global map: " << pcGlobal->contents_summary() << std::endl;
         }
     }
 
@@ -320,8 +305,7 @@ void runIcp()
     std::cout << "ICP result:\n";
     icpResults.print(std::cout);
 
-    std::cout << "- time to solve: "
-              << mrpt::system::formatTimeInterval(t_end - t_ini) << "\n";
+    std::cout << "- time to solve: " << mrpt::system::formatTimeInterval(t_end - t_ini) << "\n";
 }
 
 int main(int argc, char** argv)

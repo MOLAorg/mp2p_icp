@@ -28,13 +28,11 @@ void Solver_GaussNewton::initialize(const mrpt::containers::yaml& params)
 
     DECLARE_PARAMETER_OPT(params, robustKernelParam);
 
-    if (params.has("pair_weights"))
-        pairWeights.load_from(params["pair_weights"]);
+    if (params.has("pair_weights")) pairWeights.load_from(params["pair_weights"]);
 }
 
 bool Solver_GaussNewton::impl_optimal_pose(
-    const Pairings& pairings, OptimalTF_Result& out,
-    [[maybe_unused]] const SolverContext& sc) const
+    const Pairings& pairings, OptimalTF_Result& out, [[maybe_unused]] const SolverContext& sc) const
 {
     MRPT_START
 
@@ -50,8 +48,7 @@ bool Solver_GaussNewton::impl_optimal_pose(
     gnParams.prior                  = sc.prior;
 
     ASSERT_(sc.guessRelativePose.has_value());
-    gnParams.linearizationPoint =
-        mrpt::poses::CPose3D(sc.guessRelativePose.value());
+    gnParams.linearizationPoint = mrpt::poses::CPose3D(sc.guessRelativePose.value());
 
     gnParams.verbose = innerLoopVerbose;
 

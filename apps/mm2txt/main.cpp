@@ -22,8 +22,7 @@
 static TCLAP::CmdLine cmd("mm2txt");
 
 static TCLAP::UnlabeledValueArg<std::string> argMapFile(
-    "input", "Load this metric map file (*.mm)", true, "myMap.mm", "myMap.mm",
-    cmd);
+    "input", "Load this metric map file (*.mm)", true, "myMap.mm", "myMap.mm", cmd);
 
 static TCLAP::MultiArg<std::string> argLayers(
     "l", "layer",
@@ -39,14 +38,12 @@ void run_mm2txt()
 
     ASSERT_FILE_EXISTS_(argMapFile.getValue());
 
-    std::cout << "[mm-info] Reading input map from: '" << filInput << "'..."
-              << std::endl;
+    std::cout << "[mm-info] Reading input map from: '" << filInput << "'..." << std::endl;
 
     mp2p_icp::metric_map_t mm;
     mm.load_from_file(filInput);
 
-    std::cout << "[mm-info] Done read map. Contents:\n"
-              << mm.contents_summary() << std::endl;
+    std::cout << "[mm-info] Done read map. Contents:\n" << mm.contents_summary() << std::endl;
 
     std::vector<std::string> layers;
     if (argLayers.isSet())
@@ -66,11 +63,10 @@ void run_mm2txt()
     {
         const std::string filName = baseFilName + "_"s + name + ".txt"s;
 
-        std::cout << "Exporting layer: '" << name << "' to file '" << filName
-                  << "'..." << std::endl;
+        std::cout << "Exporting layer: '" << name << "' to file '" << filName << "'..."
+                  << std::endl;
 
-        ASSERTMSG_(
-            mm.layers.count(name) == 1, "Layer not found in metric map!");
+        ASSERTMSG_(mm.layers.count(name) == 1, "Layer not found in metric map!");
 
         auto* pts = mp2p_icp::MapToPointsMap(*mm.layers.at(name));
         if (!pts)
@@ -81,15 +77,11 @@ void run_mm2txt()
                 name.c_str(), mm.layers.at(name)->GetRuntimeClass()->className);
         }
 
-        if (auto* xyzirt =
-                dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(pts);
-            xyzirt)
+        if (auto* xyzirt = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(pts); xyzirt)
         {
             xyzirt->saveXYZIRT_to_text_file(filName);
         }
-        else if (auto* xyzi =
-                     dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(pts);
-                 xyzi)
+        else if (auto* xyzi = dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(pts); xyzi)
         {
             xyzi->saveXYZI_to_text_file(filName);
         }

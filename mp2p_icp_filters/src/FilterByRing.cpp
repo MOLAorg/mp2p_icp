@@ -14,8 +14,7 @@
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterByRing, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterByRing, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
@@ -41,8 +40,7 @@ void FilterByRing::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
             "YAML configuration must have an entry `selected_ring_ids` "
             "with a scalar or sequence.");
 
-        for (const auto& n : cfgIn.asSequenceRange())
-            selected_ring_ids.insert(n.as<int>());
+        for (const auto& n : cfgIn.asSequenceRange()) selected_ring_ids.insert(n.as<int>());
     }
     ASSERT_(!selected_ring_ids.empty());
 }
@@ -62,9 +60,9 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
     // In:
     const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
-        pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.input_pointcloud_layer.c_str()));
+        pcPtr,
+        mrpt::format(
+            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
@@ -79,8 +77,7 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outNonSel = GetOrCreatePointLayer(
-        inOut, params_.output_layer_non_selected,
-        true /*allow empty for nullptr*/,
+        inOut, params_.output_layer_non_selected, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 

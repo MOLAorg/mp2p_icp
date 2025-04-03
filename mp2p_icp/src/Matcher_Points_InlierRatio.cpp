@@ -24,8 +24,7 @@ Matcher_Points_InlierRatio::Matcher_Points_InlierRatio()
     mrpt::system::COutputLogger::setLoggerName("Matcher_Points_InlierRatio");
 }
 
-void Matcher_Points_InlierRatio::initialize(
-    const mrpt::containers::yaml& params)
+void Matcher_Points_InlierRatio::initialize(const mrpt::containers::yaml& params)
 {
     Matcher_Points_Base::initialize(params);
 
@@ -33,11 +32,10 @@ void Matcher_Points_InlierRatio::initialize(
 }
 
 void Matcher_Points_InlierRatio::implMatchOneLayer(
-    const mrpt::maps::CMetricMap& pcGlobalMap,
-    const mrpt::maps::CPointsMap& pcLocal,
+    const mrpt::maps::CMetricMap& pcGlobalMap, const mrpt::maps::CPointsMap& pcLocal,
     const mrpt::poses::CPose3D& localPose, MatchState& ms,
-    [[maybe_unused]] const layer_name_t& globalName,
-    const layer_name_t& localName, Pairings& out) const
+    [[maybe_unused]] const layer_name_t& globalName, const layer_name_t& localName,
+    Pairings& out) const
 {
     MRPT_START
 
@@ -78,8 +76,7 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
             continue;  // skip, already paired.
 
         // For speed-up:
-        const float lx = tl.x_locals[i], ly = tl.y_locals[i],
-                    lz = tl.z_locals[i];
+        const float lx = tl.x_locals[i], ly = tl.y_locals[i], lz = tl.z_locals[i];
 
         // Use a KD-tree to look for the nearnest neighbor of:
         //   (x_local, y_local, z_local)
@@ -103,8 +100,7 @@ void Matcher_Points_InlierRatio::implMatchOneLayer(
             p.errorSquareAfterTransformation = tentativeErrSqr;
 
             // Sort by distance:
-            sortedPairings.emplace_hint(
-                sortedPairings.begin(), tentativeErrSqr, p);
+            sortedPairings.emplace_hint(sortedPairings.begin(), tentativeErrSqr, p);
         }
     }  // For each local point
 

@@ -51,8 +51,7 @@ class FilterDecimateVoxelsQuadratic : public mp2p_icp_filters::FilterBase
     {
         void load_from_yaml(const mrpt::containers::yaml& c);
 
-        std::string input_pointcloud_layer =
-            mp2p_icp::metric_map_t::PT_LAYER_RAW;
+        std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
         /** Whether to throw an exception if the input layer does not exist, or,
          * otherwise, it should be silently ignored producing an empty output.
@@ -89,16 +88,14 @@ class FilterDecimateVoxelsQuadratic : public mp2p_icp_filters::FilterBase
         if (std::abs(x) > params_.quadratic_reference_radius)
             return x;
         else
-            return mrpt::sign(x) * mrpt::square(x) *
-                   quadratic_reference_radius_inv_;
+            return mrpt::sign(x) * mrpt::square(x) * quadratic_reference_radius_inv_;
     }
     inline float grid2real(float y) const
     {
         if (std::abs(y) > params_.quadratic_reference_radius)
             return y;
         else
-            return std::sqrt(y * params_.quadratic_reference_radius) *
-                   mrpt::sign(y);
+            return std::sqrt(y * params_.quadratic_reference_radius) * mrpt::sign(y);
     }
 
    private:

@@ -14,22 +14,17 @@
 
 using namespace mp2p_icp;
 
-std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters>
-    mp2p_icp::icp_pipeline_from_yaml(
-        const mrpt::containers::yaml&       icpParams,
-        const mrpt::system::VerbosityLevel& vLevel)
+std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters> mp2p_icp::icp_pipeline_from_yaml(
+    const mrpt::containers::yaml& icpParams, const mrpt::system::VerbosityLevel& vLevel)
 {
     MRPT_START
 
     // ICP algorithm class:
     const std::string icpClassName = icpParams["class_name"].as<std::string>();
 
-    auto icp = std::dynamic_pointer_cast<mp2p_icp::ICP>(
-        mrpt::rtti::classFactory(icpClassName));
+    auto icp = std::dynamic_pointer_cast<mp2p_icp::ICP>(mrpt::rtti::classFactory(icpClassName));
     if (!icp)
-        THROW_EXCEPTION_FMT(
-            "Could not instantiate ICP algorithm named '%s'",
-            icpClassName.c_str());
+        THROW_EXCEPTION_FMT("Could not instantiate ICP algorithm named '%s'", icpClassName.c_str());
 
     icp->setVerbosityLevel(vLevel);
 
@@ -45,8 +40,7 @@ std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters>
     if (icpParams.has("solvers")) icp->initialize_solvers(icpParams["solvers"]);
 
     // ICP matchers class:
-    if (icpParams.has("matchers"))
-        icp->initialize_matchers(icpParams["matchers"]);
+    if (icpParams.has("matchers")) icp->initialize_matchers(icpParams["matchers"]);
 
     // ICP quality class:
     ASSERT_(icpParams.has("quality"));

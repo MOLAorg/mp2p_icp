@@ -14,13 +14,11 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/lock_helper.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterNormalizeIntensity, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterNormalizeIntensity, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
-void FilterNormalizeIntensity::Parameters::load_from_yaml(
-    const mrpt::containers::yaml& c)
+void FilterNormalizeIntensity::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_REQ(c, pointcloud_layer);
     MCP_LOAD_OPT(c, remember_intensity_range);
@@ -48,9 +46,9 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
     // In/out:
     auto pcPtr = inOut.point_layer(params_.pointcloud_layer);
     ASSERTMSG_(
-        pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.pointcloud_layer.c_str()));
+        pcPtr,
+        mrpt::format(
+            "Input point cloud layer '%s' was not found.", params_.pointcloud_layer.c_str()));
 
     auto& pc = *pcPtr;
 
@@ -97,8 +95,7 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         I = (I - *minI) * delta_inv;
     }
 
-    MRPT_LOG_DEBUG_STREAM(
-        "Normalized with minI=" << *minI << " maxI=" << *maxI);
+    MRPT_LOG_DEBUG_STREAM("Normalized with minI=" << *minI << " maxI=" << *maxI);
 
     MRPT_END
 }

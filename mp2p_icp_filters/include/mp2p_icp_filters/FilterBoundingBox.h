@@ -41,11 +41,9 @@ class FilterBoundingBox : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(
-            const mrpt::containers::yaml& c, FilterBoundingBox& parent);
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterBoundingBox& parent);
 
-        std::string input_pointcloud_layer =
-            mp2p_icp::metric_map_t::PT_LAYER_RAW;
+        std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
         /** The output point cloud layer name for points INSIDE the bbox */
         std::string inside_pointcloud_layer;
@@ -60,8 +58,7 @@ class FilterBoundingBox : public mp2p_icp_filters::FilterBase
          * bounding_box_max: [ 10,  10,  5]
          * \endcode
          */
-        mrpt::math::TBoundingBoxf bounding_box = {
-            {-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 1.0f}};
+        mrpt::math::TBoundingBoxf bounding_box = {{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 1.0f}};
     };
 
     /** Algorithm parameters */

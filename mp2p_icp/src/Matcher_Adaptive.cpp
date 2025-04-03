@@ -50,11 +50,9 @@ void Matcher_Adaptive::initialize(const mrpt::containers::yaml& params)
 }
 
 void Matcher_Adaptive::implMatchOneLayer(
-    const mrpt::maps::CMetricMap& pcGlobalMap,
-    const mrpt::maps::CPointsMap& pcLocal,
-    const mrpt::poses::CPose3D& localPose, MatchState& ms,
-    const layer_name_t& globalName, const layer_name_t& localName,
-    Pairings& out) const
+    const mrpt::maps::CMetricMap& pcGlobalMap, const mrpt::maps::CPointsMap& pcLocal,
+    const mrpt::poses::CPose3D& localPose, MatchState& ms, const layer_name_t& globalName,
+    const layer_name_t& localName, Pairings& out) const
 {
     MRPT_START
 
@@ -98,18 +96,17 @@ void Matcher_Adaptive::implMatchOneLayer(
     std::optional<float> minSqrErrorForHistogram;
     std::optional<float> maxSqrErrorForHistogram;
 
-    const auto lambdaAddPair =
-        [&](const size_t localIdx, const mrpt::math::TPoint3Df& globalPt,
-            const uint64_t globalIdxOrID, const float errSqr)
+    const auto lambdaAddPair = [&](const size_t localIdx, const mrpt::math::TPoint3Df& globalPt,
+                                   const uint64_t globalIdxOrID, const float errSqr)
     {
         auto& ps = matchesPerLocal_.at(localIdx);
         if (ps.size() >= MAX_CORRS_PER_LOCAL) return;
 
         mrpt::tfest::TMatchingPair p;
-        p.globalIdx = globalIdxOrID;
-        p.localIdx  = localIdx;
-        p.global    = globalPt;
-        p.local     = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
+        p.globalIdx                      = globalIdxOrID;
+        p.localIdx                       = localIdx;
+        p.global                         = globalPt;
+        p.local                          = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
         p.errorSquareAfterTransformation = errSqr;
 
         ps.push_back(p);
@@ -130,8 +127,7 @@ void Matcher_Adaptive::implMatchOneLayer(
             continue;
         }
 
-        const float lx = tl.x_locals[i], ly = tl.y_locals[i],
-                    lz = tl.z_locals[i];
+        const float lx = tl.x_locals[i], ly = tl.y_locals[i], lz = tl.z_locals[i];
 
         // Use a KD-tree to look for the nearnest neighbor(s) of
         // (x_local, y_local, z_local) in the global map:
@@ -154,8 +150,8 @@ void Matcher_Adaptive::implMatchOneLayer(
         {
             nnGlobal.nn_radius_search(
                 {lx, ly, lz},  // Look closest to this guy
-                absoluteMaxDistSqr, neighborPts_, neighborSqrDists_,
-                neighborIndices_, nn_search_max_points);
+                absoluteMaxDistSqr, neighborPts_, neighborSqrDists_, neighborIndices_,
+                nn_search_max_points);
         }
 
         for (size_t k = 0; k < neighborIndices_.size(); k++)
@@ -180,17 +176,14 @@ void Matcher_Adaptive::implMatchOneLayer(
                 }
             }
 
-            lambdaAddPair(
-                localIdx, neighborPts_.at(k), neighborIndices_.at(k),
-                tentativeErrSqr);
+            lambdaAddPair(localIdx, neighborPts_.at(k), neighborIndices_.at(k), tentativeErrSqr);
         }
 
     }  // For each local point
 
     // Now, estimate the probability distribution (histogram) of the
     // 1st/2nd points:
-    mrpt::math::CHistogram hist(
-        *minSqrErrorForHistogram, *maxSqrErrorForHistogram, 50);
+    mrpt::math::CHistogram hist(*minSqrErrorForHistogram, *maxSqrErrorForHistogram, 50);
 
     for (const auto& mspl : matchesPerLocal_)
         for (size_t i = 0; i < std::min<size_t>(mspl.size(), 2UL); i++)
@@ -215,8 +208,7 @@ void Matcher_Adaptive::implMatchOneLayer(
 
     // Take the confidence interval limit as the definitive maximum squared
     // distance for correspondences:
-    const double maxCorrDistSqr =
-        std::max(mrpt::square(minimumCorrDist), ci_high);
+    const double maxCorrDistSqr = std::max(mrpt::square(minimumCorrDist), ci_high);
 
     const float maxSqr1to2 = mrpt::square(firstToSecondDistanceMax);
 
@@ -238,8 +230,7 @@ void Matcher_Adaptive::implMatchOneLayer(
             }
 
             const PointCloudEigen& eig = mp2p_icp::estimate_points_eigen(
-                kddXs.data(), kddYs.data(), kddZs.data(), std::nullopt,
-                kddXs.size());
+                kddXs.data(), kddYs.data(), kddZs.data(), std::nullopt, kddXs.size());
 
             // e0/e2 must be < planeEigenThreshold:
             if (eig.eigVals[0] < planeEigenThreshold * eig.eigVals[2] &&
@@ -247,27 +238,24 @@ void Matcher_Adaptive::implMatchOneLayer(
             {
                 const auto&                normal        = eig.eigVectors[0];
                 const mrpt::math::TPoint3D planeCentroid = {
-                    eig.meanCov.mean.x(), eig.meanCov.mean.y(),
-                    eig.meanCov.mean.z()};
+                    eig.meanCov.mean.x(), eig.meanCov.mean.y(), eig.meanCov.mean.z()};
 
-                const auto thePlane = mrpt::math::TPlane(planeCentroid, normal);
-                const double ptPlaneDist =
-                    std::abs(thePlane.distance(mspl.at(0).local));
+                const auto   thePlane    = mrpt::math::TPlane(planeCentroid, normal);
+                const double ptPlaneDist = std::abs(thePlane.distance(mspl.at(0).local));
 
                 if (ptPlaneDist < planeMinimumDistance)
                 {
                     const auto localIdx = mspl.at(0).localIdx;
 
                     // OK, all conditions pass: add the new pairing:
-                    auto& p    = out.paired_pt2pl.emplace_back();
-                    p.pt_local = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
+                    auto& p              = out.paired_pt2pl.emplace_back();
+                    p.pt_local           = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
                     p.pl_global.centroid = planeCentroid;
 
                     p.pl_global.plane = thePlane;
 
                     // Mark local point as already paired:
-                    ms.localPairedBitField.point_layers[localName].mark_as_set(
-                        localIdx);
+                    ms.localPairedBitField.point_layers[localName].mark_as_set(localIdx);
 
                     // all good with this local point:
                     continue;
@@ -275,8 +263,7 @@ void Matcher_Adaptive::implMatchOneLayer(
             }
         }
 
-        for (size_t i = 0;
-             i < std::min<size_t>(mspl.size(), maxPt2PtCorrespondences); i++)
+        for (size_t i = 0; i < std::min<size_t>(mspl.size(), maxPt2PtCorrespondences); i++)
         {
             const auto& p         = mspl.at(i);
             const auto  globalIdx = p.globalIdx;
@@ -288,9 +275,8 @@ void Matcher_Adaptive::implMatchOneLayer(
             // too large error for the adaptive threshold?
             if (p.errorSquareAfterTransformation >= maxCorrDistSqr) continue;
 
-            if (i != 0 &&
-                mspl[i].errorSquareAfterTransformation >
-                    mspl[0].errorSquareAfterTransformation * maxSqr1to2)
+            if (i != 0 && mspl[i].errorSquareAfterTransformation >
+                              mspl[0].errorSquareAfterTransformation * maxSqr1to2)
             {
                 break;
             }
@@ -301,8 +287,7 @@ void Matcher_Adaptive::implMatchOneLayer(
             if (!allowMatchAlreadyMatchedGlobalPoints_)
             {
                 const auto localIdx = p.localIdx;
-                ms.localPairedBitField.point_layers[localName].mark_as_set(
-                    localIdx);
+                ms.localPairedBitField.point_layers[localName].mark_as_set(localIdx);
             }
         }
     }

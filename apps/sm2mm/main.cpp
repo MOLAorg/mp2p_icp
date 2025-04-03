@@ -23,12 +23,10 @@
 static TCLAP::CmdLine cmd("sm2mm");
 
 static TCLAP::ValueArg<std::string> argInput(
-    "i", "input", "Input .simplemap file", true, "map.simplemap",
-    "map.simplemap", cmd);
+    "i", "input", "Input .simplemap file", true, "map.simplemap", "map.simplemap", cmd);
 
 static TCLAP::ValueArg<std::string> argOutput(
-    "o", "output", "Output .mm file to write to", true, "out.mm", "out.mm",
-    cmd);
+    "o", "output", "Output .mm file to write to", true, "out.mm", "out.mm", cmd);
 
 static TCLAP::ValueArg<std::string> argPlugins(
     "l", "load-plugins",
@@ -47,13 +45,13 @@ static TCLAP::ValueArg<std::string> argPipeline(
     false, "pipeline.yaml", "pipeline.yaml", cmd);
 
 static TCLAP::ValueArg<std::string> arg_verbosity_level(
-    "v", "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)",
-    false, "", "INFO", cmd);
+    "v", "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)", false, "", "INFO",
+    cmd);
 
 static TCLAP::ValueArg<std::string> arg_lazy_load_base_dir(
     "", "externals-dir",
-    "Lazy-load base directory for datasets with externally-stored observations",
-    false, "dataset_Images", "<ExternalsDirectory>", cmd);
+    "Lazy-load base directory for datasets with externally-stored observations", false,
+    "dataset_Images", "<ExternalsDirectory>", cmd);
 
 static TCLAP::SwitchArg argNoProgressBar(
     "", "no-progress-bar",
@@ -79,14 +77,12 @@ void run_sm_to_mm()
 
     mrpt::maps::CSimpleMap sm;
 
-    std::cout << "[sm2mm] Reading simplemap from: '" << filSM << "'..."
-              << std::endl;
+    std::cout << "[sm2mm] Reading simplemap from: '" << filSM << "'..." << std::endl;
 
     // TODO: progress bar
     sm.loadFromFile(filSM);
 
-    std::cout << "[sm2mm] Done read simplemap with " << sm.size()
-              << " keyframes." << std::endl;
+    std::cout << "[sm2mm] Done read simplemap with " << sm.size() << " keyframes." << std::endl;
     ASSERT_(!sm.empty());
 
     // Load pipeline from YAML file:
@@ -125,12 +121,10 @@ void run_sm_to_mm()
 
     // Save as mm file:
     const auto filOut = argOutput.getValue();
-    std::cout << "[sm2mm] Writing metric map to: '" << filOut << "'..."
-              << std::endl;
+    std::cout << "[sm2mm] Writing metric map to: '" << filOut << "'..." << std::endl;
 
     if (!mm.save_to_file(filOut))
-        THROW_EXCEPTION_FMT(
-            "Error writing to target file '%s'", filOut.c_str());
+        THROW_EXCEPTION_FMT("Error writing to target file '%s'", filOut.c_str());
 }
 
 int main(int argc, char** argv)

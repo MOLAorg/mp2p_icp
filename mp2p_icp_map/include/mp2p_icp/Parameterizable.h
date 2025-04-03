@@ -25,8 +25,8 @@ struct InfoPerParam
     /// Compiled expression
     std::optional<mrpt::expr::CRuntimeCompiledExpression>    compiled;
     std::variant<std::monostate, double*, float*, uint32_t*> target;
-    bool is_constant        = false;
-    bool has_been_evaluated = false;
+    bool                                                     is_constant        = false;
+    bool                                                     has_been_evaluated = false;
 };
 }  // namespace internal
 
@@ -48,17 +48,12 @@ class ParameterSource
 
     /** Updates a variable value. Remember to call realize() after updating all
      *  variables for the changes to take effect */
-    void updateVariable(const std::string& variable, double value)
-    {
-        variables_[variable] = value;
-    }
+    void updateVariable(const std::string& variable, double value) { variables_[variable] = value; }
 
     /** Like updateVariable(), accepting several pairs of names-values */
-    void updateVariables(
-        const std::vector<std::pair<std::string, double>>& nameValuePairs)
+    void updateVariables(const std::vector<std::pair<std::string, double>>& nameValuePairs)
     {
-        for (const auto& [name, value] : nameValuePairs)
-            updateVariable(name, value);
+        for (const auto& [name, value] : nameValuePairs) updateVariable(name, value);
     }
 
     void realize();
@@ -66,10 +61,7 @@ class ParameterSource
     std::string printVariableValues() const;
 
     /** Returns a copy of the current variable values */
-    auto getVariableValues() const -> std::map<std::string, double>
-    {
-        return variables_;
-    }
+    auto getVariableValues() const -> std::map<std::string, double> { return variables_; }
 
    private:
     // Attached clients.
@@ -90,10 +82,7 @@ class Parameterizable
     /**
      * Each parameterizable object can be attached to one source at a given time
      */
-    virtual void attachToParameterSource(ParameterSource& source)
-    {
-        source.attach(*this);
-    }
+    virtual void attachToParameterSource(ParameterSource& source) { source.attach(*this); }
 
     auto&       declaredParameters() { return declParameters_; }
     const auto& declaredParameters() const { return declParameters_; }
@@ -156,20 +145,18 @@ inline void AttachToParameterSource(Parameterizable& o, ParameterSource& source)
     o.attachToParameterSource(source);
 }
 
-#define DECLARE_PARAMETER_IN_OPT(__yaml, __variable, __object)        \
-    __object.mp2p_icp::Parameterizable::parseAndDeclareParameter(     \
-        __yaml.getOrDefault(#__variable, std::to_string(__variable)), \
-        __variable);
+#define DECLARE_PARAMETER_IN_OPT(__yaml, __variable, __object)    \
+    __object.mp2p_icp::Parameterizable::parseAndDeclareParameter( \
+        __yaml.getOrDefault(#__variable, std::to_string(__variable)), __variable);
 
 #define DECLARE_PARAMETER_OPT(__yaml, __variable) \
     DECLARE_PARAMETER_IN_OPT(__yaml, __variable, (*this))
 
-#define DECLARE_PARAMETER_IN_REQ(__yaml, __variable, __object)            \
-    if (!__yaml.has(#__variable))                                         \
-        throw std::invalid_argument(mrpt::format(                         \
-            "Required parameter `%s` not an existing key in dictionary.", \
-            #__variable));                                                \
-    __object.mp2p_icp::Parameterizable::parseAndDeclareParameter(         \
+#define DECLARE_PARAMETER_IN_REQ(__yaml, __variable, __object)                           \
+    if (!__yaml.has(#__variable))                                                        \
+        throw std::invalid_argument(mrpt::format(                                        \
+            "Required parameter `%s` not an existing key in dictionary.", #__variable)); \
+    __object.mp2p_icp::Parameterizable::parseAndDeclareParameter(                        \
         __yaml[#__variable].as<std::string>(), __variable);
 
 #define DECLARE_PARAMETER_REQ(__yaml, __variable) \

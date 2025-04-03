@@ -18,8 +18,7 @@ int commandJoin()
 {
     const auto& lstCmds = cli->argCmd.getValue();
     if (cli->argHelp.isSet()) return printCommandsJoin(false);
-    if (lstCmds.size() < 2 || !cli->arg_output.isSet())
-        return printCommandsJoin(true);
+    if (lstCmds.size() < 2 || !cli->arg_output.isSet()) return printCommandsJoin(true);
 
     // Take second unlabeled argument:
     mrpt::maps::CSimpleMap outSM;
@@ -38,8 +37,8 @@ int commandJoin()
 
     const auto outFil = cli->arg_output.getValue();
 
-    std::cout << "Writing merged simplemap with " << outSM.size()
-              << " keyframes to '" << outFil << "'" << std::endl;
+    std::cout << "Writing merged simplemap with " << outSM.size() << " keyframes to '" << outFil
+              << "'" << std::endl;
 
     outSM.saveToFile(outFil);
 

@@ -26,12 +26,10 @@ using namespace mp2p_icp;
 
 Matcher_Points_DistanceThreshold::Matcher_Points_DistanceThreshold()
 {
-    mrpt::system::COutputLogger::setLoggerName(
-        "Matcher_Points_DistanceThreshold");
+    mrpt::system::COutputLogger::setLoggerName("Matcher_Points_DistanceThreshold");
 }
 
-void Matcher_Points_DistanceThreshold::initialize(
-    const mrpt::containers::yaml& params)
+void Matcher_Points_DistanceThreshold::initialize(const mrpt::containers::yaml& params)
 {
     Matcher_Points_Base::initialize(params);
 
@@ -41,11 +39,9 @@ void Matcher_Points_DistanceThreshold::initialize(
 }
 
 void Matcher_Points_DistanceThreshold::implMatchOneLayer(
-    const mrpt::maps::CMetricMap& pcGlobalMap,
-    const mrpt::maps::CPointsMap& pcLocal,
-    const mrpt::poses::CPose3D& localPose, MatchState& ms,
-    const layer_name_t& globalName, const layer_name_t& localName,
-    Pairings& out) const
+    const mrpt::maps::CMetricMap& pcGlobalMap, const mrpt::maps::CPointsMap& pcLocal,
+    const mrpt::poses::CPose3D& localPose, MatchState& ms, const layer_name_t& globalName,
+    const layer_name_t& localName, Pairings& out) const
 {
     MRPT_START
 
@@ -68,8 +64,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(
-            {tl.localMin, tl.localMax},
-            threshold + bounding_box_intersection_check_epsilon_))
+            {tl.localMin, tl.localMax}, threshold + bounding_box_intersection_check_epsilon_))
         return;
 
     // Prepare output: no correspondences initially:
@@ -78,8 +73,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     // Loop for each point in local map:
     // --------------------------------------------------
     const float maxDistForCorrespondenceSquared = mrpt::square(threshold);
-    const float angularThresholdFactorSquared =
-        mrpt::square(mrpt::DEG2RAD(thresholdAngularDeg));
+    const float angularThresholdFactorSquared   = mrpt::square(mrpt::DEG2RAD(thresholdAngularDeg));
 
     const auto&  lxs       = pcLocal.getPointsBufferRef_x();
     const auto&  lys       = pcLocal.getPointsBufferRef_y();
@@ -90,11 +84,10 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     // single-thread call before entering into parallelization:
     nnGlobal.nn_prepare_for_3d_queries();
 
-    const auto lambdaAddPair =
-        [this, &ms, &globalName, &localName, &lxs, &lys, &lzs](
-            mrpt::tfest::TMatchingPairList& outPairs, const size_t localIdx,
-            const mrpt::math::TPoint3Df& globalPt, const uint64_t globalIdxOrID,
-            const float errSqr)
+    const auto lambdaAddPair = [this, &ms, &globalName, &localName, &lxs, &lys, &lzs](
+                                   mrpt::tfest::TMatchingPairList& outPairs, const size_t localIdx,
+                                   const mrpt::math::TPoint3Df& globalPt,
+                                   const uint64_t globalIdxOrID, const float errSqr)
     {
         // Filter out if global alread assigned, in another matcher up the
         // pipeline, for example.
@@ -115,10 +108,8 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         // Mark local & global points as already paired:
         if (!allowMatchAlreadyMatchedGlobalPoints_)
         {
-            ms.localPairedBitField.point_layers[localName].mark_as_set(
-                localIdx);
-            ms.globalPairedBitField.point_layers[globalName].mark_as_set(
-                globalIdxOrID);
+            ms.localPairedBitField.point_layers[localName].mark_as_set(localIdx);
+            ms.globalPairedBitField.point_layers[globalName].mark_as_set(globalIdxOrID);
         }
     };
 
@@ -148,11 +139,9 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
                     continue;  // skip, already paired.
 
                 // For speed-up:
-                const float lx = tl.x_locals[i], ly = tl.y_locals[i],
-                            lz = tl.z_locals[i];
+                const float lx = tl.x_locals[i], ly = tl.y_locals[i], lz = tl.z_locals[i];
 
-                const float localNormSqr =
-                    mrpt::square(lx) + mrpt::square(ly) + mrpt::square(lz);
+                const float localNormSqr = mrpt::square(lx) + mrpt::square(ly) + mrpt::square(lz);
 
                 // Use a KD-tree to look for the nearnest neighbor(s) of
                 // (x_local, y_local, z_local) in the global map.
@@ -164,8 +153,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 
                     if (!nnGlobal.nn_single_search(
                             {lx, ly, lz},  // Look closest to this guy
-                            neighborPts[0], neighborSqrDists[0],
-                            neighborIndices[0]))
+                            neighborPts[0], neighborSqrDists[0], neighborIndices[0]))
                     {
                         neighborIndices.clear();
                         neighborSqrDists.clear();
@@ -178,8 +166,8 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
                     // distance:
                     nnGlobal.nn_radius_search(
                         {lx, ly, lz},  // Look closest to this guy
-                        maxDistForCorrespondenceSquared, neighborPts,
-                        neighborSqrDists, neighborIndices, pairingsPerPoint);
+                        maxDistForCorrespondenceSquared, neighborPts, neighborSqrDists,
+                        neighborIndices, pairingsPerPoint);
                 }
 
                 // Distance below the threshold??
@@ -187,16 +175,13 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
                 {
                     const auto tentativeErrSqr = neighborSqrDists.at(k);
 
-                    const float finalThresSqr =
-                        maxDistForCorrespondenceSquared +
-                        angularThresholdFactorSquared * localNormSqr;
+                    const float finalThresSqr = maxDistForCorrespondenceSquared +
+                                                angularThresholdFactorSquared * localNormSqr;
 
-                    if (tentativeErrSqr >= finalThresSqr)
-                        break;  // skip this and the rest.
+                    if (tentativeErrSqr >= finalThresSqr) break;  // skip this and the rest.
 
                     lambdaAddPair(
-                        res, localIdx, neighborPts.at(k), neighborIndices.at(k),
-                        tentativeErrSqr);
+                        res, localIdx, neighborPts.at(k), neighborIndices.at(k), tentativeErrSqr);
                 }
             }
             return res;
@@ -204,9 +189,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         // 2nd lambda: Parallel reduction
         [](Result a, const Result& b) -> Result
         {
-            a.insert(
-                a.end(), std::make_move_iterator(b.begin()),
-                std::make_move_iterator(b.end()));
+            a.insert(a.end(), std::make_move_iterator(b.begin()), std::make_move_iterator(b.end()));
             return a;
         });
 
@@ -230,11 +213,9 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
             continue;  // skip, already paired.
 
         // For speed-up:
-        const float lx = tl.x_locals[i], ly = tl.y_locals[i],
-                    lz = tl.z_locals[i];
+        const float lx = tl.x_locals[i], ly = tl.y_locals[i], lz = tl.z_locals[i];
 
-        const float localNormSqr =
-            mrpt::square(lx) + mrpt::square(ly) + mrpt::square(lz);
+        const float localNormSqr = mrpt::square(lx) + mrpt::square(ly) + mrpt::square(lz);
 
         // Use a KD-tree to look for the nearnest neighbor(s) of
         // (x_local, y_local, z_local) in the global map.
@@ -257,8 +238,7 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
         {
             nnGlobal.nn_multiple_search(
                 {lx, ly, lz},  // Look closest to this guy
-                pairingsPerPoint, neighborPts, neighborSqrDists,
-                neighborIndices);
+                pairingsPerPoint, neighborPts, neighborSqrDists, neighborIndices);
         }
 
         // Distance below the threshold??
@@ -267,15 +247,13 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
             const auto tentativeErrSqr = neighborSqrDists.at(k);
 
             const float finalThresSqr =
-                maxDistForCorrespondenceSquared +
-                angularThresholdFactorSquared * localNormSqr;
+                maxDistForCorrespondenceSquared + angularThresholdFactorSquared * localNormSqr;
 
-            if (tentativeErrSqr >= finalThresSqr)
-                break;  // skip this and the rest.
+            if (tentativeErrSqr >= finalThresSqr) break;  // skip this and the rest.
 
             lambdaAddPair(
-                out.paired_pt2pt, localIdx, neighborPts.at(k),
-                neighborIndices.at(k), tentativeErrSqr);
+                out.paired_pt2pt, localIdx, neighborPts.at(k), neighborIndices.at(k),
+                tentativeErrSqr);
         }
     }
 #endif

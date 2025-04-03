@@ -23,36 +23,26 @@ struct cli_flags
     TCLAP::CmdLine cmd{"sm-cli", ' ', "version", false /* no --help */};
 
     TCLAP::UnlabeledMultiArg<std::string> argCmd{
-        "command", "Command to run. Run 'sm help' to list commands.", false, "",
-        cmd};
+        "command", "Command to run. Run 'sm help' to list commands.", false, "", cmd};
 
     TCLAP::ValueArg<std::string> arg_verbosity_level{
-        "v",
-        "verbosity",
-        "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)",
-        false,
-        "",
-        "INFO",
-        cmd};
+        "v",    "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)", false, "",
+        "INFO", cmd};
 
-    TCLAP::ValueArg<size_t> arg_from{
-        "", "from", "First KF index", false, 0, "KF index", cmd};
+    TCLAP::ValueArg<size_t> arg_from{"", "from", "First KF index", false, 0, "KF index", cmd};
 
-    TCLAP::ValueArg<size_t> arg_to{"",         "to", "Last KF index", false, 0,
-                                   "KF index", cmd};
+    TCLAP::ValueArg<size_t> arg_to{"", "to", "Last KF index", false, 0, "KF index", cmd};
 
     TCLAP::ValueArg<std::string> arg_min_corner{
-        "",    "min-corner", "Bounding box minimum coordinates",
-        false, "",           "\"[xmin ymin zmin]\"",
+        "", "min-corner", "Bounding box minimum coordinates", false, "", "\"[xmin ymin zmin]\"",
         cmd};
 
     TCLAP::ValueArg<std::string> arg_max_corner{
-        "",    "max-corner", "Bounding box maximum coordinates",
-        false, "",           "\"[xmax ymax zmax]\"",
+        "", "max-corner", "Bounding box maximum coordinates", false, "", "\"[xmax ymax zmax]\"",
         cmd};
 
-    TCLAP::ValueArg<std::string> arg_output{
-        "o", "output", "Output file", false, "output", "output", cmd};
+    TCLAP::ValueArg<std::string> arg_output{"o",      "output", "Output file", false, "output",
+                                            "output", cmd};
 
     TCLAP::ValueArg<std::string> arg_output_twist{
         "",
@@ -65,11 +55,9 @@ struct cli_flags
         "twist.txt",
         cmd};
 
-    TCLAP::SwitchArg argHelp{
-        "h", "help", "Shows more detailed help for command", cmd};
+    TCLAP::SwitchArg argHelp{"h", "help", "Shows more detailed help for command", cmd};
 
-    TCLAP::SwitchArg argVersion{
-        "", "version", "Shows program version and exits", cmd};
+    TCLAP::SwitchArg argVersion{"", "version", "Shows program version and exits", cmd};
 };
 
 extern std::unique_ptr<cli_flags> cli;

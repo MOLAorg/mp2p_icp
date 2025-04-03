@@ -15,13 +15,11 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/round.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterDecimateAdaptive, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterDecimateAdaptive, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
-void FilterDecimateAdaptive::Parameters::load_from_yaml(
-    const mrpt::containers::yaml& c)
+void FilterDecimateAdaptive::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_OPT(c, enabled);
 
@@ -59,9 +57,9 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     // In:
     const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
-        pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.input_pointcloud_layer.c_str()));
+        pcPtr,
+        mrpt::format(
+            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
@@ -103,8 +101,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     std::size_t nTotalVoxels = 0;
     filter_grid_.visit_voxels(
-        [&](const PointCloudToVoxelGrid::indices_t&,
-            const PointCloudToVoxelGrid::voxel_t& data)
+        [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& data)
         {
             if (!data.indices.empty()) nTotalVoxels++;
             if (data.indices.size() < _.minimum_input_points_per_voxel) return;
@@ -119,9 +116,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     if (params_.desired_output_point_count < nVoxels)
     {
         voxelIdxIncrement = std::max<size_t>(
-            1, mrpt::round(
-                   nVoxels /
-                   static_cast<float>(params_.desired_output_point_count)));
+            1, mrpt::round(nVoxels / static_cast<float>(params_.desired_output_point_count)));
     }
 
     bool anyInsertInTheRound = false;

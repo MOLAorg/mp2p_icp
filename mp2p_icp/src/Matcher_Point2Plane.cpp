@@ -32,11 +32,10 @@ void Matcher_Point2Plane::initialize(const mrpt::containers::yaml& params)
 }
 
 void Matcher_Point2Plane::implMatchOneLayer(
-    const mrpt::maps::CMetricMap& pcGlobalMap,
-    const mrpt::maps::CPointsMap& pcLocal,
+    const mrpt::maps::CMetricMap& pcGlobalMap, const mrpt::maps::CPointsMap& pcLocal,
     const mrpt::poses::CPose3D& localPose, MatchState& ms,
-    [[maybe_unused]] const layer_name_t& globalName,
-    const layer_name_t& localName, Pairings& out) const
+    [[maybe_unused]] const layer_name_t& globalName, const layer_name_t& localName,
+    Pairings& out) const
 {
     MRPT_START
 
@@ -84,8 +83,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
         // to have multiple-local-to-one-global pairings.
 
         // For speed-up:
-        const float lx = tl.x_locals[i], ly = tl.y_locals[i],
-                    lz = tl.z_locals[i];
+        const float lx = tl.x_locals[i], ly = tl.y_locals[i], lz = tl.z_locals[i];
 
         // Use a KD-tree to look for the nearnest neighbor(s) of
         // (x_local, y_local, z_local) in the global map.

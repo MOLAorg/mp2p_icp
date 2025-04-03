@@ -100,11 +100,9 @@ class LogRecord : public mrpt::serialization::CSerializable
 namespace mrpt::serialization
 {
 mrpt::serialization::CArchive& operator<<(
-    mrpt::serialization::CArchive&                    out,
-    const mp2p_icp::LogRecord::DebugInfoPerIteration& obj);
+    mrpt::serialization::CArchive& out, const mp2p_icp::LogRecord::DebugInfoPerIteration& obj);
 
 mrpt::serialization::CArchive& operator>>(
-    mrpt::serialization::CArchive&              in,
-    mp2p_icp::LogRecord::DebugInfoPerIteration& obj);
+    mrpt::serialization::CArchive& in, mp2p_icp::LogRecord::DebugInfoPerIteration& obj);
 
 }  // namespace mrpt::serialization

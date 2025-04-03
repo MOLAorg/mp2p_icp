@@ -26,33 +26,23 @@ namespace mp2p_icp
  * @{ */
 
 mrpt::math::CVectorFixedDouble<3> error_point2point(
-    const mrpt::tfest::TMatchingPair&                           pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian =
-        std::nullopt);
+    const mrpt::tfest::TMatchingPair& pairing, const mrpt::poses::CPose3D& relativePose,
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian = std::nullopt);
 
 mrpt::math::CVectorFixedDouble<3> error_point2line(
-    const mp2p_icp::point_line_pair_t&                          pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian =
-        std::nullopt);
+    const mp2p_icp::point_line_pair_t& pairing, const mrpt::poses::CPose3D& relativePose,
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian = std::nullopt);
 
 mrpt::math::CVectorFixedDouble<3> error_point2plane(
-    const mp2p_icp::point_plane_pair_t&                         pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian =
-        std::nullopt);
+    const mp2p_icp::point_plane_pair_t& pairing, const mrpt::poses::CPose3D& relativePose,
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian = std::nullopt);
 
 mrpt::math::CVectorFixedDouble<4> error_line2line(
-    const mp2p_icp::matched_line_t&                             pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 4, 12>> jacobian =
-        std::nullopt);
+    const mp2p_icp::matched_line_t& pairing, const mrpt::poses::CPose3D& relativePose,
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 4, 12>> jacobian = std::nullopt);
 
 mrpt::math::CVectorFixedDouble<3> error_plane2plane(
-    const mp2p_icp::matched_plane_t&                            pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
-    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian =
-        std::nullopt);
+    const mp2p_icp::matched_plane_t& pairing, const mrpt::poses::CPose3D& relativePose,
+    mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian = std::nullopt);
 
 }  // namespace mp2p_icp

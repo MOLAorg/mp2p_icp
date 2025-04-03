@@ -64,8 +64,7 @@ static PointMatcher<double>::DataPoints pointsToPM(const metric_map_t& pc)
 }
 #endif
 
-void ICP_LibPointmatcher::initialize_derived(
-    const mrpt::containers::yaml& params)
+void ICP_LibPointmatcher::initialize_derived(const mrpt::containers::yaml& params)
 {
     std::stringstream ss;
     params.printAsYAML(ss);
@@ -73,13 +72,11 @@ void ICP_LibPointmatcher::initialize_derived(
 }
 
 void ICP_LibPointmatcher::align(
-    [[maybe_unused]] const metric_map_t&        pcLocal,
-    [[maybe_unused]] const metric_map_t&        pcGlobal,
+    [[maybe_unused]] const metric_map_t& pcLocal, [[maybe_unused]] const metric_map_t& pcGlobal,
     [[maybe_unused]] const mrpt::math::TPose3D& initialGuessLocalWrtGlobal,
     [[maybe_unused]] const Parameters& p, [[maybe_unused]] Results& result,
-    [[maybe_unused]] const std::optional<mrpt::poses::CPose3DPDFGaussianInf>&
-                                                          prior,
-    [[maybe_unused]] const mrpt::optional_ref<LogRecord>& outputDebugInfo)
+    [[maybe_unused]] const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior,
+    [[maybe_unused]] const mrpt::optional_ref<LogRecord>&                     outputDebugInfo)
 {
     using namespace std::string_literals;
 
@@ -97,10 +94,9 @@ void ICP_LibPointmatcher::align(
 
     ICP_State state(pcLocal, pcGlobal);
 
-    state.currentSolution = OptimalTF_Result();
-    state.currentSolution.optimalPose =
-        mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
-    auto prev_solution = state.currentSolution.optimalPose;
+    state.currentSolution             = OptimalTF_Result();
+    state.currentSolution.optimalPose = mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
+    auto prev_solution                = state.currentSolution.optimalPose;
 
     // Reset output:
     result = Results();
@@ -108,14 +104,13 @@ void ICP_LibPointmatcher::align(
     // Prepare output debug records:
     std::optional<LogRecord> currentLog;
 
-    const bool generateDebugRecord =
-        outputDebugInfo.has_value() || p.generateDebugFiles;
+    const bool generateDebugRecord = outputDebugInfo.has_value() || p.generateDebugFiles;
 
     if (generateDebugRecord)
     {
         currentLog.emplace();
-        currentLog->pcGlobal = pcGlobal.get_shared_from_this_or_clone();
-        currentLog->pcLocal  = pcLocal.get_shared_from_this_or_clone();
+        currentLog->pcGlobal                   = pcGlobal.get_shared_from_this_or_clone();
+        currentLog->pcLocal                    = pcLocal.get_shared_from_this_or_clone();
         currentLog->initialGuessLocalWrtGlobal = initialGuessLocalWrtGlobal;
         currentLog->icpParameters              = p;
     }
@@ -156,10 +151,9 @@ void ICP_LibPointmatcher::align(
 
     if (!rigidTrans.checkParameters(initTransfo))
     {
-        MRPT_LOG_WARN(
-            "Initial transformation is not rigid, SE(3) identity will be used");
-        initTransfo = PM::TransformationParameters::Identity(
-            cloudDimension + 1, cloudDimension + 1);
+        MRPT_LOG_WARN("Initial transformation is not rigid, SE(3) identity will be used");
+        initTransfo =
+            PM::TransformationParameters::Identity(cloudDimension + 1, cloudDimension + 1);
     }
 
     const DP ptsLocalTf = rigidTrans.compute(ptsLocal, initTransfo);
@@ -172,9 +166,8 @@ void ICP_LibPointmatcher::align(
 
         // PM gives us the transformation wrt the initial transformation,
         // since we already applied that transf. to the input point cloud!
-        state.currentSolution.optimalPose =
-            mrpt::poses::CPose3D(initialGuessLocalWrtGlobal) +
-            mrpt::poses::CPose3D(mrpt::math::CMatrixDouble44(T));
+        state.currentSolution.optimalPose = mrpt::poses::CPose3D(initialGuessLocalWrtGlobal) +
+                                            mrpt::poses::CPose3D(mrpt::math::CMatrixDouble44(T));
 
         // result.quality = icp.errorMinimizer->getWeightedPointUsedRatio();
     }
@@ -186,15 +179,14 @@ void ICP_LibPointmatcher::align(
 
     // Output in MP2P_ICP format:
     if (!icp.transformationCheckers.empty())
-        result.nIterations =
-            icp.transformationCheckers.at(0)->getConditionVariables()[0];
+        result.nIterations = icp.transformationCheckers.at(0)->getConditionVariables()[0];
     else
         result.nIterations = 1;
 
     // Quality:
     result.quality = evaluate_quality(
-        quality_evaluators_, pcGlobal, pcLocal,
-        state.currentSolution.optimalPose, result.finalPairings);
+        quality_evaluators_, pcGlobal, pcLocal, state.currentSolution.optimalPose,
+        result.finalPairings);
 
     result.terminationReason = IterTermReason::Stalled;
     result.optimalScale      = 1.0;
@@ -202,8 +194,8 @@ void ICP_LibPointmatcher::align(
 
     mp2p_icp::CovarianceParameters covParams;
 
-    result.optimal_tf.cov = mp2p_icp::covariance(
-        result.finalPairings, result.optimal_tf.mean, covParams);
+    result.optimal_tf.cov =
+        mp2p_icp::covariance(result.finalPairings, result.optimal_tf.mean, covParams);
 
     // ----------------------------
     // Log records

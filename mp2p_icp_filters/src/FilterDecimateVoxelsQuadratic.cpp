@@ -18,13 +18,11 @@
 #include <mrpt/random/RandomGenerators.h>
 
 IMPLEMENTS_MRPT_OBJECT(
-    FilterDecimateVoxelsQuadratic, mp2p_icp_filters::FilterBase,
-    mp2p_icp_filters)
+    FilterDecimateVoxelsQuadratic, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
-void FilterDecimateVoxelsQuadratic::Parameters::load_from_yaml(
-    const mrpt::containers::yaml& c)
+void FilterDecimateVoxelsQuadratic::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_OPT(c, input_pointcloud_layer);
     MCP_LOAD_OPT(c, error_on_missing_input_layer);
@@ -66,14 +64,12 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
 
     // In:
     mrpt::maps::CPointsMap* pcPtr = nullptr;
-    if (auto itLy = inOut.layers.find(params_.input_pointcloud_layer);
-        itLy != inOut.layers.end())
+    if (auto itLy = inOut.layers.find(params_.input_pointcloud_layer); itLy != inOut.layers.end())
     {
         pcPtr = mp2p_icp::MapToPointsMap(*itLy->second);
         if (!pcPtr)
             THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.",
-                params_.input_pointcloud_layer.c_str());
+                "Layer '%s' must be of point cloud type.", params_.input_pointcloud_layer.c_str());
     }
     else
     {
@@ -81,8 +77,7 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
         if (params_.error_on_missing_input_layer)
         {
             THROW_EXCEPTION_FMT(
-                "Input layer '%s' not found on input map.",
-                params_.input_pointcloud_layer.c_str());
+                "Input layer '%s' not found on input map.", params_.input_pointcloud_layer.c_str());
         }
         else
         {
@@ -102,8 +97,7 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& zs = rawPc.getPointsBufferRef_z();
     for (size_t i = 0; i < xs.size(); i++)
     {
-        pc.insertPointFast(
-            real2grid(xs[i]), real2grid(ys[i]), real2grid(zs[i]));
+        pc.insertPointFast(real2grid(xs[i]), real2grid(ys[i]), real2grid(zs[i]));
     }
     pc.mark_as_modified();
 
@@ -121,21 +115,18 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
     // TODO?: rng.randomize(seed);
 
     // Inverse nonlinear transformation:
-    auto lambdaInsertPt = [&outPc](float x, float y, float z)
-    { outPc->insertPointFast(x, y, z); };
+    auto lambdaInsertPt = [&outPc](float x, float y, float z) { outPc->insertPointFast(x, y, z); };
 
     size_t nonEmptyVoxels = 0;
 
     filter_grid_.visit_voxels(
-        [&](const PointCloudToVoxelGrid::indices_t&,
-            const PointCloudToVoxelGrid::voxel_t& vxl)
+        [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& vxl)
         {
             if (vxl.indices.empty()) return;
 
             nonEmptyVoxels++;
 
-            if (params_.use_voxel_average ||
-                params_.use_closest_to_voxel_average)
+            if (params_.use_voxel_average || params_.use_closest_to_voxel_average)
             {
                 // Analyze the voxel contents:
                 auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
@@ -179,10 +170,9 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
             else
             {
                 // Insert a randomly-picked point:
-                const auto idxInVoxel =
-                    params_.use_random_point_within_voxel
-                        ? (rng.drawUniform64bit() % vxl.indices.size())
-                        : 0UL;
+                const auto idxInVoxel = params_.use_random_point_within_voxel
+                                            ? (rng.drawUniform64bit() % vxl.indices.size())
+                                            : 0UL;
 
                 const auto pt_idx = vxl.indices.at(idxInVoxel);
                 lambdaInsertPt(xs[pt_idx], ys[pt_idx], zs[pt_idx]);

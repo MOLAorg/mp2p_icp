@@ -13,13 +13,11 @@
 #include <mp2p_icp_filters/FilterDeleteLayer.h>
 #include <mrpt/containers/yaml.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterDeleteLayer, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterDeleteLayer, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
-void FilterDeleteLayer::Parameters::load_from_yaml(
-    const mrpt::containers::yaml& c)
+void FilterDeleteLayer::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     ASSERTMSG_(
         c.has("pointcloud_layer_to_remove"),
@@ -30,10 +28,7 @@ void FilterDeleteLayer::Parameters::load_from_yaml(
     pointcloud_layer_to_remove.clear();
 
     auto cfgIn = c["pointcloud_layer_to_remove"];
-    if (cfgIn.isScalar())
-    {
-        pointcloud_layer_to_remove.push_back(cfgIn.as<std::string>());
-    }
+    if (cfgIn.isScalar()) { pointcloud_layer_to_remove.push_back(cfgIn.as<std::string>()); }
     else
     {
         ASSERTMSG_(
@@ -77,8 +72,7 @@ void FilterDeleteLayer::filter(mp2p_icp::metric_map_t& inOut) const
         {
             ASSERTMSG_(
                 nRemoved != 0,
-                mrpt::format(
-                    "Point cloud layer '%s' was not found.", layer.c_str()));
+                mrpt::format("Point cloud layer '%s' was not found.", layer.c_str()));
         }
         MRPT_LOG_DEBUG_STREAM("Deleted layer: '" << layer << "'");
     }

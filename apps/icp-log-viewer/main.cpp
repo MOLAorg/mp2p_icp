@@ -46,21 +46,18 @@ constexpr int         WINDOW_FIXED_WIDTH = 400;
 static TCLAP::CmdLine cmd(APP_NAME);
 
 static TCLAP::ValueArg<std::string> argExtension(
-    "e", "file-extension",
-    "Filename extension to look for. Default is `icplog`", false, "icplog",
+    "e", "file-extension", "Filename extension to look for. Default is `icplog`", false, "icplog",
     "icplog", cmd);
 
 static TCLAP::ValueArg<std::string> argSearchDir(
-    "d", "directory", "Directory in which to search for *.icplog files.", false,
-    ".", ".", cmd);
+    "d", "directory", "Directory in which to search for *.icplog files.", false, ".", ".", cmd);
 
 static TCLAP::ValueArg<std::string> argSingleFile(
-    "f", "file", "Load just this one single log *.icplog file.", false,
-    "log.icplog", "log.icplog", cmd);
+    "f", "file", "Load just this one single log *.icplog file.", false, "log.icplog", "log.icplog",
+    cmd);
 
 static TCLAP::ValueArg<std::string> arg_plugins(
-    "l", "load-plugins",
-    "One or more (comma separated) *.so files to load as plugins", false,
+    "l", "load-plugins", "One or more (comma separated) *.so files to load as plugins", false,
     "foobar.so", "foobar.so", cmd);
 
 static TCLAP::ValueArg<double> argAutoPlayPeriod(
@@ -72,7 +69,7 @@ static TCLAP::ValueArg<double> argAutoPlayPeriod(
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
 
-auto glVizICP = mrpt::opengl::CSetOfObjects::Create();
+auto                              glVizICP = mrpt::opengl::CSetOfObjects::Create();
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
 nanogui::Slider* slSelectorICP   = nullptr;
@@ -81,11 +78,10 @@ nanogui::Button* btnSelectorAutoplay = nullptr;
 bool             isAutoPlayActive    = false;
 double           lastAutoPlayTime    = .0;
 
-std::array<nanogui::TextBox*, 5> lbICPStats = {
-    nullptr, nullptr, nullptr, nullptr, nullptr};
-nanogui::CheckBox* cbShowInitialPose  = nullptr;
-nanogui::Label*    lbICPIteration     = nullptr;
-nanogui::Slider*   slIterationDetails = nullptr;
+std::array<nanogui::TextBox*, 5> lbICPStats         = {nullptr, nullptr, nullptr, nullptr, nullptr};
+nanogui::CheckBox*               cbShowInitialPose  = nullptr;
+nanogui::Label*                  lbICPIteration     = nullptr;
+nanogui::Slider*                 slIterationDetails = nullptr;
 
 const size_t                   MAX_VARIABLE_LIST = 100;
 std::vector<nanogui::TextBox*> lbDynVariables;
@@ -103,9 +99,8 @@ nanogui::CheckBox* cbViewPairings_pt2pt = nullptr;
 nanogui::CheckBox* cbViewPairings_pt2pl = nullptr;
 nanogui::CheckBox* cbViewPairings_pt2ln = nullptr;
 
-nanogui::TextBox *tbLogPose = nullptr, *tbInitialGuess = nullptr,
-                 *tbInit2Final = nullptr, *tbCovariance = nullptr,
-                 *tbConditionNumber = nullptr, *tbPairings = nullptr;
+nanogui::TextBox *tbLogPose = nullptr, *tbInitialGuess = nullptr, *tbInit2Final = nullptr,
+                 *tbCovariance = nullptr, *tbConditionNumber = nullptr, *tbPairings = nullptr;
 
 nanogui::Slider* slPairingsPl2PlSize   = nullptr;
 nanogui::Slider* slPairingsPl2LnSize   = nullptr;
@@ -116,8 +111,7 @@ nanogui::Slider* slThicknessDepthField = nullptr;
 nanogui::Label * lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr;
 
-nanogui::Slider* slGTPose[6] = {nullptr, nullptr, nullptr,
-                                nullptr, nullptr, nullptr};
+nanogui::Slider* slGTPose[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 
 std::vector<std::string> layerNames_global, layerNames_local;
 
@@ -128,8 +122,7 @@ class DelayedLoadLog
 {
    public:
     DelayedLoadLog() = default;
-    DelayedLoadLog(
-        const std::string& fileName, const std::string& shortFileName)
+    DelayedLoadLog(const std::string& fileName, const std::string& shortFileName)
         : filename_(fileName), shortFileName_(shortFileName)
     {
     }
@@ -202,14 +195,11 @@ void main_show_gui()
         const std::string searchDir = argSearchDir.getValue();
         ASSERT_DIRECTORY_EXISTS_(searchDir);
 
-        std::cout << "Searching in: '" << searchDir
-                  << "' for files with extension '" << argExtension.getValue()
-                  << "'" << std::endl;
+        std::cout << "Searching in: '" << searchDir << "' for files with extension '"
+                  << argExtension.getValue() << "'" << std::endl;
 
-        mrpt::system::CDirectoryExplorer::explore(
-            searchDir, FILE_ATTRIB_ARCHIVE, files);
-        mrpt::system::CDirectoryExplorer::filterByExtension(
-            files, argExtension.getValue());
+        mrpt::system::CDirectoryExplorer::explore(searchDir, FILE_ATTRIB_ARCHIVE, files);
+        mrpt::system::CDirectoryExplorer::filterByExtension(files, argExtension.getValue());
         mrpt::system::CDirectoryExplorer::sortByName(files);
 
         std::cout << "Found " << files.size() << " ICP records." << std::endl;
@@ -217,16 +207,14 @@ void main_show_gui()
     else
     {
         // Load one single file:
-        std::cout << "Loading one single log file: " << argSingleFile.getValue()
-                  << std::endl;
+        std::cout << "Loading one single log file: " << argSingleFile.getValue() << std::endl;
 
         files.resize(1);
         files[0].wholePath = argSingleFile.getValue();
     }
 
     // load files:
-    for (const auto& file : files)
-        logRecords.emplace_back(file.wholePath, file.name);
+    for (const auto& file : files) logRecords.emplace_back(file.wholePath, file.name);
 
     ASSERT_(!logRecords.empty());
 
@@ -238,8 +226,7 @@ void main_show_gui()
             for (const auto& layer : lr.pcGlobal->layers)
             {
                 layerNames_global.push_back(layer.first);
-                std::cout << "Global point cloud: Found point layer='"
-                          << layer.first << "'\n";
+                std::cout << "Global point cloud: Found point layer='" << layer.first << "'\n";
             }
         }
         if (layerNames_local.empty() && lr.pcLocal)
@@ -247,8 +234,7 @@ void main_show_gui()
             for (const auto& layer : lr.pcLocal->layers)
             {
                 layerNames_local.push_back(layer.first);
-                std::cout << "Local point cloud: Found point layer='"
-                          << layer.first << "'\n";
+                std::cout << "Local point cloud: Found point layer='" << layer.first << "'\n";
             }
         }
     }
@@ -267,7 +253,7 @@ void main_show_gui()
 
     mrpt::gui::CDisplayWindowGUI_Params cp;
     cp.maximized = true;
-    win = mrpt::gui::CDisplayWindowGUI::Create(APP_NAME, 1024, 800, cp);
+    win          = mrpt::gui::CDisplayWindowGUI::Create(APP_NAME, 1024, 800, cp);
 
     // Add a background scene:
     auto scene = mrpt::opengl::COpenGLScene::Create();
@@ -293,8 +279,8 @@ void main_show_gui()
     auto w = win->createManagedSubWindow("Control");
     w->setPosition({5, 25});
     w->requestFocus();
-    w->setLayout(new nanogui::BoxLayout(
-        nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 5, 2));
+    w->setLayout(
+        new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 5, 2));
     w->setFixedWidth(WINDOW_FIXED_WIDTH);
 
     cbShowInitialPose = w->add<nanogui::CheckBox>("Show at INITIAL GUESS pose");
@@ -316,8 +302,7 @@ void main_show_gui()
     //
     w->add<nanogui::Label>(" ");  // separator
     w->add<nanogui::Label>(mrpt::format(
-        "Select ICP record file (N=%u)",
-        static_cast<unsigned int>(logRecords.size())));
+        "Select ICP record file (N=%u)", static_cast<unsigned int>(logRecords.size())));
     slSelectorICP = w->add<nanogui::Slider>();
     slSelectorICP->setRange({.0f, logRecords.size() - 1});
     slSelectorICP->setValue(0);
@@ -339,8 +324,7 @@ void main_show_gui()
         // shortcut:
         auto s = slSelectorICP;
 
-        btnSelectorBack =
-            pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_FAST_BACKWARD);
+        btnSelectorBack = pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_FAST_BACKWARD);
         btnSelectorBack->setCallback(
             [=]()
             {
@@ -351,8 +335,7 @@ void main_show_gui()
                 }
             });
 
-        btnSelectorForw =
-            pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_FAST_FORWARD);
+        btnSelectorForw = pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_FAST_FORWARD);
         btnSelectorForw->setCallback(
             [=]()
             {
@@ -365,12 +348,10 @@ void main_show_gui()
 
         pn->add<nanogui::Label>(" ");  // separator
 
-        btnSelectorAutoplay =
-            pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_PLAY);
+        btnSelectorAutoplay = pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_PLAY);
         btnSelectorAutoplay->setFlags(nanogui::Button::ToggleButton);
 
-        btnSelectorAutoplay->setChangeCallback([&](bool active)
-                                               { isAutoPlayActive = active; });
+        btnSelectorAutoplay->setChangeCallback([&](bool active) { isAutoPlayActive = active; });
     }
 
     //
@@ -379,12 +360,12 @@ void main_show_gui()
     auto tabWidget = w->add<nanogui::TabWidget>();
 
     auto* tab1 = tabWidget->createTab("Summary");
-    tab1->setLayout(new nanogui::BoxLayout(
-        nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
+    tab1->setLayout(
+        new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
     auto* tab2 = tabWidget->createTab("Variables");
-    tab2->setLayout(new nanogui::BoxLayout(
-        nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
+    tab2->setLayout(
+        new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
     auto* tab3 = tabWidget->createTab("Maps");
     tab3->setLayout(new nanogui::GroupLayout());
@@ -401,8 +382,7 @@ void main_show_gui()
     tabWidget->setActiveTab(0);
 
     tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
-    tab1->add<nanogui::Label>(
-            "ICP result pose [x y z yaw(deg) pitch(deg) roll(deg)]:")
+    tab1->add<nanogui::Label>("ICP result pose [x y z yaw(deg) pitch(deg) roll(deg)]:")
         ->setFontSize(MID_FONT_SIZE);
     tbLogPose = tab1->add<nanogui::TextBox>();
     tbLogPose->setFontSize(MID_FONT_SIZE);
@@ -410,15 +390,13 @@ void main_show_gui()
     tbLogPose->setAlignment(nanogui::TextBox::Alignment::Left);
     tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
 
-    tab1->add<nanogui::Label>("Initial -> final pose change:")
-        ->setFontSize(MID_FONT_SIZE);
+    tab1->add<nanogui::Label>("Initial -> final pose change:")->setFontSize(MID_FONT_SIZE);
     tbInit2Final = tab1->add<nanogui::TextBox>();
     tbInit2Final->setFontSize(MID_FONT_SIZE);
     tbInit2Final->setEditable(false);
     tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
 
-    tab1->add<nanogui::Label>(
-            "Uncertainty: diagonal sigmas (x y z yaw pitch roll)")
+    tab1->add<nanogui::Label>("Uncertainty: diagonal sigmas (x y z yaw pitch roll)")
         ->setFontSize(MID_FONT_SIZE);
     tbCovariance = tab1->add<nanogui::TextBox>();
     tbCovariance->setFontSize(MID_FONT_SIZE);
@@ -433,8 +411,7 @@ void main_show_gui()
     tab1->add<nanogui::Label>(" ");
 
     tab6->add<nanogui::Label>("Manual solution modification:");
-    const float handTunedRange[6] = {4.0,        4.0,         10.0,
-                                     0.5 * M_PI, 0.25 * M_PI, 0.5};
+    const float handTunedRange[6] = {4.0, 4.0, 10.0, 0.5 * M_PI, 0.25 * M_PI, 0.5};
 
     for (int i = 0; i < 6; i++)
     {
@@ -448,8 +425,8 @@ void main_show_gui()
                 const size_t idx = mrpt::round(slSelectorICP->value());
                 auto&        lr  = logRecords.at(idx).get();
 
-                auto p = lr.icpResult.optimal_tf.mean.asTPose();
-                p[i]   = v;
+                auto p                       = lr.icpResult.optimal_tf.mean.asTPose();
+                p[i]                         = v;
                 lr.icpResult.optimal_tf.mean = mrpt::poses::CPose3D(p);
 
                 rebuild_3d_view_fast();
@@ -466,8 +443,7 @@ void main_show_gui()
     auto lambdaSave = [&](const mp2p_icp::metric_map_t& m)
     {
         const std::string outFile = nanogui::file_dialog(
-            {{"mm", "mp2p_icp::metric_map_t binary serialized object (*.mm)"}},
-            true /*save*/);
+            {{"mm", "mp2p_icp::metric_map_t binary serialized object (*.mm)"}}, true /*save*/);
         if (outFile.empty()) return;
         m.save_to_file(outFile);
     };
@@ -482,8 +458,8 @@ void main_show_gui()
         auto wrapper = vscroll->add<nanogui::Widget>();
 
         wrapper->setFixedSize({WINDOW_FIXED_WIDTH - 30, 300});
-        wrapper->setLayout(new nanogui::BoxLayout(
-            nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
+        wrapper->setLayout(
+            new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
         for (size_t i = 0; i < MAX_VARIABLE_LIST; i++)
         {
@@ -498,8 +474,8 @@ void main_show_gui()
     // tab 3: maps
     {
         auto pn = tab3->add<nanogui::Widget>();
-        pn->setLayout(new nanogui::BoxLayout(
-            nanogui::Orientation::Horizontal, nanogui::Alignment::Fill));
+        pn->setLayout(
+            new nanogui::BoxLayout(nanogui::Orientation::Horizontal, nanogui::Alignment::Fill));
         pn->add<nanogui::Button>("Export 'local' map...")
             ->setCallback(
                 [&]()
@@ -557,11 +533,10 @@ void main_show_gui()
 
     {
         auto pn = tab4->add<nanogui::Widget>();
-        pn->setLayout(new nanogui::GridLayout(
-            nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
+        pn->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
 
-        cbViewPairings_pt2pl =
-            pn->add<nanogui::CheckBox>("View: point-to-plane");
+        cbViewPairings_pt2pl = pn->add<nanogui::CheckBox>("View: point-to-plane");
         cbViewPairings_pt2pl->setChecked(true);
         cbViewPairings_pt2pl->setCallback([](bool) { rebuild_3d_view_fast(); });
 
@@ -569,17 +544,15 @@ void main_show_gui()
         slPairingsPl2PlSize = pn->add<nanogui::Slider>();
         slPairingsPl2PlSize->setRange({-2.0f, 2.0f});
         slPairingsPl2PlSize->setValue(-1.0f);
-        slPairingsPl2PlSize->setCallback([&](float)
-                                         { rebuild_3d_view_fast(); });
+        slPairingsPl2PlSize->setCallback([&](float) { rebuild_3d_view_fast(); });
     }
 
     {
         auto pn = tab4->add<nanogui::Widget>();
-        pn->setLayout(new nanogui::GridLayout(
-            nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
+        pn->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
 
-        cbViewPairings_pt2ln =
-            pn->add<nanogui::CheckBox>("View: point-to-line");
+        cbViewPairings_pt2ln = pn->add<nanogui::CheckBox>("View: point-to-line");
         cbViewPairings_pt2ln->setChecked(true);
         cbViewPairings_pt2ln->setCallback([](bool) { rebuild_3d_view_fast(); });
 
@@ -587,15 +560,14 @@ void main_show_gui()
         slPairingsPl2LnSize = pn->add<nanogui::Slider>();
         slPairingsPl2LnSize->setRange({-2.0f, 2.0f});
         slPairingsPl2LnSize->setValue(-1.0f);
-        slPairingsPl2LnSize->setCallback([&](float)
-                                         { rebuild_3d_view_fast(); });
+        slPairingsPl2LnSize->setCallback([&](float) { rebuild_3d_view_fast(); });
     }
 
     // tab5: view
     {
         auto pn = tab5->add<nanogui::Widget>();
-        pn->setLayout(new nanogui::GridLayout(
-            nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+        pn->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
         pn->add<nanogui::Label>("Global map point size");
 
@@ -606,8 +578,8 @@ void main_show_gui()
     }
     {
         auto pn = tab5->add<nanogui::Widget>();
-        pn->setLayout(new nanogui::GridLayout(
-            nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+        pn->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
         pn->add<nanogui::Label>("Local map point size");
 
@@ -618,8 +590,8 @@ void main_show_gui()
     }
     {
         auto pn = tab5->add<nanogui::Widget>();
-        pn->setLayout(new nanogui::GridLayout(
-            nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+        pn->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
         lbDepthFieldMid = pn->add<nanogui::Label>("Center depth clip plane:");
         slMidDepthField = pn->add<nanogui::Slider>();
@@ -630,11 +602,10 @@ void main_show_gui()
 
     {
         auto pn = tab5->add<nanogui::Widget>();
-        pn->setLayout(new nanogui::GridLayout(
-            nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+        pn->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
-        lbDepthFieldThickness =
-            pn->add<nanogui::Label>("Max-Min depth thickness:");
+        lbDepthFieldThickness = pn->add<nanogui::Label>("Max-Min depth thickness:");
         slThicknessDepthField = pn->add<nanogui::Slider>();
     }
     slThicknessDepthField->setRange({-2.0, 6.0});
@@ -645,17 +616,14 @@ void main_show_gui()
     cbViewOrtho = tab5->add<nanogui::CheckBox>("Orthogonal view");
     cbViewOrtho->setCallback([&](bool) { rebuild_3d_view_fast(); });
 
-    cbCameraFollowsLocal =
-        tab5->add<nanogui::CheckBox>("Camera follows 'local'");
+    cbCameraFollowsLocal = tab5->add<nanogui::CheckBox>("Camera follows 'local'");
     cbCameraFollowsLocal->setCallback([&](bool) { rebuild_3d_view_fast(); });
 
-    cbViewVoxelsAsPoints =
-        tab5->add<nanogui::CheckBox>("Render voxel maps as point clouds");
+    cbViewVoxelsAsPoints = tab5->add<nanogui::CheckBox>("Render voxel maps as point clouds");
     cbViewVoxelsAsPoints->setChecked(true);
     cbViewVoxelsAsPoints->setCallback([&](bool) { rebuild_3d_view(); });
 
-    cbViewVoxelsFreeSpace =
-        tab5->add<nanogui::CheckBox>("Render free space of voxel maps");
+    cbViewVoxelsFreeSpace = tab5->add<nanogui::CheckBox>("Render free space of voxel maps");
     cbViewVoxelsFreeSpace->setChecked(false);
     cbViewVoxelsFreeSpace->setCallback([&](bool) { rebuild_3d_view(); });
 
@@ -671,8 +639,7 @@ void main_show_gui()
         ->setCallback([]() { win->setVisible(false); });
 
     win->setKeyboardCallback(
-        [&](int key, [[maybe_unused]] int scancode, int action,
-            [[maybe_unused]] int modifiers)
+        [&](int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int modifiers)
         {
             if (action != GLFW_PRESS && action != GLFW_REPEAT) return false;
 
@@ -697,8 +664,7 @@ void main_show_gui()
                     break;
                 case 'i':
                 case 'I':
-                    cbShowInitialPose->setChecked(
-                        !cbShowInitialPose->checked());
+                    cbShowInitialPose->setChecked(!cbShowInitialPose->checked());
                     cbShowInitialPose->callback()(cbShowInitialPose->checked());
                     break;
             };
@@ -708,8 +674,7 @@ void main_show_gui()
                 nanogui::Slider* sl = slSelectorICP;  // shortcut
                 sl->setValue(sl->value() + increment);
                 if (sl->value() < 0) sl->setValue(0);
-                if (sl->value() > sl->range().second)
-                    sl->setValue(sl->range().second);
+                if (sl->value() > sl->range().second) sl->setValue(sl->range().second);
                 rebuild_3d_view();
             }
 
@@ -724,12 +689,10 @@ void main_show_gui()
 
     // save and load UI state:
 #define LOAD_CB_STATE(CB_NAME__) do_cb(CB_NAME__, #CB_NAME__)
-#define SAVE_CB_STATE(CB_NAME__) \
-    appCfg.write("", #CB_NAME__, CB_NAME__->checked())
+#define SAVE_CB_STATE(CB_NAME__) appCfg.write("", #CB_NAME__, CB_NAME__->checked())
 
 #define LOAD_SL_STATE(SL_NAME__) do_sl(SL_NAME__, #SL_NAME__)
-#define SAVE_SL_STATE(SL_NAME__) \
-    appCfg.write("", #SL_NAME__, SL_NAME__->value())
+#define SAVE_SL_STATE(SL_NAME__) appCfg.write("", #SL_NAME__, SL_NAME__->value())
 
     auto load_UI_state_from_user_config = [&]()
     {
@@ -762,8 +725,8 @@ void main_show_gui()
             appCfg.read_float("", "cam_z", win->camera().getCameraPointingZ()));
         win->camera().setAzimuthDegrees(
             appCfg.read_float("", "cam_az", win->camera().getAzimuthDegrees()));
-        win->camera().setElevationDegrees(appCfg.read_float(
-            "", "cam_el", win->camera().getElevationDegrees()));
+        win->camera().setElevationDegrees(
+            appCfg.read_float("", "cam_el", win->camera().getElevationDegrees()));
         win->camera().setZoomDistance(
             appCfg.read_float("", "cam_d", win->camera().getZoomDistance()));
     };
@@ -841,8 +804,7 @@ void rebuild_3d_view(bool regenerateMaps)
     const size_t idx = mrpt::round(slSelectorICP->value());
 
     btnSelectorBack->setEnabled(!logRecords.empty() && idx > 0);
-    btnSelectorForw->setEnabled(
-        !logRecords.empty() && idx < logRecords.size() - 1);
+    btnSelectorForw->setEnabled(!logRecords.empty() && idx < logRecords.size() - 1);
 
     if (idx >= logRecords.size()) return;
 
@@ -871,13 +833,11 @@ void rebuild_3d_view(bool regenerateMaps)
         "ICP log #%zu | Local: ID:%u%s | Global: ID:%u%s", idx,
         static_cast<unsigned int>(lr.pcLocal->id ? lr.pcLocal->id.value() : 0),
         lr.pcLocal->label ? lr.pcLocal->label.value().c_str() : "",
-        static_cast<unsigned int>(
-            lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
+        static_cast<unsigned int>(lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
         lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : ""));
 
     lbICPStats[2]->setValue(mrpt::format(
-        "Quality: %.02f%% | Iters: %u | Term.Reason: %s",
-        100.0 * lr.icpResult.quality,
+        "Quality: %.02f%% | Iters: %u | Term.Reason: %s", 100.0 * lr.icpResult.quality,
         static_cast<unsigned int>(lr.icpResult.nIterations),
         mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str()));
 
@@ -895,25 +855,21 @@ void rebuild_3d_view(bool regenerateMaps)
         size_t lbIdx = 0;
         for (const auto& [name, value] : lr.dynamicVariables)
         {
-            lbDynVariables[lbIdx++]->setValue(
-                mrpt::format("%s = %g", name.c_str(), value));
+            lbDynVariables[lbIdx++]->setValue(mrpt::format("%s = %g", name.c_str(), value));
             if (lbIdx >= MAX_VARIABLE_LIST) break;
         }
     }
 
     {
         const auto poseChange =
-            lr.icpResult.optimal_tf.mean -
-            mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
+            lr.icpResult.optimal_tf.mean - mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
 
         tbInit2Final->setValue(mrpt::format(
             "|T|=%.03f [m]  |R|=%.03f [deg]", poseChange.norm(),
-            mrpt::RAD2DEG(
-                mrpt::poses::Lie::SO<3>::log(poseChange.getRotationMatrix())
-                    .norm())));
+            mrpt::RAD2DEG(mrpt::poses::Lie::SO<3>::log(poseChange.getRotationMatrix()).norm())));
     }
 
-    const auto poseFromCorner = mrpt::poses::CPose3D::Identity();
+    const auto                      poseFromCorner = mrpt::poses::CPose3D::Identity();
     mrpt::poses::CPose3DPDFGaussian relativePose;
     const mp2p_icp::Pairings*       pairsToViz = nullptr;
 
@@ -923,8 +879,7 @@ void rebuild_3d_view(bool regenerateMaps)
 
         if (cbShowInitialPose->checked())
         {
-            relativePose.mean =
-                mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
+            relativePose.mean = mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
             lbICPIteration->setCaption("Show ICP iteration: INITIAL");
         }
         else
@@ -938,14 +893,12 @@ void rebuild_3d_view(bool regenerateMaps)
     else
     {
         slIterationDetails->setEnabled(true);
-        slIterationDetails->setRange(
-            {.0f, static_cast<float>(lr.iterationsDetails->size() - 1)});
+        slIterationDetails->setRange({.0f, static_cast<float>(lr.iterationsDetails->size() - 1)});
 
         if (mustResetIterationSlider)
             slIterationDetails->setValue(
-                cbShowInitialPose->checked()
-                    ? slIterationDetails->range().first
-                    : slIterationDetails->range().second);
+                cbShowInitialPose->checked() ? slIterationDetails->range().first
+                                             : slIterationDetails->range().second);
 
         // final or partial solution?
         auto it = lr.iterationsDetails->begin();
@@ -965,12 +918,10 @@ void rebuild_3d_view(bool regenerateMaps)
 
     {
         std::string s;
-        for (int i = 0; i < 6; i++)
-            s += mrpt::format("%.02f ", std::sqrt(relativePose.cov(i, i)));
+        for (int i = 0; i < 6; i++) s += mrpt::format("%.02f ", std::sqrt(relativePose.cov(i, i)));
 
         s += mrpt::format(
-            " det(XYZ)=%.02e det(rot)=%.02e",
-            relativePose.cov.blockCopy<3, 3>(0, 0).det(),
+            " det(XYZ)=%.02e det(rot)=%.02e", relativePose.cov.blockCopy<3, 3>(0, 0).det(),
             relativePose.cov.blockCopy<3, 3>(3, 3).det());
 
         tbCovariance->setValue(s);
@@ -984,17 +935,15 @@ void rebuild_3d_view(bool regenerateMaps)
         " cn{XYZ}=%.02f cn{SO(3)}=%.02f cn{SE(2)}=%.02f "
         "cn{SE(3)}=%.02f",
         conditionNumber(relativePose.cov.blockCopy<3, 3>(0, 0)),
-        conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)),
-        conditionNumber(pose2D.cov), conditionNumber(relativePose.cov)));
+        conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)), conditionNumber(pose2D.cov),
+        conditionNumber(relativePose.cov)));
 
     // 3D objects -------------------
-    auto glCornerFrom =
-        mrpt::opengl::stock_objects::CornerXYZSimple(0.75f, 3.0f);
+    auto glCornerFrom = mrpt::opengl::stock_objects::CornerXYZSimple(0.75f, 3.0f);
     glCornerFrom->setPose(poseFromCorner);
     glVizICP->insert(glCornerFrom);
 
-    auto glCornerLocal =
-        mrpt::opengl::stock_objects::CornerXYZSimple(0.85f, 5.0f);
+    auto glCornerLocal = mrpt::opengl::stock_objects::CornerXYZSimple(0.85f, 5.0f);
     glCornerLocal->setPose(relativePose.mean);
     glCornerLocal->setName("Local");
     glCornerLocal->enableShowName(true);
@@ -1006,8 +955,7 @@ void rebuild_3d_view(bool regenerateMaps)
     glCornerToCov->setColor_u8(0xff, 0x00, 0x00, 0x40);
     //  std::cout << "cov:\n" << relativePose.cov << "\n";
     glCornerToCov->setCovMatrixAndMean(
-        relativePose.cov.blockCopy<3, 3>(0, 0),
-        relativePose.mean.asVectorVal().head<3>());
+        relativePose.cov.blockCopy<3, 3>(0, 0), relativePose.mean.asVectorVal().head<3>());
     glVizICP->insert(glCornerToCov);
 
     // GLOBAL PC:
@@ -1018,24 +966,17 @@ void rebuild_3d_view(bool regenerateMaps)
     {
         // Update stats in the cb label:
         cb->setCaption(lyName);  // default
-        if (auto itL = lr.pcGlobal->layers.find(lyName);
-            itL != lr.pcGlobal->layers.end())
+        if (auto itL = lr.pcGlobal->layers.find(lyName); itL != lr.pcGlobal->layers.end())
         {
-            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
-                    itL->second);
-                pc)
+            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second); pc)
             {
                 cb->setCaption(
-                    lyName + " | "s +
-                    mrpt::system::unitsFormat(static_cast<double>(pc->size())) +
-                    " points"s + " | class="s +
-                    pc->GetRuntimeClass()->className);
+                    lyName + " | "s + mrpt::system::unitsFormat(static_cast<double>(pc->size())) +
+                    " points"s + " | class="s + pc->GetRuntimeClass()->className);
             }
             else
             {
-                cb->setCaption(
-                    lyName + " | class="s +
-                    itL->second->GetRuntimeClass()->className);
+                cb->setCaption(lyName + " | class="s + itL->second->GetRuntimeClass()->className);
             }
         }
 
@@ -1068,8 +1009,7 @@ void rebuild_3d_view(bool regenerateMaps)
         lastGlobalPts = glPts;
 
         // Show all or selected layers:
-        rpGlobal.points.allLayers.color =
-            mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+        rpGlobal.points.allLayers.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
 
         glVizICP->insert(glPts);
     }
@@ -1087,25 +1027,18 @@ void rebuild_3d_view(bool regenerateMaps)
     {
         // Update stats in the cb label:
         cb->setCaption(lyName);  // default
-        if (auto itL = lr.pcLocal->layers.find(lyName);
-            itL != lr.pcLocal->layers.end())
+        if (auto itL = lr.pcLocal->layers.find(lyName); itL != lr.pcLocal->layers.end())
         {
-            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
-                    itL->second);
-                pc)
+            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second); pc)
             {
                 cb->setCaption(
                     lyName + " | "s +
-                    mrpt::system::unitsFormat(
-                        static_cast<double>(pc->size()), 2, false) +
-                    " points"s + " | class="s +
-                    pc->GetRuntimeClass()->className);
+                    mrpt::system::unitsFormat(static_cast<double>(pc->size()), 2, false) +
+                    " points"s + " | class="s + pc->GetRuntimeClass()->className);
             }
             else
             {
-                cb->setCaption(
-                    lyName + " | class="s +
-                    itL->second->GetRuntimeClass()->className);
+                cb->setCaption(lyName + " | class="s + itL->second->GetRuntimeClass()->className);
             }
         }
 
@@ -1153,28 +1086,23 @@ void rebuild_3d_view(bool regenerateMaps)
         if (cbCameraFollowsLocal->checked())
         {
             win->camera().setCameraPointing(
-                relativePose.mean.x(), relativePose.mean.y(),
-                relativePose.mean.z());
+                relativePose.mean.x(), relativePose.mean.y(), relativePose.mean.z());
         }
 
         // clip planes:
-        const auto depthFieldMid = std::pow(10.0, slMidDepthField->value());
-        const auto depthFieldThickness =
-            std::pow(10.0, slThicknessDepthField->value());
+        const auto depthFieldMid       = std::pow(10.0, slMidDepthField->value());
+        const auto depthFieldThickness = std::pow(10.0, slThicknessDepthField->value());
 
-        const auto clipNear =
-            std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
-        const auto clipFar = depthFieldMid + 0.5 * depthFieldThickness;
+        const auto clipNear = std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
+        const auto clipFar  = depthFieldMid + 0.5 * depthFieldThickness;
 
-        lbDepthFieldMid->setCaption(
-            mrpt::format("Frustrum depth center: %.03f", depthFieldMid));
-        lbDepthFieldThickness->setCaption(mrpt::format(
-            "Frustum depth thickness: %.03f", depthFieldThickness));
+        lbDepthFieldMid->setCaption(mrpt::format("Frustrum depth center: %.03f", depthFieldMid));
+        lbDepthFieldThickness->setCaption(
+            mrpt::format("Frustum depth thickness: %.03f", depthFieldThickness));
         lbDepthFieldValues->setCaption(
             mrpt::format("Frustum: near=%.02f far=%.02f", clipNear, clipFar));
 
-        win->background_scene->getViewport()->setViewportClipDistances(
-            clipNear, clipFar);
+        win->background_scene->getViewport()->setViewportClipDistances(clipNear, clipFar);
         win->camera().setMaximumZoom(std::max<double>(1000, 3.0 * clipFar));
     }
 
@@ -1196,11 +1124,7 @@ void rebuild_3d_view(bool regenerateMaps)
 
         tbPairings->setValue(pairsToViz->contents_summary());
     }
-    else
-    {
-        tbPairings->setValue(
-            "None selected (mark one of the checkboxes below)");
-    }
+    else { tbPairings->setValue("None selected (mark one of the checkboxes below)"); }
 
     // XYZ corner overlay viewport:
     {
@@ -1262,8 +1186,7 @@ int main(int argc, char** argv)
     }
     catch (std::exception& e)
     {
-        std::cerr << "Exit due to exception:\n"
-                  << mrpt::exception_to_str(e) << std::endl;
+        std::cerr << "Exit due to exception:\n" << mrpt::exception_to_str(e) << std::endl;
         return 1;
     }
 }

@@ -28,8 +28,8 @@ int commandInfo()
     const mrpt::maps::CSimpleMap sm = read_input_sm_from_cli(file);
 
     // estimate path bounding box:
-    auto bbox     = mrpt::math::TBoundingBox::PlusMinusInfinity();
-    bool hasTwist = false;
+    auto                                   bbox     = mrpt::math::TBoundingBox::PlusMinusInfinity();
+    bool                                   hasTwist = false;
     std::optional<mrpt::Clock::time_point> timeMin, timeMax;
 
     std::map<std::string, std::string> obsTypes;
@@ -61,23 +61,18 @@ int commandInfo()
     std::cout << "\n";
     std::cout << "size_bytes:           " << sizeBytes << "\n";
     std::cout << "keyframe_count:       " << sm.size() << "\n";
-    std::cout << "has_twist:            " << (hasTwist ? "true" : "false")
-              << "\n";
+    std::cout << "has_twist:            " << (hasTwist ? "true" : "false") << "\n";
     std::cout << "kf_bounding_box_min:  " << bbox.min.asString() << "\n";
     std::cout << "kf_bounding_box_max:  " << bbox.max.asString() << "\n";
-    std::cout << "kf_bounding_box_span: " << (bbox.max - bbox.min).asString()
-              << "\n";
+    std::cout << "kf_bounding_box_span: " << (bbox.max - bbox.min).asString() << "\n";
     std::cout << "timestamp_first_utc:  "
-              << (timeMin ? mrpt::system::dateTimeToString(*timeMin) : "None")
-              << "\n";
+              << (timeMin ? mrpt::system::dateTimeToString(*timeMin) : "None") << "\n";
     std::cout << "timestamp_last_utc:   "
-              << (timeMax ? mrpt::system::dateTimeToString(*timeMax) : "None")
-              << "\n";
+              << (timeMax ? mrpt::system::dateTimeToString(*timeMax) : "None") << "\n";
     std::cout << "timestamp_span:       "
-              << ((timeMin && timeMax)
-                      ? mrpt::system::formatTimeInterval(
-                            mrpt::system::timeDifference(*timeMax, *timeMin))
-                      : "None")
+              << ((timeMin && timeMax) ? mrpt::system::formatTimeInterval(
+                                             mrpt::system::timeDifference(*timeMax, *timeMin))
+                                       : "None")
               << "\n";
     std::cout << "observations:\n";
 

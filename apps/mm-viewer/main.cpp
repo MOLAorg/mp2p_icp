@@ -45,24 +45,21 @@ constexpr int         SMALL_FONT_SIZE = 13;
 static TCLAP::CmdLine cmd(APP_NAME);
 
 static TCLAP::UnlabeledValueArg<std::string> argMapFile(
-    "input", "Load this metric map file (*.mm)", false, "myMap.mm", "myMap.mm",
-    cmd);
+    "input", "Load this metric map file (*.mm)", false, "myMap.mm", "myMap.mm", cmd);
 
 static TCLAP::ValueArg<std::string> arg_plugins(
-    "l", "load-plugins",
-    "One or more (comma separated) *.so files to load as plugins", false,
+    "l", "load-plugins", "One or more (comma separated) *.so files to load as plugins", false,
     "foobar.so", "foobar.so", cmd);
 
 static TCLAP::ValueArg<std::string> arg_tumTrajectory(
-    "t", "trajectory",
-    "Also draw a trajectory, given by a TUM file trajectory.", false,
+    "t", "trajectory", "Also draw a trajectory, given by a TUM file trajectory.", false,
     "trajectory.tum", "trajectory.tum", cmd);
 
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
 
-auto glVizMap = mrpt::opengl::CSetOfObjects::Create();
-auto glGrid   = mrpt::opengl::CGridPlaneXY::Create();
+auto                             glVizMap = mrpt::opengl::CSetOfObjects::Create();
+auto                             glGrid   = mrpt::opengl::CGridPlaneXY::Create();
 mrpt::opengl::CSetOfObjects::Ptr glENUCorner, glMapCorner;
 mrpt::opengl::CSetOfObjects::Ptr glTrajectory;
 
@@ -85,7 +82,7 @@ nanogui::Slider*                 slCameraFOV               = nullptr;
 nanogui::Label*                  lbCameraFOV               = nullptr;
 nanogui::Label*                  lbMousePos                = nullptr;
 nanogui::Label*                  lbCameraPointing          = nullptr;
-nanogui::Label *lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
+nanogui::Label *                 lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr, *lbPointSize = nullptr;
 nanogui::Label*    lbTrajThick      = nullptr;
 nanogui::Widget*   panelLayers      = nullptr;
@@ -140,9 +137,7 @@ void loadMapFile(const std::string& mapFile)
         if (!pc) continue;  // not a point map
         const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*pc);
         ASSERTMSG_(
-            sanityPassed,
-            mrpt::format(
-                "sanity check did not pass for layer: '%s'", name.c_str()));
+            sanityPassed, mrpt::format("sanity check did not pass for layer: '%s'", name.c_str()));
     }
 }
 
@@ -157,8 +152,7 @@ void updateMouseCoordinates()
     // Create a 3D plane, e.g. Z=0
     using mrpt::math::TPoint3D;
 
-    const mrpt::math::TPlane ground_plane(
-        TPoint3D(0, 0, 0), TPoint3D(1, 0, 0), TPoint3D(0, 1, 0));
+    const mrpt::math::TPlane ground_plane(TPoint3D(0, 0, 0), TPoint3D(1, 0, 0), TPoint3D(0, 1, 0));
     // Intersection of the line with the plane:
     mrpt::math::TObject3D inters;
     mrpt::math::intersect(mouse_ray, ground_plane, inters);
@@ -166,17 +160,16 @@ void updateMouseCoordinates()
     mrpt::math::TPoint3D inters_pt;
     if (inters.getPoint(inters_pt))
     {
-        lbMousePos->setCaption(mrpt::format(
-            "Mouse pointing to: X=%6.03f Y=%6.03f", inters_pt.x, inters_pt.y));
+        lbMousePos->setCaption(
+            mrpt::format("Mouse pointing to: X=%6.03f Y=%6.03f", inters_pt.x, inters_pt.y));
     }
 }
 
 void updateCameraLookCoordinates()
 {
     lbCameraPointing->setCaption(mrpt::format(
-        "Looking at: X=%6.03f Y=%6.03f Z=%6.03f",
-        win->camera().getCameraPointingX(), win->camera().getCameraPointingY(),
-        win->camera().getCameraPointingZ()));
+        "Looking at: X=%6.03f Y=%6.03f Z=%6.03f", win->camera().getCameraPointingX(),
+        win->camera().getCameraPointingY(), win->camera().getCameraPointingZ()));
 }
 
 void observeViewOptions()
@@ -256,12 +249,9 @@ void onKeyboardAction(int key)
         {
             const float dx = std::cos(DEG2RAD(cam.cameraAzimuthDeg));
             const float dy = std::sin(DEG2RAD(cam.cameraAzimuthDeg));
-            const float d =
-                (key == GLFW_KEY_UP || key == GLFW_KEY_W) ? -1.0f : 1.0f;
-            cam.cameraPointingX +=
-                d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
-            cam.cameraPointingY +=
-                d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
+            const float d  = (key == GLFW_KEY_UP || key == GLFW_KEY_W) ? -1.0f : 1.0f;
+            cam.cameraPointingX += d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
+            cam.cameraPointingY += d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
             win->camera().setCameraParams(cam);
         }
         break;
@@ -272,10 +262,8 @@ void onKeyboardAction(int key)
             const float dx = std::cos(DEG2RAD(cam.cameraAzimuthDeg + 90.f));
             const float dy = std::sin(DEG2RAD(cam.cameraAzimuthDeg + 90.f));
             const float d  = key == GLFW_KEY_A ? -1.0f : 1.0f;
-            cam.cameraPointingX +=
-                d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
-            cam.cameraPointingY +=
-                d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
+            cam.cameraPointingX += d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
+            cam.cameraPointingY += d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
             win->camera().setCameraParams(cam);
         }
         break;
@@ -286,15 +274,12 @@ void onKeyboardAction(int key)
             int cmd_rot  = key == GLFW_KEY_LEFT ? -1 : 1;
             int cmd_elev = 0;
 
-            const float dis = std::max(0.01f, (cam.cameraZoomDistance));
-            float       eye_x =
-                cam.cameraPointingX + dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) *
-                                          cos(DEG2RAD(cam.cameraElevationDeg));
-            float eye_y =
-                cam.cameraPointingY + dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) *
-                                          cos(DEG2RAD(cam.cameraElevationDeg));
-            float eye_z = cam.cameraPointingZ +
-                          dis * sin(DEG2RAD(cam.cameraElevationDeg));
+            const float dis   = std::max(0.01f, (cam.cameraZoomDistance));
+            float       eye_x = cam.cameraPointingX + dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) *
+                                                    cos(DEG2RAD(cam.cameraElevationDeg));
+            float eye_y = cam.cameraPointingY + dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) *
+                                                    cos(DEG2RAD(cam.cameraElevationDeg));
+            float eye_z = cam.cameraPointingZ + dis * sin(DEG2RAD(cam.cameraElevationDeg));
 
             // Orbit camera:
             float A_AzimuthDeg = -SENSIBILITY_ROTATE * cmd_rot;
@@ -304,14 +289,11 @@ void onKeyboardAction(int key)
             cam.setElevationDeg(cam.cameraElevationDeg + A_ElevationDeg);
 
             // Move cameraPointing pos:
-            cam.cameraPointingX =
-                eye_x - dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) *
-                            cos(DEG2RAD(cam.cameraElevationDeg));
-            cam.cameraPointingY =
-                eye_y - dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) *
-                            cos(DEG2RAD(cam.cameraElevationDeg));
-            cam.cameraPointingZ =
-                eye_z - dis * sin(DEG2RAD(cam.cameraElevationDeg));
+            cam.cameraPointingX = eye_x - dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) *
+                                              cos(DEG2RAD(cam.cameraElevationDeg));
+            cam.cameraPointingY = eye_y - dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) *
+                                              cos(DEG2RAD(cam.cameraElevationDeg));
+            cam.cameraPointingZ = eye_z - dis * sin(DEG2RAD(cam.cameraElevationDeg));
 
             win->camera().setCameraParams(cam);
         }
@@ -344,10 +326,9 @@ void processCameraTravelling()
     }
 
     // Interpolate camera params:
-    const auto interpMethod =
-        cbTravellingInterp->selectedIndex() == 0
-            ? mrpt::poses::TInterpolatorMethod::imLinear2Neig
-            : mrpt::poses::TInterpolatorMethod::imSSLSLL;
+    const auto interpMethod = cbTravellingInterp->selectedIndex() == 0
+                                  ? mrpt::poses::TInterpolatorMethod::imLinear2Neig
+                                  : mrpt::poses::TInterpolatorMethod::imSSLSLL;
     camTravelling.setInterpolationMethod(interpMethod);
 
     mrpt::math::TPose3D p;
@@ -388,7 +369,7 @@ void main_show_gui()
 
     mrpt::gui::CDisplayWindowGUI_Params cp;
     cp.maximized = true;
-    win = mrpt::gui::CDisplayWindowGUI::Create(APP_NAME, 1024, 800, cp);
+    win          = mrpt::gui::CDisplayWindowGUI::Create(APP_NAME, 1024, 800, cp);
 
     // Add a background scene:
     auto scene = mrpt::opengl::COpenGLScene::Create();
@@ -420,8 +401,8 @@ void main_show_gui()
         auto w = win->createManagedSubWindow("Map viewer");
         w->setPosition({5, 25});
         w->requestFocus();
-        w->setLayout(new nanogui::BoxLayout(
-            nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 5, 2));
+        w->setLayout(
+            new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 5, 2));
         w->setFixedWidth(350);
 
         for (size_t i = 0; i < lbMapStats.size(); i++)
@@ -432,19 +413,17 @@ void main_show_gui()
             {
                 auto pn = w->add<nanogui::Widget>();
                 pn->setLayout(new nanogui::BoxLayout(
-                    nanogui::Orientation::Horizontal,
-                    nanogui::Alignment::Fill));
+                    nanogui::Orientation::Horizontal, nanogui::Alignment::Fill));
                 lb = pn->add<nanogui::TextBox>("  ");
                 lb->setFixedWidth(300);
-                auto btnLoad =
-                    pn->add<nanogui::Button>("", ENTYPO_ICON_ARCHIVE);
+                auto btnLoad = pn->add<nanogui::Button>("", ENTYPO_ICON_ARCHIVE);
                 btnLoad->setCallback(
                     []()
                     {
                         try
                         {
-                            const auto fil = nanogui::file_dialog(
-                                {{"mm", "Metric maps (*.mm)"}}, false);
+                            const auto fil =
+                                nanogui::file_dialog({{"mm", "Metric maps (*.mm)"}}, false);
                             if (fil.empty()) return;
 
                             loadMapFile(fil);
@@ -474,12 +453,12 @@ void main_show_gui()
         tab1->setLayout(new nanogui::GroupLayout());
 
         auto* tab2 = tabWidget->createTab("Maps");
-        tab2->setLayout(new nanogui::BoxLayout(
-            nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
+        tab2->setLayout(
+            new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
         auto* tab3 = tabWidget->createTab("Travelling");
-        tab3->setLayout(new nanogui::BoxLayout(
-            nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
+        tab3->setLayout(
+            new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
         tabWidget->setActiveTab(0);
 
@@ -502,14 +481,12 @@ void main_show_gui()
             slPointSize->setCallback([&](float) { rebuild_3d_view(); });
         }
 
-        cbViewVoxelsAsPoints =
-            tab2->add<nanogui::CheckBox>("Render voxel maps as point clouds");
+        cbViewVoxelsAsPoints = tab2->add<nanogui::CheckBox>("Render voxel maps as point clouds");
         cbViewVoxelsAsPoints->setFontSize(MID_FONT_SIZE);
         cbViewVoxelsAsPoints->setChecked(false);
         cbViewVoxelsAsPoints->setCallback([&](bool) { rebuild_3d_view(); });
 
-        cbViewVoxelsFreeSpace =
-            tab2->add<nanogui::CheckBox>("Render free space of voxel maps");
+        cbViewVoxelsFreeSpace = tab2->add<nanogui::CheckBox>("Render free space of voxel maps");
         cbViewVoxelsFreeSpace->setFontSize(MID_FONT_SIZE);
         cbViewVoxelsFreeSpace->setChecked(false);
         cbViewVoxelsFreeSpace->setCallback([&](bool) { rebuild_3d_view(); });
@@ -519,12 +496,10 @@ void main_show_gui()
         cbColorizeMap->setChecked(true);
         cbColorizeMap->setCallback([&](bool) { rebuild_3d_view(); });
 
-        cbKeepOriginalCloudColors =
-            tab2->add<nanogui::CheckBox>("Keep original cloud colors");
+        cbKeepOriginalCloudColors = tab2->add<nanogui::CheckBox>("Keep original cloud colors");
         cbKeepOriginalCloudColors->setFontSize(MID_FONT_SIZE);
         cbKeepOriginalCloudColors->setChecked(false);
-        cbKeepOriginalCloudColors->setCallback([&](bool)
-                                               { rebuild_3d_view(); });
+        cbKeepOriginalCloudColors->setCallback([&](bool) { rebuild_3d_view(); });
 
         tab2->add<nanogui::Label>(" ");
         {
@@ -538,34 +513,30 @@ void main_show_gui()
             btnCheckAll->setCallback(
                 []()
                 {
-                    for (auto& [name, cb] : cbLayersByName)
-                        cb->setChecked(true);
+                    for (auto& [name, cb] : cbLayersByName) cb->setChecked(true);
 
                     rebuild_3d_view();
                 });
 
-            auto* btnCheckNone =
-                pn->add<nanogui::Button>("", ENTYPO_ICON_CIRCLE_WITH_CROSS);
+            auto* btnCheckNone = pn->add<nanogui::Button>("", ENTYPO_ICON_CIRCLE_WITH_CROSS);
             btnCheckNone->setFontSize(SMALL_FONT_SIZE);
             btnCheckNone->setCallback(
                 []()
                 {
-                    for (auto& [name, cb] : cbLayersByName)
-                        cb->setChecked(false);
+                    for (auto& [name, cb] : cbLayersByName) cb->setChecked(false);
                     rebuild_3d_view();
                 });
         }
 
         panelLayers = tab2->add<nanogui::Widget>();
-        panelLayers->setLayout(new nanogui::BoxLayout(
-            nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
+        panelLayers->setLayout(
+            new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
 
         rebuildLayerCheckboxes();
 
         {
             tab2->add<nanogui::Label>(" ");  // separator
-            auto btnSave =
-                tab2->add<nanogui::Button>("Export marked layers...");
+            auto btnSave = tab2->add<nanogui::Button>("Export marked layers...");
             btnSave->setFontSize(MID_FONT_SIZE);
             btnSave->setCallback([]() { onSaveLayers(); });
         }
@@ -598,8 +569,7 @@ void main_show_gui()
             pn->setLayout(new nanogui::GridLayout(
                 nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
-            lbDepthFieldMid =
-                pn->add<nanogui::Label>("Center depth clip plane:");
+            lbDepthFieldMid = pn->add<nanogui::Label>("Center depth clip plane:");
             lbDepthFieldMid->setFontSize(MID_FONT_SIZE);
 
             slMidDepthField = pn->add<nanogui::Slider>();
@@ -613,15 +583,13 @@ void main_show_gui()
             pn->setLayout(new nanogui::GridLayout(
                 nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
-            lbDepthFieldThickness =
-                pn->add<nanogui::Label>("Max-Min depth thickness:");
+            lbDepthFieldThickness = pn->add<nanogui::Label>("Max-Min depth thickness:");
             lbDepthFieldThickness->setFontSize(MID_FONT_SIZE);
 
             slThicknessDepthField = pn->add<nanogui::Slider>();
             slThicknessDepthField->setRange({-2.0, 6.0});
             slThicknessDepthField->setValue(3.0);
-            slThicknessDepthField->setCallback([&](float)
-                                               { rebuild_3d_view(); });
+            slThicknessDepthField->setCallback([&](float) { rebuild_3d_view(); });
         }
         {
             auto pn = tab1->add<nanogui::Widget>();
@@ -673,8 +641,7 @@ void main_show_gui()
                 });
         }
 
-        cbApplyGeoRef = tab1->add<nanogui::CheckBox>(
-            "Apply georeferenced pose (if available)");
+        cbApplyGeoRef = tab1->add<nanogui::CheckBox>("Apply georeferenced pose (if available)");
         cbApplyGeoRef->setFontSize(MID_FONT_SIZE);
         cbApplyGeoRef->setCallback([&](bool) { rebuild_3d_view(); });
 
@@ -704,8 +671,7 @@ void main_show_gui()
             pn->setLayout(new nanogui::GridLayout(
                 nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
 
-            pn->add<nanogui::Label>("New keyframe:")
-                ->setFontSize(MID_FONT_SIZE);
+            pn->add<nanogui::Label>("New keyframe:")->setFontSize(MID_FONT_SIZE);
 
             edTime = pn->add<nanogui::TextBox>();
             edTime->setAlignment(nanogui::TextBox::Alignment::Left);
@@ -715,8 +681,7 @@ void main_show_gui()
             edTime->setFormat("[0-9\\.]*");
             edTime->setFontSize(MID_FONT_SIZE);
 
-            auto btnAdd =
-                pn->add<nanogui::Button>("Add", ENTYPO_ICON_ADD_TO_LIST);
+            auto btnAdd = pn->add<nanogui::Button>("Add", ENTYPO_ICON_ADD_TO_LIST);
             btnAdd->setFontSize(MID_FONT_SIZE);
             btnAdd->setCallback(
                 [edTime]()
@@ -725,18 +690,13 @@ void main_show_gui()
                         win->camera().cameraParams().cameraPointingX,
                         win->camera().cameraParams().cameraPointingY,
                         win->camera().cameraParams().cameraPointingZ,
-                        mrpt::DEG2RAD(
-                            win->camera().cameraParams().cameraAzimuthDeg),
-                        mrpt::DEG2RAD(
-                            win->camera().cameraParams().cameraElevationDeg),
-                        win->camera().cameraParams().cameraZoomDistance *
-                            TRAV_ZOOM2ROLL);
-                    camTravelling.insert(
-                        mrpt::Clock::fromDouble(std::stod(edTime->value())), p);
+                        mrpt::DEG2RAD(win->camera().cameraParams().cameraAzimuthDeg),
+                        mrpt::DEG2RAD(win->camera().cameraParams().cameraElevationDeg),
+                        win->camera().cameraParams().cameraZoomDistance * TRAV_ZOOM2ROLL);
+                    camTravelling.insert(mrpt::Clock::fromDouble(std::stod(edTime->value())), p);
                     rebuildCamTravellingCombo();
 
-                    edTime->setValue(
-                        std::to_string(std::stod(edTime->value()) + 1));
+                    edTime->setValue(std::to_string(std::stod(edTime->value()) + 1));
                 });
         }
 
@@ -748,8 +708,7 @@ void main_show_gui()
                 nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
 
             pn->add<nanogui::Label>("Playback:");
-            btnAnimate =
-                pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_PLAY);
+            btnAnimate = pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_PLAY);
             btnAnimate->setFontSize(MID_FONT_SIZE);
             btnAnimate->setCallback(
                 []()
@@ -760,8 +719,7 @@ void main_show_gui()
                     btnAnimate->setEnabled(false);
                     btnAnimStop->setEnabled(true);
                 });
-            btnAnimStop =
-                pn->add<nanogui::Button>("", ENTYPO_ICON_CIRCLE_WITH_CROSS);
+            btnAnimStop = pn->add<nanogui::Button>("", ENTYPO_ICON_CIRCLE_WITH_CROSS);
             btnAnimStop->setFontSize(MID_FONT_SIZE);
             btnAnimStop->setEnabled(false);
             btnAnimStop->setCallback([]() { camTravellingStop(); });
@@ -807,8 +765,7 @@ void main_show_gui()
             ->setCallback([]() { win->setVisible(false); });
 
         win->setKeyboardCallback(
-            [&](int key, [[maybe_unused]] int scancode, int action,
-                [[maybe_unused]] int modifiers)
+            [&](int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int modifiers)
             {
                 if (action != GLFW_PRESS && action != GLFW_REPEAT) return false;
 
@@ -829,12 +786,10 @@ void main_show_gui()
 
     // save and load UI state:
 #define LOAD_CB_STATE(CB_NAME__) do_cb(CB_NAME__, #CB_NAME__)
-#define SAVE_CB_STATE(CB_NAME__) \
-    appCfg.write("", #CB_NAME__, CB_NAME__->checked())
+#define SAVE_CB_STATE(CB_NAME__) appCfg.write("", #CB_NAME__, CB_NAME__->checked())
 
 #define LOAD_SL_STATE(SL_NAME__) do_sl(SL_NAME__, #SL_NAME__)
-#define SAVE_SL_STATE(SL_NAME__) \
-    appCfg.write("", #SL_NAME__, SL_NAME__->value())
+#define SAVE_SL_STATE(SL_NAME__) appCfg.write("", #SL_NAME__, SL_NAME__->value())
 
     auto load_UI_state_from_user_config = [&]()
     {
@@ -864,8 +819,8 @@ void main_show_gui()
             appCfg.read_float("", "cam_z", win->camera().getCameraPointingZ()));
         win->camera().setAzimuthDegrees(
             appCfg.read_float("", "cam_az", win->camera().getAzimuthDegrees()));
-        win->camera().setElevationDegrees(appCfg.read_float(
-            "", "cam_el", win->camera().getElevationDegrees()));
+        win->camera().setElevationDegrees(
+            appCfg.read_float("", "cam_el", win->camera().getElevationDegrees()));
         win->camera().setZoomDistance(
             appCfg.read_float("", "cam_d", win->camera().getZoomDistance()));
     };
@@ -950,16 +905,12 @@ void rebuild_3d_view()
         cb->setCaption(lyName);  // default
         if (auto itL = theMap.layers.find(lyName); itL != theMap.layers.end())
         {
-            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
-                    itL->second);
-                pc)
+            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second); pc)
             {
                 cb->setCaption(
                     lyName + " | "s +
-                    mrpt::system::unitsFormat(
-                        static_cast<double>(pc->size()), 2, false) +
-                    " points"s + " | class="s +
-                    pc->GetRuntimeClass()->className);
+                    mrpt::system::unitsFormat(static_cast<double>(pc->size()), 2, false) +
+                    " points"s + " | class="s + pc->GetRuntimeClass()->className);
 
                 const auto bb = pc->boundingBox();
                 if (!mapBbox.has_value())
@@ -968,9 +919,7 @@ void rebuild_3d_view()
             }
             else
             {
-                cb->setCaption(
-                    lyName + " | class="s +
-                    itL->second->GetRuntimeClass()->className);
+                cb->setCaption(lyName + " | class="s + itL->second->GetRuntimeClass()->className);
             }
         }
 
@@ -1013,8 +962,7 @@ void rebuild_3d_view()
         auto glPts = theMap.get_visualization(rpMap);
 
         // Show all or selected layers:
-        rpMap.points.allLayers.color =
-            mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+        rpMap.points.allLayers.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
 
         glVizMap->insert(glPts);
         glVizMap->insert(glMapCorner);
@@ -1037,8 +985,7 @@ void rebuild_3d_view()
     // ground grid:
     if (mapBbox)
     {
-        glGrid->setPlaneLimits(
-            mapBbox->min.x, mapBbox->max.x, mapBbox->min.y, mapBbox->max.y);
+        glGrid->setPlaneLimits(mapBbox->min.x, mapBbox->max.x, mapBbox->min.y, mapBbox->max.y);
     }
     glGrid->setVisibility(cbShowGroundGrid->checked());
 
@@ -1057,8 +1004,7 @@ void rebuild_3d_view()
     if (glTrajectory->empty() && trajectory.size() >= 2)
     {
         const float trajCylRadius = std::exp(slTrajectoryThickness->value());
-        lbTrajThick->setCaption(
-            "Traj. thickness: " + std::to_string(trajCylRadius));
+        lbTrajThick->setCaption("Traj. thickness: " + std::to_string(trajCylRadius));
 
         std::optional<mrpt::math::TPose3D> prevPose;
         for (const auto& [t, p] : trajectory)
@@ -1107,17 +1053,14 @@ void rebuild_3d_view()
     // Global view options:
     {
         std::lock_guard<std::mutex> lck(win->background_scene_mtx);
-        win->camera().setCameraProjective(
-            !cbViewOrtho->checked() && !cbView2D->checked());
+        win->camera().setCameraProjective(!cbViewOrtho->checked() && !cbView2D->checked());
 
         // clip planes:
-        const auto depthFieldMid = std::pow(10.0, slMidDepthField->value());
-        const auto depthFieldThickness =
-            std::pow(10.0, slThicknessDepthField->value());
+        const auto depthFieldMid       = std::pow(10.0, slMidDepthField->value());
+        const auto depthFieldThickness = std::pow(10.0, slThicknessDepthField->value());
 
-        const auto clipNear =
-            std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
-        const auto clipFar = depthFieldMid + 0.5 * depthFieldThickness;
+        const auto clipNear = std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
+        const auto clipFar  = depthFieldMid + 0.5 * depthFieldThickness;
 
         const float cameraFOV = slCameraFOV->value();
         win->camera().setCameraFOV(cameraFOV);
@@ -1125,26 +1068,22 @@ void rebuild_3d_view()
 
         lbDepthFieldValues->setCaption(
             mrpt::format("Depth field: near=%g far=%g", clipNear, clipFar));
-        lbDepthFieldMid->setCaption(
-            mrpt::format("Frustrum center: %.03g", depthFieldMid));
+        lbDepthFieldMid->setCaption(mrpt::format("Frustrum center: %.03g", depthFieldMid));
         lbDepthFieldThickness->setCaption(
             mrpt::format("Frustum thickness: %.03g", depthFieldThickness));
 
         lbDepthFieldValues->setCaption(
             mrpt::format("Frustum: near=%.02g far=%.02g", clipNear, clipFar));
 
-        lbCameraFOV->setCaption(
-            mrpt::format("Camera FOV: %.02f deg", cameraFOV));
+        lbCameraFOV->setCaption(mrpt::format("Camera FOV: %.02f deg", cameraFOV));
 
-        win->background_scene->getViewport()->setViewportClipDistances(
-            clipNear, clipFar);
+        win->background_scene->getViewport()->setViewportClipDistances(clipNear, clipFar);
     }
 }
 
 void onSaveLayers()
 {
-    const std::string outFile =
-        nanogui::file_dialog({{"txt", "(*.txt)"}}, true /*save*/);
+    const std::string outFile = nanogui::file_dialog({{"txt", "(*.txt)"}}, true /*save*/);
     if (outFile.empty()) return;
 
     for (const auto& [lyName, cb] : cbLayersByName)
@@ -1190,11 +1129,9 @@ int main(int argc, char** argv)
         if (arg_tumTrajectory.isSet())
         {
             ASSERT_FILE_EXISTS_(arg_tumTrajectory.getValue());
-            bool trajectoryReadOk =
-                trajectory.loadFromTextFile_TUM(arg_tumTrajectory.getValue());
+            bool trajectoryReadOk = trajectory.loadFromTextFile_TUM(arg_tumTrajectory.getValue());
             ASSERT_(trajectoryReadOk);
-            std::cout << "Read trajectory with " << trajectory.size()
-                      << " keyframes.\n";
+            std::cout << "Read trajectory with " << trajectory.size() << " keyframes.\n";
         }
 
         main_show_gui();
@@ -1202,8 +1139,7 @@ int main(int argc, char** argv)
     }
     catch (std::exception& e)
     {
-        std::cerr << "Exit due to exception:\n"
-                  << mrpt::exception_to_str(e) << std::endl;
+        std::cerr << "Exit due to exception:\n" << mrpt::exception_to_str(e) << std::endl;
         return 1;
     }
 }

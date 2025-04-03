@@ -104,24 +104,20 @@ class Matcher_Points_Base : public Matcher
     };
 
     static TransformedLocalPointCloud transform_local_to_global(
-        const mrpt::maps::CPointsMap& pcLocal,
-        const mrpt::poses::CPose3D&   localPose,
-        const std::size_t             maxLocalPoints        = 0,
-        const uint64_t                localPointsSampleSeed = 0);
+        const mrpt::maps::CPointsMap& pcLocal, const mrpt::poses::CPose3D& localPose,
+        const std::size_t maxLocalPoints = 0, const uint64_t localPointsSampleSeed = 0);
 
    protected:
     bool impl_match(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-        const mrpt::poses::CPose3D& localPose, const MatchContext& mc,
-        MatchState& ms, Pairings& out) const override final;
+        const mrpt::poses::CPose3D& localPose, const MatchContext& mc, MatchState& ms,
+        Pairings& out) const override final;
 
    private:
     virtual void implMatchOneLayer(
-        const mrpt::maps::CMetricMap& pcGlobal,
-        const mrpt::maps::CPointsMap& pcLocal,
-        const mrpt::poses::CPose3D& localPose, MatchState& ms,
-        const layer_name_t& globalName, const layer_name_t& localName,
-        Pairings& out) const = 0;
+        const mrpt::maps::CMetricMap& pcGlobal, const mrpt::maps::CPointsMap& pcLocal,
+        const mrpt::poses::CPose3D& localPose, MatchState& ms, const layer_name_t& globalName,
+        const layer_name_t& localName, Pairings& out) const = 0;
 };
 
 }  // namespace mp2p_icp

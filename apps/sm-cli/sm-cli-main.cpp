@@ -42,14 +42,12 @@ const std::map<std::string, cmd_t> cliCommands = {
 
 void setConsoleErrorColor()
 {
-    mrpt::system::consoleColorAndStyle(
-        mrpt::system::ConsoleForegroundColor::RED);
+    mrpt::system::consoleColorAndStyle(mrpt::system::ConsoleForegroundColor::RED);
 }
 
 void setConsoleNormalColor()
 {
-    mrpt::system::consoleColorAndStyle(
-        mrpt::system::ConsoleForegroundColor::DEFAULT);
+    mrpt::system::consoleColorAndStyle(mrpt::system::ConsoleForegroundColor::DEFAULT);
 }
 
 int main(int argc, char** argv)
@@ -72,8 +70,7 @@ int main(int argc, char** argv)
 
         // Take first unlabeled argument:
         std::string command;
-        if (const auto& lst = cli->argCmd.getValue(); !lst.empty())
-            command = lst.at(0);
+        if (const auto& lst = cli->argCmd.getValue(); !lst.empty()) command = lst.at(0);
 
         // Look up command in table:
         auto itCmd = cliCommands.find(command);
@@ -125,10 +122,7 @@ Or use `sm-cli <COMMAND> --help` for further options
     return 0;
 }
 
-void printVersion()
-{
-    std::cout << "sm-cli v" << MP2P_ICP_VERSION << std::endl;
-}
+void printVersion() { std::cout << "sm-cli v" << MP2P_ICP_VERSION << std::endl; }
 
 // Common part of most commands:
 mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& inFile)
@@ -137,8 +131,8 @@ mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& inFile)
 
     const auto sizeBytes = mrpt::system::getFileSize(inFile);
 
-    std::cout << "Loading: '" << inFile << "' of "
-              << mrpt::system::unitsFormat(sizeBytes) << "B..." << std::endl;
+    std::cout << "Loading: '" << inFile << "' of " << mrpt::system::unitsFormat(sizeBytes) << "B..."
+              << std::endl;
 
     // register mrpt-obs classes, since we are not using them explicitly and
     // hence they are not auto-loading.

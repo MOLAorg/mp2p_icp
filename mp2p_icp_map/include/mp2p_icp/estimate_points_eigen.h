@@ -32,9 +32,8 @@ namespace mp2p_icp
 struct PointCloudEigen
 {
     mrpt::poses::CPointPDFGaussian       meanCov;
-    std::array<mrpt::math::TVector3D, 3> eigVectors = {
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}};
-    std::array<double, 3> eigVals = {0, 0, 0};  //!< sorted in ascending order
+    std::array<mrpt::math::TVector3D, 3> eigVectors = {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}};
+    std::array<double, 3>                eigVals    = {0, 0, 0};  //!< sorted in ascending order
 };
 
 /** Calculate mean, covariance, eigenvectors, and eigenvalues from a set of
@@ -63,7 +62,7 @@ PointCloudEigen estimate_points_eigen(
 /** Auxiliary function that can be used to convert a vector of TPoint3Df into
  * the format expected by estimate_points_eigen() */
 void vector_of_points_to_xyz(
-    const std::vector<mrpt::math::TPoint3Df>& pts, std::vector<float>& xs,
-    std::vector<float>& ys, std::vector<float>& zs);
+    const std::vector<mrpt::math::TPoint3Df>& pts, std::vector<float>& xs, std::vector<float>& ys,
+    std::vector<float>& zs);
 
 }  // namespace mp2p_icp

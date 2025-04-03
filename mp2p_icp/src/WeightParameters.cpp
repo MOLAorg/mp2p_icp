@@ -15,8 +15,7 @@
 #include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/version.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    WeightParameters, mrpt::serialization::CSerializable, mp2p_icp)
+IMPLEMENTS_MRPT_OBJECT(WeightParameters, mrpt::serialization::CSerializable, mp2p_icp)
 
 using namespace mp2p_icp;
 
@@ -24,13 +23,12 @@ using namespace mp2p_icp;
 uint8_t WeightParameters::serializeGetVersion() const { return 1; }
 void    WeightParameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
-    out << use_scale_outlier_detector << scale_outlier_threshold
-        << robust_kernel << currentEstimateForRobust << robust_kernel_param;
+    out << use_scale_outlier_detector << scale_outlier_threshold << robust_kernel
+        << currentEstimateForRobust << robust_kernel_param;
 
     pair_weights.serializeTo(out);
 }
-void WeightParameters::serializeFrom(
-    mrpt::serialization::CArchive& in, uint8_t version)
+void WeightParameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version)
 {
     switch (version)
     {

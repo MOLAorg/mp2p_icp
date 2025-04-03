@@ -15,13 +15,11 @@
 #include <mrpt/img/TPixelCoord.h>
 #include <mrpt/io/vector_loadsave.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    QualityEvaluator_RangeImageSimilarity, QualityEvaluator, mp2p_icp)
+IMPLEMENTS_MRPT_OBJECT(QualityEvaluator_RangeImageSimilarity, QualityEvaluator, mp2p_icp)
 
 using namespace mp2p_icp;
 
-void QualityEvaluator_RangeImageSimilarity::initialize(
-    const mrpt::containers::yaml& params)
+void QualityEvaluator_RangeImageSimilarity::initialize(const mrpt::containers::yaml& params)
 {
     rangeCamera.ncols = params["ncols"].as<uint32_t>();
     rangeCamera.nrows = params["nrows"].as<uint32_t>();
@@ -40,8 +38,7 @@ void QualityEvaluator_RangeImageSimilarity::initialize(
 
 QualityEvaluator::Result QualityEvaluator_RangeImageSimilarity::evaluate(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-    const mrpt::poses::CPose3D&      localPose,
-    [[maybe_unused]] const Pairings& pairingsFromICP) const
+    const mrpt::poses::CPose3D& localPose, [[maybe_unused]] const Pairings& pairingsFromICP) const
 {
     // See Figure 3 of IROS2017 paper:
     // "Analyzing the Quality of Matched 3D Point Clouds of Objects"
@@ -109,8 +106,8 @@ QualityEvaluator::Result QualityEvaluator_RangeImageSimilarity::evaluate(
 // Adapted from mrpt::vision::pinhole::projectPoint_with_distortion()
 // 3-claused BSD
 static void projectPoint(
-    const mrpt::math::TPoint3D& P, const mrpt::img::TCamera& params,
-    double& pixel_x, double& pixel_y)
+    const mrpt::math::TPoint3D& P, const mrpt::img::TCamera& params, double& pixel_x,
+    double& pixel_y)
 {
     /* Pinhole model.
      *
@@ -159,9 +156,7 @@ mrpt::math::CMatrixDouble QualityEvaluator_RangeImageSimilarity::projectPoints(
         int pixy = static_cast<int>(py);
 
         // Out of range
-        if (pixx < 0 || pixy < 0 || pixx >= int(rc.ncols) ||
-            pixy >= int(rc.nrows))
-            continue;
+        if (pixx < 0 || pixy < 0 || pixx >= int(rc.ncols) || pixy >= int(rc.nrows)) continue;
 
         const double newRange    = p.norm();
         double&      storedRange = I(pixy, pixx);
@@ -185,8 +180,7 @@ static double errorForMismatch(const double DeltaRange, const double sigma)
 }
 
 std::vector<double> QualityEvaluator_RangeImageSimilarity::scores(
-    const mrpt::math::CMatrixDouble& m1,
-    const mrpt::math::CMatrixDouble& m2) const
+    const mrpt::math::CMatrixDouble& m1, const mrpt::math::CMatrixDouble& m2) const
 {
     ASSERT_EQUAL_(m1.rows(), m2.rows());
     ASSERT_EQUAL_(m1.cols(), m2.cols());

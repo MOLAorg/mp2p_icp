@@ -28,8 +28,7 @@ struct CovarianceParameters
  * \ingroup mp2p_icp_grp
  */
 mrpt::math::CMatrixDouble66 covariance(
-    const Pairings&             finalPairings,
-    const mrpt::poses::CPose3D& finalAlignSolution,
+    const Pairings& finalPairings, const mrpt::poses::CPose3D& finalAlignSolution,
     const CovarianceParameters& p);
 
 }  // namespace mp2p_icp

@@ -24,8 +24,7 @@ int commandExportRawlog()
 {
     const auto& lstCmds = cli->argCmd.getValue();
     if (cli->argHelp.isSet()) return printCommandsExportRawlog(false);
-    if (lstCmds.size() != 2 || !cli->arg_output.isSet())
-        return printCommandsExportRawlog(true);
+    if (lstCmds.size() != 2 || !cli->arg_output.isSet()) return printCommandsExportRawlog(true);
 
     // Take second unlabeled argument:
     const std::string file = lstCmds.at(1);
@@ -73,8 +72,7 @@ int commandExportRawlog()
             if (timestamp) obsTwist->timestamp = *timestamp;
             obsTwist->sensorLabel = "twist";
             std::stringstream ss;
-            ss << "Twist stored in the simplemap keyframe:\n"
-               << twist->asString();
+            ss << "Twist stored in the simplemap keyframe:\n" << twist->asString();
 
             obsTwist->text = ss.str();
             outSF.insert(obsTwist);
@@ -83,8 +81,8 @@ int commandExportRawlog()
         rawlog.insert(outSF);
     }
 
-    std::cout << "Saving rawlog with " << rawlog.size() << " entries to: '"
-              << outFil << "'" << std::endl;
+    std::cout << "Saving rawlog with " << rawlog.size() << " entries to: '" << outFil << "'"
+              << std::endl;
 
     rawlog.saveToRawLogFile(outFil);
 

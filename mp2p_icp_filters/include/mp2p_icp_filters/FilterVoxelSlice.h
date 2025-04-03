@@ -41,8 +41,7 @@ class FilterVoxelSlice : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(
-            const mrpt::containers::yaml& c, FilterVoxelSlice& parent);
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterVoxelSlice& parent);
 
         std::string input_layer;
         std::string output_layer;

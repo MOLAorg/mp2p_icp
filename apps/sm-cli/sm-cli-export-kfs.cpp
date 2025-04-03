@@ -21,8 +21,7 @@ int commandExportKF()
 {
     const auto& lstCmds = cli->argCmd.getValue();
     if (cli->argHelp.isSet()) return printCommandsExportKF(false);
-    if (lstCmds.size() != 2 || !cli->arg_output.isSet())
-        return printCommandsExportKF(true);
+    if (lstCmds.size() != 2 || !cli->arg_output.isSet()) return printCommandsExportKF(true);
 
     // Take second unlabeled argument:
     const std::string file = lstCmds.at(1);
@@ -33,10 +32,7 @@ int commandExportKF()
     const auto outTwistFil = cli->arg_output_twist.getValue();
 
     std::optional<std::ofstream> outTwist;
-    if (!outTwistFil.empty())
-    {
-        outTwist.emplace(outTwistFil, std::ofstream::out);
-    }
+    if (!outTwistFil.empty()) { outTwist.emplace(outTwistFil, std::ofstream::out); }
 
     mrpt::poses::CPose3DInterpolator kfs;
 
@@ -84,8 +80,7 @@ int commandExportKF()
                   << std::endl;
     }
 
-    std::cout << "Saving " << kfs.size() << " keyframe poses to: '" << outFil
-              << "'" << std::endl;
+    std::cout << "Saving " << kfs.size() << " keyframe poses to: '" << outFil << "'" << std::endl;
 
     kfs.saveToTextFile_TUM(outFil);
 

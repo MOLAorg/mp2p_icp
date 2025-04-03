@@ -29,8 +29,7 @@ void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
     out << decimationDebugFiles;
     out << saveIterationDetails << decimationIterationDetails;  // v2
 }
-void Parameters::serializeFrom(
-    mrpt::serialization::CArchive& in, uint8_t version)
+void Parameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version)
 {
     *this = Parameters();
 
@@ -44,8 +43,7 @@ void Parameters::serializeFrom(
             in >> generateDebugFiles >> debugFileNameFormat;
             in >> debugPrintIterationProgress;
             if (version >= 1) in >> decimationDebugFiles;
-            if (version >= 2)
-                in >> saveIterationDetails >> decimationIterationDetails;
+            if (version >= 2) in >> saveIterationDetails >> decimationIterationDetails;
         }
         break;
         default:

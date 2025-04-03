@@ -22,8 +22,7 @@ namespace
 TCLAP::CmdLine cmd("mm-filter");
 
 TCLAP::UnlabeledValueArg<std::string> argMapFile(
-    "input", "Load this metric map file (*.mm)", true, "myMap.mm", "myMap.mm",
-    cmd);
+    "input", "Load this metric map file (*.mm)", true, "myMap.mm", "myMap.mm", cmd);
 }  // namespace
 
 void run_mm_info()
@@ -32,14 +31,12 @@ void run_mm_info()
 
     ASSERT_FILE_EXISTS_(argMapFile.getValue());
 
-    std::cout << "[mm-info] Reading input map from: '" << filInput << "'..."
-              << std::endl;
+    std::cout << "[mm-info] Reading input map from: '" << filInput << "'..." << std::endl;
 
     mp2p_icp::metric_map_t mm;
     mm.load_from_file(filInput);
 
-    std::cout << "[mm-info] Done read map. Contents:\n"
-              << mm.contents_summary() << std::endl;
+    std::cout << "[mm-info] Done read map. Contents:\n" << mm.contents_summary() << std::endl;
 }
 
 int main(int argc, char** argv)

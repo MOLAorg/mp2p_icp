@@ -22,13 +22,11 @@ const double SCALE   = mrpt::get_env<double>("SCALE", 3.0);
 
 void unit_test()
 {
-    const std::string datasetDir =
-        mrpt::system::pathJoin({MOLA_TEST_DATASET_DIR, "loop_closures"});
+    const std::string datasetDir = mrpt::system::pathJoin({MOLA_TEST_DATASET_DIR, "loop_closures"});
 
     ASSERT_DIRECTORY_EXISTS_(datasetDir);
 
-    const std::string datasetListFile =
-        mrpt::system::pathJoin({datasetDir, "dataset.yaml"});
+    const std::string datasetListFile = mrpt::system::pathJoin({datasetDir, "dataset.yaml"});
 
     const auto dataset = mrpt::containers::yaml::FromFile(datasetListFile);
 
@@ -55,8 +53,7 @@ void unit_test()
 
     std::vector<Entry> LCs;
 
-    auto lambdaProcessYaml =
-        [&](const mrpt::containers::yaml::sequence_t& seq, bool are_good_lcs)
+    auto lambdaProcessYaml = [&](const mrpt::containers::yaml::sequence_t& seq, bool are_good_lcs)
     {
         for (const auto& p : seq)
         {
@@ -66,12 +63,10 @@ void unit_test()
             lc.local      = p.asMap().at("local").as<std::string>();
             const auto v  = p.asMap().at("final_pose").asSequence();
             ASSERT_EQUAL_(v.size(), 6UL);
-            lc.local_pose_wrt_global =
-                mrpt::poses::CPose3D::FromXYZYawPitchRoll(
-                    v[0].as<double>(), v[1].as<double>(), v[2].as<double>(),
-                    mrpt::DEG2RAD(v[3].as<double>()),
-                    mrpt::DEG2RAD(v[4].as<double>()),
-                    mrpt::DEG2RAD(v[5].as<double>()));
+            lc.local_pose_wrt_global = mrpt::poses::CPose3D::FromXYZYawPitchRoll(
+                v[0].as<double>(), v[1].as<double>(), v[2].as<double>(),
+                mrpt::DEG2RAD(v[3].as<double>()), mrpt::DEG2RAD(v[4].as<double>()),
+                mrpt::DEG2RAD(v[5].as<double>()));
         }
     };
 
@@ -89,7 +84,7 @@ void unit_test()
         mp2p_icp::metric_map_t pcL;
         pcL.load_from_file(mrpt::system::pathJoin({datasetDir, e.local}));
 
-        const auto   res = q.evaluate(pcG, pcL, e.local_pose_wrt_global, {});
+        const auto   res     = q.evaluate(pcG, pcL, e.local_pose_wrt_global, {});
         const double quality = res.quality;
 
         if (VERBOSE)
@@ -100,8 +95,7 @@ void unit_test()
                       << "  result_quality: " << quality << "\n";
         }
 
-        if ((quality < 0.2 && e.is_good_lc) ||
-            (quality >= 0.5 && !e.is_good_lc))
+        if ((quality < 0.2 && e.is_good_lc) || (quality >= 0.5 && !e.is_good_lc))
         {
             std::cerr << "Failed for test case:\n"
                       << " local       : " << e.local << "\n"

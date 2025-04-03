@@ -81,18 +81,16 @@ class metric_map_t : public mrpt::serialization::CSerializable,
     /** Plane patches=centroid point + infinite plane */
     std::vector<plane_patch_t> planes;
 
-    /** An optional numerical ID to identify the pointcloud in some higher-level
-     * system. Used to build the names of ICP debug files, if so requested.
-     * It is not mandatory and even duplicates may exist without problems: just
-     * a placeholder for the user of this library to use it.
+    /** An optional numerical ID to identify the pointcloud in some higher-level system. Used to
+     * build the names of ICP debug files, if so requested. It is not mandatory and even duplicates
+     * may exist without problems: just a placeholder for the user of this library to use it.
      */
     std::optional<uint64_t> id;
 
-    /** An optional textual identification/description of the pointcloud in some
-     * higher-level system. Used to build the names of ICP debug files, if so
-     * requested.
-     * It is not mandatory and even duplicates may exist without problems: just
-     * a placeholder for the user of this library to use it.
+    /** An optional textual identification/description of the pointcloud in some higher-level
+     * system. Used to build the names of ICP debug files, if so requested. It is not mandatory and
+     * even duplicates may exist without problems: just a placeholder for the user of this library
+     * to use it.
      */
     std::optional<std::string> label;
 
@@ -102,12 +100,10 @@ class metric_map_t : public mrpt::serialization::CSerializable,
          * reference. */
         mrpt::topography::TGeodeticCoords geo_coord;
 
-        /** The SE(3) transformation from the ENU (earth-north-up) frame
-         * to the metric map local frame of reference.
-         * If this is the identity (default) it means the map is already in
-         * ENU coordinates (i.e. +X is East, +Y is North, +Z is up) and
-         * the point (0,0,0) is the one having the geodetic coordinates
-         * geo_coord
+        /** The SE(3) transformation from the ENU (earth-north-up) frame to the metric map local
+         * frame of reference. If this is the identity (default) it means the map is already in ENU
+         * coordinates (i.e. +X is East, +Y is North, +Z is up) and the point (0,0,0) is the one
+         * having the geodetic coordinates geo_coord
          */
         mrpt::poses::CPose3DPDFGaussian T_enu_to_map;
     };
@@ -168,8 +164,8 @@ class metric_map_t : public mrpt::serialization::CSerializable,
      *  reimplement this method and call this base class method to render
      *  common elements.
      */
-    virtual auto get_visualization(const render_params_t& p = render_params_t())
-        const -> std::shared_ptr<mrpt::opengl::CSetOfObjects>;
+    virtual auto get_visualization(const render_params_t& p = render_params_t()) const
+        -> std::shared_ptr<mrpt::opengl::CSetOfObjects>;
 
     /** Merges all geometric entities from another point cloud into this one,
      * with an optional relative pose transformation.
@@ -181,8 +177,7 @@ class metric_map_t : public mrpt::serialization::CSerializable,
      */
     virtual void merge_with(
         const metric_map_t&                       otherPc,
-        const std::optional<mrpt::math::TPose3D>& otherRelativePose =
-            std::nullopt);
+        const std::optional<mrpt::math::TPose3D>& otherRelativePose = std::nullopt);
 
     /** Used inside get_visualization(), renders planes only. */
     void get_visualization_planes(
@@ -219,16 +214,10 @@ class metric_map_t : public mrpt::serialization::CSerializable,
 
    protected:
     /** Implement in derived classes if new data fields are required */
-    virtual void derivedSerializeTo(
-        [[maybe_unused]] mrpt::serialization::CArchive& out) const
-    {
-    }
+    virtual void derivedSerializeTo([[maybe_unused]] mrpt::serialization::CArchive& out) const {}
 
     /** Implement in derived classes if new data fields are required */
-    virtual void derivedSerializeFrom(
-        [[maybe_unused]] mrpt::serialization::CArchive& in)
-    {
-    }
+    virtual void derivedSerializeFrom([[maybe_unused]] mrpt::serialization::CArchive& in) {}
 };
 
 /** Function to extract the CPointsMap for any kind of
@@ -267,11 +256,9 @@ const mp2p_icp::NearestPlaneCapable* MapToNP(
 
 // Serialization of geo-reference information:
 mrpt::serialization::CArchive& operator>>(
-    mrpt::serialization::CArchive&               in,
-    std::optional<metric_map_t::Georeferencing>& g);
+    mrpt::serialization::CArchive& in, std::optional<metric_map_t::Georeferencing>& g);
 mrpt::serialization::CArchive& operator<<(
-    mrpt::serialization::CArchive&                     out,
-    const std::optional<metric_map_t::Georeferencing>& g);
+    mrpt::serialization::CArchive& out, const std::optional<metric_map_t::Georeferencing>& g);
 
 /** @} */
 

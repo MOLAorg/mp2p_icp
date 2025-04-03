@@ -23,8 +23,7 @@ namespace mp2p_icp_filters
  *  @{ */
 
 [[nodiscard]] mrpt::maps::CPointsMap::Ptr GetOrCreatePointLayer(
-    mp2p_icp::metric_map_t& m, const std::string& layerName,
-    bool               allowEmptyName        = true,
+    mp2p_icp::metric_map_t& m, const std::string& layerName, bool allowEmptyName = true,
     const std::string& classForLayerCreation = "mrpt::maps::CSimplePointsMap");
 
 /** @} */

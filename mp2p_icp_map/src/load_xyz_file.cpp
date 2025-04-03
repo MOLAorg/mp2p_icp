@@ -18,8 +18,7 @@
 #include <fstream>
 
 // Loads from XYZ file, possibly gz-compressed:
-mrpt::maps::CSimplePointsMap::Ptr mp2p_icp::load_xyz_file(
-    const std::string& fil)
+mrpt::maps::CSimplePointsMap::Ptr mp2p_icp::load_xyz_file(const std::string& fil)
 {
     ASSERT_FILE_EXISTS_(fil);
 
@@ -54,8 +53,7 @@ mrpt::maps::CSimplePointsMap::Ptr mp2p_icp::load_xyz_file(
     ASSERTMSG_(
         m->size() > 1,
         mrpt::format(
-            "Could not parse a valid point cloud from ASCII file '%s'",
-            fileToRead.c_str()));
+            "Could not parse a valid point cloud from ASCII file '%s'", fileToRead.c_str()));
 
     return m;
 }

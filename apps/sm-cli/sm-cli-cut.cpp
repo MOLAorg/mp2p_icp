@@ -40,8 +40,8 @@ int commandCut()
 
     const auto outFil = cli->arg_output.getValue();
 
-    std::cout << "Writing cut simplemap with " << outSM.size()
-              << " keyframes to '" << outFil << "'" << std::endl;
+    std::cout << "Writing cut simplemap with " << outSM.size() << " keyframes to '" << outFil << "'"
+              << std::endl;
 
     outSM.saveToFile(outFil);
 

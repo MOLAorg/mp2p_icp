@@ -49,11 +49,9 @@ struct Results
     void print(std::ostream& o) const;
 };
 
-mrpt::serialization::CArchive& operator<<(
-    mrpt::serialization::CArchive& out, const Results& obj);
+mrpt::serialization::CArchive& operator<<(mrpt::serialization::CArchive& out, const Results& obj);
 
-mrpt::serialization::CArchive& operator>>(
-    mrpt::serialization::CArchive& in, Results& obj);
+mrpt::serialization::CArchive& operator>>(mrpt::serialization::CArchive& in, Results& obj);
 
 /** @} */
 

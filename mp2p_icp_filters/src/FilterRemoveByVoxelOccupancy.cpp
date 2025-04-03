@@ -16,9 +16,7 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CVoxelMap.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterRemoveByVoxelOccupancy, mp2p_icp_filters::FilterBase,
-    mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterRemoveByVoxelOccupancy, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
@@ -60,9 +58,7 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
     // In pts:
     ASSERTMSG_(
         inOut.layers.count(params_.input_pointcloud_layer) != 0,
-        mrpt::format(
-            "Input layer '%s' not found.",
-            params_.input_pointcloud_layer.c_str()));
+        mrpt::format("Input layer '%s' not found.", params_.input_pointcloud_layer.c_str()));
 
     const auto mapPtr = inOut.layers.at(params_.input_pointcloud_layer);
     ASSERT_(mapPtr);
@@ -72,26 +68,23 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         pcPtr, mrpt::format(
                    "Input point cloud layer '%s' could not be converted into a "
                    "point cloud (class='%s')",
-                   params_.input_pointcloud_layer.c_str(),
-                   mapPtr->GetRuntimeClass()->className));
+                   params_.input_pointcloud_layer.c_str(), mapPtr->GetRuntimeClass()->className));
 
     // In voxels:
     ASSERTMSG_(
         inOut.layers.count(params_.input_voxel_layer) != 0,
-        mrpt::format(
-            "Input layer '%s' not found.", params_.input_voxel_layer.c_str()));
+        mrpt::format("Input layer '%s' not found.", params_.input_voxel_layer.c_str()));
 
     const auto voxelMapPtr = inOut.layers.at(params_.input_voxel_layer);
     ASSERT_(voxelMapPtr);
 
-    const auto voxelPtr =
-        std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(voxelMapPtr);
+    const auto voxelPtr = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(voxelMapPtr);
     ASSERTMSG_(
-        voxelPtr, mrpt::format(
-                      "Input voxel layer '%s' not of type mrpt::maps::CVoxelMap"
-                      "(actual class='%s')",
-                      params_.input_voxel_layer.c_str(),
-                      voxelMapPtr->GetRuntimeClass()->className));
+        voxelPtr,
+        mrpt::format(
+            "Input voxel layer '%s' not of type mrpt::maps::CVoxelMap"
+            "(actual class='%s')",
+            params_.input_voxel_layer.c_str(), voxelMapPtr->GetRuntimeClass()->className));
 
     // Outputs:
     // Create if new: Append to existing layer, if already existed.
@@ -101,8 +94,7 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         true,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-    if (outPcStatic)
-        outPcStatic->reserve(outPcStatic->size() + pcPtr->size() / 2);
+    if (outPcStatic) outPcStatic->reserve(outPcStatic->size() + pcPtr->size() / 2);
 
     mrpt::maps::CPointsMap::Ptr outPcDynamic = GetOrCreatePointLayer(
         inOut, params_.output_layer_dynamic_objects,
@@ -110,8 +102,7 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         true,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-    if (outPcDynamic)
-        outPcDynamic->reserve(outPcDynamic->size() + pcPtr->size() / 2);
+    if (outPcDynamic) outPcDynamic->reserve(outPcDynamic->size() + pcPtr->size() / 2);
 
     ASSERTMSG_(
         outPcStatic || outPcDynamic,
@@ -119,9 +110,8 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         "'output_layer_dynamic_objects' output layers must be provided.");
 
     // Process occupancy input value so it lies within [0,0.5]:
-    const double occFree  = params_.occupancy_threshold > 0.5
-                                ? (1.0 - params_.occupancy_threshold)
-                                : params_.occupancy_threshold;
+    const double occFree  = params_.occupancy_threshold > 0.5 ? (1.0 - params_.occupancy_threshold)
+                                                              : params_.occupancy_threshold;
     const double occThres = 1.0 - occFree;
 
     // Process:
@@ -135,8 +125,7 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
     for (size_t i = 0; i < N; i++)
     {
         double prob_occupancy = 0.5;
-        bool   withinMap =
-            voxelPtr->getPointOccupancy(xs[i], ys[i], zs[i], prob_occupancy);
+        bool   withinMap      = voxelPtr->getPointOccupancy(xs[i], ys[i], zs[i], prob_occupancy);
         if (!withinMap) continue;  // undefined! pt out of voxelmap
 
         mrpt::maps::CPointsMap* trgMap = nullptr;
@@ -158,8 +147,7 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     MRPT_LOG_DEBUG_STREAM(
-        "Parsed " << N << " points: static=" << nStatic
-                  << ", dynamic=" << nDynamic);
+        "Parsed " << N << " points: static=" << nStatic << ", dynamic=" << nDynamic);
 
     MRPT_END
 }

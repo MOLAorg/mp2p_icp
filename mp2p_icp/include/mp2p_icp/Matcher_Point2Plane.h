@@ -45,11 +45,9 @@ class Matcher_Point2Plane : public Matcher_Points_Base
     double distanceThreshold = 0.50;
 
     void implMatchOneLayer(
-        const mrpt::maps::CMetricMap& pcGlobal,
-        const mrpt::maps::CPointsMap& pcLocal,
-        const mrpt::poses::CPose3D& localPose, MatchState& ms,
-        const layer_name_t& globalName, const layer_name_t& localName,
-        Pairings& out) const override;
+        const mrpt::maps::CMetricMap& pcGlobal, const mrpt::maps::CPointsMap& pcLocal,
+        const mrpt::poses::CPose3D& localPose, MatchState& ms, const layer_name_t& globalName,
+        const layer_name_t& localName, Pairings& out) const override;
 };
 
 }  // namespace mp2p_icp

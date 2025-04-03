@@ -37,8 +37,7 @@ void    LogRecord::serializeTo(mrpt::serialization::CArchive& out) const
     out << iterationsDetails;
     out << dynamicVariables;  // added in v1
 }
-void LogRecord::serializeFrom(
-    mrpt::serialization::CArchive& in, uint8_t version)
+void LogRecord::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version)
 {
     *this = LogRecord();
 
@@ -58,8 +57,7 @@ void LogRecord::serializeFrom(
                 in >> const_cast<metric_map_t&>(*pcLocal);
             }
 
-            in >> initialGuessLocalWrtGlobal >> icpParameters >> icpResult >>
-                iterationsDetails;
+            in >> initialGuessLocalWrtGlobal >> icpParameters >> icpResult >> iterationsDetails;
 
             if (version >= 1)
                 in >> dynamicVariables;
@@ -112,15 +110,13 @@ bool LogRecord::load_from_file(const std::string& fileName)
 
 static const uint8_t DIPI_SERIALIZATION_VERSION = 0;
 
-void LogRecord::DebugInfoPerIteration::serializeTo(
-    mrpt::serialization::CArchive& out) const
+void LogRecord::DebugInfoPerIteration::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out.WriteAs<uint8_t>(DIPI_SERIALIZATION_VERSION);
 
     out << optimalPose << pairings;
 }
-void LogRecord::DebugInfoPerIteration::serializeFrom(
-    mrpt::serialization::CArchive& in)
+void LogRecord::DebugInfoPerIteration::serializeFrom(mrpt::serialization::CArchive& in)
 {
     const auto readVersion = in.ReadAs<uint8_t>();
     ASSERT_EQUAL_(readVersion, DIPI_SERIALIZATION_VERSION);
@@ -128,8 +124,7 @@ void LogRecord::DebugInfoPerIteration::serializeFrom(
 }
 
 mrpt::serialization::CArchive& mrpt::serialization::operator<<(
-    mrpt::serialization::CArchive&          out,
-    const LogRecord::DebugInfoPerIteration& obj)
+    mrpt::serialization::CArchive& out, const LogRecord::DebugInfoPerIteration& obj)
 {
     obj.serializeTo(out);
     return out;

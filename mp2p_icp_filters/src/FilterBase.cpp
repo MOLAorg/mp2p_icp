@@ -13,8 +13,7 @@
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mrpt/system/CTimeLogger.h>
 
-IMPLEMENTS_VIRTUAL_MRPT_OBJECT(
-    FilterBase, mrpt::rtti::CObject, mp2p_icp_filters)
+IMPLEMENTS_VIRTUAL_MRPT_OBJECT(FilterBase, mrpt::rtti::CObject, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
@@ -56,9 +55,7 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
 
         auto f = std::dynamic_pointer_cast<FilterBase>(o);
         ASSERTMSG_(
-            f, mrpt::format(
-                   "`%s` class seems not to be derived from FilterBase",
-                   sClass.c_str()));
+            f, mrpt::format("`%s` class seems not to be derived from FilterBase", sClass.c_str()));
 
         f->setMinLoggingLevel(vLevel);
 

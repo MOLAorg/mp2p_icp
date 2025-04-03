@@ -30,8 +30,7 @@ class QualityEvaluator_Voxels : public QualityEvaluator
     void   initialize(const mrpt::containers::yaml& params) override;
     Result evaluate(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-        const mrpt::poses::CPose3D& localPose,
-        const Pairings&             pairingsFromICP) const override;
+        const mrpt::poses::CPose3D& localPose, const Pairings& pairingsFromICP) const override;
 
     /** The name of the input maps layer that is of type CVoxelMap */
     std::string voxel_layer_name;

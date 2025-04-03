@@ -33,24 +33,21 @@
 #include <Eigen/Dense>
 #include <iostream>
 
-static int  NUM_REPS = mrpt::get_env<int>("NUM_REPS", 3);
-static bool DO_SAVE_STAT_FILES =
-    mrpt::get_env<bool>("DO_SAVE_STAT_FILES", false);
-static bool DO_PRINT_ALL = mrpt::get_env<bool>("DO_PRINT_ALL", false);
+static int  NUM_REPS           = mrpt::get_env<int>("NUM_REPS", 3);
+static bool DO_SAVE_STAT_FILES = mrpt::get_env<bool>("DO_SAVE_STAT_FILES", false);
+static bool DO_PRINT_ALL       = mrpt::get_env<bool>("DO_PRINT_ALL", false);
 
 const std::string datasetDir = MP2P_DATASET_DIR;
 
 static void test_icp(
-    const std::string& inFile, const std::string& icpClassName,
-    const std::string& solverName, const std::string& matcherName,
-    int pointDecimation)
+    const std::string& inFile, const std::string& icpClassName, const std::string& solverName,
+    const std::string& matcherName, int pointDecimation)
 {
     using namespace mrpt::poses::Lie;
 
     const auto fileFullPath = datasetDir + inFile;
 
-    mrpt::maps::CSimplePointsMap::Ptr pts =
-        mp2p_icp::load_xyz_file(fileFullPath);
+    mrpt::maps::CSimplePointsMap::Ptr pts = mp2p_icp::load_xyz_file(fileFullPath);
 
     if (pointDecimation > 1)
     {
@@ -64,17 +61,16 @@ static void test_icp(
         pts = decimPts;
     }
 
-    std::cout << "Running " << icpClassName << "|" << solverName << "|"
-              << matcherName << " test on: " << inFile << " with "
-              << pts->size() << " points\n";
+    std::cout << "Running " << icpClassName << "|" << solverName << "|" << matcherName
+              << " test on: " << inFile << " with " << pts->size() << " points\n";
 
     double outliers_ratio = 0;
     bool   use_robust     = true;
 
     const std::string tstName = mrpt::format(
-        "test_icp_Model=%s_Algo=%s_%s_%s_outliers=%06.03f_robust=%i",
-        inFile.c_str(), icpClassName.c_str(), solverName.c_str(),
-        matcherName.c_str(), outliers_ratio, use_robust ? 1 : 0);
+        "test_icp_Model=%s_Algo=%s_%s_%s_outliers=%06.03f_robust=%i", inFile.c_str(),
+        icpClassName.c_str(), solverName.c_str(), matcherName.c_str(), outliers_ratio,
+        use_robust ? 1 : 0);
 
     const auto bbox      = pts->boundingBox();
     const auto bbox_size = bbox.max - bbox.min;
@@ -114,25 +110,22 @@ static void test_icp(
 
         const auto init_guess = mrpt::math::TPose3D::Identity();
 
-        mp2p_icp::ICP::Ptr icp = std::dynamic_pointer_cast<mp2p_icp::ICP>(
-            mrpt::rtti::classFactory(icpClassName));
+        mp2p_icp::ICP::Ptr icp =
+            std::dynamic_pointer_cast<mp2p_icp::ICP>(mrpt::rtti::classFactory(icpClassName));
 
         if (!icp)
             THROW_EXCEPTION_FMT(
-                "Could not create object of type `%s`, is it registered?",
-                icpClassName.c_str());
+                "Could not create object of type `%s`, is it registered?", icpClassName.c_str());
 
         // Initialize solvers:
         if (!solverName.empty())
         {
             mp2p_icp::Solver::Ptr solver =
-                std::dynamic_pointer_cast<mp2p_icp::Solver>(
-                    mrpt::rtti::classFactory(solverName));
+                std::dynamic_pointer_cast<mp2p_icp::Solver>(mrpt::rtti::classFactory(solverName));
 
             if (!solver)
                 THROW_EXCEPTION_FMT(
-                    "Could not create Solver of type `%s`, is it registered?",
-                    solverName.c_str());
+                    "Could not create Solver of type `%s`, is it registered?", solverName.c_str());
 
             icp->solvers().clear();
             icp->solvers().push_back(solver);
@@ -142,8 +135,7 @@ static void test_icp(
         if (!matcherName.empty())
         {
             mp2p_icp::Matcher::Ptr matcher =
-                std::dynamic_pointer_cast<mp2p_icp::Matcher>(
-                    mrpt::rtti::classFactory(matcherName));
+                std::dynamic_pointer_cast<mp2p_icp::Matcher>(mrpt::rtti::classFactory(matcherName));
 
             if (!matcher)
                 THROW_EXCEPTION_FMT(
@@ -156,8 +148,7 @@ static void test_icp(
         // Special parameters:
         if (!icp->matchers().empty())
         {
-            if (auto m = std::dynamic_pointer_cast<
-                    mp2p_icp::Matcher_Points_DistanceThreshold>(
+            if (auto m = std::dynamic_pointer_cast<mp2p_icp::Matcher_Points_DistanceThreshold>(
                     icp->matchers().at(0));
                 m)
             {
@@ -168,8 +159,7 @@ static void test_icp(
             }
 
             if (auto m =
-                    std::dynamic_pointer_cast<mp2p_icp::Matcher_Point2Plane>(
-                        icp->matchers().at(0));
+                    std::dynamic_pointer_cast<mp2p_icp::Matcher_Point2Plane>(icp->matchers().at(0));
                 m)
             {
                 mrpt::containers::yaml ps;
@@ -207,8 +197,7 @@ static void test_icp(
         if (DO_PRINT_ALL)
         {
             std::cout << "GT pose       : " << gt_pose.asString() << "\n";
-            std::cout << "ICP pose      : "
-                      << icp_results.optimal_tf.mean.asString() << "\n";
+            std::cout << "ICP pose      : " << icp_results.optimal_tf.mean.asString() << "\n";
             std::cout << "Error SE(3)   : " << err_se3 << "\n";
             std::cout << "ICP pose stddev: "
                       << icp_results.optimal_tf.cov.asEigen()
@@ -227,8 +216,7 @@ static void test_icp(
 
     if (DO_SAVE_STAT_FILES)
         stats.saveToTextFile(
-            mrpt::system::fileNameStripInvalidChars(tstName) +
-                std::string(".txt"),
+            mrpt::system::fileNameStripInvalidChars(tstName) + std::string(".txt"),
             mrpt::math::MATRIX_FORMAT_ENG, true,
             "% Columns: norm GT_rot, norm_GT_XYZ, norm(SO3_error) "
             "norm(XYZ_error) icp_time\n\n");
@@ -244,8 +232,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         const std::vector<const char*> lst_files{
             {"bunny_decim.xyz.gz", "happy_buddha_decim.xyz.gz"}};
 
-        using lst_algos_t = std::vector<std::tuple<
-            const char*, const char*, const char*, int /*decimation*/>>;
+        using lst_algos_t =
+            std::vector<std::tuple<const char*, const char*, const char*, int /*decimation*/>>;
         // clang-format off
         lst_algos_t lst_algos = {
              {"mp2p_icp::ICP", "mp2p_icp::Solver_Horn",        "mp2p_icp::Matcher_Points_DistanceThreshold", 10},
@@ -271,8 +259,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         for (const auto& algo : lst_algos)
             for (const auto& fil : lst_files)
                 test_icp(
-                    fil, std::get<0>(algo), std::get<1>(algo),
-                    std::get<2>(algo), std::get<3>(algo));
+                    fil, std::get<0>(algo), std::get<1>(algo), std::get<2>(algo),
+                    std::get<3>(algo));
     }
     catch (std::exception& e)
     {

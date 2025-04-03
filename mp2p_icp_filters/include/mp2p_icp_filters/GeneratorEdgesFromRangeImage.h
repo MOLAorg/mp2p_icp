@@ -53,13 +53,11 @@ class GeneratorEdgesFromRangeImage : public mp2p_icp_filters::Generator
    protected:
     // To be overrided in derived classes, if implemented:
     bool filterRotatingScan(
-        const mrpt::obs::CObservationRotatingScan& pc,
-        mp2p_icp::metric_map_t&                    out,
+        const mrpt::obs::CObservationRotatingScan& pc, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose) const override;
 
     bool filterScan3D(
-        const mrpt::obs::CObservation3DRangeScan&  pc,
-        mp2p_icp::metric_map_t&                    out,
+        const mrpt::obs::CObservation3DRangeScan& pc, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose) const override;
 };
 

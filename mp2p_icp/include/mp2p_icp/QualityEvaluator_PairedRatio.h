@@ -40,8 +40,7 @@ class QualityEvaluator_PairedRatio : public QualityEvaluator
 
     Result evaluate(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-        const mrpt::poses::CPose3D& localPose,
-        const Pairings&             pairingsFromICP) const override;
+        const mrpt::poses::CPose3D& localPose, const Pairings& pairingsFromICP) const override;
 
     void attachToParameterSource(ParameterSource& source) override
     {

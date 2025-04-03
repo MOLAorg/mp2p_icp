@@ -57,8 +57,7 @@ class FilterAdjustTimestamps : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(
-            const mrpt::containers::yaml& c, FilterAdjustTimestamps& parent);
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterAdjustTimestamps& parent);
 
         std::string pointcloud_layer;
 
@@ -81,8 +80,7 @@ class FilterAdjustTimestamps : public mp2p_icp_filters::FilterBase
 /** @} */
 }  // namespace mp2p_icp_filters
 
-MRPT_ENUM_TYPE_BEGIN_NAMESPACE(
-    mp2p_icp_filters, mp2p_icp_filters::TimestampAdjustMethod)
+MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp_filters, mp2p_icp_filters::TimestampAdjustMethod)
 MRPT_FILL_ENUM(TimestampAdjustMethod::EarliestIsZero);
 MRPT_FILL_ENUM(TimestampAdjustMethod::MiddleIsZero);
 MRPT_FILL_ENUM(TimestampAdjustMethod::Normalize);

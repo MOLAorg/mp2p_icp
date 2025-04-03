@@ -30,14 +30,10 @@ struct Cli
     TCLAP::CmdLine cmd{"rawlog-filter"};
 
     TCLAP::ValueArg<std::string> argInput{
-        "i",  "input",          "Input .rawlog file",
-        true, "dataset.rawlog", "dataset.rawlog",
-        cmd};
+        "i", "input", "Input .rawlog file", true, "dataset.rawlog", "dataset.rawlog", cmd};
 
     TCLAP::ValueArg<std::string> argOutput{
-        "o",  "output",     "Output .rawlo file to write to",
-        true, "out.rawlog", "out.rawlog",
-        cmd};
+        "o", "output", "Output .rawlo file to write to", true, "out.rawlog", "out.rawlog", cmd};
 
     TCLAP::ValueArg<std::string> argPipeline{
         "p",
@@ -52,12 +48,10 @@ struct Cli
         cmd};
 
     TCLAP::ValueArg<size_t> arg_from{
-        "", "from", "First rawlog index to process", false, 0, "Rawlog index",
-        cmd};
+        "", "from", "First rawlog index to process", false, 0, "Rawlog index", cmd};
 
-    TCLAP::ValueArg<size_t> arg_to{"",    "to", "Last rawlog index to process",
-                                   false, 0,    "Rawlog index",
-                                   cmd};
+    TCLAP::ValueArg<size_t> arg_to{
+        "", "to", "Last rawlog index to process", false, 0, "Rawlog index", cmd};
 
     TCLAP::ValueArg<std::string> arg_lazy_load_base_dir{
         "",
@@ -70,13 +64,8 @@ struct Cli
         cmd};
 
     TCLAP::ValueArg<std::string> arg_verbosity_level{
-        "v",
-        "verbosity",
-        "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)",
-        false,
-        "",
-        "INFO",
-        cmd};
+        "v",    "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)", false, "",
+        "INFO", cmd};
 };
 
 void run_mm_filter(Cli& cli)
@@ -88,16 +77,15 @@ void run_mm_filter(Cli& cli)
 
     const auto& filInput = cli.argInput.getValue();
 
-    std::cout << "[rawlog-filter] Reading input rawlog from: '" << filInput
-              << "'..." << std::endl;
+    std::cout << "[rawlog-filter] Reading input rawlog from: '" << filInput << "'..." << std::endl;
 
     mrpt::obs::CRawlog dataset;
 
     bool readOk = dataset.loadFromRawLogFile(filInput);
     ASSERT_(readOk);
 
-    std::cout << "[rawlog-filter] Done read dataset (" << dataset.size()
-              << " entries)" << std::endl;
+    std::cout << "[rawlog-filter] Done read dataset (" << dataset.size() << " entries)"
+              << std::endl;
 
     // Load pipeline:
     mrpt::system::VerbosityLevel logLevel = mrpt::system::LVL_INFO;
@@ -107,15 +95,13 @@ void run_mm_filter(Cli& cli)
         logLevel = vl::name2value(cli.arg_verbosity_level.getValue());
     }
 
-    const auto yamlData =
-        mrpt::containers::yaml::FromFile(cli.argPipeline.getValue());
+    const auto yamlData = mrpt::containers::yaml::FromFile(cli.argPipeline.getValue());
 
     // Generators:
     mp2p_icp_filters::GeneratorSet generators;
     if (yamlData.has("generators"))
     {
-        generators = mp2p_icp_filters::generators_from_yaml(
-            yamlData["generators"], logLevel);
+        generators = mp2p_icp_filters::generators_from_yaml(yamlData["generators"], logLevel);
     }
     else
     {
@@ -133,14 +119,9 @@ void run_mm_filter(Cli& cli)
     mp2p_icp_filters::FilterPipeline filters;
     if (yamlData.has("filters"))
     {
-        filters = mp2p_icp_filters::filter_pipeline_from_yaml(
-            yamlData["filters"], logLevel);
+        filters = mp2p_icp_filters::filter_pipeline_from_yaml(yamlData["filters"], logLevel);
     }
-    else
-    {
-        std::cout << "[sm2mm] Warning: no filters defined in the pipeline."
-                  << std::endl;
-    }
+    else { std::cout << "[sm2mm] Warning: no filters defined in the pipeline." << std::endl; }
 
     // Parameters for twist, and possibly other user-provided variables.
     mp2p_icp::ParameterSource ps;
@@ -148,13 +129,7 @@ void run_mm_filter(Cli& cli)
     mp2p_icp::AttachToParameterSource(filters, ps);
 
     // Default values for twist variables:
-    ps.updateVariables(
-        {{"vx", .0},
-         {"vy", .0},
-         {"vz", .0},
-         {"wx", .0},
-         {"wy", .0},
-         {"wz", .0}});
+    ps.updateVariables({{"vx", .0}, {"vy", .0}, {"vz", .0}, {"wx", .0}, {"wy", .0}, {"wz", .0}});
     ps.updateVariables(
         {{"robot_x", .0},
          {"robot_y", .0},
@@ -180,11 +155,10 @@ void run_mm_filter(Cli& cli)
 
     // Create output Rawlog file:
     const auto filOut = cli.argOutput.getValue();
-    std::cout << "[rawlog-filter] Creating output rawlog file: '" << filOut
-              << "'..." << std::endl;
+    std::cout << "[rawlog-filter] Creating output rawlog file: '" << filOut << "'..." << std::endl;
 
     mrpt::io::CFileGZOutputStream fo(filOut);
-    auto outArch = mrpt::serialization::archiveFrom(fo);
+    auto                          outArch = mrpt::serialization::archiveFrom(fo);
 
     if (cli.arg_lazy_load_base_dir.isSet())
         mrpt::io::setLazyLoadPathBase(cli.arg_lazy_load_base_dir.getValue());
@@ -192,8 +166,7 @@ void run_mm_filter(Cli& cli)
     for (; curKF < nKFs; curKF++)
     {
         auto obs = dataset.getAsObservation(curKF);
-        ASSERTMSG_(
-            obs, "Dataset is expected to have CObservation objects only!");
+        ASSERTMSG_(obs, "Dataset is expected to have CObservation objects only!");
 
         obs->load();
 
@@ -215,12 +188,10 @@ void run_mm_filter(Cli& cli)
         for (const auto& [name, layer] : mm.layers)
         {
             if (!layer) continue;
-            if (auto ptsMap =
-                    std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(layer);
-                ptsMap)
+            if (auto ptsMap = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(layer); ptsMap)
             {
-                auto obsPts       = mrpt::obs::CObservationPointCloud::Create();
-                obsPts->timestamp = obs->timestamp;
+                auto obsPts         = mrpt::obs::CObservationPointCloud::Create();
+                obsPts->timestamp   = obs->timestamp;
                 obsPts->sensorLabel = "out_"s + name;
                 obsPts->pointcloud  = ptsMap;
                 sf.insert(obsPts);
@@ -233,18 +204,17 @@ void run_mm_filter(Cli& cli)
             const size_t N  = nKFs;
             const double pc = (1.0 * curKF) / N;
 
-            const double tNow = mrpt::Clock::nowDouble();
-            const double ETA  = pc > 0 ? (tNow - tStart) * (1.0 / pc - 1) : .0;
+            const double tNow      = mrpt::Clock::nowDouble();
+            const double ETA       = pc > 0 ? (tNow - tStart) * (1.0 / pc - 1) : .0;
             const double totalTime = ETA + (tNow - tStart);
 
-            std::cout
-                << "\033[A\33[2KT\r"  // VT100 codes: cursor up and clear
-                                      // line
-                << mrpt::system::progress(pc, 30)
-                << mrpt::format(
-                       " %6zu/%6zu (%.02f%%) ETA=%s / T=%s\n", curKF, N,
-                       100 * pc, mrpt::system::formatTimeInterval(ETA).c_str(),
-                       mrpt::system::formatTimeInterval(totalTime).c_str());
+            std::cout << "\033[A\33[2KT\r"  // VT100 codes: cursor up and clear
+                                            // line
+                      << mrpt::system::progress(pc, 30)
+                      << mrpt::format(
+                             " %6zu/%6zu (%.02f%%) ETA=%s / T=%s\n", curKF, N, 100 * pc,
+                             mrpt::system::formatTimeInterval(ETA).c_str(),
+                             mrpt::system::formatTimeInterval(totalTime).c_str());
             std::cout.flush();
         }
     }  // end for each KF.

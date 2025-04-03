@@ -42,8 +42,7 @@ struct Cli
         cmd};
 
     TCLAP::ValueArg<std::string> argOutput{
-        "o",      "output", "Output file to write to.", true, "out.mm",
-        "out.mm", cmd};
+        "o", "output", "Output file to write to.", true, "out.mm", "out.mm", cmd};
 
     TCLAP::ValueArg<std::string> argFormat{
         "f",
@@ -57,16 +56,11 @@ struct Cli
         cmd};
 
     TCLAP::ValueArg<std::string> argLayer{
-        "l",   "layer", "Target layer name (Default: \"raw\").", false, "raw",
-        "raw", cmd};
+        "l", "layer", "Target layer name (Default: \"raw\").", false, "raw", "raw", cmd};
 
     TCLAP::ValueArg<int> argIndexXYZ{
-        "",
-        "column-x",
-        "Column index for the X coordinate in the input data (Default: 0).",
-        false,
-        0,
-        "column index",
+        "",    "column-x", "Column index for the X coordinate in the input data (Default: 0).",
+        false, 0,          "column index",
         cmd};
 
     TCLAP::ValueArg<int> argIndexI{
@@ -80,12 +74,8 @@ struct Cli
         cmd};
 
     TCLAP::ValueArg<int> argIndexR{
-        "",
-        "column-r",
-        "Column index for the Ring channel in the input data (Default: 4).",
-        false,
-        4,
-        "column index",
+        "",    "column-r", "Column index for the Ring channel in the input data (Default: 4).",
+        false, 4,          "column index",
         cmd};
 
     TCLAP::ValueArg<int> argIndexT{
@@ -99,13 +89,10 @@ struct Cli
         cmd};
 
     TCLAP::ValueArg<uint64_t> argID{
-        "",     "id", "Metric map numeric ID (Default: none).", false, 0,
-        "[ID]", cmd};
+        "", "id", "Metric map numeric ID (Default: none).", false, 0, "[ID]", cmd};
 
     TCLAP::ValueArg<std::string> argLabel{
-        "",    "label", "Metric map label string (Default: none).",
-        false, "label", "[label]",
-        cmd};
+        "", "label", "Metric map label string (Default: none).", false, "label", "[label]", cmd};
 };
 
 int main(int argc, char** argv)
@@ -127,8 +114,7 @@ int main(int argc, char** argv)
 
         const size_t nRows = data.size().at(0), nCols = data.size().at(1);
 
-        std::cout << "Done: " << nRows << " rows, " << nCols << " columns."
-                  << std::endl;
+        std::cout << "Done: " << nRows << " rows, " << nCols << " columns." << std::endl;
 
         mrpt::maps::CPointsMap::Ptr pc;
         const auto                  format = cli.argFormat.getValue();
@@ -149,8 +135,7 @@ int main(int argc, char** argv)
                           << std::endl;
 
             for (size_t i = 0; i < nRows; i++)
-                pc->insertPointFast(
-                    data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
+                pc->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
         }
         else if (format == "xyzi")
         {
@@ -164,8 +149,7 @@ int main(int argc, char** argv)
 
             for (size_t i = 0; i < nRows; i++)
             {
-                pts->insertPointFast(
-                    data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
+                pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
                 pts->insertPointField_Intensity(data(i, idxI));
             }
 
@@ -183,8 +167,7 @@ int main(int argc, char** argv)
 
             for (size_t i = 0; i < nRows; i++)
             {
-                pts->insertPointFast(
-                    data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
+                pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
                 pts->insertPointField_Intensity(data(i, idxI));
                 pts->insertPointField_Ring(data(i, idxR));
                 pts->insertPointField_Timestamp(data(i, idxT));
@@ -206,8 +189,7 @@ int main(int argc, char** argv)
 
             for (size_t i = 0; i < nRows; i++)
             {
-                pts->insertPointFast(
-                    data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
+                pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
                 pts->insertPointField_color_R(mrpt::u8tof(data(i, idxRed)));
                 pts->insertPointField_color_G(mrpt::u8tof(data(i, idxGreen)));
                 pts->insertPointField_color_B(mrpt::u8tof(data(i, idxBlue)));
@@ -218,8 +200,7 @@ int main(int argc, char** argv)
         else
         {
             THROW_EXCEPTION_FMT(
-                "Invalid --format set to '%s'. Valid values: %s",
-                format.c_str(), VALID_FORMATS);
+                "Invalid --format set to '%s'. Valid values: %s", format.c_str(), VALID_FORMATS);
         }
 
         // Save as mm file:
@@ -234,8 +215,7 @@ int main(int argc, char** argv)
 
         if (!mm.save_to_file(cli.argOutput.getValue()))
             THROW_EXCEPTION_FMT(
-                "Error writing to target file '%s'",
-                cli.argOutput.getValue().c_str());
+                "Error writing to target file '%s'", cli.argOutput.getValue().c_str());
     }
     catch (const std::exception& e)
     {

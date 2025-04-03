@@ -29,8 +29,7 @@ void Pairings::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out.WriteAs<uint8_t>(SERIALIZATION_VERSION);
     out << paired_pt2pt;
-    out << paired_pt2ln << paired_pt2pl << paired_ln2ln << paired_pl2pl
-        << point_weights;
+    out << paired_pt2ln << paired_pt2pl << paired_ln2ln << paired_pl2pl << point_weights;
     out << potential_pairings;  // v1
 }
 
@@ -40,8 +39,7 @@ void Pairings::serializeFrom(mrpt::serialization::CArchive& in)
 
     ASSERT_LE_(readVersion, SERIALIZATION_VERSION);
     in >> paired_pt2pt;
-    in >> paired_pt2ln >> paired_pt2pl >> paired_ln2ln >> paired_pl2pl >>
-        point_weights;
+    in >> paired_pt2ln >> paired_pt2pl >> paired_ln2ln >> paired_pl2pl >> point_weights;
     if (readVersion >= 1) in >> potential_pairings;
 }
 
@@ -59,9 +57,8 @@ mrpt::serialization::CArchive& mp2p_icp::operator>>(
     return in;
 }
 
-std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
-    mp2p_icp::eval_centroids_robust(
-        const Pairings& in, const OutlierIndices& outliers)
+std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D> mp2p_icp::eval_centroids_robust(
+    const Pairings& in, const OutlierIndices& outliers)
 {
     using mrpt::math::TPoint3D;
 
@@ -83,8 +80,7 @@ std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D>
         for (std::size_t i = 0; i < in.paired_pt2pt.size(); i++)
         {
             // Skip outlier?
-            if (it_next_outlier != outliers.point2point.end() &&
-                i == *it_next_outlier)
+            if (it_next_outlier != outliers.point2point.end() && i == *it_next_outlier)
             {
                 ++it_next_outlier;
                 continue;
@@ -113,9 +109,7 @@ static void push_back_copy(const T& o, T& me)
 template <typename T>
 static void push_back_move(T&& o, T& me)
 {
-    me.insert(
-        me.end(), std::make_move_iterator(o.begin()),
-        std::make_move_iterator(o.end()));
+    me.insert(me.end(), std::make_move_iterator(o.begin()), std::make_move_iterator(o.end()));
 }
 
 void Pairings::push_back(const Pairings& o)
@@ -140,13 +134,12 @@ void Pairings::push_back(Pairings&& o)
 
 size_t Pairings::size() const
 {
-    return paired_pt2pt.size() + paired_pt2ln.size() + paired_pt2pl.size() +
-           paired_ln2ln.size() + paired_pl2pl.size();
+    return paired_pt2pt.size() + paired_pt2ln.size() + paired_pt2pl.size() + paired_ln2ln.size() +
+           paired_pl2pl.size();
 }
 
 template <typename CONTAINER>
-void append_container_size(
-    const CONTAINER& c, const std::string& name, std::string& ret)
+void append_container_size(const CONTAINER& c, const std::string& name, std::string& ret)
 {
     using namespace std::string_literals;
 
@@ -173,8 +166,7 @@ std::string Pairings::contents_summary() const
 }
 
 auto Pairings::get_visualization(
-    const mrpt::poses::CPose3D&     localWrtGlobal,
-    const pairings_render_params_t& p) const
+    const mrpt::poses::CPose3D& localWrtGlobal, const pairings_render_params_t& p) const
     -> std::shared_ptr<mrpt::opengl::CSetOfObjects>
 {
     MRPT_START
@@ -220,9 +212,8 @@ void Pairings::get_visualization_pt2pl(
 
     for (const auto& pair : paired_pt2pl)
     {
-        const auto globalPlanePose =
-            mrpt::poses::CPose3D(pair.pl_global.plane.getAsPose3DForcingOrigin(
-                pair.pl_global.centroid));
+        const auto globalPlanePose = mrpt::poses::CPose3D(
+            pair.pl_global.plane.getAsPose3DForcingOrigin(pair.pl_global.centroid));
 
         const auto ptLocal   = pair.pt_local;
         const auto ptLocalTf = localWrtGlobal.composePoint(ptLocal);
@@ -269,8 +260,7 @@ void Pairings::get_visualization_pt2ln(
 
         // line segment:
         globalLines->appendLine(
-            globalLine.pBase - globalLine.director * L,
-            globalLine.pBase + globalLine.director * L);
+            globalLine.pBase - globalLine.director * L, globalLine.pBase + globalLine.director * L);
     }
 
     o.insert(pairingLines);

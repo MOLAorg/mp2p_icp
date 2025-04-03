@@ -37,9 +37,7 @@ class GeneratorEdgesFromCurvature : public mp2p_icp_filters::Generator
 
     struct ParametersEdges
     {
-        void load_from_yaml(
-            const mrpt::containers::yaml& c,
-            GeneratorEdgesFromCurvature&  parent);
+        void load_from_yaml(const mrpt::containers::yaml& c, GeneratorEdgesFromCurvature& parent);
 
         float max_cosine          = 0.5f;
         float min_point_clearance = 0.10f;
@@ -49,18 +47,15 @@ class GeneratorEdgesFromCurvature : public mp2p_icp_filters::Generator
 
     bool process(
         const mrpt::obs::CObservation& input_raw, mp2p_icp::metric_map_t& inOut,
-        const std::optional<mrpt::poses::CPose3D>& robotPose =
-            std::nullopt) const override;
+        const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt) const override;
 
     /** @} */
 
    protected:
     // To be overrided in derived classes, if implemented:
     bool filterRotatingScan(
-        const mrpt::obs::CObservationRotatingScan& pc,
-        mp2p_icp::metric_map_t&                    out,
-        const std::optional<mrpt::poses::CPose3D>& robotPose =
-            std::nullopt) const override;
+        const mrpt::obs::CObservationRotatingScan& pc, mp2p_icp::metric_map_t& out,
+        const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt) const override;
 };
 
 /** @} */

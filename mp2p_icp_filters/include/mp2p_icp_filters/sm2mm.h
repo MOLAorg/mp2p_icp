@@ -32,8 +32,8 @@ struct sm2mm_options_t
     sm2mm_options_t()  = default;
     ~sm2mm_options_t() = default;
 
-    mrpt::system::VerbosityLevel verbosity       = mrpt::system::LVL_INFO;
-    bool                         showProgressBar = false;
+    mrpt::system::VerbosityLevel                verbosity       = mrpt::system::LVL_INFO;
+    bool                                        showProgressBar = false;
     std::vector<std::pair<std::string, double>> customVariables = {};
     std::optional<size_t>                       start_index;
     std::optional<size_t>                       end_index;
@@ -50,8 +50,7 @@ struct sm2mm_options_t
  */
 void simplemap_to_metricmap(
     const mrpt::maps::CSimpleMap& sm, mp2p_icp::metric_map_t& outMap,
-    const mrpt::containers::yaml& pipeline,
-    const sm2mm_options_t&        options = {});
+    const mrpt::containers::yaml& pipeline, const sm2mm_options_t& options = {});
 
 /** @} */
 

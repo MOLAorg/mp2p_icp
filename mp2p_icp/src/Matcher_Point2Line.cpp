@@ -37,11 +37,10 @@ void Matcher_Point2Line::initialize(const mrpt::containers::yaml& params)
 }
 
 void Matcher_Point2Line::implMatchOneLayer(
-    const mrpt::maps::CMetricMap& pcGlobalMap,
-    const mrpt::maps::CPointsMap& pcLocal,
+    const mrpt::maps::CMetricMap& pcGlobalMap, const mrpt::maps::CPointsMap& pcLocal,
     const mrpt::poses::CPose3D& localPose, MatchState& ms,
-    [[maybe_unused]] const layer_name_t& globalName,
-    const layer_name_t& localName, Pairings& out) const
+    [[maybe_unused]] const layer_name_t& globalName, const layer_name_t& localName,
+    Pairings& out) const
 {
     MRPT_START
 
@@ -67,8 +66,7 @@ void Matcher_Point2Line::implMatchOneLayer(
 
     // Loop for each point in local map:
     // --------------------------------------------------
-    const float maxDistForCorrespondenceSquared =
-        mrpt::square(distanceThreshold);
+    const float maxDistForCorrespondenceSquared = mrpt::square(distanceThreshold);
 
     const auto& lxs = pcLocal.getPointsBufferRef_x();
     const auto& lys = pcLocal.getPointsBufferRef_y();
@@ -93,8 +91,7 @@ void Matcher_Point2Line::implMatchOneLayer(
         // to have multiple-local-to-one-global pairings.
 
         // For speed-up:
-        const float lx = tl.x_locals[i], ly = tl.y_locals[i],
-                    lz = tl.z_locals[i];
+        const float lx = tl.x_locals[i], ly = tl.y_locals[i], lz = tl.z_locals[i];
 
         // Use a KD-tree to look for the nearnest neighbor(s) of
         // (x_local, y_local, z_local) in the global map.
@@ -105,8 +102,7 @@ void Matcher_Point2Line::implMatchOneLayer(
         // Filter the list of neighbors by maximum distance threshold:
 
         // Faster common case: all points are valid:
-        if (!kddSqrDist.empty() &&
-            kddSqrDist.back() < maxDistForCorrespondenceSquared)
+        if (!kddSqrDist.empty() && kddSqrDist.back() < maxDistForCorrespondenceSquared)
         {
             // Nothing to do: all knn points are within the range.
         }
@@ -129,8 +125,7 @@ void Matcher_Point2Line::implMatchOneLayer(
         mp2p_icp::vector_of_points_to_xyz(kddPts, kddXs, kddYs, kddZs);
 
         const PointCloudEigen& eig = mp2p_icp::estimate_points_eigen(
-            kddXs.data(), kddYs.data(), kddZs.data(), std::nullopt,
-            kddPts.size());
+            kddXs.data(), kddYs.data(), kddZs.data(), std::nullopt, kddPts.size());
 
         // Do these points look like a line?
 #if 0
@@ -148,9 +143,8 @@ void Matcher_Point2Line::implMatchOneLayer(
         auto& p    = out.paired_pt2ln.emplace_back();
         p.pt_local = {lxs[localIdx], lys[localIdx], lzs[localIdx]};
 
-        const auto& normal = eig.eigVectors[2];
-        p.ln_global.pBase  = {
-             eig.meanCov.mean.x(), eig.meanCov.mean.y(), eig.meanCov.mean.z()};
+        const auto& normal   = eig.eigVectors[2];
+        p.ln_global.pBase    = {eig.meanCov.mean.x(), eig.meanCov.mean.y(), eig.meanCov.mean.z()};
         p.ln_global.director = normal.unitarize();
 
         // Mark local point as already paired:

@@ -52,9 +52,7 @@ class FilterRemoveByVoxelOccupancy : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(
-            const mrpt::containers::yaml& c,
-            FilterRemoveByVoxelOccupancy& parent);
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterRemoveByVoxelOccupancy& parent);
 
         std::string input_pointcloud_layer;
         std::string input_voxel_layer;

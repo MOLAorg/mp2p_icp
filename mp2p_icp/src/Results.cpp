@@ -40,8 +40,7 @@ mrpt::serialization::CArchive& mp2p_icp::operator<<(
     return out;
 }
 
-mrpt::serialization::CArchive& mp2p_icp::operator>>(
-    mrpt::serialization::CArchive& in, Results& obj)
+mrpt::serialization::CArchive& mp2p_icp::operator>>(mrpt::serialization::CArchive& in, Results& obj)
 {
     obj.serializeFrom(in);
     return in;
@@ -58,8 +57,6 @@ void Results::print(std::ostream& o) const
       << nIterations
       << "\n"
          "- terminationReason: "
-      << mrpt::typemeta::TEnumType<mp2p_icp::IterTermReason>::value2name(
-             terminationReason)
-      << "\n"
+      << mrpt::typemeta::TEnumType<mp2p_icp::IterTermReason>::value2name(terminationReason) << "\n"
       << "- finalPairings: " << finalPairings.contents_summary() << "\n";
 }

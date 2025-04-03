@@ -24,20 +24,15 @@ struct Cli
 {
     TCLAP::CmdLine cmd{"mm-filter"};
 
-    TCLAP::ValueArg<std::string> argInput{
-        "i", "input", "Input .mm file", true, "input.mm", "input.mm", cmd};
+    TCLAP::ValueArg<std::string> argInput{"i",        "input", "Input .mm file", true, "input.mm",
+                                          "input.mm", cmd};
 
     TCLAP::ValueArg<std::string> argOutput{
-        "o",      "output", "Output .mm file to write to", true, "out.mm",
-        "out.mm", cmd};
+        "o", "output", "Output .mm file to write to", true, "out.mm", "out.mm", cmd};
 
     TCLAP::ValueArg<std::string> arg_plugins{
-        "l",
-        "load-plugins",
-        "One or more (comma separated) *.so files to load as plugins",
-        false,
-        "foobar.so",
-        "foobar.so",
+        "l",   "load-plugins", "One or more (comma separated) *.so files to load as plugins",
+        false, "foobar.so",    "foobar.so",
         cmd};
 
     TCLAP::ValueArg<std::string> argPipeline{
@@ -63,13 +58,8 @@ struct Cli
         cmd};
 
     TCLAP::ValueArg<std::string> arg_verbosity_level{
-        "v",
-        "verbosity",
-        "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)",
-        false,
-        "",
-        "INFO",
-        cmd};
+        "v",    "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)", false, "",
+        "INFO", cmd};
 };
 
 void run_mm_filter(Cli& cli)
@@ -85,23 +75,19 @@ void run_mm_filter(Cli& cli)
         std::string errMsg;
         const auto  plugins = cli.arg_plugins.getValue();
         std::cout << "Loading plugin(s): " << plugins << std::endl;
-        if (!mrpt::system::loadPluginModules(plugins, errMsg))
-            throw std::runtime_error(errMsg);
+        if (!mrpt::system::loadPluginModules(plugins, errMsg)) throw std::runtime_error(errMsg);
     }
 
     const auto& filInput = cli.argInput.getValue();
 
-    if (cli.argPipeline.isSet())
-        ASSERT_FILE_EXISTS_(cli.argPipeline.getValue());
+    if (cli.argPipeline.isSet()) ASSERT_FILE_EXISTS_(cli.argPipeline.getValue());
 
-    std::cout << "[mm-filter] Reading input map from: '" << filInput << "'..."
-              << std::endl;
+    std::cout << "[mm-filter] Reading input map from: '" << filInput << "'..." << std::endl;
 
     mp2p_icp::metric_map_t mm;
     mm.load_from_file(filInput);
 
-    std::cout << "[mm-filter] Done read map:" << mm.contents_summary()
-              << std::endl;
+    std::cout << "[mm-filter] Done read map:" << mm.contents_summary() << std::endl;
     ASSERT_(!mm.empty());
 
     // Load pipeline:
@@ -114,8 +100,8 @@ void run_mm_filter(Cli& cli)
 
     if (cli.argPipeline.isSet())
     {
-        const auto pipeline = mp2p_icp_filters::filter_pipeline_from_yaml_file(
-            cli.argPipeline.getValue(), logLevel);
+        const auto pipeline =
+            mp2p_icp_filters::filter_pipeline_from_yaml_file(cli.argPipeline.getValue(), logLevel);
 
         // Apply:
         std::cout << "[mm-filter] Applying filter pipeline..." << std::endl;
@@ -128,9 +114,7 @@ void run_mm_filter(Cli& cli)
         const auto               s = cli.argRename.getValue();
         std::vector<std::string> names;
         mrpt::system::tokenize(s, "|", names);
-        ASSERTMSG_(
-            names.size() == 2,
-            "Expected format: --rename \"OLD_NAME|NEW_NAME\"");
+        ASSERTMSG_(names.size() == 2, "Expected format: --rename \"OLD_NAME|NEW_NAME\"");
 
         const auto oldName = names[0];
         const auto newName = names[1];
@@ -142,17 +126,14 @@ void run_mm_filter(Cli& cli)
         mm.layers.erase(oldName);
     }
 
-    std::cout << "[mm-filter] Done. Output map: " << mm.contents_summary()
-              << std::endl;
+    std::cout << "[mm-filter] Done. Output map: " << mm.contents_summary() << std::endl;
 
     // Save as mm file:
     const auto filOut = cli.argOutput.getValue();
-    std::cout << "[mm-filter] Writing metric map to: '" << filOut << "'..."
-              << std::endl;
+    std::cout << "[mm-filter] Writing metric map to: '" << filOut << "'..." << std::endl;
 
     if (!mm.save_to_file(filOut))
-        THROW_EXCEPTION_FMT(
-            "Error writing to target file '%s'", filOut.c_str());
+        THROW_EXCEPTION_FMT("Error writing to target file '%s'", filOut.c_str());
 }
 }  // namespace
 

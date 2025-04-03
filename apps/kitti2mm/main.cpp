@@ -21,22 +21,19 @@
 static TCLAP::CmdLine cmd("kitti2mm");
 
 static TCLAP::ValueArg<std::string> argInput(
-    "i", "input", "KITTI .bin pointcloud file.", true, "kitti-00.bin",
-    "kitti-00.bin", cmd);
+    "i", "input", "KITTI .bin pointcloud file.", true, "kitti-00.bin", "kitti-00.bin", cmd);
 
 static TCLAP::ValueArg<std::string> argOutput(
     "o", "output", "Output file to write to.", true, "out.mm", "out.mm", cmd);
 
 static TCLAP::ValueArg<std::string> argLayer(
-    "l", "layer", "Target layer name (Default: \"raw\").", false, "raw", "raw",
-    cmd);
+    "l", "layer", "Target layer name (Default: \"raw\").", false, "raw", "raw", cmd);
 
 static TCLAP::ValueArg<uint64_t> argID(
     "", "id", "Metric map numeric ID (Default: none).", false, 0, "[ID]", cmd);
 
 static TCLAP::ValueArg<std::string> argLabel(
-    "", "label", "Metric map label string (Default: none).", false, "label",
-    "[label]", cmd);
+    "", "label", "Metric map label string (Default: none).", false, "label", "[label]", cmd);
 
 int main(int argc, char** argv)
 {
@@ -49,12 +46,9 @@ int main(int argc, char** argv)
 
         auto obs = mrpt::obs::CObservationPointCloud::Create();
         obs->setAsExternalStorage(
-            f, mrpt::obs::CObservationPointCloud::ExternalStorageFormat::
-                   KittiBinFile);
+            f, mrpt::obs::CObservationPointCloud::ExternalStorageFormat::KittiBinFile);
         obs->load();  // force loading now from disk
-        ASSERTMSG_(
-            obs->pointcloud,
-            mrpt::format("Error loading kitti scan file: '%s'", f.c_str()));
+        ASSERTMSG_(obs->pointcloud, mrpt::format("Error loading kitti scan file: '%s'", f.c_str()));
 
         // Save as mm file:
         mp2p_icp::metric_map_t mm;
@@ -64,9 +58,7 @@ int main(int argc, char** argv)
         if (argLabel.isSet()) mm.label = argLabel.getValue();
 
         if (!mm.save_to_file(argOutput.getValue()))
-            THROW_EXCEPTION_FMT(
-                "Error writing to target file '%s'",
-                argOutput.getValue().c_str());
+            THROW_EXCEPTION_FMT("Error writing to target file '%s'", argOutput.getValue().c_str());
     }
     catch (const std::exception& e)
     {

@@ -27,14 +27,8 @@ using namespace mrpt::poses;
 
 auto& rnd = mrpt::random::getRandomGenerator();
 
-static double normald(const double sigma)
-{
-    return rnd.drawGaussian1D_normalized() * sigma;
-}
-static float normalf(const float sigma)
-{
-    return rnd.drawGaussian1D_normalized() * sigma;
-}
+static double normald(const double sigma) { return rnd.drawGaussian1D_normalized() * sigma; }
+static float  normalf(const float sigma) { return rnd.drawGaussian1D_normalized() * sigma; }
 
 // ===========================================================================
 //  Test: error_point2point
@@ -75,17 +69,15 @@ static void test_Jacob_error_point2point()
             x_mean,
             /* Error function to evaluate */
             std::function<void(
-                const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                CVectorFixedDouble<3>& err)>(
+                const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<3>& err)>(
                 /* Lambda, capturing the pair data */
                 [pair](
-                    const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<3>& err)
+                    const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<3>& err)
                 {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
-                    err = mp2p_icp::error_point2point(pair, D_expEpsilon);
+                    err                        = mp2p_icp::error_point2point(pair, D_expEpsilon);
                 }),
             x_incrs, p, numJacob);
     }
@@ -116,11 +108,10 @@ static void test_Jacob_error_point2line()
 
     mp2p_icp::point_line_pair_t pair;
 
-    pair.ln_global.pBase.x = normalf(20);
-    pair.ln_global.pBase.y = normalf(20);
-    pair.ln_global.pBase.z = normalf(20);
-    pair.ln_global.director =
-        mrpt::math::TPoint3D(normald(1), normald(1), normald(1)).unitarize();
+    pair.ln_global.pBase.x  = normalf(20);
+    pair.ln_global.pBase.y  = normalf(20);
+    pair.ln_global.pBase.z  = normalf(20);
+    pair.ln_global.director = mrpt::math::TPoint3D(normald(1), normald(1), normald(1)).unitarize();
 
     pair.pt_local.x = normalf(10);
     pair.pt_local.y = normalf(10);
@@ -148,17 +139,15 @@ static void test_Jacob_error_point2line()
             x_mean,
             /* Error function to evaluate */
             std::function<void(
-                const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                CVectorFixedDouble<3>& err)>(
+                const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<3>& err)>(
                 /* Lambda, capturing the pair data */
                 [pair](
-                    const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<3>& err)
+                    const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<3>& err)
                 {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
-                    err = mp2p_icp::error_point2line(pair, D_expEpsilon);
+                    err                        = mp2p_icp::error_point2line(pair, D_expEpsilon);
                 }),
             x_incrs, p, numJacob);
     }
@@ -230,17 +219,15 @@ static void test_Jacob_error_point2plane()
             x_mean,
             /* Error function to evaluate */
             std::function<void(
-                const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                CVectorFixedDouble<3>& err)>(
+                const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<3>& err)>(
                 /* Lambda, capturing the pair data */
                 [pair](
-                    const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<3>& err)
+                    const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<3>& err)
                 {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
-                    err = mp2p_icp::error_point2plane(pair, D_expEpsilon);
+                    err                        = mp2p_icp::error_point2plane(pair, D_expEpsilon);
                 }),
             x_incrs, p, numJacob);
     }
@@ -384,17 +371,15 @@ static void test_Jacob_error_plane2plane()
             x_mean,
             /* Error function to evaluate */
             std::function<void(
-                const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                CVectorFixedDouble<3>& err)>(
+                const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<3>& err)>(
                 /* Lambda, capturing the pair data */
                 [pair](
-                    const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<3>& err)
+                    const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<3>& err)
                 {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
-                    err = mp2p_icp::error_plane2plane(pair, D_expEpsilon);
+                    err                        = mp2p_icp::error_plane2plane(pair, D_expEpsilon);
                 }),
             x_incrs, p, numJacob);
     }
@@ -474,17 +459,15 @@ static void test_error_line2line()
             x_mean,
             /* Error function to evaluate */
             std::function<void(
-                const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                CVectorFixedDouble<4>& err)>(
+                const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<4>& err)>(
                 /* Lambda, capturing the pair data */
                 [pair](
-                    const CVectorFixedDouble<6>& eps, const CPose3D& D,
-                    CVectorFixedDouble<4>& err)
+                    const CVectorFixedDouble<6>& eps, const CPose3D& D, CVectorFixedDouble<4>& err)
                 {
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
-                    err = mp2p_icp::error_line2line(pair, D_expEpsilon);
+                    err                        = mp2p_icp::error_line2line(pair, D_expEpsilon);
                 }),
             x_incrs, p, numJacob);
     }

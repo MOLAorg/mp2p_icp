@@ -49,8 +49,8 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
 
     LambdaParams lmbParams;
 
-    auto errorLambda = [&](const mrpt::math::CMatrixDouble61& x,
-                           const LambdaParams&, mrpt::math::CVectorDouble& err)
+    auto errorLambda = [&](const mrpt::math::CMatrixDouble61& x, const LambdaParams&,
+                           mrpt::math::CVectorDouble&         err)
     {
         mrpt::poses::CPose3D pose;
         pose.setFromValues(x[0], x[1], x[2], x[3], x[4], x[5]);
@@ -61,8 +61,7 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         const auto nPl2Pl = in.paired_pl2pl.size();
         const auto nLn2Ln = in.paired_ln2ln.size();
 
-        const auto nErrorTerms =
-            (nPt2Pt + nPl2Pl + nPt2Ln + nPt2Pl) * 3 + nLn2Ln * 4;
+        const auto nErrorTerms = (nPt2Pt + nPl2Pl + nPt2Ln + nPt2Pl) * 3 + nLn2Ln * 4;
         ASSERT_(nErrorTerms > 0);
         err.resize(nErrorTerms);
 
@@ -70,10 +69,9 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
         {
             // Error:
-            const auto&                       p = in.paired_pt2pt[idx_pt];
-            mrpt::math::CVectorFixedDouble<3> ret =
-                mp2p_icp::error_point2point(p, pose);
-            err.block<3, 1>(idx_pt * 3, 0) = ret.asEigen();
+            const auto&                       p   = in.paired_pt2pt[idx_pt];
+            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_point2point(p, pose);
+            err.block<3, 1>(idx_pt * 3, 0)        = ret.asEigen();
         }
         auto base_idx = nPt2Pt * 3;
 
@@ -81,9 +79,8 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         for (size_t idx_pt = 0; idx_pt < nPt2Ln; idx_pt++)
         {
             // Error
-            const auto&                       p = in.paired_pt2ln[idx_pt];
-            mrpt::math::CVectorFixedDouble<3> ret =
-                mp2p_icp::error_point2line(p, pose);
+            const auto&                       p       = in.paired_pt2ln[idx_pt];
+            mrpt::math::CVectorFixedDouble<3> ret     = mp2p_icp::error_point2line(p, pose);
             err.block<3, 1>(base_idx + idx_pt * 3, 0) = ret.asEigen();
         }
         base_idx += nPt2Ln * 3;
@@ -92,9 +89,8 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         // Minimum angle to approach zero
         for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++)
         {
-            const auto&                       p = in.paired_ln2ln[idx_ln];
-            mrpt::math::CVectorFixedDouble<4> ret =
-                mp2p_icp::error_line2line(p, pose);
+            const auto&                       p       = in.paired_ln2ln[idx_ln];
+            mrpt::math::CVectorFixedDouble<4> ret     = mp2p_icp::error_line2line(p, pose);
             err.block<4, 1>(base_idx + idx_ln * 4, 0) = ret.asEigen();
         }
         base_idx += nLn2Ln;
@@ -103,9 +99,8 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
         {
             // Error:
-            const auto&                       p = in.paired_pt2pl[idx_pl];
-            mrpt::math::CVectorFixedDouble<3> ret =
-                mp2p_icp::error_point2plane(p, pose);
+            const auto&                       p       = in.paired_pt2pl[idx_pl];
+            mrpt::math::CVectorFixedDouble<3> ret     = mp2p_icp::error_point2plane(p, pose);
             err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
         }
         base_idx += nPt2Pl * 3;
@@ -114,9 +109,8 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
         {
             // Error term:
-            const auto&                       p = in.paired_pl2pl[idx_pl];
-            mrpt::math::CVectorFixedDouble<3> ret =
-                mp2p_icp::error_plane2plane(p, pose);
+            const auto&                       p       = in.paired_pl2pl[idx_pl];
+            mrpt::math::CVectorFixedDouble<3> ret     = mp2p_icp::error_plane2plane(p, pose);
             err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
         }
     };
@@ -127,12 +121,11 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
     mrpt::math::estimateJacobian(
         xInitial,
         std::function<void(
-            const mrpt::math::CMatrixDouble61&, const LambdaParams&,
-            mrpt::math::CVectorDouble&)>(errorLambda),
+            const mrpt::math::CMatrixDouble61&, const LambdaParams&, mrpt::math::CVectorDouble&)>(
+            errorLambda),
         xIncrs, lmbParams, jacob);
 
-    const mrpt::math::CMatrixDouble66 hessian(
-        jacob.asEigen().transpose() * jacob.asEigen());
+    const mrpt::math::CMatrixDouble66 hessian(jacob.asEigen().transpose() * jacob.asEigen());
 
     const mrpt::math::CMatrixDouble66 cov = hessian.inverse_LLt();
 

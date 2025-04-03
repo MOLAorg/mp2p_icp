@@ -15,8 +15,7 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/TPoint3D.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterByRange, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterByRange, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
@@ -36,21 +35,16 @@ void FilterByRange::Parameters::load_from_yaml(
 
     if (c.has("center"))
     {
-        ASSERT_(
-            c["center"].isSequence() && c["center"].asSequence().size() == 3);
+        ASSERT_(c["center"].isSequence() && c["center"].asSequence().size() == 3);
 
         auto cc = c["center"].asSequence();
 
         for (int i = 0; i < 3; i++)
-            parent.parseAndDeclareParameter(
-                cc.at(i).as<std::string>(), center[i]);
+            parent.parseAndDeclareParameter(cc.at(i).as<std::string>(), center[i]);
     }
 }
 
-FilterByRange::FilterByRange()
-{
-    mrpt::system::COutputLogger::setLoggerName("FilterByRange");
-}
+FilterByRange::FilterByRange() { mrpt::system::COutputLogger::setLoggerName("FilterByRange"); }
 
 void FilterByRange::initialize(const mrpt::containers::yaml& c)
 {
@@ -71,9 +65,9 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     // In:
     const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
-        pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.input_pointcloud_layer.c_str()));
+        pcPtr,
+        mrpt::format(
+            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
@@ -103,8 +97,7 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     for (size_t i = 0; i < xs.size(); i++)
     {
         const float sqrNorm =
-            (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params_.center)
-                .sqrNorm();
+            (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params_.center).sqrNorm();
 
         const bool isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
 

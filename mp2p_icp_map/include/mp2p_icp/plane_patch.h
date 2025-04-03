@@ -25,8 +25,7 @@ struct plane_patch_t
     mrpt::math::TPoint3D centroid;
 
     plane_patch_t() = default;
-    plane_patch_t(
-        const mrpt::math::TPlane3D& pl, const mrpt::math::TPoint3D& center)
+    plane_patch_t(const mrpt::math::TPlane3D& pl, const mrpt::math::TPoint3D& center)
         : plane(pl), centroid(center)
     {
     }

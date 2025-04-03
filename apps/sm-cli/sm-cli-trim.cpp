@@ -18,17 +18,15 @@ int commandTrim()
 {
     const auto& lstCmds = cli->argCmd.getValue();
     if (cli->argHelp.isSet()) return printCommandsTrim(false);
-    if (lstCmds.size() != 2 || !cli->arg_min_corner.isSet() ||
-        !cli->arg_max_corner.isSet() || !cli->arg_output.isSet())
+    if (lstCmds.size() != 2 || !cli->arg_min_corner.isSet() || !cli->arg_max_corner.isSet() ||
+        !cli->arg_output.isSet())
         return printCommandsTrim(true);
 
     // Take second unlabeled argument:
     const std::string file = lstCmds.at(1);
 
-    const auto cornerMin =
-        mrpt::math::TPoint3D::FromString(cli->arg_min_corner.getValue());
-    const auto cornerMax =
-        mrpt::math::TPoint3D::FromString(cli->arg_max_corner.getValue());
+    const auto cornerMin = mrpt::math::TPoint3D::FromString(cli->arg_min_corner.getValue());
+    const auto cornerMax = mrpt::math::TPoint3D::FromString(cli->arg_max_corner.getValue());
 
     const auto bbox = mrpt::math::TBoundingBox(cornerMin, cornerMax);
 
@@ -48,8 +46,8 @@ int commandTrim()
 
     const auto outFil = cli->arg_output.getValue();
 
-    std::cout << "Writing trimmed simplemap with " << outSM.size()
-              << " keyframes to '" << outFil << "'" << std::endl;
+    std::cout << "Writing trimmed simplemap with " << outSM.size() << " keyframes to '" << outFil
+              << "'" << std::endl;
 
     outSM.saveToFile(outFil);
 

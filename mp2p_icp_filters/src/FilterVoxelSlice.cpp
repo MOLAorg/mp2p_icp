@@ -19,8 +19,7 @@
 #include <mrpt/math/TPose3D.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterVoxelSlice, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterVoxelSlice, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
@@ -61,13 +60,11 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(!params_.input_layer.empty());
     ASSERTMSG_(
         inOut.layers.count(params_.input_layer),
-        mrpt::format(
-            "Input layer '%s' was not found.", params_.input_layer.c_str()));
+        mrpt::format("Input layer '%s' was not found.", params_.input_layer.c_str()));
 
-    const auto in   = inOut.layers.at(params_.input_layer);
-    auto inVoxelMap = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(in);
-    auto inVoxelMapRGB =
-        std::dynamic_pointer_cast<mrpt::maps::CVoxelMapRGB>(in);
+    const auto in            = inOut.layers.at(params_.input_layer);
+    auto       inVoxelMap    = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(in);
+    auto       inVoxelMapRGB = std::dynamic_pointer_cast<mrpt::maps::CVoxelMapRGB>(in);
 
     if (!inVoxelMap && !inVoxelMapRGB)
     {
@@ -80,33 +77,30 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
     // Out:
     ASSERT_(!params_.output_layer.empty());
 
-    auto occGrid = mrpt::maps::COccupancyGridMap2D::Create();
+    auto occGrid                       = mrpt::maps::COccupancyGridMap2D::Create();
     inOut.layers[params_.output_layer] = occGrid;
 
     // Set the grid "height" (z):
-    occGrid->insertionOptions.mapAltitude =
-        0.5 * (params_.slice_z_max + params_.slice_z_min);
+    occGrid->insertionOptions.mapAltitude = 0.5 * (params_.slice_z_max + params_.slice_z_min);
 
     // make the conversion:
     if (inVoxelMap)
     {
         auto& grid =
-            const_cast<Bonxai::VoxelGrid<mrpt::maps::CVoxelMap::voxel_node_t>&>(
-                inVoxelMap->grid());
+            const_cast<Bonxai::VoxelGrid<mrpt::maps::CVoxelMap::voxel_node_t>&>(inVoxelMap->grid());
 
         const mrpt::math::TBoundingBoxf bbox = inVoxelMap->boundingBox();
 
-        occGrid->setSize(
-            bbox.min.x, bbox.max.x, bbox.min.y, bbox.max.y, grid.resolution);
+        occGrid->setSize(bbox.min.x, bbox.max.x, bbox.min.y, bbox.max.y, grid.resolution);
 
-        const auto zCoordMin = Bonxai::PosToCoord(
-            {0., 0., params_.slice_z_min}, grid.inv_resolution);
-        const auto zCoordMax = Bonxai::PosToCoord(
-            {0., 0., params_.slice_z_max}, grid.inv_resolution);
+        const auto zCoordMin =
+            Bonxai::PosToCoord({0., 0., params_.slice_z_min}, grid.inv_resolution);
+        const auto zCoordMax =
+            Bonxai::PosToCoord({0., 0., params_.slice_z_max}, grid.inv_resolution);
 
         // Go thru all voxels:
-        auto lmbdPerVoxel = [&](mrpt::maps::CVoxelMap::voxel_node_t& data,
-                                const Bonxai::CoordT&                coord)
+        auto lmbdPerVoxel =
+            [&](mrpt::maps::CVoxelMap::voxel_node_t& data, const Bonxai::CoordT& coord)
         {
             // are we at the correct height?
             if (coord.z < zCoordMin.z || coord.z > zCoordMax.z) return;
@@ -115,8 +109,7 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
             const double freeness = inVoxelMap->l2p(data.occupancy);
 
             // Bayesian fuse information:
-            occGrid->updateCell(
-                occGrid->x2idx(pt.x), occGrid->y2idx(pt.y), freeness);
+            occGrid->updateCell(occGrid->x2idx(pt.x), occGrid->y2idx(pt.y), freeness);
         };  // end lambda for each voxel
 
         grid.forEachCell(lmbdPerVoxel);

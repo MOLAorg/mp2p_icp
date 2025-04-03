@@ -46,8 +46,7 @@ class FilterDecimateAdaptive : public mp2p_icp_filters::FilterBase
 
         bool enabled = true;
 
-        std::string input_pointcloud_layer =
-            mp2p_icp::metric_map_t::PT_LAYER_RAW;
+        std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
         std::string output_pointcloud_layer;
 

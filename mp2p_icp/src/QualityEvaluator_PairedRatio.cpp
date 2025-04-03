@@ -16,8 +16,7 @@ IMPLEMENTS_MRPT_OBJECT(QualityEvaluator_PairedRatio, QualityEvaluator, mp2p_icp)
 
 using namespace mp2p_icp;
 
-void QualityEvaluator_PairedRatio::initialize(
-    const mrpt::containers::yaml& params)
+void QualityEvaluator_PairedRatio::initialize(const mrpt::containers::yaml& params)
 {
     MCP_LOAD_OPT(params, reuse_icp_pairings);
     MCP_LOAD_OPT(params, absolute_minimum_pairing_ratio);
@@ -37,8 +36,7 @@ void QualityEvaluator_PairedRatio::initialize(
 
 QualityEvaluator::Result QualityEvaluator_PairedRatio::evaluate(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-    const mrpt::poses::CPose3D& localPose,
-    const Pairings&             pairingsFromICP) const
+    const mrpt::poses::CPose3D& localPose, const Pairings& pairingsFromICP) const
 {
     const mp2p_icp::Pairings* pairings = nullptr;
     mp2p_icp::Pairings        newPairings;
@@ -59,9 +57,7 @@ QualityEvaluator::Result QualityEvaluator_PairedRatio::evaluate(
     const auto nEffectiveLocalPoints = pairings->potential_pairings;
 
     Result r;
-    r.quality = nEffectiveLocalPoints
-                    ? pairings->size() / double(nEffectiveLocalPoints)
-                    : .0;
+    r.quality = nEffectiveLocalPoints ? pairings->size() / double(nEffectiveLocalPoints) : .0;
 
     r.hard_discard = r.quality < absolute_minimum_pairing_ratio;
 

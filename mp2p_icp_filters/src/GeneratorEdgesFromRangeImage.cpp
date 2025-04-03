@@ -21,8 +21,7 @@
 
 #include <utility>  // std::pair
 
-IMPLEMENTS_MRPT_OBJECT(
-    GeneratorEdgesFromRangeImage, Generator, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(GeneratorEdgesFromRangeImage, Generator, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
@@ -42,8 +41,7 @@ auto calcStats(const int64_t* data, const size_t N)
 
     int64_t sumVariance = 0;
     for (size_t i = 0; i < N; i++)
-        sumVariance +=
-            mrpt::square(mrpt::math::absDiff<int64_t>(data[i], mean));
+        sumVariance += mrpt::square(mrpt::math::absDiff<int64_t>(data[i], mean));
 
     const int64_t variance = sumVariance / (N - 1);
 
@@ -52,8 +50,7 @@ auto calcStats(const int64_t* data, const size_t N)
 
 }  // namespace
 
-void GeneratorEdgesFromRangeImage::ParametersEdges::load_from_yaml(
-    const mrpt::containers::yaml& c)
+void GeneratorEdgesFromRangeImage::ParametersEdges::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_REQ(c, planes_target_layer);
     MCP_LOAD_REQ(c, score_threshold);
@@ -108,15 +105,13 @@ bool GeneratorEdgesFromRangeImage::filterRotatingScan(  //
         for (size_t i = 1 + W; i < nCols - W; i++)
         {
             // filtered range diff (in fixed-point arithmetic)
-            const auto [rdFiltered, rdVar] =
-                calcStats(&rowRangeDiff[i - W], 1 + 2 * W);
+            const auto [rdFiltered, rdVar] = calcStats(&rowRangeDiff[i - W], 1 + 2 * W);
 
             if (rdVar == 0) continue;  // by no way this is an edge! avoid x/0
 
             // significance of each point (in fixed-point arithmetic)
             const int64_t riFixPt = pc.rangeImage(r, i) << FIXED_POINT_BITS;
-            int64_t       scoreSqrFixPt =
-                mrpt::square(mrpt::math::absDiff(riFixPt, rdFiltered)) / rdVar;
+            int64_t scoreSqrFixPt = mrpt::square(mrpt::math::absDiff(riFixPt, rdFiltered)) / rdVar;
 
             const int32_t scoreSqr = scoreSqrFixPt >> (2 * FIXED_POINT_BITS);
 
@@ -124,8 +119,7 @@ bool GeneratorEdgesFromRangeImage::filterRotatingScan(  //
             {
                 // this point passes:
                 if (robotPose)
-                    outPc->insertPoint(
-                        robotPose->composePoint(pc.organizedPoints(r, i)));
+                    outPc->insertPoint(robotPose->composePoint(pc.organizedPoints(r, i)));
                 else
                     outPc->insertPoint(pc.organizedPoints(r, i));
             }
@@ -189,8 +183,7 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
             {
                 for (unsigned int j = 0; j < BLOCKS; j++)
                 {
-                    const auto val =
-                        ri((rd << BLOCK_BITS) + i, (cd << BLOCK_BITS) + j);
+                    const auto val = ri((rd << BLOCK_BITS) + i, (cd << BLOCK_BITS) + j);
                     if (!val) continue;
                     count++;
                     sum += val;
@@ -229,8 +222,7 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
         const int r = rd * BLOCKS + BLOCKS / 2;
         const int c = cd * BLOCKS + BLOCKS / 2;
 
-        const auto kx = kxs[r * nCols + c], ky = kys[r * nCols + c],
-                   kz = kzs[r * nCols + c];
+        const auto kx = kxs[r * nCols + c], ky = kys[r * nCols + c], kz = kzs[r * nCols + c];
 
         // unproject range -> 3D (includes sensorPose rotation):
         auto pt = mrpt::math::TPoint3Df(kx * D, ky * D /*y*/, kz * D /*z*/);
@@ -252,16 +244,15 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
         {
             if (!R(rd, cd) || !R(rd, cd - 1)) continue;  // ignore invalid pts
 
-            rowRangeDiff[cd] = (static_cast<int64_t>(R(rd, cd)) -
-                                static_cast<int64_t>(R(rd, cd - 1)))
-                               << FIXED_POINT_BITS;
+            rowRangeDiff[cd] =
+                (static_cast<int64_t>(R(rd, cd)) - static_cast<int64_t>(R(rd, cd - 1)))
+                << FIXED_POINT_BITS;
         }
         for (int cd = 1; cd < nColsDecim; cd++)
             rowRangeDiff2[cd] = rowRangeDiff[cd] - rowRangeDiff[cd - 1];
 
         // filtered range diff (in fixed-point arithmetic)
-        const auto [rdMean, rdVar] =
-            calcStats(rowRangeDiff2.data(), rowRangeDiff2.size());
+        const auto [rdMean, rdVar] = calcStats(rowRangeDiff2.data(), rowRangeDiff2.size());
 
         std::optional<int> currentPlaneStart;
 
@@ -274,8 +265,7 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
                 continue;
             }
 
-            int64_t scoreSqr =
-                rdVar != 0 ? mrpt::square(rowRangeDiff2[cd]) / rdVar : 0;
+            int64_t scoreSqr = rdVar != 0 ? mrpt::square(rowRangeDiff2[cd]) / rdVar : 0;
 
             if (scoreSqr > paramsEdges_.score_threshold)
             {

@@ -29,12 +29,10 @@ struct VisitCorrespondencesStats
 /** Visit each correspondence */
 template <class LAMBDA, class LAMBDA2>
 void visit_correspondences(
-    const Pairings& in, const WeightParameters& wp,
-    const mrpt::math::TPoint3D& ct_local, const mrpt::math::TPoint3D& ct_global,
-    OutlierIndices& in_out_outliers, LAMBDA lambda_each_pair,
+    const Pairings& in, const WeightParameters& wp, const mrpt::math::TPoint3D& ct_local,
+    const mrpt::math::TPoint3D& ct_global, OutlierIndices& in_out_outliers, LAMBDA lambda_each_pair,
     LAMBDA2 lambda_final, bool normalize_relative_point_vectors,
-    const mrpt::optional_ref<VisitCorrespondencesStats>& outStats =
-        std::nullopt)
+    const mrpt::optional_ref<VisitCorrespondencesStats>& outStats = std::nullopt)
 {
     using mrpt::math::TPoint3D;
     using mrpt::math::TVector3D;
@@ -45,10 +43,8 @@ void visit_correspondences(
     const auto nLn2Ln = in.paired_ln2ln.size();
     const auto nPl2Pl = in.paired_pl2pl.size();
 
-    ASSERTMSG_(
-        nPt2Ln == 0, "This solver cannot handle point-to-line pairings.");
-    ASSERTMSG_(
-        nPt2Pl == 0, "This solver cannot handle point-to-plane pairings yet.");
+    ASSERTMSG_(nPt2Ln == 0, "This solver cannot handle point-to-line pairings.");
+    ASSERTMSG_(nPt2Pl == 0, "This solver cannot handle point-to-plane pairings yet.");
 
     const auto nAllMatches = nPt2Pt + nLn2Ln + nPl2Pl;
 
@@ -71,9 +67,7 @@ void visit_correspondences(
         const auto wPt = wp.pair_weights.pt2pt, wLi = wp.pair_weights.ln2ln,
                    wPl = wp.pair_weights.pl2pl;
 
-        ASSERTMSG_(
-            wPt + wLi + wPl > .0,
-            "All, point, line, plane attidude weights, are <=0 (!)");
+        ASSERTMSG_(wPt + wLi + wPl > .0, "All, point, line, plane attidude weights, are <=0 (!)");
 
         const auto k = 1.0 / (wPt * nPt2Pt + wLi * nLn2Ln + wPl * nPl2Pl);
         waPoints     = wPt * k;
@@ -86,8 +80,7 @@ void visit_correspondences(
     double w_sum = .0;
 
     const robust_sqrt_weight_func_t robustSqrtWeightFunc =
-        mp2p_icp::create_robust_kernel(
-            wp.robust_kernel, wp.robust_kernel_param);
+        mp2p_icp::create_robust_kernel(wp.robust_kernel, wp.robust_kernel_param);
 
     OutlierIndices new_outliers;
     new_outliers.point2point.reserve(in_out_outliers.point2point.size());
@@ -99,8 +92,7 @@ void visit_correspondences(
     for (std::size_t i = 0; i < nAllMatches; i++)
     {
         // Skip outlier?
-        if (it_next_outlier != in_out_outliers.point2point.end() &&
-            i == *it_next_outlier)
+        if (it_next_outlier != in_out_outliers.point2point.end() && i == *it_next_outlier)
         {
             ++it_next_outlier;
             // also copy idx:
@@ -152,8 +144,7 @@ void visit_correspondences(
             // real pairing. Let's use this property to detect outliers:
             if (wp.use_scale_outlier_detector)
             {
-                const double scale_mismatch =
-                    std::max(bi_n, ri_n) / std::min(bi_n, ri_n);
+                const double scale_mismatch = std::max(bi_n, ri_n) / std::min(bi_n, ri_n);
                 if (scale_mismatch > wp.scale_outlier_threshold)
                 {
                     // Discard this pairing:
@@ -183,8 +174,8 @@ void visit_correspondences(
             wi = waPlanes;
 
             const auto idxPlane = i - (nPt2Pt + nLn2Ln);
-            bi = in.paired_pl2pl[idxPlane].p_global.plane.getNormalVector();
-            ri = in.paired_pl2pl[idxPlane].p_local.plane.getNormalVector();
+            bi                  = in.paired_pl2pl[idxPlane].p_global.plane.getNormalVector();
+            ri                  = in.paired_pl2pl[idxPlane].p_local.plane.getNormalVector();
 
             ASSERTDEB_LT_(std::abs(bi.norm() - 1.0), 0.01);
             ASSERTDEB_LT_(std::abs(ri.norm() - 1.0), 0.01);
@@ -199,8 +190,7 @@ void visit_correspondences(
             const TVector3D ri2 = wp.currentEstimateForRobust->composePoint(ri);
 
             // mismatch between the two vectors:
-            const double errorSqr = mrpt::square(ri2.x - bi.x) +
-                                    mrpt::square(ri2.y - bi.y) +
+            const double errorSqr = mrpt::square(ri2.x - bi.x) + mrpt::square(ri2.y - bi.y) +
                                     mrpt::square(ri2.z - bi.z);
             wi *= robustSqrtWeightFunc(errorSqr);
         }

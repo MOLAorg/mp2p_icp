@@ -15,8 +15,8 @@
 using namespace mp2p_icp;
 
 static void append_from_sorted(
-    const std::multimap<double, mrpt::tfest::TMatchingPair>& sorted,
-    Pairings& out, const double ratio)
+    const std::multimap<double, mrpt::tfest::TMatchingPair>& sorted, Pairings& out,
+    const double ratio)
 {
     // Heuristic: only add those pairings with a given % of the largest error,
     // since the smallest ones are already satisfied and may constraint the
@@ -36,8 +36,7 @@ static void append_from_sorted(
 }
 
 // See .h for docs
-Pairings mp2p_icp::pt2ln_pl_to_pt2pt(
-    const Pairings& in, const SolverContext& sc)
+Pairings mp2p_icp::pt2ln_pl_to_pt2pt(const Pairings& in, const SolverContext& sc)
 {
     Pairings out;
 

@@ -15,8 +15,7 @@
 #include <mp2p_icp/Solver_Horn.h>
 #include <mrpt/poses/Lie/SE.h>
 
-static void test_opt_pt2pl(
-    const mrpt::poses::CPose3D& groundTruth, const mp2p_icp::Solver& solver)
+static void test_opt_pt2pl(const mrpt::poses::CPose3D& groundTruth, const mp2p_icp::Solver& solver)
 {
     using namespace mrpt::poses::Lie;
 
@@ -30,24 +29,18 @@ static void test_opt_pt2pl(
 
     {
         auto& pp     = p.paired_pt2pl.emplace_back();
-        pp.pl_global = {
-            mrpt::math::TPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}),
-            {0, 0, 0}};
-        pp.pt_local = groundTruth.inverseComposePoint({0.5, 0, 0});
+        pp.pl_global = {mrpt::math::TPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}), {0, 0, 0}};
+        pp.pt_local  = groundTruth.inverseComposePoint({0.5, 0, 0});
     }
     {
         auto& pp     = p.paired_pt2pl.emplace_back();
-        pp.pl_global = {
-            mrpt::math::TPlane::FromPointAndNormal({0, 0, 0}, {1, 0, 0}),
-            {0, 0, 0}};
-        pp.pt_local = groundTruth.inverseComposePoint({0, 0.8, 0});
+        pp.pl_global = {mrpt::math::TPlane::FromPointAndNormal({0, 0, 0}, {1, 0, 0}), {0, 0, 0}};
+        pp.pt_local  = groundTruth.inverseComposePoint({0, 0.8, 0});
     }
     {
         auto& pp     = p.paired_pt2pl.emplace_back();
-        pp.pl_global = {
-            mrpt::math::TPlane::FromPointAndNormal({0, 0, 0}, {0, 1, 0}),
-            {0, 0, 0}};
-        pp.pt_local = groundTruth.inverseComposePoint({0, 0, 0.3});
+        pp.pl_global = {mrpt::math::TPlane::FromPointAndNormal({0, 0, 0}, {0, 1, 0}), {0, 0, 0}};
+        pp.pt_local  = groundTruth.inverseComposePoint({0, 0, 0.3});
     }
     {
         auto& pp       = p.paired_pt2pt.emplace_back();
@@ -71,9 +64,7 @@ static void test_opt_pt2pl(
 
     // check results:
     ASSERT_(solvedOk);
-    ASSERT_NEAR_(
-        mrpt::poses::Lie::SE<3>::log(result.optimalPose - groundTruth).norm(),
-        0.0, 1e-3);
+    ASSERT_NEAR_(mrpt::poses::Lie::SE<3>::log(result.optimalPose - groundTruth).norm(), 0.0, 1e-3);
 
     MRPT_END
 }
@@ -101,10 +92,9 @@ static void test_mp2p_optimize_pt2pl()
     for (const auto solverPtr : solvers)
     {
         const auto& solver = *solverPtr;
-        std::cout
-            << "Using solver: " << solver.GetRuntimeClass()->className
-            << "\n"
-               "=========================================================\n";
+        std::cout << "Using solver: " << solver.GetRuntimeClass()->className
+                  << "\n"
+                     "=========================================================\n";
 
         test_opt_pt2pl(CPose3D::FromTranslation(0, 0, 0), solver);
 
@@ -116,26 +106,18 @@ static void test_mp2p_optimize_pt2pl()
         test_opt_pt2pl(CPose3D::FromTranslation(0, -3.0, 0), solver);
         test_opt_pt2pl(CPose3D::FromTranslation(0, 0, -4.0), solver);
 
-        test_opt_pt2pl(
-            CPose3D::FromYawPitchRoll(20.0_deg, 0.0_deg, 0.0_deg), solver);
-        test_opt_pt2pl(
-            CPose3D::FromYawPitchRoll(-20.0_deg, 0.0_deg, 0.0_deg), solver);
+        test_opt_pt2pl(CPose3D::FromYawPitchRoll(20.0_deg, 0.0_deg, 0.0_deg), solver);
+        test_opt_pt2pl(CPose3D::FromYawPitchRoll(-20.0_deg, 0.0_deg, 0.0_deg), solver);
 
-        test_opt_pt2pl(
-            CPose3D::FromYawPitchRoll(0.0_deg, 10.0_deg, 0.0_deg), solver);
-        test_opt_pt2pl(
-            CPose3D::FromYawPitchRoll(0.0_deg, -10.0_deg, 0.0_deg), solver);
+        test_opt_pt2pl(CPose3D::FromYawPitchRoll(0.0_deg, 10.0_deg, 0.0_deg), solver);
+        test_opt_pt2pl(CPose3D::FromYawPitchRoll(0.0_deg, -10.0_deg, 0.0_deg), solver);
 
-        test_opt_pt2pl(
-            CPose3D::FromYawPitchRoll(0.0_deg, 0.0_deg, 15.0_deg), solver);
-        test_opt_pt2pl(
-            CPose3D::FromYawPitchRoll(0.0_deg, 0.0_deg, -15.0_deg), solver);
+        test_opt_pt2pl(CPose3D::FromYawPitchRoll(0.0_deg, 0.0_deg, 15.0_deg), solver);
+        test_opt_pt2pl(CPose3D::FromYawPitchRoll(0.0_deg, 0.0_deg, -15.0_deg), solver);
 
         test_opt_pt2pl(CPose3D::FromTranslation(1.0, 2.0, 3.0), solver);
         test_opt_pt2pl(
-            CPose3D::FromXYZYawPitchRoll(
-                1.0, 2.0, 3.0, -10.0_deg, 5.0_deg, 30.0_deg),
-            solver);
+            CPose3D::FromXYZYawPitchRoll(1.0, 2.0, 3.0, -10.0_deg, 5.0_deg, 30.0_deg), solver);
     }
 }
 

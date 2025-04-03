@@ -21,8 +21,7 @@ using namespace mp2p_icp;
 
 bool Matcher_Points_Base::impl_match(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-    const mrpt::poses::CPose3D&          localPose,
-    [[maybe_unused]] const MatchContext& mc, MatchState& ms,
+    const mrpt::poses::CPose3D& localPose, [[maybe_unused]] const MatchContext& mc, MatchState& ms,
     Pairings& out) const
 {
     MRPT_START
@@ -43,8 +42,7 @@ bool Matcher_Points_Base::impl_match(
             // If we have weights and this layer is not listed, Skip it:
             if (itGlob == weight_pt2pt_layers.end()) continue;
 
-            for (const auto& kv : itGlob->second)
-                localLayers[kv.first] = kv.second;
+            for (const auto& kv : itGlob->second) localLayers[kv.first] = kv.second;
         }
         else
         {
@@ -90,19 +88,15 @@ bool Matcher_Points_Base::impl_match(
             {
                 if (auto glLayerPts = mp2p_icp::MapToPointsMap(*glLayer);
                     glLayerPts &&
-                    glLayerPts->kdtree_search_params.leaf_max_size !=
-                        *kdtree_leaf_max_points_)
+                    glLayerPts->kdtree_search_params.leaf_max_size != *kdtree_leaf_max_points_)
                 {
-                    glLayerPts->kdtree_search_params.leaf_max_size =
-                        *kdtree_leaf_max_points_;
+                    glLayerPts->kdtree_search_params.leaf_max_size = *kdtree_leaf_max_points_;
                     glLayerPts->mark_as_modified();  // rebuild kd-tree index
                 }
             }
 
             // matcher implementation:
-            implMatchOneLayer(
-                *glLayer, *lcLayer, localPose, ms, glLayerName, localLayerName,
-                out);
+            implMatchOneLayer(*glLayer, *lcLayer, localPose, ms, glLayerName, localLayerName, out);
 
             const size_t nAfter = out.paired_pt2pt.size();
 
@@ -142,8 +136,7 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
 
             const std::string globalLayer = em.at("global").as<std::string>();
             const std::string localLayer  = em.at("local").as<std::string>();
-            const double      w =
-                em.count("weight") != 0 ? em.at("weight").as<double>() : 1.0;
+            const double      w = em.count("weight") != 0 ? em.at("weight").as<double>() : 1.0;
 
             weight_pt2pt_layers[globalLayer][localLayer] = w;
         }
@@ -152,29 +145,24 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
     maxLocalPointsPerLayer_ =
         params.getOrDefault("maxLocalPointsPerLayer", maxLocalPointsPerLayer_);
 
-    localPointsSampleSeed_ =
-        params.getOrDefault("localPointsSampleSeed", localPointsSampleSeed_);
+    localPointsSampleSeed_ = params.getOrDefault("localPointsSampleSeed", localPointsSampleSeed_);
 
-    allowMatchAlreadyMatchedPoints_ = params.getOrDefault(
-        "allowMatchAlreadyMatchedPoints", allowMatchAlreadyMatchedPoints_);
+    allowMatchAlreadyMatchedPoints_ =
+        params.getOrDefault("allowMatchAlreadyMatchedPoints", allowMatchAlreadyMatchedPoints_);
 
     allowMatchAlreadyMatchedGlobalPoints_ = params.getOrDefault(
-        "allowMatchAlreadyMatchedGlobalPoints",
-        allowMatchAlreadyMatchedGlobalPoints_);
+        "allowMatchAlreadyMatchedGlobalPoints", allowMatchAlreadyMatchedGlobalPoints_);
 
     if (auto val = params.getOrDefault("kdtree_leaf_max_points", 0); val > 0)
         kdtree_leaf_max_points_ = val;
 
     bounding_box_intersection_check_epsilon_ = params.getOrDefault(
-        "bounding_box_intersection_check_epsilon",
-        bounding_box_intersection_check_epsilon_);
+        "bounding_box_intersection_check_epsilon", bounding_box_intersection_check_epsilon_);
 }
 
-Matcher_Points_Base::TransformedLocalPointCloud
-    Matcher_Points_Base::transform_local_to_global(
-        const mrpt::maps::CPointsMap& pcLocal,
-        const mrpt::poses::CPose3D& localPose, const std::size_t maxLocalPoints,
-        const uint64_t localPointsSampleSeed)
+Matcher_Points_Base::TransformedLocalPointCloud Matcher_Points_Base::transform_local_to_global(
+    const mrpt::maps::CPointsMap& pcLocal, const mrpt::poses::CPose3D& localPose,
+    const std::size_t maxLocalPoints, const uint64_t localPointsSampleSeed)
 {
     MRPT_START
     TransformedLocalPointCloud r;
@@ -206,8 +194,7 @@ Matcher_Points_Base::TransformedLocalPointCloud
         for (size_t i = 0; i < nLocalPoints; i++)
         {
             localPose.composePoint(
-                lxs[i], lys[i], lzs[i], r.x_locals[i], r.y_locals[i],
-                r.z_locals[i]);
+                lxs[i], lys[i], lzs[i], r.x_locals[i], r.y_locals[i], r.z_locals[i]);
             lambdaKeepBBox(r.x_locals[i], r.y_locals[i], r.z_locals[i]);
         }
     }
@@ -217,14 +204,12 @@ Matcher_Points_Base::TransformedLocalPointCloud
         r.idxs.emplace(maxLocalPoints);
         std::iota(r.idxs->begin(), r.idxs->end(), 0);
 
-        const unsigned int seed =
-            localPointsSampleSeed != 0
-                ? localPointsSampleSeed
-                : std::chrono::system_clock::now().time_since_epoch().count();
+        const unsigned int seed = localPointsSampleSeed != 0
+                                      ? localPointsSampleSeed
+                                      : std::chrono::system_clock::now().time_since_epoch().count();
 
         mrpt::random::partial_shuffle(
-            r.idxs->begin(), r.idxs->end(), std::default_random_engine(seed),
-            maxLocalPoints);
+            r.idxs->begin(), r.idxs->end(), std::default_random_engine(seed), maxLocalPoints);
 
         r.x_locals.resize(maxLocalPoints);
         r.y_locals.resize(maxLocalPoints);
@@ -234,8 +219,7 @@ Matcher_Points_Base::TransformedLocalPointCloud
         {
             const auto i = (*r.idxs)[ri];
             localPose.composePoint(
-                lxs[i], lys[i], lzs[i], r.x_locals[ri], r.y_locals[ri],
-                r.z_locals[ri]);
+                lxs[i], lys[i], lzs[i], r.x_locals[ri], r.y_locals[ri], r.z_locals[ri]);
             lambdaKeepBBox(r.x_locals[ri], r.y_locals[ri], r.z_locals[ri]);
         }
     }

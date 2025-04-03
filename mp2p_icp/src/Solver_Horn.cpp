@@ -31,8 +31,7 @@ void Solver_Horn::initialize(const mrpt::containers::yaml& p)
 }
 
 bool Solver_Horn::impl_optimal_pose(
-    const Pairings& pairings, OptimalTF_Result& out,
-    [[maybe_unused]] const SolverContext& sc) const
+    const Pairings& pairings, OptimalTF_Result& out, [[maybe_unused]] const SolverContext& sc) const
 {
     MRPT_START
 

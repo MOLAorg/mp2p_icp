@@ -45,9 +45,7 @@ bool GeneratorEdgesFromCurvature::process(
     MRPT_START
     using namespace mrpt::obs;
 
-    ASSERTMSG_(
-        initialized_,
-        "initialize() must be called once before using process().");
+    ASSERTMSG_(initialized_, "initialize() must be called once before using process().");
 
     checkAllParametersAreRealized();
 
@@ -59,10 +57,8 @@ bool GeneratorEdgesFromCurvature::process(
     bool processed = false;
 
     // user-given filters: Done *AFTER* creating the map, if needed.
-    if (!std::regex_match(obsClassName, process_class_names_regex_))
-        return false;
-    if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
-        return false;
+    if (!std::regex_match(obsClassName, process_class_names_regex_)) return false;
+    if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_)) return false;
 
     if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
         processed = filterRotatingScan(*oRS, out, robotPose);
@@ -72,18 +68,16 @@ bool GeneratorEdgesFromCurvature::process(
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc;
-    if (auto itLy = out.layers.find(params_.target_layer);
-        itLy != out.layers.end())
+    if (auto itLy = out.layers.find(params_.target_layer); itLy != out.layers.end())
     {
         outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
         if (!outPc)
             THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.",
-                params_.target_layer.c_str());
+                "Layer '%s' must be of point cloud type.", params_.target_layer.c_str());
     }
     else
     {
-        outPc = mrpt::maps::CSimplePointsMap::Create();
+        outPc                            = mrpt::maps::CSimplePointsMap::Create();
         out.layers[params_.target_layer] = outPc;
     }
 
@@ -122,8 +116,7 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
         for (size_t i = 1; i + 1 < nCols; i++)
         {
             // we need at least 3 consecutive valid points:
-            if (!pc.rangeImage(r, i - 1) || !pc.rangeImage(r, i) ||
-                !pc.rangeImage(r, i + 1))
+            if (!pc.rangeImage(r, i - 1) || !pc.rangeImage(r, i) || !pc.rangeImage(r, i + 1))
                 continue;
 
             const auto& pt_im1 = pc.organizedPoints(r, i - 1);
@@ -135,8 +128,7 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
             const auto v1n = v1.norm();
             const auto v2n = v2.norm();
 
-            if (v1n < paramsEdges_.min_point_clearance ||
-                v2n < paramsEdges_.min_point_clearance)
+            if (v1n < paramsEdges_.min_point_clearance || v2n < paramsEdges_.min_point_clearance)
                 continue;
 
             const float score = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
@@ -145,8 +137,7 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
             {
                 // this point passes:
                 if (robotPose)
-                    outPc->insertPoint(
-                        robotPose->composePoint(pc.organizedPoints(r, i)));
+                    outPc->insertPoint(robotPose->composePoint(pc.organizedPoints(r, i)));
                 else
                     outPc->insertPoint(pc.organizedPoints(r, i));
                 // TODO(jlbc) Output intensity?

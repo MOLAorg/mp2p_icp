@@ -40,12 +40,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     try
     {
         mp2p_icp::metric_map_t pcGlobal;
-        pcGlobal.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] =
-            generateGlobalPoints();
+        pcGlobal.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = generateGlobalPoints();
 
         mp2p_icp::metric_map_t pcLocal;
-        pcLocal.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] =
-            generateLocalPoints();
+        pcLocal.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = generateLocalPoints();
 
         {
             mp2p_icp::Matcher_Points_DistanceThreshold m;
@@ -94,8 +92,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 mp2p_icp::Pairings   pairs;
                 mp2p_icp::MatchState ms(pcGlobal, pcLocal);
                 m.match(
-                    pcGlobal, pcLocal,
-                    {8.5, -1.0, 1, mrpt::DEG2RAD(45.0f), 0, 0}, {}, ms, pairs);
+                    pcGlobal, pcLocal, {8.5, -1.0, 1, mrpt::DEG2RAD(45.0f), 0, 0}, {}, ms, pairs);
                 ASSERT_EQUAL_(pairs.size(), 1);
                 ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).localIdx, 1);
                 ASSERT_EQUAL_(pairs.paired_pt2pt.at(0).globalIdx, 19);

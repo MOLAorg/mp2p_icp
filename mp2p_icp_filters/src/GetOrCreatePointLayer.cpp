@@ -13,8 +13,8 @@
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 
 mrpt::maps::CPointsMap::Ptr mp2p_icp_filters::GetOrCreatePointLayer(
-    mp2p_icp::metric_map_t& m, const std::string& layerName,
-    bool allowEmptyName, const std::string& classForLayerCreation)
+    mp2p_icp::metric_map_t& m, const std::string& layerName, bool allowEmptyName,
+    const std::string& classForLayerCreation)
 {
     mrpt::maps::CPointsMap::Ptr outPc;
 
@@ -30,8 +30,7 @@ mrpt::maps::CPointsMap::Ptr mp2p_icp_filters::GetOrCreatePointLayer(
     {
         outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
         if (!outPc)
-            THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.", layerName.c_str());
+            THROW_EXCEPTION_FMT("Layer '%s' must be of point cloud type.", layerName.c_str());
     }
     else
     {

@@ -40,13 +40,10 @@ struct render_params_planes_t
 
     bool operator==(const render_params_planes_t& o) const
     {
-        return visible == o.visible && halfWidth == o.halfWidth &&
-               gridSpacing == o.gridSpacing && color == o.color;
+        return visible == o.visible && halfWidth == o.halfWidth && gridSpacing == o.gridSpacing &&
+               color == o.color;
     }
-    bool operator!=(const render_params_planes_t& o) const
-    {
-        return !(*this == o);
-    }
+    bool operator!=(const render_params_planes_t& o) const { return !(*this == o); }
 };
 
 /** Used in metric_map_t::get_visualization() */
@@ -54,20 +51,17 @@ struct render_params_lines_t
 {
     render_params_lines_t() = default;
 
-    bool              visible = true;
-    mrpt::img::TColor color{0xff, 0x00, 0x00, 0xff};
-    double            length = 20.0;  //!< all lines with same length
+    bool                               visible = true;
+    mrpt::img::TColor                  color{0xff, 0x00, 0x00, 0xff};
+    double                             length = 20.0;  //!< all lines with same length
     std::optional<std::vector<double>> lengths;  //!< individual lengths
 
     bool operator==(const render_params_lines_t& o) const
     {
-        return visible == o.visible && length == o.length &&
-               lengths == o.lengths && color == o.color;
+        return visible == o.visible && length == o.length && lengths == o.lengths &&
+               color == o.color;
     }
-    bool operator!=(const render_params_lines_t& o) const
-    {
-        return !(*this == o);
-    }
+    bool operator!=(const render_params_lines_t& o) const { return !(*this == o); }
 };
 
 enum class Coordinate : uint8_t
@@ -108,13 +102,10 @@ struct color_mode_t
 
     bool operator==(const color_mode_t& o) const
     {
-        return keep_original_cloud_color == o.keep_original_cloud_color &&
-               colorMap == o.colorMap &&
+        return keep_original_cloud_color == o.keep_original_cloud_color && colorMap == o.colorMap &&
                recolorizeByCoordinate == o.recolorizeByCoordinate &&
-               colorMapMinCoord == o.colorMapMinCoord &&
-               colorMapMaxCoord == o.colorMapMaxCoord &&
-               autoBoundingBoxOutliersPercentile ==
-                   o.autoBoundingBoxOutliersPercentile;
+               colorMapMinCoord == o.colorMapMinCoord && colorMapMaxCoord == o.colorMapMaxCoord &&
+               autoBoundingBoxOutliersPercentile == o.autoBoundingBoxOutliersPercentile;
     }
     bool operator!=(const color_mode_t& o) const { return !(*this == o); }
 };
@@ -141,15 +132,11 @@ struct render_params_point_layer_t
 
     bool operator==(const render_params_point_layer_t& o) const
     {
-        return pointSize == o.pointSize && color == o.color &&
-               colorMode == o.colorMode &&
+        return pointSize == o.pointSize && color == o.color && colorMode == o.colorMode &&
                render_voxelmaps_as_points == o.render_voxelmaps_as_points &&
                render_voxelmaps_free_space == o.render_voxelmaps_free_space;
     }
-    bool operator!=(const render_params_point_layer_t& o) const
-    {
-        return !(*this == o);
-    }
+    bool operator!=(const render_params_point_layer_t& o) const { return !(*this == o); }
 };
 
 /** Used in metric_map_t::get_visualization() */
@@ -171,13 +158,9 @@ struct render_params_points_t
 
     bool operator==(const render_params_points_t& o) const
     {
-        return visible == o.visible && allLayers == o.allLayers &&
-               perLayer == o.perLayer;
+        return visible == o.visible && allLayers == o.allLayers && perLayer == o.perLayer;
     }
-    bool operator!=(const render_params_points_t& o) const
-    {
-        return !(*this == o);
-    }
+    bool operator!=(const render_params_points_t& o) const { return !(*this == o); }
 };
 
 /** Used in metric_map_t::get_visualization() */

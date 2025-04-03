@@ -20,7 +20,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         {
             mp2p_icp::Matcher_Points_DistanceThreshold m;
             mrpt::containers::yaml                     p;
-            p["threshold"] = "MATCH_THRESHOLD*2.0";  // Define as an expr.
+            p["threshold"]           = "MATCH_THRESHOLD*2.0";  // Define as an expr.
             p["thresholdAngularDeg"] = .0;
 
             m.initialize(p);

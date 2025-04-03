@@ -55,9 +55,8 @@ struct OLAE_LinearSystems
 
 /** Core of the OLAE algorithm  */
 static OLAE_LinearSystems olae_build_linear_system(
-    const Pairings& in, const WeightParameters& wp,
-    const mrpt::math::TPoint3D& ct_local, const mrpt::math::TPoint3D& ct_global,
-    OutlierIndices& in_out_outliers)
+    const Pairings& in, const WeightParameters& wp, const mrpt::math::TPoint3D& ct_local,
+    const mrpt::math::TPoint3D& ct_global, OutlierIndices& in_out_outliers)
 {
     MRPT_START
 
@@ -74,9 +73,8 @@ static OLAE_LinearSystems olae_build_linear_system(
     res.B = Eigen::Matrix3d::Zero();
 
     // Lambda: process each pairing:
-    auto lambda_each_pair = [&](const mrpt::math::TVector3D& bi,
-                                const mrpt::math::TVector3D& ri,
-                                const double                 wi)
+    auto lambda_each_pair =
+        [&](const mrpt::math::TVector3D& bi, const mrpt::math::TVector3D& ri, const double wi)
     {
 // We will evaluate M from an alternative expression below from the
 // attitude profile matrix B instead, since it seems to be slightly more
@@ -168,8 +166,8 @@ static OLAE_LinearSystems olae_build_linear_system(
     };
 
     visit_correspondences(
-        in, wp, ct_local, ct_global, in_out_outliers, lambda_each_pair,
-        lambda_final, true /* DO make unit point vectors for OLAE */);
+        in, wp, ct_local, ct_global, in_out_outliers, lambda_each_pair, lambda_final,
+        true /* DO make unit point vectors for OLAE */);
 
     // Now, compute the other three sets of linear systems, corresponding
     // to the "sequential rotation method" [shuster1981attitude], so we can
@@ -256,26 +254,23 @@ bool mp2p_icp::optimal_tf_olae(
     ASSERT_(wp.pair_weights.pl2pl >= .0);
 
     // Compute the centroids:
-    auto [ct_local, ct_global] =
-        eval_centroids_robust(in, result.outliers /* empty for now  */);
+    auto [ct_local, ct_global] = eval_centroids_robust(in, result.outliers /* empty for now  */);
 
     // Build the linear system: M g = v
-    OLAE_LinearSystems linsys = olae_build_linear_system(
-        in, wp, ct_local, ct_global, result.outliers /* empty for now  */);
+    OLAE_LinearSystems linsys =
+        olae_build_linear_system(in, wp, ct_local, ct_global, result.outliers /* empty for now  */);
 
     // Re-evaluate the centroids, now that we have a guess on outliers.
     if (!result.outliers.empty())
     {
         // Re-evaluate the centroids:
-        const auto [new_ct_local, new_ct_global] =
-            eval_centroids_robust(in, result.outliers);
+        const auto [new_ct_local, new_ct_global] = eval_centroids_robust(in, result.outliers);
 
         ct_local  = new_ct_local;
         ct_global = new_ct_global;
 
         // And rebuild the linear system with the new values:
-        linsys = olae_build_linear_system(
-            in, wp, ct_local, ct_global, result.outliers);
+        linsys = olae_build_linear_system(in, wp, ct_local, ct_global, result.outliers);
     }
 
     // We are finding the optimal rotation "g", as a Gibbs vector.
@@ -298,8 +293,7 @@ bool mp2p_icp::optimal_tf_olae(
     if (detM_orig > mrpt::max3(detMx, detMy, detMz))
     {
         // original rotation is the best numerically-determined problem:
-        const auto sol0 =
-            gibbs2pose(linsys.M.colPivHouseholderQr().solve(linsys.v));
+        const auto sol0    = gibbs2pose(linsys.M.colPivHouseholderQr().solve(linsys.v));
         result.optimalPose = sol0;
 #if 0
         std::cout << "M   : |M|="
@@ -310,8 +304,7 @@ bool mp2p_icp::optimal_tf_olae(
     else if (detMx > mrpt::max3(detM_orig, detMy, detMz))
     {
         // rotation wrt X is the best choice:
-        auto sol1 =
-            gibbs2pose(linsys.Mx.colPivHouseholderQr().solve(linsys.vx));
+        auto sol1          = gibbs2pose(linsys.Mx.colPivHouseholderQr().solve(linsys.vx));
         sol1               = mrpt::poses::CPose3D(0, 0, 0, 0, 0, M_PI) + sol1;
         result.optimalPose = sol1;
 #if 0
@@ -323,8 +316,7 @@ bool mp2p_icp::optimal_tf_olae(
     else if (detMy > mrpt::max3(detM_orig, detMx, detMz))
     {
         // rotation wrt Y is the best choice:
-        auto sol2 =
-            gibbs2pose(linsys.My.colPivHouseholderQr().solve(linsys.vy));
+        auto sol2          = gibbs2pose(linsys.My.colPivHouseholderQr().solve(linsys.vy));
         sol2               = mrpt::poses::CPose3D(0, 0, 0, 0, M_PI, 0) + sol2;
         result.optimalPose = sol2;
 #if 0
@@ -336,8 +328,7 @@ bool mp2p_icp::optimal_tf_olae(
     else
     {
         // rotation wrt Z is the best choice:
-        auto sol3 =
-            gibbs2pose(linsys.Mz.colPivHouseholderQr().solve(linsys.vz));
+        auto sol3          = gibbs2pose(linsys.Mz.colPivHouseholderQr().solve(linsys.vz));
         sol3               = mrpt::poses::CPose3D(0, 0, 0, M_PI, 0, 0) + sol3;
         result.optimalPose = sol3;
 #if 0
@@ -349,8 +340,7 @@ bool mp2p_icp::optimal_tf_olae(
 
     // Use centroids to solve for optimal translation:
     mrpt::math::TPoint3D pp;
-    result.optimalPose.composePoint(
-        ct_local.x, ct_local.y, ct_local.z, pp.x, pp.y, pp.z);
+    result.optimalPose.composePoint(ct_local.x, ct_local.y, ct_local.z, pp.x, pp.y, pp.z);
     // Scale, if used, was: pp *= s;
 
     result.optimalPose.x(ct_global.x - pp.x);

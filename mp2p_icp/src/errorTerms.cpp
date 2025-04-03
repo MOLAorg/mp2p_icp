@@ -26,8 +26,7 @@ using namespace mp2p_icp;
 using namespace mrpt::math;
 
 mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2point(
-    const mrpt::tfest::TMatchingPair&                           pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
+    const mrpt::tfest::TMatchingPair& pairing, const mrpt::poses::CPose3D& relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     MRPT_START
@@ -59,8 +58,7 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2point(
 }
 
 mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2line(
-    const mp2p_icp::point_line_pair_t&                          pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
+    const mp2p_icp::point_line_pair_t& pairing, const mrpt::poses::CPose3D& relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     MRPT_START
@@ -85,9 +83,9 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2line(
     {
         // J1
         const Eigen::Matrix<double, 3, 3> J1 =
-            (Eigen::Matrix<double, 3, 3>() << 1 - mrpt::square(u.x), -u.x * u.y,
-             -u.x * u.z, -u.y * u.x, 1 - mrpt::square(u.y), -u.y * u.z,
-             -u.z * u.x, -u.z * u.y, 1 - mrpt::square(u.z))
+            (Eigen::Matrix<double, 3, 3>() << 1 - mrpt::square(u.x), -u.x * u.y, -u.x * u.z,
+             -u.y * u.x, 1 - mrpt::square(u.y), -u.y * u.z, -u.z * u.x, -u.z * u.y,
+             1 - mrpt::square(u.z))
                 .finished();
         // J2
         // clang-format off
@@ -107,8 +105,7 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2line(
 }
 
 mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2plane(
-    const mp2p_icp::point_plane_pair_t&                         pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
+    const mp2p_icp::point_plane_pair_t& pairing, const mrpt::poses::CPose3D& relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     MRPT_START
@@ -118,34 +115,25 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2plane(
     const mrpt::math::TPoint3D        l      = TPoint3D(p.x, p.y, p.z);
     mrpt::math::TPoint3D              g;
     relativePose.composePoint(l, g);
-    double mod_n = mrpt::square(pl_aux.coefs[0]) +
-                   mrpt::square(pl_aux.coefs[1]) +
+    double mod_n = mrpt::square(pl_aux.coefs[0]) + mrpt::square(pl_aux.coefs[1]) +
                    mrpt::square(pl_aux.coefs[2]);
 
-    error[0] = -(pl_aux.coefs[0] / mod_n) *
-               (pl_aux.coefs[0] * g.x + pl_aux.coefs[1] * g.y +
-                pl_aux.coefs[2] * g.z + pl_aux.coefs[3]);
-    error[1] = -(pl_aux.coefs[1] / mod_n) *
-               (pl_aux.coefs[0] * g.x + pl_aux.coefs[1] * g.y +
-                pl_aux.coefs[2] * g.z + pl_aux.coefs[3]);
-    error[2] = -(pl_aux.coefs[2] / mod_n) *
-               (pl_aux.coefs[0] * g.x + pl_aux.coefs[1] * g.y +
-                pl_aux.coefs[2] * g.z + pl_aux.coefs[3]);
+    error[0] = -(pl_aux.coefs[0] / mod_n) * (pl_aux.coefs[0] * g.x + pl_aux.coefs[1] * g.y +
+                                             pl_aux.coefs[2] * g.z + pl_aux.coefs[3]);
+    error[1] = -(pl_aux.coefs[1] / mod_n) * (pl_aux.coefs[0] * g.x + pl_aux.coefs[1] * g.y +
+                                             pl_aux.coefs[2] * g.z + pl_aux.coefs[3]);
+    error[2] = -(pl_aux.coefs[2] / mod_n) * (pl_aux.coefs[0] * g.x + pl_aux.coefs[1] * g.y +
+                                             pl_aux.coefs[2] * g.z + pl_aux.coefs[3]);
     if (jacobian)
     {
         // Eval Jacobian:
         // J1
         const Eigen::Matrix<double, 3, 3> J1 =
-            (Eigen::Matrix<double, 3, 3>()
-                 << -mrpt::square(pl_aux.coefs[0]) / mod_n,
-             -pl_aux.coefs[0] * pl_aux.coefs[1] / mod_n,
-             -pl_aux.coefs[0] * pl_aux.coefs[2] / mod_n,
-             -pl_aux.coefs[1] * pl_aux.coefs[0] / mod_n,
-             -mrpt::square(pl_aux.coefs[1]) / mod_n,
-             -pl_aux.coefs[1] * pl_aux.coefs[2] / mod_n,
-             -pl_aux.coefs[2] * pl_aux.coefs[0] / mod_n,
-             -pl_aux.coefs[2] * pl_aux.coefs[1] / mod_n,
-             -mrpt::square(pl_aux.coefs[2]) / mod_n)
+            (Eigen::Matrix<double, 3, 3>() << -mrpt::square(pl_aux.coefs[0]) / mod_n,
+             -pl_aux.coefs[0] * pl_aux.coefs[1] / mod_n, -pl_aux.coefs[0] * pl_aux.coefs[2] / mod_n,
+             -pl_aux.coefs[1] * pl_aux.coefs[0] / mod_n, -mrpt::square(pl_aux.coefs[1]) / mod_n,
+             -pl_aux.coefs[1] * pl_aux.coefs[2] / mod_n, -pl_aux.coefs[2] * pl_aux.coefs[0] / mod_n,
+             -pl_aux.coefs[2] * pl_aux.coefs[1] / mod_n, -mrpt::square(pl_aux.coefs[2]) / mod_n)
                 .finished();
         // J2
         // clang-format off
@@ -165,8 +153,7 @@ mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2plane(
 }
 
 mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
-    const mp2p_icp::matched_line_t&                             pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
+    const mp2p_icp::matched_line_t& pairing, const mrpt::poses::CPose3D& relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 4, 12>> jacobian)
 {
     MRPT_START
@@ -206,8 +193,8 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
 
     // p_r0 = (p-r_{0,r}). Ec.20
     const Eigen::Matrix<double, 1, 3> p_r2 =
-        (Eigen::Matrix<double, 1, 3>() << ln_aux.pBase.x - p1.x,
-         ln_aux.pBase.y - p1.y, ln_aux.pBase.z - p1.z)
+        (Eigen::Matrix<double, 1, 3>() << ln_aux.pBase.x - p1.x, ln_aux.pBase.y - p1.y,
+         ln_aux.pBase.z - p1.z)
             .finished();
 
     const Eigen::Matrix<double, 1, 3> rv =
@@ -225,8 +212,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
             double mod_rv = rv * rv.transpose();
 
             // J1: Ec.22
-            Eigen::Matrix<double, 1, 3> J1 =
-                2 * p_r2 - (2 / mod_rv) * (p_r2 * rv.transpose()) * rv;
+            Eigen::Matrix<double, 1, 3> J1 = 2 * p_r2 - (2 / mod_rv) * (p_r2 * rv.transpose()) * rv;
             // J2: Ec.23
             // clang-format off
             const Eigen::Matrix<double, 3, 12> J2 =
@@ -237,9 +223,8 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
                  ).finished();
             // clang-format on
             // Build Jacobian
-            mrpt::math::CMatrixFixed<double, 4, 12>& J_auxp =
-                jacobian.value().get();
-            J_auxp.block<1, 12>(0, 0) = J1 * J2;
+            mrpt::math::CMatrixFixed<double, 4, 12>& J_auxp = jacobian.value().get();
+            J_auxp.block<1, 12>(0, 0)                       = J1 * J2;
         }
     }
     else
@@ -266,8 +251,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
 
             // J1.2:
             // A
-            const double A =
-                p_r2[0] * r_w[0] + p_r2[1] * r_w[1] + p_r2[2] * r_w[2];
+            const double A  = p_r2[0] * r_w[0] + p_r2[1] * r_w[1] + p_r2[2] * r_w[2];
             const double Ax = -u1[2] * p_r2[1] + u1[1] * p_r2[2];
             const double Ay = u1[2] * p_r2[0] - u1[0] * p_r2[2];
             const double Az = -u1[1] * p_r2[0] + u1[0] * p_r2[1];
@@ -322,9 +306,8 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
                 ).finished();
             // clang-format on
             // Build Jacobian
-            mrpt::math::CMatrixFixed<double, 4, 12>& J_aux =
-                jacobian.value().get();
-            J_aux.block<4, 12>(0, 0) = J1 * J2;
+            mrpt::math::CMatrixFixed<double, 4, 12>& J_aux = jacobian.value().get();
+            J_aux.block<4, 12>(0, 0)                       = J1 * J2;
 
             std::cout << "\nJ1:\n" << J1 << "\nJ2:\n" << J2 << "\n";
         }
@@ -335,8 +318,7 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
 }
 
 mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_plane2plane(
-    const mp2p_icp::matched_plane_t&                            pairing,
-    const mrpt::poses::CPose3D&                                 relativePose,
+    const mp2p_icp::matched_plane_t& pairing, const mrpt::poses::CPose3D& relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     MRPT_START

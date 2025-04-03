@@ -43,8 +43,8 @@ class PointCloudToVoxelGridSingle
     /** The list of point indices in each voxel */
     struct voxel_t
     {
-        std::optional<mrpt::math::TPoint3Df> point;
-        std::optional<size_t>                pointIdx;  // Index in the source
+        std::optional<mrpt::math::TPoint3Df>         point;
+        std::optional<size_t>                        pointIdx;  // Index in the source
         std::optional<const mrpt::maps::CPointsMap*> source;
 
         /** Even if we keep the first point only, count them all. */
@@ -53,10 +53,7 @@ class PointCloudToVoxelGridSingle
 
     struct indices_t
     {
-        indices_t(int32_t cx, int32_t cy, int32_t cz)
-            : cx_(cx), cy_(cy), cz_(cz)
-        {
-        }
+        indices_t(int32_t cx, int32_t cy, int32_t cz) : cx_(cx), cy_(cy), cz_(cz) {}
 
         int32_t cx_ = 0, cy_ = 0, cz_ = 0;
 
@@ -85,8 +82,7 @@ class PointCloudToVoxelGridSingle
             static_assert(offsetof(indices_t, cz_) == 2 * sizeof(uint32_t));
 
             const uint32_t* vec = reinterpret_cast<const uint32_t*>(&k);
-            return ((1 << 20) - 1) &
-                   (vec[0] * 73856093 ^ vec[1] * 19349663 ^ vec[2] * 83492791);
+            return ((1 << 20) - 1) & (vec[0] * 73856093 ^ vec[1] * 19349663 ^ vec[2] * 83492791);
         }
 
         // k1 < k2?
@@ -98,14 +94,10 @@ class PointCloudToVoxelGridSingle
         }
     };
 
-    inline int32_t coord2idx(float xyz) const
-    {
-        return static_cast<int32_t>(xyz / resolution_);
-    }
+    inline int32_t coord2idx(float xyz) const { return static_cast<int32_t>(xyz / resolution_); }
 
     void visit_voxels(
-        const std::function<void(const indices_t idx, const voxel_t& vxl)>&
-            userCode) const;
+        const std::function<void(const indices_t idx, const voxel_t& vxl)>& userCode) const;
 
     /// Returns the number of occupied voxels.
     size_t size() const;

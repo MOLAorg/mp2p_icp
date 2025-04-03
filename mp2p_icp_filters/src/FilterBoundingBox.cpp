@@ -15,8 +15,7 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
 
-IMPLEMENTS_MRPT_OBJECT(
-    FilterBoundingBox, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
+IMPLEMENTS_MRPT_OBJECT(FilterBoundingBox, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
@@ -44,10 +43,8 @@ void FilterBoundingBox::Parameters::load_from_yaml(
 
     for (int i = 0; i < 3; i++)
     {
-        parent.parseAndDeclareParameter(
-            bboxMin.at(i).as<std::string>(), bounding_box.min[i]);
-        parent.parseAndDeclareParameter(
-            bboxMax.at(i).as<std::string>(), bounding_box.max[i]);
+        parent.parseAndDeclareParameter(bboxMin.at(i).as<std::string>(), bounding_box.min[i]);
+        parent.parseAndDeclareParameter(bboxMax.at(i).as<std::string>(), bounding_box.max[i]);
     }
 }
 
@@ -73,24 +70,22 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
     // In:
     const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
-        pcPtr, mrpt::format(
-                   "Input point cloud layer '%s' was not found.",
-                   params_.input_pointcloud_layer.c_str()));
+        pcPtr,
+        mrpt::format(
+            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr insidePc = GetOrCreatePointLayer(
-        inOut, params_.inside_pointcloud_layer,
-        true /*allow empty for nullptr*/,
+        inOut, params_.inside_pointcloud_layer, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
     if (insidePc) insidePc->reserve(insidePc->size() + pc.size() / 10);
 
     mrpt::maps::CPointsMap::Ptr outsidePc = GetOrCreatePointLayer(
-        inOut, params_.outside_pointcloud_layer,
-        true /*allow empty for nullptr*/,
+        inOut, params_.outside_pointcloud_layer, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -102,8 +97,7 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
 
     for (size_t i = 0; i < xs.size(); i++)
     {
-        const bool isInside =
-            params_.bounding_box.containsPoint({xs[i], ys[i], zs[i]});
+        const bool isInside = params_.bounding_box.containsPoint({xs[i], ys[i], zs[i]});
 
         auto* targetPc = isInside ? insidePc.get() : outsidePc.get();
 
