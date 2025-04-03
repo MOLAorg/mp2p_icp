@@ -33,13 +33,16 @@
 #include <Eigen/Dense>
 #include <iostream>
 
-static int  NUM_REPS           = mrpt::get_env<int>("NUM_REPS", 3);
-static bool DO_SAVE_STAT_FILES = mrpt::get_env<bool>("DO_SAVE_STAT_FILES", false);
-static bool DO_PRINT_ALL       = mrpt::get_env<bool>("DO_PRINT_ALL", false);
+namespace
+{
+
+int  NUM_REPS           = mrpt::get_env<int>("NUM_REPS", 3);
+bool DO_SAVE_STAT_FILES = mrpt::get_env<bool>("DO_SAVE_STAT_FILES", false);
+bool DO_PRINT_ALL       = mrpt::get_env<bool>("DO_PRINT_ALL", false);
 
 const std::string datasetDir = MP2P_DATASET_DIR;
 
-static void test_icp(
+void test_icp(
     const std::string& inFile, const std::string& icpClassName, const std::string& solverName,
     const std::string& matcherName, int pointDecimation)
 {
@@ -221,6 +224,8 @@ static void test_icp(
             "% Columns: norm GT_rot, norm_GT_XYZ, norm(SO3_error) "
             "norm(XYZ_error) icp_time\n\n");
 }
+
+}  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {

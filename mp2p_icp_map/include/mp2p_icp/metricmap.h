@@ -30,6 +30,12 @@
 #include <string>
 #include <vector>
 
+/// Frwd declarations:
+namespace mrpt::containers
+{
+class yaml;
+}
+
 namespace mp2p_icp
 {
 /** \addtogroup mp2p_icp_map_grp
@@ -254,11 +260,18 @@ const mrpt::maps::NearestNeighborsCapable* MapToNN(
 const mp2p_icp::NearestPlaneCapable* MapToNP(
     const mrpt::maps::CMetricMap& map, bool throwIfNotImplemented);
 
-// Serialization of geo-reference information:
+/// Serialization of geo-reference information in binary form:
 mrpt::serialization::CArchive& operator>>(
     mrpt::serialization::CArchive& in, std::optional<metric_map_t::Georeferencing>& g);
+/// Serialization of geo-reference information in binary form:
 mrpt::serialization::CArchive& operator<<(
     mrpt::serialization::CArchive& out, const std::optional<metric_map_t::Georeferencing>& g);
+
+/// Serialization of geo-reference information as YAML
+std::optional<metric_map_t::Georeferencing> FromYAML(const mrpt::containers::yaml& yaml_data);
+
+/// Serialization of geo-reference information as YAML
+mrpt::containers::yaml ToYAML(const std::optional<metric_map_t::Georeferencing>& gref);
 
 /** @} */
 

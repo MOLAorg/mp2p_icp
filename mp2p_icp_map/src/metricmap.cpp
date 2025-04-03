@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp/metricmap.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/io/CFileGZOutputStream.h>
 #include <mrpt/maps/CVoxelMap.h>
@@ -695,4 +696,66 @@ mrpt::serialization::CArchive& mp2p_icp::operator<<(
         out << g->T_enu_to_map;
     }
     return out;
+}
+
+std::optional<metric_map_t::Georeferencing> mp2p_icp::FromYAML(
+    const mrpt::containers::yaml& yaml_data)
+{
+    ASSERT_(yaml_data.isMap());
+    ASSERT_(yaml_data.has("type"));
+    ASSERT_(yaml_data.has("defined"));
+
+    ASSERT_EQUAL_(yaml_data["type"].as<std::string>(), GEOREF_MAGIC_STR);
+    const bool defined = yaml_data["defined"].as<bool>();
+    if (!defined)
+    {  // empty:
+        return {};
+    }
+
+    std::optional<metric_map_t::Georeferencing> georef;
+
+    auto& g                       = georef.emplace();
+    g.geo_coord.lon.decimal_value = yaml_data["geo_coord"]["lon"].as<double>();
+    g.geo_coord.lat.decimal_value = yaml_data["geo_coord"]["lat"].as<double>();
+    g.geo_coord.height            = yaml_data["geo_coord"]["altitude"].as<double>();
+
+    const auto& ym = yaml_data["T_enu_to_map"]["mean"];
+    g.T_enu_to_map.mean.x(ym["x"].as<double>());
+    g.T_enu_to_map.mean.y(ym["y"].as<double>());
+    g.T_enu_to_map.mean.z(ym["z"].as<double>());
+
+    yaml_data["T_enu_to_map"]["cov"].toMatrix(g.T_enu_to_map.cov);
+
+    return georef;
+}
+
+mrpt::containers::yaml mp2p_icp::ToYAML(const std::optional<metric_map_t::Georeferencing>& gref)
+{
+    mrpt::containers::yaml data = mrpt::containers::yaml::Map();
+
+    data["type"]    = GEOREF_MAGIC_STR;
+    data["defined"] = gref.has_value();
+    if (gref)
+    {
+        {
+            mrpt::containers::yaml gcoord = mrpt::containers::yaml::Map();
+            gcoord["lon"]                 = gref->geo_coord.lon;
+            gcoord["lat"]                 = gref->geo_coord.lat;
+            gcoord["altitude"]            = gref->geo_coord.height;
+
+            data["geo_coord"] = gcoord;
+        }
+
+        mrpt::containers::yaml pose_mean = mrpt::containers::yaml::Map();
+
+        pose_mean["x"] = gref->T_enu_to_map.mean.x();
+        pose_mean["y"] = gref->T_enu_to_map.mean.y();
+        pose_mean["z"] = gref->T_enu_to_map.mean.z();
+
+        mrpt::containers::yaml pose = mrpt::containers::yaml::Map();
+        pose["mean"]                = pose_mean;
+        pose["cov"]                 = mrpt::containers::yaml::FromMatrix(gref->T_enu_to_map.cov);
+        data["T_enu_to_map"]        = pose;
+    }
+    return data;
 }

@@ -16,7 +16,9 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 
-static mrpt::maps::CSimplePointsMap::Ptr generateGlobalPoints()
+namespace
+{
+ mrpt::maps::CSimplePointsMap::Ptr generateGlobalPoints()
 {
     auto pts = mrpt::maps::CSimplePointsMap::Create();
 
@@ -37,7 +39,7 @@ static mrpt::maps::CSimplePointsMap::Ptr generateGlobalPoints()
     return pts;
 }
 
-static mrpt::maps::CSimplePointsMap::Ptr generateLocalPoints()
+mrpt::maps::CSimplePointsMap::Ptr generateLocalPoints()
 {
     auto pts = mrpt::maps::CSimplePointsMap::Create();
 
@@ -45,6 +47,7 @@ static mrpt::maps::CSimplePointsMap::Ptr generateLocalPoints()
     pts->insertPointFast(2.f, 0.f, 0.f);
 
     return pts;
+}
 }
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
