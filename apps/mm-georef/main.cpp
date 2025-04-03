@@ -20,8 +20,15 @@
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
 
+#include <fstream>
+
 namespace
 {
+
+bool is_binary_file(const std::string& fil)
+{
+    return mrpt::system::extractFileExtension(fil) == "georef";
+}
 
 // CLI flags:
 struct Cli
@@ -32,8 +39,13 @@ struct Cli
         "m", "mao", "Input/Output .mm file to operate on", true, "theMap.mm", "theMap.mm", cmd};
 
     TCLAP::ValueArg<std::string> argGeoRef{
-        "g",  "georef",       "Input/Output binary `.georef` file with geo-referencing metadata",
-        true, "myMap.georef", "myMap.georef",
+        "g",
+        "georef",
+        "Input/Output file with geo-referencing metadata, in binary format (`*.georef`) or yaml "
+        "(*.yaml,*.yml) ",
+        true,
+        "(myMap.georef|myMap.yaml)",
+        "(myMap.georef|myMap.yaml)",
         cmd};
 
     TCLAP::SwitchArg argExtract{
@@ -74,9 +86,19 @@ void run_mm_extract(Cli& cli)
     std::cout << "[mm-georef] Writing geo-referencing metamap to: '" << filOut << "'..."
               << std::endl;
 
-    mrpt::io::CFileGZOutputStream f(filOut);
-    auto                          arch = mrpt::serialization::archiveFrom(f);
-    arch << mm.georeferencing;
+    if (is_binary_file(filOut))
+    {
+        mrpt::io::CFileGZOutputStream f(filOut);
+        auto                          arch = mrpt::serialization::archiveFrom(f);
+        arch << mm.georeferencing;
+    }
+    else
+    {
+        const auto    yamlData = mp2p_icp::ToYAML(mm.georeferencing);
+        std::ofstream of(filOut);
+        ASSERT_(of.is_open());
+        of << yamlData;
+    }
 }
 
 void run_mm_inject(Cli& cli)
@@ -86,11 +108,20 @@ void run_mm_inject(Cli& cli)
     std::cout << "[mm-georef] Reading geo-referencing metamap from: '" << filIn << "'..."
               << std::endl;
 
-    mrpt::io::CFileGZInputStream f(filIn);
-    auto                         arch = mrpt::serialization::archiveFrom(f);
-
     std::optional<mp2p_icp::metric_map_t::Georeferencing> g;
-    arch >> g;
+
+    if (is_binary_file(filIn))
+    {
+        mrpt::io::CFileGZInputStream f(filIn);
+        auto                         arch = mrpt::serialization::archiveFrom(f);
+        arch >> g;
+    }
+    else
+    {
+        const auto yamlData = mrpt::containers::yaml::FromFile(filIn);
+
+        g = mp2p_icp::FromYAML(yamlData);
+    }
 
     const auto& filMap = cli.argMap.getValue();
 
