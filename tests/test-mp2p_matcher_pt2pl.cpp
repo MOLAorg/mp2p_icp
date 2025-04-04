@@ -18,7 +18,7 @@
 
 namespace
 {
- mrpt::maps::CSimplePointsMap::Ptr generateGlobalPoints()
+mrpt::maps::CSimplePointsMap::Ptr generateGlobalPoints()
 {
     auto pts = mrpt::maps::CSimplePointsMap::Create();
 
@@ -48,7 +48,7 @@ mrpt::maps::CSimplePointsMap::Ptr generateLocalPoints()
 
     return pts;
 }
-}
+}  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
