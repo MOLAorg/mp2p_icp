@@ -24,7 +24,9 @@ void unit_test()
     {
         mp2p_icp::metric_map_t map;
 
-        const auto str = (std::stringstream() << mp2p_icp::ToYAML(map.georeferencing)).str();
+        std::stringstream ss;
+        ss << mp2p_icp::ToYAML(map.georeferencing);
+        const auto str = ss.str();
 
         const auto gRead = mp2p_icp::FromYAML(mrpt::containers::yaml::FromText(str));
         ASSERT_EQUAL_(gRead.has_value(), map.georeferencing.has_value());
@@ -40,7 +42,9 @@ void unit_test()
         gIn.T_enu_to_map.cov.setDiagonal(0.1);
         gIn.T_enu_to_map.mean = mrpt::poses::CPose3D(1.0, 2.0, 3.0, 0, 0, 0);
 
-        const auto str = (std::stringstream() << mp2p_icp::ToYAML(map.georeferencing)).str();
+        std::stringstream ss;
+        ss << mp2p_icp::ToYAML(map.georeferencing);
+        const auto str = ss.str();
 
         const auto gRead = mp2p_icp::FromYAML(mrpt::containers::yaml::FromText(str));
         ASSERT_EQUAL_(gRead.has_value(), map.georeferencing.has_value());
