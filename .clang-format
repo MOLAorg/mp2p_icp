@@ -9,7 +9,7 @@ AlignConsecutiveDeclarations: true
 #AlignOperands:   false
 AlignTrailingComments: false # Should be off, causes many dummy problems!!
 #AllowAllParametersOfDeclarationOnNextLine: true
-AllowShortBlocksOnASingleLine: true
+AllowShortBlocksOnASingleLine: false
 #AllowShortCaseLabelsOnASingleLine: false
 #AllowShortFunctionsOnASingleLine: Empty
 #AllowShortIfStatementsOnASingleLine: false

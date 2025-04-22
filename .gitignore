@@ -4,6 +4,15 @@ CMakeFiles
 CMakeScripts
 Testing
 build
+log
+install
 build-*
 CTestTestfile.cmake
-.vscode
+install_manifest.txt
+
+
+#visual studio
+.vs/*
+.vscode/*
+!.vscode/settings.json
+**/.vscode
