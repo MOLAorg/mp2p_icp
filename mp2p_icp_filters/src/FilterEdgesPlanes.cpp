@@ -180,7 +180,10 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
                 // Filter out horizontal planes, since their uneven density
                 // makes ICP fail to converge.
                 // A plane on the ground has its 0'th eigenvector like [0 0 1]
-                if (std::abs(ev0.z) < 0.9f) { dest = pc_planes.get(); }
+                if (std::abs(ev0.z) < 0.9f)
+                {
+                    dest = pc_planes.get();
+                }
             }
             if (dest != nullptr)
             {

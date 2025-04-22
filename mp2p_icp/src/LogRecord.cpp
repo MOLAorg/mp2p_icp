@@ -24,13 +24,19 @@ void    LogRecord::serializeTo(mrpt::serialization::CArchive& out) const
         out.WriteAs<bool>(true);
         out << *pcGlobal;
     }
-    else { out.WriteAs<bool>(false); }
+    else
+    {
+        out.WriteAs<bool>(false);
+    }
     if (pcLocal)
     {
         out.WriteAs<bool>(true);
         out << *pcLocal;
     }
-    else { out.WriteAs<bool>(false); }
+    else
+    {
+        out.WriteAs<bool>(false);
+    }
     out << initialGuessLocalWrtGlobal;
     out << icpParameters;
     out << icpResult;

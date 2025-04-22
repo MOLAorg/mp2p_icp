@@ -121,7 +121,10 @@ void run_mm_filter(Cli& cli)
     {
         filters = mp2p_icp_filters::filter_pipeline_from_yaml(yamlData["filters"], logLevel);
     }
-    else { std::cout << "[sm2mm] Warning: no filters defined in the pipeline." << std::endl; }
+    else
+    {
+        std::cout << "[sm2mm] Warning: no filters defined in the pipeline." << std::endl;
+    }
 
     // Parameters for twist, and possibly other user-provided variables.
     mp2p_icp::ParameterSource ps;

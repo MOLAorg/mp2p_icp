@@ -36,7 +36,10 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
     input_pointcloud_layer.clear();
 
     auto cfgIn = c["input_pointcloud_layer"];
-    if (cfgIn.isScalar()) { input_pointcloud_layer.push_back(cfgIn.as<std::string>()); }
+    if (cfgIn.isScalar())
+    {
+        input_pointcloud_layer.push_back(cfgIn.as<std::string>());
+    }
     else
     {
         ASSERTMSG_(
@@ -217,7 +220,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
                     outPc->insertPointFast(vxl.point->x, vxl.point->y, *params_.flatten_to);
                 }
-                else { outPc->insertPointFrom(*vxl.source.value(), *vxl.pointIdx); }
+                else
+                {
+                    outPc->insertPointFrom(*vxl.source.value(), *vxl.pointIdx);
+                }
             });
     }
     else
@@ -331,7 +337,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 {
                     if (insertPt)
                         outPc->insertPointFast(insertPt->x, insertPt->y, insertPt->z);
-                    else { outPc->insertPointFrom(pc, insertPtIdx); }
+                    else
+                    {
+                        outPc->insertPointFrom(pc, insertPtIdx);
+                    }
                 }
             });
 

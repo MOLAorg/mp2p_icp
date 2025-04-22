@@ -85,7 +85,10 @@ void run_mm2txt()
         {
             xyzi->saveXYZI_to_text_file(filName);
         }
-        else { pts->save3D_to_text_file(filName); }
+        else
+        {
+            pts->save3D_to_text_file(filName);
+        }
     }
 }
 

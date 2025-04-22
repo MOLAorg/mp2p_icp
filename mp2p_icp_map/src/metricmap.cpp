@@ -86,7 +86,10 @@ void metric_map_t::serializeFrom(mrpt::serialization::CArchive& in, uint8_t vers
                 layers[name] = mrpt::ptr_cast<mrpt::maps::CMetricMap>::from(in.ReadObject());
             }
 
-            if (version >= 1) { in >> id >> label; }
+            if (version >= 1)
+            {
+                in >> id >> label;
+            }
             else
             {
                 id.reset();
@@ -100,12 +103,21 @@ void metric_map_t::serializeFrom(mrpt::serialization::CArchive& in, uint8_t vers
                 auto& g = georeferencing.emplace();
                 in >> g.geo_coord.lat.decimal_value >> g.geo_coord.lon.decimal_value >>
                     g.geo_coord.height;
-                if (version >= 3) { in >> g.T_enu_to_map; }
-                else { in >> g.T_enu_to_map.mean; }
+                if (version >= 3)
+                {
+                    in >> g.T_enu_to_map;
+                }
+                else
+                {
+                    in >> g.T_enu_to_map.mean;
+                }
             }
 
             // delegated function:
-            if (version >= 4) { in >> georeferencing; }
+            if (version >= 4)
+            {
+                in >> georeferencing;
+            }
 
             // Optional user data:
             derivedSerializeFrom(in);
@@ -196,7 +208,10 @@ void metric_map_t::get_visualization_points(
     else
     {
         // render all layers with the same params:
-        for (const auto& kv : layers) { get_visualization_map_layer(o, p.allLayers, kv.second); }
+        for (const auto& kv : layers)
+        {
+            get_visualization_map_layer(o, p.allLayers, kv.second);
+        }
     }
 
     MRPT_END
@@ -235,7 +250,10 @@ void metric_map_t::get_visualization_map_layer(
             return;
         }
     }
-    else { pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map); }
+    else
+    {
+        pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
+    }
 
     if (!pts || (p.colorMode.has_value() && p.colorMode->keep_original_cloud_color))
     {
@@ -365,7 +383,10 @@ void metric_map_t::merge_with(
                     pose.composePoint(l.pBase), pose.rotateVector(l.getDirectorVector()));
             });
     }
-    else { std::copy(otherPc.lines.begin(), otherPc.lines.end(), std::back_inserter(lines)); }
+    else
+    {
+        std::copy(otherPc.lines.begin(), otherPc.lines.end(), std::back_inserter(lines));
+    }
 
     // Planes:
     if (otherRelativePose.has_value())
@@ -383,7 +404,10 @@ void metric_map_t::merge_with(
                 return g;
             });
     }
-    else { std::copy(otherPc.planes.begin(), otherPc.planes.end(), std::back_inserter(planes)); }
+    else
+    {
+        std::copy(otherPc.planes.begin(), otherPc.planes.end(), std::back_inserter(planes));
+    }
 
     // Points:
     for (const auto& layer : otherPc.layers)
@@ -599,7 +623,10 @@ mrpt::maps::CPointsMap::Ptr metric_map_t::point_layer(const layer_name_t& name) 
 
 const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(const mrpt::maps::CMetricMap& map)
 {
-    if (auto ptsMap = dynamic_cast<const mrpt::maps::CPointsMap*>(&map); ptsMap) { return ptsMap; }
+    if (auto ptsMap = dynamic_cast<const mrpt::maps::CPointsMap*>(&map); ptsMap)
+    {
+        return ptsMap;
+    }
     if (auto voxelMap = dynamic_cast<const mrpt::maps::CVoxelMap*>(&map); voxelMap)
     {
         return voxelMap->getOccupiedVoxels().get();
@@ -613,7 +640,10 @@ const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(const mrpt::maps::CMetric
 
 mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(mrpt::maps::CMetricMap& map)
 {
-    if (auto ptsMap = dynamic_cast<mrpt::maps::CPointsMap*>(&map); ptsMap) { return ptsMap; }
+    if (auto ptsMap = dynamic_cast<mrpt::maps::CPointsMap*>(&map); ptsMap)
+    {
+        return ptsMap;
+    }
     if (auto voxelMap = dynamic_cast<mrpt::maps::CVoxelMap*>(&map); voxelMap)
     {
         return voxelMap->getOccupiedVoxels().get();

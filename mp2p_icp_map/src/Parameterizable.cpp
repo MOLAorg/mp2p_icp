@@ -68,8 +68,14 @@ void ParameterSource::realize()
                         "[ParameterSource] Attached parameter target is "
                         "monostate!");
                 }
-                else if constexpr (std::is_same_v<T, double*>) { *arg = val; }
-                else if constexpr (std::is_same_v<T, float*>) { *arg = static_cast<float>(val); }
+                else if constexpr (std::is_same_v<T, double*>)
+                {
+                    *arg = val;
+                }
+                else if constexpr (std::is_same_v<T, float*>)
+                {
+                    *arg = static_cast<float>(val);
+                }
                 else if constexpr (std::is_same_v<T, uint32_t*>)
                 {
                     *arg = static_cast<uint32_t>(val);

@@ -32,7 +32,10 @@ int commandExportKF()
     const auto outTwistFil = cli->arg_output_twist.getValue();
 
     std::optional<std::ofstream> outTwist;
-    if (!outTwistFil.empty()) { outTwist.emplace(outTwistFil, std::ofstream::out); }
+    if (!outTwistFil.empty())
+    {
+        outTwist.emplace(outTwistFil, std::ofstream::out);
+    }
 
     mrpt::poses::CPose3DInterpolator kfs;
 

@@ -154,8 +154,14 @@ void run_mm_georef(Cli& cli)
         if (!mrpt::system::loadPluginModules(plugins, errMsg)) throw std::runtime_error(errMsg);
     }
 
-    if (cli.argExtract.isSet()) { return run_mm_extract(cli); }
-    else if (cli.argInject.isSet()) { return run_mm_inject(cli); }
+    if (cli.argExtract.isSet())
+    {
+        return run_mm_extract(cli);
+    }
+    else if (cli.argInject.isSet())
+    {
+        return run_mm_inject(cli);
+    }
 
     THROW_EXCEPTION(
         "One of either '--extract-from-map' or '--inject-to-map' flags must be "

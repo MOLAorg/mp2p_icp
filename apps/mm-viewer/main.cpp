@@ -353,7 +353,10 @@ void main_show_gui()
 {
     using namespace std::string_literals;
 
-    if (argMapFile.isSet()) { loadMapFile(argMapFile.getValue()); }
+    if (argMapFile.isSet())
+    {
+        loadMapFile(argMapFile.getValue());
+    }
 
     // Get user app config file
     char appCfgFile[1024];
@@ -437,7 +440,10 @@ void main_show_gui()
                         }
                     });
             }
-            else { lb = w->add<nanogui::TextBox>("  "); }
+            else
+            {
+                lb = w->add<nanogui::TextBox>("  ");
+            }
 
             lb->setFontSize(MID_FONT_SIZE);
             lb->setAlignment(nanogui::TextBox::Alignment::Left);
@@ -915,7 +921,10 @@ void rebuild_3d_view()
                 const auto bb = pc->boundingBox();
                 if (!mapBbox.has_value())
                     mapBbox = bb;
-                else { mapBbox = mapBbox->unionWith(bb); }
+                else
+                {
+                    mapBbox = mapBbox->unionWith(bb);
+                }
             }
             else
             {

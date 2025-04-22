@@ -1124,7 +1124,10 @@ void rebuild_3d_view(bool regenerateMaps)
 
         tbPairings->setValue(pairsToViz->contents_summary());
     }
-    else { tbPairings->setValue("None selected (mark one of the checkboxes below)"); }
+    else
+    {
+        tbPairings->setValue("None selected (mark one of the checkboxes below)");
+    }
 
     // XYZ corner overlay viewport:
     {

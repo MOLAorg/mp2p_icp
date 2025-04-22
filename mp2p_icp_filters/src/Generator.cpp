@@ -73,7 +73,10 @@ void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Gene
                     trg[key] = v.as<std::string>();
                     continue;
                 }
-                else { THROW_EXCEPTION_FMT("scalar key '%s' not allowed here.", key.c_str()); }
+                else
+                {
+                    THROW_EXCEPTION_FMT("scalar key '%s' not allowed here.", key.c_str());
+                }
             }
             // if should then be a map
             if (!v.isMap())

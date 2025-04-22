@@ -28,7 +28,10 @@ void FilterDeleteLayer::Parameters::load_from_yaml(const mrpt::containers::yaml&
     pointcloud_layer_to_remove.clear();
 
     auto cfgIn = c["pointcloud_layer_to_remove"];
-    if (cfgIn.isScalar()) { pointcloud_layer_to_remove.push_back(cfgIn.as<std::string>()); }
+    if (cfgIn.isScalar())
+    {
+        pointcloud_layer_to_remove.push_back(cfgIn.as<std::string>());
+    }
     else
     {
         ASSERTMSG_(

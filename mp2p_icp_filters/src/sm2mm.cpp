@@ -52,7 +52,10 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         filters =
             mp2p_icp_filters::filter_pipeline_from_yaml(yamlData["filters"], options.verbosity);
     }
-    else { std::cout << "[sm2mm] Warning: no filters defined in the pipeline." << std::endl; }
+    else
+    {
+        std::cout << "[sm2mm] Warning: no filters defined in the pipeline." << std::endl;
+    }
 
     // Final, overall filters for the whole metric map:
     mp2p_icp_filters::FilterPipeline finalFilters;
