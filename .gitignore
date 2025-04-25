@@ -16,3 +16,4 @@ install_manifest.txt
 .vscode/*
 !.vscode/settings.json
 **/.vscode
+.cache
