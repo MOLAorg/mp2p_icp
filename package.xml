@@ -9,7 +9,7 @@
   <description>A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++</description>
 
   <maintainer email="joseluisblancoc@gmail.com">Jose-Luis Blanco-Claraco</maintainer>
-  <license file="COPYING">BSD</license>
+  <license file="COPYING">BSD-3-Clause</license>
 
   <url type="website">https://github.com/MOLAorg/mp2p_icp</url>
 
