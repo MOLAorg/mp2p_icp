@@ -579,7 +579,7 @@ void from_env_var_to_list(
 #if defined(_WIN32)
     const auto delim = std::string(";");
 #else
-    const auto delim = std::string(":");
+    const auto delim  = std::string(":");
 #endif
 
     const auto               additionalPaths = mrpt::get_env<std::string>(env_var_name);
@@ -643,7 +643,7 @@ void Generator::internalLoadUserPlugin(const std::string& moduleToLoad) const
     void* handle = dlopen(absPath.c_str(), RTLD_LAZY);
 
 #else
-    HMODULE handle = LoadLibrary(absPath.c_str());
+    HMODULE    handle = LoadLibrary(absPath.c_str());
 #endif
     if (handle == nullptr)
     {
