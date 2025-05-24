@@ -63,7 +63,10 @@ void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Gene
         for (const auto& [k, v] : mmd)
         {
             const auto key = k.as<std::string>();
-            if (v.isNullNode()) continue;  // ignore
+            if (v.isNullNode())
+            {
+                continue;  // ignore
+            }
             if (v.isScalar())
             {
                 if (allowedTopKeys.count(key) != 0)
@@ -73,14 +76,14 @@ void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Gene
                     trg[key] = v.as<std::string>();
                     continue;
                 }
-                else
-                {
-                    THROW_EXCEPTION_FMT("scalar key '%s' not allowed here.", key.c_str());
-                }
+
+                THROW_EXCEPTION_FMT("scalar key '%s' not allowed here.", key.c_str());
             }
             // if should then be a map
             if (!v.isMap())
+            {
                 THROW_EXCEPTION_FMT("key '%s' must be either a scalar or a map", key.c_str());
+            }
 
             trg[key]     = mrpt::containers::yaml::Map();
             auto& newMap = trg.asMap().at(key).asMap();
@@ -148,10 +151,7 @@ bool Generator::process(
     {
         return implProcessDefault(o, out, robotPose);
     }
-    else
-    {  //
-        return implProcessCustomMap(o, out, robotPose);
-    }
+    return implProcessCustomMap(o, out, robotPose);
 
     MRPT_END
 }
@@ -202,8 +202,10 @@ bool Generator::filterPointCloud(  //
     {
         outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
         if (!outPc)
+        {
             THROW_EXCEPTION_FMT(
                 "Layer '%s' must be of point cloud type.", params_.target_layer.c_str());
+        }
     }
     else
     {
@@ -281,7 +283,10 @@ bool mp2p_icp_filters::apply_generators(
         ASSERT_(g.get() != nullptr);
         for (const auto& obs : sf)
         {
-            if (!obs) continue;
+            if (!obs)
+            {
+                continue;
+            }
             const bool handled = g->process(*obs, output, robotPose);
 
             anyHandled = anyHandled || handled;
@@ -293,7 +298,10 @@ bool mp2p_icp_filters::apply_generators(
 GeneratorSet mp2p_icp_filters::generators_from_yaml(
     const mrpt::containers::yaml& c, const mrpt::system::VerbosityLevel& vLevel)
 {
-    if (c.isNullNode()) return {};
+    if (c.isNullNode())
+    {
+        return {};
+    }
 
     ASSERT_(c.isSequence());
 
@@ -348,7 +356,9 @@ bool Generator::implProcessDefault(
         !std::regex_match(obsClassName, process_class_names_regex_) ||
         !std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
     {
-        MRPT_LOG_DEBUG_STREAM("Skipping this observation");
+        MRPT_LOG_DEBUG_STREAM(
+            "Skipping observation of type '" << obsClassName << "' with label '" << o.sensorLabel
+                                             << "'.");
         return false;
     }
 
@@ -356,18 +366,26 @@ bool Generator::implProcessDefault(
     o.load();
 
     if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
+    {
         processed = filterRotatingScan(*oRS, out, robotPose);
+    }
     else if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
     {
         ASSERT_(o0->pointcloud);
         processed = filterPointCloud(*o0->pointcloud, o0->sensorPose, out, robotPose);
     }
     else if (auto o1 = dynamic_cast<const CObservation2DRangeScan*>(&o); o1)
+    {
         processed = filterScan2D(*o1, out, robotPose);
+    }
     else if (auto o2 = dynamic_cast<const CObservation3DRangeScan*>(&o); o2)
+    {
         processed = filterScan3D(*o2, out, robotPose);
+    }
     else if (auto o3 = dynamic_cast<const CObservationVelodyneScan*>(&o); o3)
+    {
         processed = filterVelodyneScan(*o3, out, robotPose);
+    }
 
     // done?
     if (processed)
@@ -405,21 +423,19 @@ bool Generator::implProcessDefault(
 
         return true;
     }
-    else
-    {
-        // General case:
-        const bool insertDone = o.insertObservationInto(*outPc, robotPose);
 
-        if (!insertDone && params_.throw_on_unhandled_observation_class)
-        {
-            THROW_EXCEPTION_FMT(
-                "Observation of type '%s' could not be converted into a "
-                "point cloud, and none of the specializations handled it, "
-                "so I do not know what to do with this observation!",
-                obsClassName);
-        }
-        return insertDone;
+    // General case:
+    const bool insertDone = o.insertObservationInto(*outPc, robotPose);
+
+    if (!insertDone && params_.throw_on_unhandled_observation_class)
+    {
+        THROW_EXCEPTION_FMT(
+            "Observation of type '%s' could not be converted into a "
+            "point cloud, and none of the specializations handled it, "
+            "so I do not know what to do with this observation!",
+            obsClassName);
     }
+    return insertDone;
 
     // o.unload();  // DON'T! We don't know who else is using the data
 }
@@ -481,7 +497,10 @@ bool Generator::implProcessCustomMap(
             // fill the rest sub-sections:
             for (const auto& [k, v] : c.asMap())
             {
-                if (!v.isMap()) continue;
+                if (!v.isMap())
+                {
+                    continue;
+                }
                 const auto keyVal   = k.as<std::string>();
                 const auto sectName = cfgPrefix + "_"s + mapClass + "_00_"s + keyVal;
                 for (const auto& [kk, vv] : v.asMap())
@@ -518,7 +537,9 @@ bool Generator::implProcessCustomMap(
         !std::regex_match(obsClassName, process_class_names_regex_) ||
         !std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
     {
-        MRPT_LOG_DEBUG_STREAM("Skipping this observation");
+        MRPT_LOG_DEBUG_STREAM(
+            "Skipping observation of type '" << obsClassName << "' with label '" << o.sensorLabel
+                                             << "'.");
         return false;
     }
 
@@ -545,7 +566,10 @@ namespace
 {
 void safe_add_to_list(const std::string& path, std::vector<std::string>& lst)
 {
-    if (mrpt::system::directoryExists(path)) lst.push_back(path);
+    if (mrpt::system::directoryExists(path))
+    {
+        lst.push_back(path);
+    }
 }
 
 void from_env_var_to_list(
@@ -555,7 +579,7 @@ void from_env_var_to_list(
 #if defined(_WIN32)
     const auto delim = std::string(";");
 #else
-    const auto delim  = std::string(":");
+    const auto delim = std::string(":");
 #endif
 
     const auto               additionalPaths = mrpt::get_env<std::string>(env_var_name);
@@ -565,7 +589,10 @@ void from_env_var_to_list(
     // Append to list:
     for (const auto& path : pathList)
     {
-        if (!subStringPattern.empty() && path.find(subStringPattern) == std::string::npos) continue;
+        if (!subStringPattern.empty() && path.find(subStringPattern) == std::string::npos)
+        {
+            continue;
+        }
         safe_add_to_list(path, lst);
     }
 }
@@ -616,12 +643,15 @@ void Generator::internalLoadUserPlugin(const std::string& moduleToLoad) const
     void* handle = dlopen(absPath.c_str(), RTLD_LAZY);
 
 #else
-    HMODULE    handle = LoadLibrary(absPath.c_str());
+    HMODULE handle = LoadLibrary(absPath.c_str());
 #endif
     if (handle == nullptr)
     {
         const char* err = dlerror();
-        if (!err) err = "(error calling dlerror())";
+        if (!err)
+        {
+            err = "(error calling dlerror())";
+        }
         THROW_EXCEPTION(
             mrpt::format("Error loading module: `%s`\ndlerror(): `%s`", absPath.c_str(), err));
     }
