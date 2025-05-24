@@ -41,7 +41,7 @@ struct Cli
         "YAML file with the mp2p_icp_filters pipeline to load. It must "
         "contain a `filters:` section."
         "See the app README for examples:\n"
-        "https://github.com/MOLAorg/mp2p_icp/tree/master/apps/mm-filter",
+        "https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/mm-filter",
         false,
         "pipeline.yaml",
         "pipeline.yaml",

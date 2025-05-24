@@ -1,4 +1,4 @@
-[![CircleCI](https://img.shields.io/circleci/build/gh/MOLAorg/mp2p_icp/master.svg)](https://circleci.com/gh/MOLAorg/mp2p_icp) [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://docs.mola-slam.org/mp2p_icp/)
+[![CircleCI](https://img.shields.io/circleci/build/gh/MOLAorg/mp2p_icp/develop.svg)](https://circleci.com/gh/MOLAorg/mp2p_icp) [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://docs.mola-slam.org/mp2p_icp/)
 
 
 | Distro | Build dev | Build releases | Stable version |

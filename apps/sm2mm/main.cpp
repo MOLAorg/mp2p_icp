@@ -41,7 +41,7 @@ static TCLAP::ValueArg<std::string> argPipeline(
     "If this argument is not provided, the default generator will be used and "
     "no filtering will be applied, which might be ok in some cases. "
     "See the app README for examples:\n"
-    "https://github.com/MOLAorg/mp2p_icp/tree/master/apps/sm2mm",
+    "https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm",
     false, "pipeline.yaml", "pipeline.yaml", cmd);
 
 static TCLAP::ValueArg<std::string> arg_verbosity_level(

@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # Pipeline definition file for sm2mm (simplemap-to-metricmap)
 #
-# See: https://github.com/MOLAorg/mp2p_icp/tree/master/apps/sm2mm
+# See: https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm
 #
 # Explanation of this particular pipeline:
 #  Create a 3D voxel map in which all observations are to be merged after 
