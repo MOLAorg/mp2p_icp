@@ -1,5 +1,10 @@
 .. _mp2p_icp_applications:
 
+..note::
+
+   This page lists the applications that belong to the ``mp2p_icp`` package.
+   For other applications, browse the documentation for other MOLA modules.
+
 =======================
 Applications
 =======================
