@@ -2,6 +2,18 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* metric map data type: add new metadata YAML field
+* Update broken link to ROS Index
+* docs: change references to default branch master->develop
+* Default generator: more details in debug traces when ignoring an observation
+* Update package license tag to "BSD-3-Clause"
+* Integrate vscode with colcon custom settings and clang-tidy
+* Fix build unit tests with older gcc versions
+* Drop apparently useless build dep
+* Contributors: Jose Luis Blanco-Claraco
+
 1.6.7 (2025-04-03)
 ------------------
 * mm-georef cli app: support reading/writing georef info in YAML format
