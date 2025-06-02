@@ -30,30 +30,50 @@
 
 #include <algorithm>
 #include <iterator>
+#include <sstream>
 
 IMPLEMENTS_MRPT_OBJECT(metric_map_t, mrpt::serialization::CSerializable, mp2p_icp)
 
 using namespace mp2p_icp;
 
 // Implementation of the CSerializable virtual interface:
-uint8_t metric_map_t::serializeGetVersion() const { return 4; }
+uint8_t metric_map_t::serializeGetVersion() const { return 5; }
 void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << lines;
 
     out.WriteAs<uint32_t>(planes.size());
-    for (const auto& p : planes) out << p.plane << p.centroid;
+    for (const auto& p : planes)
+    {
+        out << p.plane << p.centroid;
+    }
 
     out.WriteAs<uint32_t>(lines.size());
-    for (const auto& l : lines) out << l;
+    for (const auto& l : lines)
+    {
+        out << l;
+    }
 
     out.WriteAs<uint32_t>(layers.size());
-    for (const auto& l : layers) out << l.first << *l.second.get();
+    for (const auto& l : layers)
+    {
+        out << l.first << *l.second.get();
+    }
 
     out << id << label;  // new in v1
 
     // new in v4: delegate to external function:
     out << georeferencing;
+
+    // new in v5:
+    bool hasMetadata = !metadata.isNullNode() && !metadata.empty();
+    out << hasMetadata;
+    if (hasMetadata)
+    {
+        std::stringstream ss;
+        metadata.printAsYAML(ss);
+        out << ss.str();
+    }
 
     // Optional user data:
     derivedSerializeTo(out);
@@ -67,15 +87,22 @@ void metric_map_t::serializeFrom(mrpt::serialization::CArchive& in, uint8_t vers
         case 2:
         case 3:
         case 4:
+        case 5:
         {
             in >> lines;
             const auto nPls = in.ReadAs<uint32_t>();
             planes.resize(nPls);
-            for (auto& pl : planes) in >> pl.plane >> pl.centroid;
+            for (auto& pl : planes)
+            {
+                in >> pl.plane >> pl.centroid;
+            }
 
             const auto nLins = in.ReadAs<uint32_t>();
             lines.resize(nLins);
-            for (auto& l : lines) in >> l;
+            for (auto& l : lines)
+            {
+                in >> l;
+            }
 
             const auto nPts = in.ReadAs<uint32_t>();
             layers.clear();
@@ -119,6 +146,20 @@ void metric_map_t::serializeFrom(mrpt::serialization::CArchive& in, uint8_t vers
                 in >> georeferencing;
             }
 
+            metadata.clear();
+            if (version >= 5)
+            {
+                // new in v5:
+                const bool hasMetadata = in.ReadAs<bool>();
+                if (hasMetadata)
+                {
+                    std::string metadata_str;
+                    in >> metadata_str;
+                    std::stringstream ss(metadata_str);
+                    metadata.loadFromStream(ss);
+                }
+            }
+
             // Optional user data:
             derivedSerializeFrom(in);
         }
@@ -146,9 +187,13 @@ void metric_map_t::get_visualization_planes(
     mrpt::opengl::CSetOfObjects& o, const render_params_planes_t& p) const
 {
     MRPT_START
-    if (!p.visible) return;
+    if (!p.visible)
+    {
+        return;
+    }
 
-    const float pw = p.halfWidth, pf = p.gridSpacing;
+    const auto pw = static_cast<float>(p.halfWidth);
+    const auto pf = static_cast<float>(p.gridSpacing);
 
     for (const auto& plane : planes)
     {
@@ -188,7 +233,10 @@ void metric_map_t::get_visualization_points(
 {
     MRPT_START
     // Planes:
-    if (!p.visible) return;
+    if (!p.visible)
+    {
+        return;
+    }
 
     if (!p.perLayer.empty())
     {
@@ -197,10 +245,12 @@ void metric_map_t::get_visualization_points(
         {
             const auto itPts = layers.find(kv.first);
             if (itPts == layers.end())
+            {
                 THROW_EXCEPTION_FMT(
                     "Rendering parameters given for layer '%s' which does not "
                     "exist in this metric_map_t object",
                     kv.first.c_str());
+            }
 
             get_visualization_map_layer(o, kv.second, itPts->second);
         }
@@ -274,7 +324,11 @@ void metric_map_t::get_visualization_map_layer(
         return;
     }
 
-    if (pts && pts->empty()) return;  // quick return if empty point cloud
+    if (pts && pts->empty())
+    {
+        // quick return if empty point cloud
+        return;
+    }
 
     if (p.colorMode.has_value())
     {
@@ -290,7 +344,10 @@ void metric_map_t::get_visualization_map_layer(
             (!p.colorMode->colorMapMinCoord.has_value() ||
              !p.colorMode->colorMapMaxCoord.has_value());
 
-        if (hasToAutoFindBB) bb = pts->boundingBox();
+        if (hasToAutoFindBB)
+        {
+            bb = pts->boundingBox();
+        }
 
         ASSERT_(p.colorMode->recolorizeByCoordinate.has_value());
 
@@ -306,7 +363,12 @@ void metric_map_t::get_visualization_map_layer(
 
             // handle planar maps (avoids error in histogram below):
             for (int i = 0; i < 3; i++)
-                if (bb.max[i] == bb.min[i]) bb.max[i] = bb.min[i] + 0.1f;
+            {
+                if (bb.max[i] == bb.min[i])
+                {
+                    bb.max[i] = bb.min[i] + 0.1f;
+                }
+            }
 
             // Use a histogram to discard outliers from the colormap extremes:
             constexpr size_t nBins = 100;
@@ -318,7 +380,10 @@ void metric_map_t::get_visualization_map_layer(
 
             const auto lambdaVisitPoints = [&hists](const mrpt::math::TPoint3Df& pt)
             {
-                for (int i = 0; i < 3; i++) hists[i].add(pt[i]);
+                for (int i = 0; i < 3; i++)
+                {
+                    hists[i].add(pt[i]);
+                }
             };
 
             for (size_t i = 0; i < pts->size(); i++)
@@ -370,7 +435,10 @@ void metric_map_t::merge_with(
     const metric_map_t& otherPc, const std::optional<mrpt::math::TPose3D>& otherRelativePose)
 {
     mrpt::poses::CPose3D pose;
-    if (otherRelativePose.has_value()) pose = mrpt::poses::CPose3D(otherRelativePose.value());
+    if (otherRelativePose.has_value())
+    {
+        pose = mrpt::poses::CPose3D(otherRelativePose.value());
+    }
 
     // Lines:
     if (otherRelativePose.has_value())
@@ -484,8 +552,14 @@ std::string metric_map_t::contents_summary() const
 
     std::string ret;
 
-    if (id) ret += "id="s + std::to_string(*id) + " "s;
-    if (label) ret += "label='"s + *label + "' "s;
+    if (id)
+    {
+        ret += "id="s + std::to_string(*id) + " "s;
+    }
+    if (label)
+    {
+        ret += "label='"s + *label + "' "s;
+    }
 
     if (georeferencing)
     {
@@ -497,16 +571,28 @@ std::string metric_map_t::contents_summary() const
             georeferencing->T_enu_to_map.asString();
     }
 
-    if (empty()) return {ret + "empty"s};
+    if (empty())
+    {
+        return {ret + "empty"s};
+    }
 
     const auto retAppend = [&ret](const std::string& s)
     {
-        if (!ret.empty()) ret += ", "s;
+        if (!ret.empty())
+        {
+            ret += ", "s;
+        }
         ret += s;
     };
 
-    if (!lines.empty()) retAppend(std::to_string(lines.size()) + " lines"s);
-    if (!planes.empty()) retAppend(std::to_string(planes.size()) + " planes"s);
+    if (!lines.empty())
+    {
+        retAppend(std::to_string(lines.size()) + " lines"s);
+    }
+    if (!planes.empty())
+    {
+        retAppend(std::to_string(planes.size()) + " planes"s);
+    }
 
     size_t nPts = 0, nVoxels = 0;
     bool   otherLayers = false;
@@ -522,7 +608,9 @@ std::string metric_map_t::contents_summary() const
             nVoxels += vxs->grid().activeCellsCount();
         }
         else
+        {
             otherLayers = true;
+        }
     }
 
     if (nPts != 0 || nVoxels != 0 || otherLayers)
@@ -539,13 +627,26 @@ std::string metric_map_t::contents_summary() const
         ret += ")";
     }
 
+    if (!metadata.isNullNode())
+    {
+        std::stringstream                 ss;
+        mrpt::containers::YamlEmitOptions eo;
+        eo.emitHeader   = false;
+        eo.emitComments = false;
+        metadata.printAsYAML(ss, eo);
+        retAppend("metadata: '"s + ss.str() + "' "s);
+    }
+
     return ret;
 }
 
 bool metric_map_t::save_to_file(const std::string& fileName) const
 {
     auto f = mrpt::io::CFileGZOutputStream(fileName);
-    if (!f.is_open()) return false;
+    if (!f.is_open())
+    {
+        return false;
+    }
 
     auto arch = mrpt::serialization::archiveFrom(f);
     arch << *this;
@@ -556,7 +657,10 @@ bool metric_map_t::save_to_file(const std::string& fileName) const
 bool metric_map_t::load_from_file(const std::string& fileName)
 {
     auto f = mrpt::io::CFileGZInputStream(fileName);
-    if (!f.is_open()) return false;
+    if (!f.is_open())
+    {
+        return false;
+    }
 
     auto arch = mrpt::serialization::archiveFrom(f);
     arch >> *this;
@@ -580,7 +684,10 @@ metric_map_t::Ptr metric_map_t::get_shared_from_this()
 metric_map_t::Ptr metric_map_t::get_shared_from_this_or_clone()
 {
     Ptr ret = get_shared_from_this();
-    if (!ret) ret = std::make_shared<metric_map_t>(*this);
+    if (!ret)
+    {
+        ret = std::make_shared<metric_map_t>(*this);
+    }
     return ret;
 }
 
@@ -600,23 +707,34 @@ metric_map_t::ConstPtr metric_map_t::get_shared_from_this() const
 metric_map_t::ConstPtr metric_map_t::get_shared_from_this_or_clone() const
 {
     ConstPtr ret = get_shared_from_this();
-    if (!ret) ret = std::make_shared<metric_map_t>(*this);
+    if (!ret)
+    {
+        ret = std::make_shared<metric_map_t>(*this);
+    }
     return ret;
 }
 
 mrpt::maps::CPointsMap::Ptr metric_map_t::point_layer(const layer_name_t& name) const
 {
     auto it = layers.find(name);
-    if (it == layers.end()) THROW_EXCEPTION_FMT("Layer '%s' does not exist.", name.c_str());
+    if (it == layers.end())
+    {
+        THROW_EXCEPTION_FMT("Layer '%s' does not exist.", name.c_str());
+    }
 
     const auto& ptr = it->second;
-    if (!ptr) return {};  // empty shared_ptr.
+    if (!ptr)
+    {
+        return {};  // empty shared_ptr.
+    }
 
     auto ret = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(ptr);
     if (!ret)
+    {
         THROW_EXCEPTION_FMT(
             "Layer '%s' is not a point cloud (actual class:'%s').", name.c_str(),
             ptr->GetRuntimeClass()->className);
+    }
 
     return ret;
 }
@@ -660,8 +778,14 @@ const mrpt::maps::NearestNeighborsCapable* mp2p_icp::MapToNN(
 {
     const auto* ptr = dynamic_cast<const mrpt::maps::NearestNeighborsCapable*>(&map);
 
-    if (ptr) return ptr;
-    if (!throwIfNotImplemented) return nullptr;
+    if (ptr)
+    {
+        return ptr;
+    }
+    if (!throwIfNotImplemented)
+    {
+        return nullptr;
+    }
 
     THROW_EXCEPTION_FMT(
         "The map of type '%s' does not implement the expected interface "
@@ -674,8 +798,14 @@ const mp2p_icp::NearestPlaneCapable* mp2p_icp::MapToNP(
 {
     const auto* ptr = dynamic_cast<const mp2p_icp::NearestPlaneCapable*>(&map);
 
-    if (ptr) return ptr;
-    if (!throwIfNotImplemented) return nullptr;
+    if (ptr)
+    {
+        return ptr;
+    }
+    if (!throwIfNotImplemented)
+    {
+        return nullptr;
+    }
 
     THROW_EXCEPTION_FMT(
         "The map of type '%s' does not implement the expected interface "

@@ -15,6 +15,7 @@
 #include <mp2p_icp/layer_name_t.h>
 #include <mp2p_icp/plane_patch.h>
 #include <mp2p_icp/render_params.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/maps/NearestNeighborsCapable.h>
 #include <mrpt/math/TLine3D.h>
@@ -99,6 +100,10 @@ class metric_map_t : public mrpt::serialization::CSerializable,
      * to use it.
      */
     std::optional<std::string> label;
+
+    /** Generic metadata, in YAML format, to store any extra information by the user.
+     */
+    mrpt::containers::yaml metadata = mrpt::containers::yaml::Map();
 
     struct Georeferencing
     {
