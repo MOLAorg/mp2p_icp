@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.7.0 (2025-06-02)
+------------------
 * metric map data type: add new metadata YAML field
 * Update broken link to ROS Index
 * docs: change references to default branch master->develop
