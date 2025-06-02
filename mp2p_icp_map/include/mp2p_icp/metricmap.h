@@ -102,6 +102,24 @@ class metric_map_t : public mrpt::serialization::CSerializable,
     std::optional<std::string> label;
 
     /** Generic metadata, in YAML format, to store any extra information by the user.
+     *
+     * Example usage:
+     * \code
+     *  metric_map_t map;
+     *  map.metadata["timestamp"] = "2023-10-01T12:00:00Z";
+     *  map.metadata["spot"] = "Alabama";
+     *
+     *  map.metadata["rules"] = mrpt::containers::yaml::Map();
+     *  map.metadata["rules"]["first"] = "don't kill humans";
+     *  map.metadata["rules"]["second"] = "do drinking";
+     *
+     *  map.metadata["sequence_example"] = mrpt::containers::yaml::Sequence();
+     *  map.metadata["sequence_example"].push_back(1.0);
+     *  map.metadata["sequence_example"].push_back("you can mix types");
+     *  map.metadata["sequence_example"].push_back(true);
+     * \endcode
+     *
+     * \note You can checkout the metadata of a ".mm" file using "mm-info" or "mm-viewer".
      */
     mrpt::containers::yaml metadata = mrpt::containers::yaml::Map();
 
