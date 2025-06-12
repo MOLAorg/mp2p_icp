@@ -10,6 +10,7 @@
  * @date   Jun 10, 2019
  */
 
+#include <mp2p_icp/load_plugin.h>
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/Generator.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
@@ -27,13 +28,6 @@
 #include <mrpt/obs/CObservationVelodyneScan.h>
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/system/filesystem.h>
-
-#include <filesystem>
-namespace fs = std::filesystem;
-
-#if defined(__unix__)
-#include <dlfcn.h>
-#endif
 
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
@@ -491,7 +485,7 @@ bool Generator::implProcessCustomMap(
             {
                 const auto moduleToLoad = c["plugin"].as<std::string>();
                 MRPT_LOG_DEBUG_STREAM("About to load user-defined plugin: " << moduleToLoad);
-                internalLoadUserPlugin(moduleToLoad);
+                mp2p_icp::load_plugin(moduleToLoad, this);
             }
 
             // fill the rest sub-sections:
@@ -560,101 +554,4 @@ bool Generator::implProcessCustomMap(
 
     // o.unload();  // DON'T! We don't know who else is using the data
     return insertDone;  // handled
-}
-
-namespace
-{
-void safe_add_to_list(const std::string& path, std::vector<std::string>& lst)
-{
-    if (mrpt::system::directoryExists(path))
-    {
-        lst.push_back(path);
-    }
-}
-
-void from_env_var_to_list(
-    const std::string& env_var_name, std::vector<std::string>& lst,
-    const std::string& subStringPattern = {})
-{
-#if defined(_WIN32)
-    const auto delim = std::string(";");
-#else
-    const auto delim  = std::string(":");
-#endif
-
-    const auto               additionalPaths = mrpt::get_env<std::string>(env_var_name);
-    std::vector<std::string> pathList;
-    mrpt::system::tokenize(additionalPaths, delim, pathList);
-
-    // Append to list:
-    for (const auto& path : pathList)
-    {
-        if (!subStringPattern.empty() && path.find(subStringPattern) == std::string::npos)
-        {
-            continue;
-        }
-        safe_add_to_list(path, lst);
-    }
-}
-}  // namespace
-
-void Generator::internalLoadUserPlugin(const std::string& moduleToLoad) const
-{
-    std::string absPath;
-
-    if (!fs::path(moduleToLoad).is_relative())
-    {
-        // already absolute:
-        ASSERT_FILE_EXISTS_(moduleToLoad);
-        absPath = moduleToLoad;
-    }
-    else
-    {
-        // search for it:
-        std::vector<std::string> lstPath;
-        from_env_var_to_list("LD_LIBRARY_PATH", lstPath);
-
-        for (const auto& p : lstPath)
-        {
-            const auto fp = mrpt::system::pathJoin({p, moduleToLoad});
-            if (mrpt::system::fileExists(fp))
-            {
-                absPath = fp;
-                break;
-            }
-        }
-        if (absPath.empty())
-        {
-            THROW_EXCEPTION_FMT(
-                "Could not find '%s' anywhere under the LD_LIBRARY_PATH paths",
-                moduleToLoad.c_str());
-        }
-    }
-
-#if defined(__unix__)
-    // Check if already loaded?
-    {
-        void* handle = dlopen(absPath.c_str(), RTLD_NOLOAD);
-        if (handle != nullptr)
-        {
-            return;  // skip. already loaded.
-        }
-    }
-    void* handle = dlopen(absPath.c_str(), RTLD_LAZY);
-
-#else
-    HMODULE    handle = LoadLibrary(absPath.c_str());
-#endif
-    if (handle == nullptr)
-    {
-        const char* err = dlerror();
-        if (!err)
-        {
-            err = "(error calling dlerror())";
-        }
-        THROW_EXCEPTION(
-            mrpt::format("Error loading module: `%s`\ndlerror(): `%s`", absPath.c_str(), err));
-    }
-
-    MRPT_LOG_DEBUG_FMT("Successfully loaded: `%s`", absPath.c_str());
 }

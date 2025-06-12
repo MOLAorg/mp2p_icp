@@ -11,6 +11,7 @@
  */
 
 #include <mp2p_icp/icp_pipeline_from_yaml.h>
+#include <mp2p_icp/load_plugin.h>
 
 using namespace mp2p_icp;
 
@@ -22,9 +23,18 @@ std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters> mp2p_icp::icp_pipeline_from
     // ICP algorithm class:
     const std::string icpClassName = icpParams["class_name"].as<std::string>();
 
+    // optional plugin module?
+    if (icpParams.has("plugin"))
+    {
+        const auto moduleToLoad = icpParams["plugin"].as<std::string>();
+        mp2p_icp::load_plugin(moduleToLoad);
+    }
+
     auto icp = std::dynamic_pointer_cast<mp2p_icp::ICP>(mrpt::rtti::classFactory(icpClassName));
     if (!icp)
+    {
         THROW_EXCEPTION_FMT("Could not instantiate ICP algorithm named '%s'", icpClassName.c_str());
+    }
 
     icp->setVerbosityLevel(vLevel);
 

@@ -12,6 +12,7 @@
 
 #include <mp2p_icp/ICP.h>
 #include <mp2p_icp/covariance.h>
+#include <mp2p_icp/load_plugin.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/lock_helper.h>
 #include <mrpt/poses/Lie/SE.h>
@@ -402,8 +403,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$GLOBAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcGlobal && log.pcGlobal->id.has_value()) ? log.pcGlobal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
@@ -417,8 +418,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$LOCAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcLocal && log.pcLocal->id.has_value()) ? log.pcLocal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
@@ -483,7 +484,17 @@ void ICP::initialize_solvers(const mrpt::containers::yaml& params, ICP::solver_l
     {
         const auto& e = entry.asMap();
         // disabled?
-        if (e.count("enabled") && e.at("enabled").as<bool>() == false) continue;
+        if (e.count("enabled") && e.at("enabled").as<bool>() == false)
+        {
+            continue;
+        }
+
+        // optional plugin module?
+        if (const auto itPlugin = e.find("plugin"); itPlugin != e.end())
+        {
+            const auto moduleToLoad = itPlugin->second.as<std::string>();
+            mp2p_icp::load_plugin(moduleToLoad);
+        }
 
         const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
@@ -512,7 +523,17 @@ void ICP::initialize_matchers(const mrpt::containers::yaml& params, matcher_list
     {
         const auto& e = entry.asMap();
         // disabled?
-        if (e.count("enabled") && e.at("enabled").as<bool>() == false) continue;
+        if (e.count("enabled") && e.at("enabled").as<bool>() == false)
+        {
+            continue;
+        }
+
+        // optional plugin module?
+        if (const auto itPlugin = e.find("plugin"); itPlugin != e.end())
+        {
+            const auto moduleToLoad = itPlugin->second.as<std::string>();
+            mp2p_icp::load_plugin(moduleToLoad);
+        }
 
         const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
@@ -539,7 +560,17 @@ void ICP::initialize_quality_evaluators(
     {
         const auto& e = entry.asMap();
         // disabled?
-        if (e.count("enabled") && e.at("enabled").as<bool>() == false) continue;
+        if (e.count("enabled") && e.at("enabled").as<bool>() == false)
+        {
+            continue;
+        }
+
+        // optional plugin module?
+        if (const auto itPlugin = e.find("plugin"); itPlugin != e.end())
+        {
+            const auto moduleToLoad = itPlugin->second.as<std::string>();
+            mp2p_icp::load_plugin(moduleToLoad);
+        }
 
         const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
@@ -553,7 +584,10 @@ void ICP::initialize_quality_evaluators(
         m->initialize(e.at("params"));
 
         double weight = 1.0;
-        if (numEntries > 0 && e.count("weight") > 0) weight = e.at("weight").as<double>();
+        if (numEntries > 0 && e.count("weight") > 0)
+        {
+            weight = e.at("weight").as<double>();
+        }
         lst.emplace_back(m, weight);
     }
 }
@@ -577,7 +611,11 @@ double ICP::evaluate_quality(
         ASSERT_GT_(w, 0);
         const auto evalResult = e.obj->evaluate(pcGlobal, pcLocal, localPose, finalPairings);
 
-        if (evalResult.hard_discard) return 0;  // hard limit
+        if (evalResult.hard_discard)
+        {
+            // hard limit
+            return 0;
+        }
 
         sumEvals += w * evalResult.quality;
         sumW += w;

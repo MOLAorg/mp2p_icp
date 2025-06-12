@@ -148,7 +148,7 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     /** @} */
 
    protected:
-    // To be overrided in derived classes, if implemented:
+    // To be overriden in derived classes, if implemented:
     /** Process a 2D lidar scan. \return false if not implemented */
     virtual bool filterScan2D(
         const mrpt::obs::CObservation2DRangeScan& pc, mp2p_icp::metric_map_t& out,
@@ -182,8 +182,6 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     bool implProcessCustomMap(
         const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt) const;
-
-    void internalLoadUserPlugin(const std::string& moduleToLoad) const;
 };
 
 /** A set of generators  */

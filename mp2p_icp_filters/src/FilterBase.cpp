@@ -10,6 +10,7 @@
  * @date   Jun 10, 2019
  */
 
+#include <mp2p_icp/load_plugin.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mrpt/system/CTimeLogger.h>
 
@@ -30,7 +31,10 @@ void mp2p_icp_filters::apply_filter_pipeline(
         ASSERT_(f.get() != nullptr);
 
         std::optional<mrpt::system::CTimeLoggerEntry> tle;
-        if (profiler) tle.emplace(*profiler, f->GetRuntimeClass()->className);
+        if (profiler)
+        {
+            tle.emplace(*profiler, f->GetRuntimeClass()->className);
+        }
 
         f->filter(inOut);
     }
@@ -39,7 +43,10 @@ void mp2p_icp_filters::apply_filter_pipeline(
 FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
     const mrpt::containers::yaml& c, const mrpt::system::VerbosityLevel& vLevel)
 {
-    if (c.isNullNode()) return {};
+    if (c.isNullNode())
+    {
+        return {};
+    }
 
     ASSERT_(c.isSequence());
 
@@ -48,6 +55,13 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
     for (const auto& entry : c.asSequence())
     {
         const auto& e = entry.asMap();
+
+        // optional plugin module?
+        if (const auto itPlugin = e.find("plugin"); itPlugin != e.end())
+        {
+            const auto moduleToLoad = itPlugin->second.as<std::string>();
+            mp2p_icp::load_plugin(moduleToLoad);
+        }
 
         const auto sClass = e.at("class_name").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);

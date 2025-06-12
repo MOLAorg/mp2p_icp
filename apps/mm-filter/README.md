@@ -14,6 +14,7 @@ Refer to [mp2p_icp docs online](https://docs.mola-slam.org/latest/module-mp2p-ic
 #
 filters:
   - class_name: mp2p_icp_filters::FilterBoundingBox
+    #plugin: 'libcustom_filter.so' # Import additional custom user-defined classes (absolute path or search in LD_LIBRARY_PATH)
     params:
       input_pointcloud_layer: 'points_map'
       inside_pointcloud_layer: 'map_section'   # Points inside the bbox

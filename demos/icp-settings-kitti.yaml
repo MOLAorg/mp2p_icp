@@ -2,7 +2,7 @@
 # programatically from function mp2p_icp::icp_pipeline_from_yaml()
 #
 # Example command line:
-#  
+#
 # build-Release/bin/icp-run   --input-local /mnt/storage/kitti-odometry-slam-mm/00/001478.mm  --input-global /mnt/storage/kitti-odometry-slam-mm/00/001477.mm  -c demos/icp-settings-kitti.yaml --generate-debug-log
 #
 class_name: mp2p_icp::ICP
@@ -13,7 +13,7 @@ params:
   minAbsStep_trans: 1e-4
   minAbsStep_rot: 1e-4
 
-  debugPrintIterationProgress: true  # Print progress
+  debugPrintIterationProgress: true # Print progress
   #generateDebugFiles: true
   #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
 
@@ -30,42 +30,42 @@ solvers:
       runFromIteration: 6
       runUpToIteration: 0
       maxIterations: 3
-      robustKernel: 'RobustKernel::GemanMcClure'
+      robustKernel: "RobustKernel::GemanMcClure"
       robustKernelParam: 0.15
-
 
 # Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
 # instances to pair geometric entities between pointclouds.
 matchers:
   - class: mp2p_icp::Matcher_Points_DistanceThreshold
+    #plugin: 'libcustom_matcher.so' # Import additional custom user-defined classes (absolute path or search in LD_LIBRARY_PATH)
     params:
       threshold: 2.00
       #pairingsPerPoint: 3
       #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       enabled: true
-      runFromIteration: 0  # "from 0 to 0" means "all"
+      runFromIteration: 0 # "from 0 to 0" means "all"
       runUpToIteration: 5
       pointLayerMatches:
-        - {global: "raw", local: "decimated", weight: 1.0}
+        - { global: "raw", local: "decimated", weight: 1.0 }
 
   - class: mp2p_icp::Matcher_Adaptive
     params:
       confidenceInterval: 0.75
       firstToSecondDistanceMax: 1.2
-      absoluteMaxSearchDistance: 2.0  # m
+      absoluteMaxSearchDistance: 2.0 # m
       #enabled: false
-      runFromIteration: 6  # "from 0 to 0" means "all"
+      runFromIteration: 6 # "from 0 to 0" means "all"
       runUpToIteration: 0
       pointLayerMatches:
-        - {global: "raw", local: "decimated", weight: 1.0}
+        - { global: "raw", local: "decimated", weight: 1.0 }
 
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio
     params:
-     reuse_icp_pairings: true
-     threshold: 0.25
-     pointLayerMatches:
-       - {global: "raw", local: "decimated", weight: 1.0}
+      reuse_icp_pairings: true
+      threshold: 0.25
+      pointLayerMatches:
+        - { global: "raw", local: "decimated", weight: 1.0 }
 
 # Filters for local and global point clouds:
 #
@@ -75,7 +75,8 @@ quality:
 #
 filters:
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    #plugin: 'libcustom_filter.so' # Import additional custom user-defined classes (absolute path or search in LD_LIBRARY_PATH)
     params:
-      output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: 2.00  # [m]
+      output_pointcloud_layer: "decimated"
+      voxel_filter_resolution: 2.00 # [m]
       decimate_method: DecimateMethod::FirstPoint
