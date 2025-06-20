@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.7.1 (2025-06-20)
+------------------
 * docs: Populate sm2mm app page
 * New feature: all pipeline modules now has an optional "plugin" YAML field to load them from user-provided plugins.
 * Update REAME ROS badges
