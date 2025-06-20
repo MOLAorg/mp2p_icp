@@ -2,6 +2,13 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* docs: Populate sm2mm app page
+* New feature: all pipeline modules now has an optional "plugin" YAML field to load them from user-provided plugins.
+* Update REAME ROS badges
+* Contributors: Jose Luis Blanco-Claraco
+
 1.7.0 (2025-06-02)
 ------------------
 * metric map data type: add new metadata YAML field
