@@ -59,6 +59,14 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
 
     auto& pc = *pcPtr;
 
+    if (pc.empty())
+    {
+        MRPT_LOG_WARN_STREAM(
+            "Skipping time adjusting in input cloud '" << params_.pointcloud_layer
+                                                       << "' because it is empty.");
+        return;
+    }
+
     auto* TsPtr = pc.getPointsBufferRef_timestamp();
 
     if (TsPtr == nullptr || (TsPtr->empty() && !pc.empty()))
