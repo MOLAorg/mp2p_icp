@@ -44,6 +44,7 @@ mp2p_add_test(mp2p_optimize_with_prior)
 mp2p_add_test(mp2p_quality_reproject_ranges)
 mp2p_add_test(mp2p_georef_yaml)
 mp2p_add_test(mp2p_map_serialization)
+mp2p_add_test(mp2p_velocity_buffer)
 
 if (mola_test_datasets_FOUND)
   mp2p_add_test(mp2p_quality_voxels)

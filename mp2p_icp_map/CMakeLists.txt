@@ -6,6 +6,7 @@ set(LIB_SRCS
   src/estimate_points_eigen.cpp
   src/load_plugin.cpp
   src/load_xyz_file.cpp
+  src/LocalVelocityBuffer.cpp
   src/metricmap.cpp
   src/NearestPlaneCapable.cpp
   src/Parameterizable.cpp
@@ -19,6 +20,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/layer_name_t.h
   include/mp2p_icp/load_plugin.h
   include/mp2p_icp/load_xyz_file.h
+  include/mp2p_icp/LocalVelocityBuffer.h
   include/mp2p_icp/metricmap.h
   include/mp2p_icp/NearestPlaneCapable.h
   include/mp2p_icp/Parameterizable.h

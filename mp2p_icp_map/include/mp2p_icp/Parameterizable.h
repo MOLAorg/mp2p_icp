@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <mp2p_icp/LocalVelocityBuffer.h>
 #include <mrpt/expr/CRuntimeCompiledExpression.h>
 
 #include <cstdint>
@@ -65,6 +66,9 @@ class ParameterSource
 
     /** Returns a copy of the current variable values */
     auto getVariableValues() const -> std::map<std::string, double> { return variables_; }
+
+    /** Local velocity buffer for this parameter source */
+    LocalVelocityBuffer localVelocityBuffer;
 
    private:
     // Attached clients.
