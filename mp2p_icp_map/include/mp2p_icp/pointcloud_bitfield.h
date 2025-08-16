@@ -33,21 +33,22 @@ namespace mp2p_icp
  */
 struct pointcloud_bitfield_t
 {
-    pointcloud_bitfield_t()  = default;
-    ~pointcloud_bitfield_t() = default;
+    pointcloud_bitfield_t() = default;
 
     struct DenseOrSparseBitField
     {
        public:
-        DenseOrSparseBitField()  = default;
-        ~DenseOrSparseBitField() = default;
+        DenseOrSparseBitField() = default;
 
         void assign(size_t numElements, bool dense)
         {
             if (dense)
             {
                 sparse_.clear();
-                if (!dense_) dense_.emplace();
+                if (!dense_)
+                {
+                    dense_.emplace();
+                }
                 dense_->assign(numElements, false);
             }
             else
@@ -60,16 +61,21 @@ struct pointcloud_bitfield_t
         [[nodiscard]] bool operator[](const size_t id) const
         {
             if (dense_.has_value())
+            {
                 return dense_.value()[id];
-            else
-                return sparse_.count(id) != 0;
+            }
+            return sparse_.count(id) != 0;
         }
         void mark_as_set(const size_t id)
         {
             if (dense_.has_value())
+            {
                 dense_.value()[id] = true;
+            }
             else
+            {
                 sparse_.insert(id);
+            }
         }
 
        private:
@@ -92,15 +98,24 @@ struct pointcloud_bitfield_t
         {
             ASSERT_(kv.second);
             auto* nn = mp2p_icp::MapToNN(*kv.second, false /*dont throw*/);
-            if (!nn) continue;
+            if (!nn)
+            {
+                continue;
+            }
             point_layers[kv.first].assign(nn->nn_index_count(), nn->nn_has_indices_or_ids());
         }
         std::set<layer_name_t> layersToRemove;
         for (auto& kv : point_layers)
         {
-            if (pc.layers.count(kv.first) == 0) layersToRemove.insert(kv.first);
+            if (pc.layers.count(kv.first) == 0)
+            {
+                layersToRemove.insert(kv.first);
+            }
         }
-        for (const auto& ly : layersToRemove) point_layers.erase(ly);
+        for (const auto& ly : layersToRemove)
+        {
+            point_layers.erase(ly);
+        }
 
         // Lines:
         lines.assign(pc.lines.size(), false);

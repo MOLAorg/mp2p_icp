@@ -53,7 +53,10 @@ class ParameterSource
     /** Like updateVariable(), accepting several pairs of names-values */
     void updateVariables(const std::vector<std::pair<std::string, double>>& nameValuePairs)
     {
-        for (const auto& [name, value] : nameValuePairs) updateVariable(name, value);
+        for (const auto& [name, value] : nameValuePairs)
+        {
+            updateVariable(name, value);
+        }
     }
 
     void realize();
@@ -132,7 +135,10 @@ inline void AttachToParameterSource(
     for (auto& objPtr : setObjects)
     {
         auto o = std::dynamic_pointer_cast<Parameterizable>(objPtr);
-        if (!o) continue;
+        if (!o)
+        {
+            continue;
+        }
         o->attachToParameterSource(source);
     }
 }
@@ -147,17 +153,17 @@ inline void AttachToParameterSource(Parameterizable& o, ParameterSource& source)
 
 #define DECLARE_PARAMETER_IN_OPT(__yaml, __variable, __object)    \
     __object.mp2p_icp::Parameterizable::parseAndDeclareParameter( \
-        __yaml.getOrDefault(#__variable, std::to_string(__variable)), __variable);
+        (__yaml).getOrDefault(#__variable, std::to_string(__variable)), __variable);
 
 #define DECLARE_PARAMETER_OPT(__yaml, __variable) \
     DECLARE_PARAMETER_IN_OPT(__yaml, __variable, (*this))
 
 #define DECLARE_PARAMETER_IN_REQ(__yaml, __variable, __object)                           \
-    if (!__yaml.has(#__variable))                                                        \
+    if (!(__yaml).has(#__variable))                                                      \
         throw std::invalid_argument(mrpt::format(                                        \
             "Required parameter `%s` not an existing key in dictionary.", #__variable)); \
-    __object.mp2p_icp::Parameterizable::parseAndDeclareParameter(                        \
-        __yaml[#__variable].as<std::string>(), __variable);
+    (__object).mp2p_icp::Parameterizable::parseAndDeclareParameter(                      \
+        (__yaml)[#__variable].as<std::string>(), __variable);
 
 #define DECLARE_PARAMETER_REQ(__yaml, __variable) \
     DECLARE_PARAMETER_IN_REQ(__yaml, __variable, (*this))
