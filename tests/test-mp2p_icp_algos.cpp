@@ -28,7 +28,6 @@
 #include <mrpt/random.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>
-#include <mrpt/version.h>
 
 #include <Eigen/Dense>
 #include <iostream>

@@ -21,7 +21,6 @@
 #include <mrpt/obs/obs_frwds.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
-#include <mrpt/version.h>
 
 #include <cstdint>
 #include <stdexcept>
@@ -47,11 +46,7 @@ class FilterBase : public mrpt::rtti::CObject,  // RTTI support
                    public mrpt::system::COutputLogger,  // Logging support
                    public mp2p_icp::Parameterizable  // Dynamic parameters
 {
-#if MRPT_VERSION < 0x020e00
-    DEFINE_VIRTUAL_MRPT_OBJECT(FilterBase)
-#else
     DEFINE_VIRTUAL_MRPT_OBJECT(FilterBase, mp2p_icp_filters)
-#endif
 
    public:
     FilterBase();

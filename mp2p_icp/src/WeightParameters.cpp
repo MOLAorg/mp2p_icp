@@ -13,7 +13,6 @@
 #include <mp2p_icp/WeightParameters.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/optional_serialization.h>
-#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(WeightParameters, mrpt::serialization::CSerializable, mp2p_icp)
 
@@ -74,13 +73,7 @@ void WeightParameters::save_to(mrpt::containers::yaml& p) const
 {
     MCP_SAVE(p, use_scale_outlier_detector);
     MCP_SAVE(p, scale_outlier_threshold);
-
-#if MRPT_VERSION >= 0x020b03
     MCP_SAVE(p, robust_kernel);
-#else
-    MCP_SAVE(p, mrpt::typemeta::enum2str(robust_kernel));
-#endif
-
     MCP_SAVE(p, robust_kernel_param);
 
     mrpt::containers::yaml a = mrpt::containers::yaml::Map();

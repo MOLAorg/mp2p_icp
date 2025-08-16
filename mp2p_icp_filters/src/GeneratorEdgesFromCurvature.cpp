@@ -15,7 +15,6 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/utils.h>  // absDiff()
 #include <mrpt/obs/CObservationRotatingScan.h>
-#include <mrpt/version.h>
 
 #include <utility>  // std::pair
 
@@ -57,14 +56,25 @@ bool GeneratorEdgesFromCurvature::process(
     bool processed = false;
 
     // user-given filters: Done *AFTER* creating the map, if needed.
-    if (!std::regex_match(obsClassName, process_class_names_regex_)) return false;
-    if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_)) return false;
+    if (!std::regex_match(obsClassName, process_class_names_regex_))
+    {
+        return false;
+    }
+    if (!std::regex_match(o.sensorLabel, process_sensor_labels_regex_))
+    {
+        return false;
+    }
 
     if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
+    {
         processed = filterRotatingScan(*oRS, out, robotPose);
+    }
 
     // done?
-    if (processed) return true;  // we are done.
+    if (processed)
+    {
+        return true;  // we are done.
+    }
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc;
@@ -72,8 +82,10 @@ bool GeneratorEdgesFromCurvature::process(
     {
         outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
         if (!outPc)
+        {
             THROW_EXCEPTION_FMT(
                 "Layer '%s' must be of point cloud type.", params_.target_layer.c_str());
+        }
     }
     else
     {
@@ -81,7 +93,10 @@ bool GeneratorEdgesFromCurvature::process(
         out.layers[params_.target_layer] = outPc;
     }
 
-    if (!outPc) outPc = mrpt::maps::CSimplePointsMap::Create();
+    if (!outPc)
+    {
+        outPc = mrpt::maps::CSimplePointsMap::Create();
+    }
 
     // Leave output point cloud empty, since it was not handled by the
     // rotating scan handler above.
@@ -95,7 +110,6 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
     const mrpt::obs::CObservationRotatingScan& pc, mp2p_icp::metric_map_t& out,
     const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
-#if MRPT_VERSION >= 0x020b04
     auto outPc = mrpt::maps::CSimplePointsMap::Create();
 
     ASSERT_(!pc.organizedPoints.empty());
@@ -117,7 +131,9 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
         {
             // we need at least 3 consecutive valid points:
             if (!pc.rangeImage(r, i - 1) || !pc.rangeImage(r, i) || !pc.rangeImage(r, i + 1))
+            {
                 continue;
+            }
 
             const auto& pt_im1 = pc.organizedPoints(r, i - 1);
             const auto& pt_i   = pc.organizedPoints(r, i);
@@ -129,7 +145,9 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
             const auto v2n = v2.norm();
 
             if (v1n < paramsEdges_.min_point_clearance || v2n < paramsEdges_.min_point_clearance)
+            {
                 continue;
+            }
 
             const float score = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 
@@ -137,9 +155,13 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
             {
                 // this point passes:
                 if (robotPose)
+                {
                     outPc->insertPoint(robotPose->composePoint(pc.organizedPoints(r, i)));
+                }
                 else
+                {
                     outPc->insertPoint(pc.organizedPoints(r, i));
+                }
                 // TODO(jlbc) Output intensity?
             }
         }
@@ -148,7 +170,4 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
 
     out.layers[params_.target_layer] = outPc;
     return true;  // Yes, it's implemented
-#else
-    THROW_EXCEPTION("This class requires MRPT >=v2.11.4");
-#endif
 }

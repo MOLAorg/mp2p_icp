@@ -151,10 +151,16 @@ void run_mm_filter(Cli& cli)
     const double tStart = mrpt::Clock::nowDouble();
 
     size_t nKFs = dataset.size();
-    if (cli.arg_to.isSet()) mrpt::keep_min(nKFs, cli.arg_to.getValue() + 1);
+    if (cli.arg_to.isSet())
+    {
+        mrpt::keep_min(nKFs, cli.arg_to.getValue() + 1);
+    }
 
     size_t curKF = 0;
-    if (cli.arg_from.isSet()) mrpt::keep_max(curKF, cli.arg_from.getValue());
+    if (cli.arg_from.isSet())
+    {
+        mrpt::keep_max(curKF, cli.arg_from.getValue());
+    }
 
     // Create output Rawlog file:
     const auto filOut = cli.argOutput.getValue();
@@ -164,7 +170,9 @@ void run_mm_filter(Cli& cli)
     auto                          outArch = mrpt::serialization::archiveFrom(fo);
 
     if (cli.arg_lazy_load_base_dir.isSet())
+    {
         mrpt::io::setLazyLoadPathBase(cli.arg_lazy_load_base_dir.getValue());
+    }
 
     for (; curKF < nKFs; curKF++)
     {
@@ -177,7 +185,10 @@ void run_mm_filter(Cli& cli)
 
         bool handled = mp2p_icp_filters::apply_generators(generators, *obs, mm);
 
-        if (!handled) continue;
+        if (!handled)
+        {
+            continue;
+        }
 
         // process it:
         mp2p_icp_filters::apply_filter_pipeline(filters, mm);
@@ -190,7 +201,10 @@ void run_mm_filter(Cli& cli)
         // Output:
         for (const auto& [name, layer] : mm.layers)
         {
-            if (!layer) continue;
+            if (!layer)
+            {
+                continue;
+            }
             if (auto ptsMap = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(layer); ptsMap)
             {
                 auto obsPts         = mrpt::obs::CObservationPointCloud::Create();
@@ -205,14 +219,13 @@ void run_mm_filter(Cli& cli)
         // progress bar:
         {
             const size_t N  = nKFs;
-            const double pc = (1.0 * curKF) / N;
+            const double pc = static_cast<double>(curKF) / static_cast<double>(N);
 
             const double tNow      = mrpt::Clock::nowDouble();
             const double ETA       = pc > 0 ? (tNow - tStart) * (1.0 / pc - 1) : .0;
             const double totalTime = ETA + (tNow - tStart);
 
-            std::cout << "\033[A\33[2KT\r"  // VT100 codes: cursor up and clear
-                                            // line
+            std::cout << "\033[A\33[2KT\r"  // VT100 codes: cursor up and clear line
                       << mrpt::system::progress(pc, 30)
                       << mrpt::format(
                              " %6zu/%6zu (%.02f%%) ETA=%s / T=%s\n", curKF, N, 100 * pc,
@@ -230,7 +243,10 @@ int main(int argc, char** argv)
         Cli cli;
 
         // Parse arguments:
-        if (!cli.cmd.parse(argc, argv)) return 1;  // should exit.
+        if (!cli.cmd.parse(argc, argv))
+        {
+            return 1;  // should exit.
+        }
 
         run_mm_filter(cli);
     }

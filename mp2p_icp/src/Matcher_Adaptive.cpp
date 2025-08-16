@@ -16,7 +16,6 @@
 #include <mrpt/core/round.h>
 #include <mrpt/math/CHistogram.h>  // CHistogram
 #include <mrpt/math/distributions.h>  // confidenceIntervalsFromHistogram()
-#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(Matcher_Adaptive, Matcher, mp2p_icp)
 

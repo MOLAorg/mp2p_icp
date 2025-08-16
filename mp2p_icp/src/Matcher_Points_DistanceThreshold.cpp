@@ -13,7 +13,6 @@
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/round.h>
-#include <mrpt/version.h>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>

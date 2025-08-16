@@ -16,7 +16,6 @@
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/system/progress.h>
-#include <mrpt/version.h>
 
 #include <iostream>
 
@@ -90,14 +89,19 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     const double tStart = mrpt::Clock::nowDouble();
 
     size_t nKFs = sm.size();
-    if (options.end_index.has_value()) mrpt::keep_min(nKFs, *options.end_index + 1);
+    if (options.end_index.has_value())
+    {
+        mrpt::keep_min(nKFs, *options.end_index + 1);
+    }
 
     size_t curKF = 0;
-    if (options.start_index.has_value()) mrpt::keep_max(curKF, *options.start_index);
+    if (options.start_index.has_value())
+    {
+        mrpt::keep_max(curKF, *options.start_index);
+    }
 
     for (; curKF < nKFs; curKF++)
     {
-#if MRPT_VERSION >= 0x020b05
         const auto& [pose, sf, twist] = sm.get(curKF);
         if (twist.has_value())
         {
@@ -109,9 +113,6 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                  {"wy", twist->wy},
                  {"wz", twist->wz}});
         }
-#else
-        const auto& [pose, sf] = sm.get(curKF);
-#endif
         ASSERT_(pose);
         ASSERT_(sf);
         const mrpt::poses::CPose3D robotPose = pose->getMeanVal();
@@ -133,7 +134,10 @@ void mp2p_icp_filters::simplemap_to_metricmap(
 
             bool handled = mp2p_icp_filters::apply_generators(generators, *obs, mm, robotPose);
 
-            if (!handled) continue;
+            if (!handled)
+            {
+                continue;
+            }
 
             // process it:
             mp2p_icp_filters::apply_filter_pipeline(filters, mm);

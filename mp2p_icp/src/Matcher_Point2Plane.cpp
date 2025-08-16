@@ -14,7 +14,6 @@
 #include <mp2p_icp/estimate_points_eigen.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/round.h>
-#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(Matcher_Point2Plane, Matcher, mp2p_icp)
 

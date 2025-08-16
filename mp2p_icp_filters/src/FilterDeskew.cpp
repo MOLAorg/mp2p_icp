@@ -13,15 +13,11 @@
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/ops_containers.h>  // dotProduct
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/random/RandomGenerators.h>
-#include <mrpt/version.h>
-
-#if MRPT_VERSION >= 0x020b04
-#include <mrpt/maps/CPointsMapXYZIRT.h>
-#endif
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/parallel_for.h>
@@ -50,13 +46,14 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
     const auto yamlTwist = c["twist"].asSequence();
 
     for (int i = 0; i < 6; i++)
+    {
         Parameterizable::parseAndDeclareParameter(yamlTwist.at(i).as<std::string>(), twist[i]);
+    }
 }
 
 void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
-#if MRPT_VERSION >= 0x020b04
 
     checkAllParametersAreRealized();
 
@@ -180,8 +177,5 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     outPc->mark_as_modified();
-#else
-    THROW_EXCEPTION("This class requires MRPT >=v2.11.4");
-#endif
     MRPT_END
 }

@@ -13,7 +13,6 @@
 #include <mp2p_icp/Matcher_Points_InlierRatio.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/round.h>
-#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(Matcher_Points_InlierRatio, Matcher, mp2p_icp)
 

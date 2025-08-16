@@ -8,7 +8,6 @@
 #include <mrpt/core/get_env.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/stl_serialization.h>
-#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(Parameters, mrpt::serialization::CSerializable, mp2p_icp)
 
@@ -69,20 +68,10 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
     {
         ASSERT_(
             p["quality_checkpoints"].isSequence() &&
-#if MRPT_VERSION >= 0x020d00
-            !p["quality_checkpoints"].asSequenceRange().empty()
-#else
-            !p["quality_checkpoints"].asSequence().empty()
-#endif
-        );
+            !p["quality_checkpoints"].asSequenceRange().empty());
 
         quality_checkpoints.clear();
-#if MRPT_VERSION >= 0x020d00
         for (const auto& e : p["quality_checkpoints"].asSequenceRange())
-#else
-        for (const auto& e : p["quality_checkpoints"].asSequence())
-#endif
-
         {
             ASSERTMSG_(
                 e.isMap(),

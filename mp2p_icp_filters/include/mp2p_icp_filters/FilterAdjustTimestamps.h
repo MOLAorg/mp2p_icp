@@ -25,11 +25,11 @@ namespace mp2p_icp_filters
  */
 enum class TimestampAdjustMethod : uint8_t
 {
-    /** Adjust such as the earliest timestamp is 0, wih succesive ones
-       representing real ellapsed seconds. */
+    /** Adjust such as the earliest timestamp is 0, wih successive ones
+       representing real elapsed seconds. */
     EarliestIsZero = 0,
     /** Adjust such as the middle timestamp is 0, with the rest being positive
-       and negative ellapsed seconds.  */
+       and negative elapsed seconds.  */
     MiddleIsZero,
     /** Normalize all timestamps such as they are in the range [0,1] */
     Normalize,
