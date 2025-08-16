@@ -1,6 +1,6 @@
 ﻿/* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2024 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 
@@ -829,17 +829,19 @@ void rebuild_3d_view(bool regenerateMaps)
 
     lbICPStats[0]->setValue(logRecords.at(idx).shortFileName());
 
-    lbICPStats[1]->setValue(mrpt::format(
-        "ICP log #%zu | Local: ID:%u%s | Global: ID:%u%s", idx,
-        static_cast<unsigned int>(lr.pcLocal->id ? lr.pcLocal->id.value() : 0),
-        lr.pcLocal->label ? lr.pcLocal->label.value().c_str() : "",
-        static_cast<unsigned int>(lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
-        lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : ""));
+    lbICPStats[1]->setValue(
+        mrpt::format(
+            "ICP log #%zu | Local: ID:%u%s | Global: ID:%u%s", idx,
+            static_cast<unsigned int>(lr.pcLocal->id ? lr.pcLocal->id.value() : 0),
+            lr.pcLocal->label ? lr.pcLocal->label.value().c_str() : "",
+            static_cast<unsigned int>(lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
+            lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : ""));
 
-    lbICPStats[2]->setValue(mrpt::format(
-        "Quality: %.02f%% | Iters: %u | Term.Reason: %s", 100.0 * lr.icpResult.quality,
-        static_cast<unsigned int>(lr.icpResult.nIterations),
-        mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str()));
+    lbICPStats[2]->setValue(
+        mrpt::format(
+            "Quality: %.02f%% | Iters: %u | Term.Reason: %s", 100.0 * lr.icpResult.quality,
+            static_cast<unsigned int>(lr.icpResult.nIterations),
+            mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str()));
 
     lbICPStats[3]->setValue("Global: "s + lr.pcGlobal->contents_summary());
     lbICPStats[4]->setValue("Local: "s + lr.pcLocal->contents_summary());
@@ -864,9 +866,11 @@ void rebuild_3d_view(bool regenerateMaps)
         const auto poseChange =
             lr.icpResult.optimal_tf.mean - mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
 
-        tbInit2Final->setValue(mrpt::format(
-            "|T|=%.03f [m]  |R|=%.03f [deg]", poseChange.norm(),
-            mrpt::RAD2DEG(mrpt::poses::Lie::SO<3>::log(poseChange.getRotationMatrix()).norm())));
+        tbInit2Final->setValue(
+            mrpt::format(
+                "|T|=%.03f [m]  |R|=%.03f [deg]", poseChange.norm(),
+                mrpt::RAD2DEG(
+                    mrpt::poses::Lie::SO<3>::log(poseChange.getRotationMatrix()).norm())));
     }
 
     const auto                      poseFromCorner = mrpt::poses::CPose3D::Identity();
@@ -931,12 +935,13 @@ void rebuild_3d_view(bool regenerateMaps)
     const mrpt::poses::CPosePDFGaussian pose2D(relativePose);
 
     // Condition numbers:
-    tbConditionNumber->setValue(mrpt::format(
-        " cn{XYZ}=%.02f cn{SO(3)}=%.02f cn{SE(2)}=%.02f "
-        "cn{SE(3)}=%.02f",
-        conditionNumber(relativePose.cov.blockCopy<3, 3>(0, 0)),
-        conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)), conditionNumber(pose2D.cov),
-        conditionNumber(relativePose.cov)));
+    tbConditionNumber->setValue(
+        mrpt::format(
+            " cn{XYZ}=%.02f cn{SO(3)}=%.02f cn{SE(2)}=%.02f "
+            "cn{SE(3)}=%.02f",
+            conditionNumber(relativePose.cov.blockCopy<3, 3>(0, 0)),
+            conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)), conditionNumber(pose2D.cov),
+            conditionNumber(relativePose.cov)));
 
     // 3D objects -------------------
     auto glCornerFrom = mrpt::opengl::stock_objects::CornerXYZSimple(0.75f, 3.0f);

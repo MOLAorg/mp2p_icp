@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2024 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 
@@ -158,11 +158,12 @@ inline void AttachToParameterSource(Parameterizable& o, ParameterSource& source)
 #define DECLARE_PARAMETER_OPT(__yaml, __variable) \
     DECLARE_PARAMETER_IN_OPT(__yaml, __variable, (*this))
 
-#define DECLARE_PARAMETER_IN_REQ(__yaml, __variable, __object)                           \
-    if (!(__yaml).has(#__variable))                                                      \
-        throw std::invalid_argument(mrpt::format(                                        \
-            "Required parameter `%s` not an existing key in dictionary.", #__variable)); \
-    (__object).mp2p_icp::Parameterizable::parseAndDeclareParameter(                      \
+#define DECLARE_PARAMETER_IN_REQ(__yaml, __variable, __object)                               \
+    if (!(__yaml).has(#__variable))                                                          \
+        throw std::invalid_argument(                                                         \
+            mrpt::format(                                                                    \
+                "Required parameter `%s` not an existing key in dictionary.", #__variable)); \
+    (__object).mp2p_icp::Parameterizable::parseAndDeclareParameter(                          \
         (__yaml)[#__variable].as<std::string>(), __variable);
 
 #define DECLARE_PARAMETER_REQ(__yaml, __variable) \
