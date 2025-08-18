@@ -48,7 +48,9 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
             "with a scalar or sequence.");
 
         for (const auto& s : cfgIn.asSequence())
+        {
             input_pointcloud_layer.push_back(s.as<std::string>());
+        }
     }
     ASSERT_(!input_pointcloud_layer.empty());
 
@@ -59,8 +61,12 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
     MCP_LOAD_OPT(c, minimum_input_points_to_filter);
 
     DECLARE_PARAMETER_IN_REQ(c, voxel_filter_resolution, parent);
+    MCP_LOAD_OPT(c, voxel_use_tsl_robin_map);
 
-    if (c.has("flatten_to")) flatten_to = c["flatten_to"].as<double>();
+    if (c.has("flatten_to"))
+    {
+        flatten_to = c["flatten_to"].as<double>();
+    }
 }
 
 FilterDecimateVoxels::FilterDecimateVoxels()
@@ -105,7 +111,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         {
             auto pcPtr = mp2p_icp::MapToPointsMap(*itLy->second);
             if (!pcPtr)
+            {
                 THROW_EXCEPTION_FMT("Layer '%s' must be of point cloud type.", inputLayer.c_str());
+            }
 
             pcPtrs.push_back(pcPtr);
             reserveSize += pcPtr->size() / 10;  // heuristic
@@ -117,11 +125,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             {
                 THROW_EXCEPTION_FMT("Input layer '%s' not found on input map.", inputLayer.c_str());
             }
-            else
-            {
-                // Silently return with an unmodified output layer "outPc"
-                continue;
-            }
+
+            // Silently return with an unmodified output layer "outPc"
+            continue;
         }
     }
 
@@ -165,11 +171,15 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     outPc->insertPointFast(xs[i], ys[i], *params_.flatten_to);
                 }
                 else
+                {
                     outPc->insertPointFrom(*pcPtrs[mapIdx], i);
+                }
             }
         }
         for (auto it = idxsToRemove.rbegin(); it != idxsToRemove.rend(); ++it)
+        {
             pcPtrs.erase(pcPtrs.begin() + *it);
+        }
 
     }  // end handle special case minimum_input_points_to_filter
 
@@ -183,7 +193,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             "Has you called initialize() after updating/loading parameters?");
 
         auto& grid = filter_grid_single_.value();
-        grid.setResolution(params_.voxel_filter_resolution);
+        grid.setConfiguration(params_.voxel_filter_resolution, params_.voxel_use_tsl_robin_map);
         grid.clear();
 
         // 1st) go thru all the input layers:
@@ -204,7 +214,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             [&](const PointCloudToVoxelGridSingle::indices_t& idx,
                 const PointCloudToVoxelGridSingle::voxel_t&   vxl)
             {
-                if (!vxl.pointIdx.has_value()) return;
+                if (!vxl.pointIdx.has_value())
+                {
+                    return;
+                }
 
                 nonEmptyVoxels++;
 
@@ -213,7 +226,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     const PointCloudToVoxelGridSingle::indices_t flattenIdx = {idx.cx_, idx.cy_, 0};
 
                     // first time?
-                    if (flattenUsedBins.count(flattenIdx) != 0) return;  // nope. Skip this point.
+                    if (flattenUsedBins.count(flattenIdx) != 0)
+                    {
+                        return;  // nope. Skip this point.
+                    }
 
                     // First time we see this (x,y) cell:
                     flattenUsedBins.insert(flattenIdx);
@@ -240,7 +256,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             "Has you called initialize() after updating/loading parameters?");
 
         auto& grid = filter_grid_.value();
-        grid.setResolution(params_.voxel_filter_resolution);
+        grid.setConfiguration(params_.voxel_filter_resolution, params_.voxel_use_tsl_robin_map);
         grid.clear();
 
         grid.processPointCloud(pc);

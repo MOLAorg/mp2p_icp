@@ -25,6 +25,7 @@ void FilterEdgesPlanes::Parameters::load_from_yaml(const mrpt::containers::yaml&
 
     MCP_LOAD_REQ(c, voxel_filter_resolution);
     MCP_LOAD_REQ(c, voxel_filter_decimation);
+    MCP_LOAD_OPT(c, use_tsl_robin_map);
     MCP_LOAD_REQ(c, full_pointcloud_decimation);
     MCP_LOAD_REQ(c, voxel_filter_max_e2_e0);
     MCP_LOAD_REQ(c, voxel_filter_max_e1_e0);
@@ -42,7 +43,7 @@ void FilterEdgesPlanes::initialize(const mrpt::containers::yaml& c)
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params_.load_from_yaml(c);
 
-    filter_grid_.setResolution(params_.voxel_filter_resolution);
+    filter_grid_.setConfiguration(params_.voxel_filter_resolution, params_.use_tsl_robin_map);
 
     MRPT_END
 }

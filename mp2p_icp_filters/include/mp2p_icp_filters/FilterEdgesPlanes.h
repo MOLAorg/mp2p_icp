@@ -52,7 +52,8 @@ class FilterEdgesPlanes : public mp2p_icp_filters::FilterBase
         unsigned int full_pointcloud_decimation = 20;
 
         /** Size of each voxel edge [meters] */
-        double voxel_filter_resolution = .5;  // [m]
+        float voxel_filter_resolution = .5f;  // [m]
+        bool  use_tsl_robin_map       = true;
 
         unsigned int voxel_filter_decimation = 1;
         float        voxel_filter_max_e2_e0  = 30.f;

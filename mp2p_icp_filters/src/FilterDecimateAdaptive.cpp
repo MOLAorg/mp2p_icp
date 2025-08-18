@@ -85,7 +85,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     const float voxel_size = largest_dim / _.maximum_voxel_count_per_dimension;
 
     // Parse input cloud thru voxelization:
-    filter_grid_.setResolution(voxel_size);
+    filter_grid_.setConfiguration(voxel_size, true);
     filter_grid_.processPointCloud(pc);
 
     struct DataPerVoxel

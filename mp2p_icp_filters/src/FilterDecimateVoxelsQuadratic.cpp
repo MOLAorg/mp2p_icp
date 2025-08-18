@@ -45,7 +45,7 @@ void FilterDecimateVoxelsQuadratic::initialize(const mrpt::containers::yaml& c)
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params_.load_from_yaml(c);
 
-    filter_grid_.setResolution(params_.voxel_filter_resolution);
+    filter_grid_.setConfiguration(params_.voxel_filter_resolution, true);
     quadratic_reference_radius_inv_ = 1.0f / params_.quadratic_reference_radius;
 
     MRPT_END

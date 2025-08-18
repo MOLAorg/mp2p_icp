@@ -29,10 +29,9 @@ class PointCloudToVoxelGridSingle
 {
    public:
     PointCloudToVoxelGridSingle();
-    ~PointCloudToVoxelGridSingle() {}
 
-    /** Changes the voxel resolution, clearing past contents */
-    void setResolution(const float voxel_size);
+    /** Changes the voxel settings, clearing past contents */
+    void setConfiguration(const float voxel_size, bool use_tsl_robin_map = true);
 
     void processPointCloud(const mrpt::maps::CPointsMap& p);
 
@@ -88,8 +87,14 @@ class PointCloudToVoxelGridSingle
         // k1 < k2?
         bool operator()(const indices_t& k1, const indices_t& k2) const noexcept
         {
-            if (k1.cx_ != k2.cx_) return k1.cx_ < k2.cx_;
-            if (k1.cy_ != k2.cy_) return k1.cy_ < k2.cy_;
+            if (k1.cx_ != k2.cx_)
+            {
+                return k1.cx_ < k2.cx_;
+            }
+            if (k1.cy_ != k2.cy_)
+            {
+                return k1.cy_ < k2.cy_;
+            }
             return k1.cz_ < k2.cz_;
         }
     };
@@ -105,6 +110,8 @@ class PointCloudToVoxelGridSingle
    private:
     /** Voxel size (meters) or resolution. */
     float resolution_ = 0.20f;
+
+    bool use_tsl_robin_map_ = true;
 
     /** The actual hash map. Hidden inside a PIMP to prevent problems with
      * duplicated TSL library copies in the user space */

@@ -92,7 +92,11 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
         std::string output_pointcloud_layer;
 
         /** Size of each voxel edge [meters] */
-        double voxel_filter_resolution = 1.0;  // [m]
+        float voxel_filter_resolution = 1.0f;  // [m]
+
+        /** Whether to use as container implementation
+         * tsl::robin_map (true, default), or a std::map (false) */
+        bool voxel_use_tsl_robin_map = true;
 
         /** If !=0 and there are less input points that this number,
          *  all points will be just moved through without decimation.

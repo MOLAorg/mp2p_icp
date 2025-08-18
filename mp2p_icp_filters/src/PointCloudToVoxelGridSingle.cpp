@@ -14,21 +14,26 @@
 // Used in the PIMP:
 #include <tsl/robin_map.h>
 
+#include <map>
+
 using namespace mp2p_icp_filters;
 
 struct PointCloudToVoxelGridSingle::Impl
 {
     tsl::robin_map<indices_t, voxel_t, IndicesHash> pts_voxels;
+    std::map<indices_t, voxel_t, IndicesHash>       pts_voxels_std_map;
 };
 
 PointCloudToVoxelGridSingle::PointCloudToVoxelGridSingle() : impl_(mrpt::make_impl<Impl>()) {}
 
-void PointCloudToVoxelGridSingle::setResolution(const float voxel_size)
+void PointCloudToVoxelGridSingle::setConfiguration(const float voxel_size, bool use_tsl_robin_map)
 {
     MRPT_START
 
-    impl_->pts_voxels.clear();
-    resolution_ = voxel_size;
+    resolution_        = voxel_size;
+    use_tsl_robin_map_ = use_tsl_robin_map;
+
+    this->clear();
 
     MRPT_END
 }
@@ -38,54 +43,89 @@ void PointCloudToVoxelGridSingle::processPointCloud(const mrpt::maps::CPointsMap
     using mrpt::max3;
     using std::abs;
 
-    const auto& xs   = p.getPointsBufferRef_x();
-    const auto& ys   = p.getPointsBufferRef_y();
-    const auto& zs   = p.getPointsBufferRef_z();
-    const auto  npts = xs.size();
+    const auto& xs          = p.getPointsBufferRef_x();
+    const auto& ys          = p.getPointsBufferRef_y();
+    const auto& zs          = p.getPointsBufferRef_z();
+    const auto  point_count = xs.size();
 
-    auto& pts_voxels = impl_->pts_voxels;
-
-    pts_voxels.reserve(pts_voxels.size() + npts);
-
-    for (std::size_t i = 0; i < npts; i++)
+    const auto lambda_process = [&](auto& pts_voxels)
     {
-        const auto x = xs[i];
-        const auto y = ys[i];
-        const auto z = zs[i];
-
-        const indices_t vxl_idx = {coord2idx(x), coord2idx(y), coord2idx(z)};
-
-        auto itVoxel = pts_voxels.find(vxl_idx);
-
-        if (itVoxel != pts_voxels.end())
+        for (std::size_t i = 0; i < point_count; i++)
         {
-            // (const cast: required for tsl::robin_map)
-            auto& vx = const_cast<voxel_t&>(itVoxel->second);
+            const auto x = xs[i];
+            const auto y = ys[i];
+            const auto z = zs[i];
 
-            if (vx.pointCount == 0)
-                vx = {mrpt::math::TPoint3Df(x, y, z), i, &p, 1};
+            const indices_t vxl_idx = {coord2idx(x), coord2idx(y), coord2idx(z)};
+
+            auto itVoxel = pts_voxels.find(vxl_idx);
+
+            if (itVoxel != pts_voxels.end())
+            {
+                // (const cast: required for tsl::robin_map)
+                auto& vx = const_cast<voxel_t&>(itVoxel->second);
+
+                if (vx.pointCount == 0)
+                {
+                    vx = {mrpt::math::TPoint3Df(x, y, z), i, &p, 1};
+                }
+                else
+                {
+                    vx.pointCount++;
+                }
+            }
             else
-                vx.pointCount++;
+            {
+                // insert new
+                pts_voxels[vxl_idx] = {mrpt::math::TPoint3Df(x, y, z), i, &p, 1};
+            }
         }
-        else
-        {
-            // insert new
-            pts_voxels[vxl_idx] = {mrpt::math::TPoint3Df(x, y, z), i, &p, 1};
-        }
+    };
+
+    if (use_tsl_robin_map_)
+    {
+        impl_->pts_voxels.reserve(impl_->pts_voxels.size() + point_count);
+        lambda_process(impl_->pts_voxels);
+    }
+    else
+    {
+        lambda_process(impl_->pts_voxels_std_map);
     }
 }
 
 void PointCloudToVoxelGridSingle::clear()
 {
-    //
-    impl_->pts_voxels.min_load_factor(0.01f);
-    impl_->pts_voxels.clear();
+    if (use_tsl_robin_map_)
+    {
+        impl_->pts_voxels.min_load_factor(0.01f);
+        impl_->pts_voxels.clear();
+    }
+    else
+    {
+        impl_->pts_voxels_std_map.clear();
+    }
 }
 
 void PointCloudToVoxelGridSingle::visit_voxels(
     const std::function<void(const indices_t idx, const voxel_t& vxl)>& userCode) const
 {
-    for (const auto& [idx, vxl] : impl_->pts_voxels) userCode(idx, vxl);
+    if (use_tsl_robin_map_)
+    {
+        for (const auto& [idx, vxl] : impl_->pts_voxels)
+        {
+            userCode(idx, vxl);
+        }
+    }
+    else
+    {
+        for (const auto& [idx, vxl] : impl_->pts_voxels_std_map)
+        {
+            userCode(idx, vxl);
+        }
+    }
 }
 
-size_t PointCloudToVoxelGridSingle::size() const { return impl_->pts_voxels.size(); }
+size_t PointCloudToVoxelGridSingle::size() const
+{
+    return use_tsl_robin_map_ ? impl_->pts_voxels.size() : impl_->pts_voxels_std_map.size();
+}
