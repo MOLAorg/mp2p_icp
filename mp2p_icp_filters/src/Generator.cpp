@@ -23,6 +23,7 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservation3DRangeScan.h>
+#include <mrpt/obs/CObservationIMU.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CObservationRotatingScan.h>
 #include <mrpt/obs/CObservationVelodyneScan.h>
@@ -174,6 +175,33 @@ bool Generator::filterVelodyneScan(  //
         "specialized filterVelodyneScan() generator.");
 
     m->insertObservation(pc, robotPose);
+
+    return true;  // implemented
+}
+
+bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu) const
+{
+    auto* parameterSource = const_cast<mp2p_icp::ParameterSource*>(attachedSource());
+    if (!parameterSource)
+    {
+        return false;  // No parameter source attached, nothing to do.
+    }
+
+    if (!imu.has(mrpt::obs::IMU_WX) || !imu.has(mrpt::obs::IMU_WY) || !imu.has(mrpt::obs::IMU_WZ))
+    {
+        // No gyroscope data:
+        return false;
+    }
+
+    // Convert IMU readings to vehicle frame of reference:
+    const double t = mrpt::Clock::toDouble(imu.timestamp);
+
+    const mp2p_icp::LocalVelocityBuffer::AngularVelocity ang_vel_sensor = {
+        imu.get(mrpt::obs::IMU_WX), imu.get(mrpt::obs::IMU_WY), imu.get(mrpt::obs::IMU_WZ)};
+
+    const auto ang_vel_vehicle = imu.sensorPose.rotateVector(ang_vel_sensor);
+
+    parameterSource->localVelocityBuffer.add_angular_velocity(t, ang_vel_vehicle);
 
     return true;  // implemented
 }
@@ -379,6 +407,10 @@ bool Generator::implProcessDefault(
     else if (auto o3 = dynamic_cast<const CObservationVelodyneScan*>(&o); o3)
     {
         processed = filterVelodyneScan(*o3, out, robotPose);
+    }
+    else if (auto oIMU = dynamic_cast<const CObservationIMU*>(&o); oIMU)
+    {
+        processed = processIMU(*oIMU);
     }
 
     // done?

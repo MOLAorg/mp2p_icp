@@ -170,6 +170,9 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
         const mrpt::obs::CObservationRotatingScan& pc, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose) const;
 
+    /** Process IMU readings: forward them to the local velocity buffer of the parameter source */
+    virtual bool processIMU(const mrpt::obs::CObservationIMU& imu) const;
+
     bool       initialized_ = false;
     std::regex process_class_names_regex_;
     std::regex process_sensor_labels_regex_;
