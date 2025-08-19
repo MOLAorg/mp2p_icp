@@ -73,11 +73,10 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
             case 0:
                 sc.prior.reset();  // no prior. Delete it
                 expected = groundTruth;
-                checkFn  = [&]()
-                {
+                checkFn  = [&]() {
                     ASSERT_NEAR_(
-                        mrpt::poses::Lie::SE<3>::log(result.optimalPose - expected).norm(), 0.0,
-                        1e-3);
+                         mrpt::poses::Lie::SE<3>::log(result.optimalPose - expected).norm(), 0.0,
+                         1e-3);
                 };
                 break;
             case 1:
