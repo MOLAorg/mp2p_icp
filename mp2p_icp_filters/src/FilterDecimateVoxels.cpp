@@ -61,7 +61,7 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
     MCP_LOAD_OPT(c, minimum_input_points_to_filter);
 
     DECLARE_PARAMETER_IN_REQ(c, voxel_filter_resolution, parent);
-    MCP_LOAD_OPT(c, voxel_use_tsl_robin_map);
+    MCP_LOAD_OPT(c, use_tsl_robin_map);
 
     if (c.has("flatten_to"))
     {
@@ -193,7 +193,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             "Has you called initialize() after updating/loading parameters?");
 
         auto& grid = filter_grid_single_.value();
-        grid.setConfiguration(params_.voxel_filter_resolution, params_.voxel_use_tsl_robin_map);
+        grid.setConfiguration(params_.voxel_filter_resolution, params_.use_tsl_robin_map);
         grid.clear();
 
         // 1st) go thru all the input layers:
@@ -256,7 +256,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             "Has you called initialize() after updating/loading parameters?");
 
         auto& grid = filter_grid_.value();
-        grid.setConfiguration(params_.voxel_filter_resolution, params_.voxel_use_tsl_robin_map);
+        grid.setConfiguration(params_.voxel_filter_resolution, params_.use_tsl_robin_map);
         grid.clear();
 
         grid.processPointCloud(pc);
