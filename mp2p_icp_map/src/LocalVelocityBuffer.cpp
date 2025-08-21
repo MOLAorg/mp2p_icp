@@ -8,16 +8,17 @@
 
 using namespace mp2p_icp;
 
-void LocalVelocityBuffer::add_linear_velocity(const TimeStamp& time, const LinearVelocity& velocity)
+void LocalVelocityBuffer::add_linear_velocity(
+    const TimeStamp& time, const LinearVelocity& v_vehicle)
 {
-    linear_velocities_[time] = velocity;
+    linear_velocities_[time] = v_vehicle;
     delete_too_old_entries(time);
 }
 
 void LocalVelocityBuffer::add_angular_velocity(
-    const TimeStamp& time, const AngularVelocity& velocity)
+    const TimeStamp& time, const AngularVelocity& w_vehicle)
 {
-    angular_velocities_[time] = velocity;
+    angular_velocities_[time] = w_vehicle;
     delete_too_old_entries(time);
 }
 

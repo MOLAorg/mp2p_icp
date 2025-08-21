@@ -35,11 +35,11 @@ class LocalVelocityBuffer
 
     Parameters parameters;
 
-    /// Add a new linear velocity entry
-    void add_linear_velocity(const TimeStamp& time, const LinearVelocity& velocity);
+    /// Add a new linear velocity entry (in the vehicle frame of reference)
+    void add_linear_velocity(const TimeStamp& time, const LinearVelocity& v_vehicle);
 
-    /// Add a new angular velocity entry
-    void add_angular_velocity(const TimeStamp& time, const AngularVelocity& velocity);
+    /// Add a new angular velocity entry (in the vehicle frame of reference)
+    void add_angular_velocity(const TimeStamp& time, const AngularVelocity& w_vehicle);
 
     /// reset the buffer, clearing all entries
     void clear()
@@ -48,10 +48,10 @@ class LocalVelocityBuffer
         angular_velocities_.clear();
     }
 
-    /// Get the current linear velocities map
+    /// Get the current linear velocities map (in the vehicle frame of reference)
     const auto& get_linear_velocities() const { return linear_velocities_; }
 
-    /// Get the current angular velocities map
+    /// Get the current angular velocities map (in the vehicle frame of reference)
     const auto& get_angular_velocities() const { return angular_velocities_; }
 
     /// Set the reference time for lidar scans:
@@ -64,8 +64,8 @@ class LocalVelocityBuffer
     mrpt::poses::CPose3DInterpolator build_interpolated_poses_around_reference_time() const;
 
    private:
-    std::map<TimeStamp, LinearVelocity>  linear_velocities_;
-    std::map<TimeStamp, AngularVelocity> angular_velocities_;
+    std::map<TimeStamp, LinearVelocity>  linear_velocities_;  // in the vehicle frame
+    std::map<TimeStamp, AngularVelocity> angular_velocities_;  // in the vehicle frame
     TimeStamp reference_zero_time = 0.0;  //!< Reference time for each lidar scan
 
     void delete_too_old_entries(const TimeStamp& now);

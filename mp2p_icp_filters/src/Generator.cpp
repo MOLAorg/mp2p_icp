@@ -387,30 +387,45 @@ bool Generator::implProcessDefault(
     // load lazy-load from disk:
     o.load();
 
+    // Prepare the local velocity buffer to set the reference zero time to the point cloud
+    // timestamp, which will later on be adjusted with the offset by FilterAdjustTimestamps
+    std::optional<mrpt::Clock::time_point> pointcloud_obs_timestamp;
+
     if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
     {
-        processed = filterRotatingScan(*oRS, out, robotPose);
+        processed                = filterRotatingScan(*oRS, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
     }
     else if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
     {
         ASSERT_(o0->pointcloud);
         processed = filterPointCloud(*o0->pointcloud, o0->sensorPose, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
     }
     else if (auto o1 = dynamic_cast<const CObservation2DRangeScan*>(&o); o1)
     {
-        processed = filterScan2D(*o1, out, robotPose);
+        processed                = filterScan2D(*o1, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
     }
     else if (auto o2 = dynamic_cast<const CObservation3DRangeScan*>(&o); o2)
     {
-        processed = filterScan3D(*o2, out, robotPose);
+        processed                = filterScan3D(*o2, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
     }
     else if (auto o3 = dynamic_cast<const CObservationVelodyneScan*>(&o); o3)
     {
-        processed = filterVelodyneScan(*o3, out, robotPose);
+        processed                = filterVelodyneScan(*o3, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
     }
     else if (auto oIMU = dynamic_cast<const CObservationIMU*>(&o); oIMU)
     {
         processed = processIMU(*oIMU);
+    }
+
+    if (auto ps = this->attachedSource(); ps != nullptr && pointcloud_obs_timestamp)
+    {
+        ps->localVelocityBuffer.set_reference_zero_time(
+            mrpt::Clock::toDouble(*pointcloud_obs_timestamp));
     }
 
     // done?

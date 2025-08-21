@@ -60,6 +60,7 @@ class ParameterSource
         }
     }
 
+    /** Must be called after updating all variables so changes take effect. */
     void realize();
 
     std::string printVariableValues() const;
@@ -68,7 +69,7 @@ class ParameterSource
     auto getVariableValues() const -> std::map<std::string, double> { return variables_; }
 
     /** Local velocity buffer for this parameter source */
-    LocalVelocityBuffer localVelocityBuffer;
+    mutable LocalVelocityBuffer localVelocityBuffer;
 
    private:
     // Attached clients.
@@ -91,9 +92,11 @@ class Parameterizable
      */
     virtual void attachToParameterSource(ParameterSource& source) { source.attach(*this); }
 
+    /** Returns the list of declared parameters */
     auto&       declaredParameters() { return declParameters_; }
     const auto& declaredParameters() const { return declParameters_; }
 
+    /** Returns the attached parameter source */
     ParameterSource*       attachedSource() { return attachedSource_; }
     const ParameterSource* attachedSource() const { return attachedSource_; }
 

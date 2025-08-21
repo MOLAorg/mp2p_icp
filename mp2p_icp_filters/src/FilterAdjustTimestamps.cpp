@@ -80,13 +80,11 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
                                                            << " due to missing timestamps.");
             return;
         }
-        else
-        {
-            THROW_EXCEPTION_FMT(
-                "Cannot do time adjusting for input cloud '%s' "
-                "with contents: %s due to missing timestamps.",
-                params_.pointcloud_layer.c_str(), pc.asString().c_str());
-        }
+
+        THROW_EXCEPTION_FMT(
+            "Cannot do time adjusting for input cloud '%s' "
+            "with contents: %s due to missing timestamps.",
+            params_.pointcloud_layer.c_str(), pc.asString().c_str());
     }
 
     auto& Ts = *TsPtr;
@@ -97,35 +95,59 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
     {
         const float t = Ts[i];
 
-        if (!minT || t < *minT) minT = t;
-        if (!maxT || t > *maxT) maxT = t;
+        if (!minT || t < *minT)
+        {
+            minT = t;
+        }
+        if (!maxT || t > *maxT)
+        {
+            maxT = t;
+        }
     }
     ASSERT_(minT && maxT);
+
+    auto  ps = this->attachedSource();
+    float dt = 0;
 
     switch (params_.method)
     {
         case TimestampAdjustMethod::MiddleIsZero:
         {
-            const float dt = 0.5f * (*maxT + *minT) + params_.time_offset;
-            for (auto& t : Ts) t -= dt;
+            dt = 0.5f * (*maxT + *minT) + static_cast<float>(params_.time_offset);
+            for (auto& t : Ts)
+            {
+                t -= dt;
+            }
         }
         break;
         case TimestampAdjustMethod::EarliestIsZero:
         {
-            const float dt = *minT + params_.time_offset;
-            for (auto& t : Ts) t -= dt;
+            dt = *minT + static_cast<float>(params_.time_offset);
+            for (auto& t : Ts)
+            {
+                t -= dt;
+            }
         }
         break;
         case TimestampAdjustMethod::Normalize:
         {
             const float m = *minT;
             const float k = *maxT != *minT ? 1.0f / (*maxT - *minT) : 1.0f;
-            for (auto& t : Ts) t = (t - m) * k + params_.time_offset;
+            for (auto& t : Ts)
+            {
+                t = (t - m) * k + static_cast<float>(params_.time_offset);
+            }
         }
         break;
 
         default:
             THROW_EXCEPTION("Unknown value for 'method'");
+    }
+
+    if (ps)
+    {
+        ps->localVelocityBuffer.set_reference_zero_time(
+            ps->localVelocityBuffer.get_reference_zero_time() + dt);
     }
 
     MRPT_END
