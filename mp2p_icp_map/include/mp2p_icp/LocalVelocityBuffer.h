@@ -7,7 +7,7 @@
 #pragma once
 
 #include <mrpt/math/TPoint3D.h>
-#include <mrpt/poses/CPose3DInterpolator.h>
+#include <mrpt/poses/CPose3D.h>
 
 #include <map>
 
@@ -30,7 +30,8 @@ class LocalVelocityBuffer
 
     struct Parameters
     {
-        double max_time_window = 1.5;  // seconds
+        double max_time_window        = 1.5;  // seconds
+        double tolerance_search_stamp = 10e-3;  // seconds
     };
 
     Parameters parameters;
@@ -60,8 +61,15 @@ class LocalVelocityBuffer
     /// Get the reference time for lidar scans:
     TimeStamp get_reference_zero_time() const { return reference_zero_time; }
 
-    /// Build the trajectory around the currently-set reference zero time:
-    mrpt::poses::CPose3DInterpolator build_interpolated_poses_around_reference_time() const;
+    /** Build the reconstructed vehicle trajectory in the time range `ref_time ± half_time_span`.
+     *
+     * The closest velocity entry timestamp to the reference time is searched and used as if it was
+     * exactly the reference time.
+     * In the returned trajectory, t=0 is the reference time.
+     * \return The generated trajectory, or an empty one if there is no enough data to build it.
+     */
+    std::map<double, mrpt::poses::CPose3D> reconstruct_poses_around_reference_time(
+        double half_time_span) const;
 
    private:
     std::map<TimeStamp, LinearVelocity>  linear_velocities_;  // in the vehicle frame

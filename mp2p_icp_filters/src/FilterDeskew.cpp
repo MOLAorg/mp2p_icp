@@ -12,6 +12,7 @@
 
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
+#include <mrpt/containers/find_closest.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
@@ -148,7 +149,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Used for precise deskew-only. This contains relative poses of the vehicle frame ("base_link")
     // with t=0 being the reference time when t=0 in the point cloud timestamp field:
-    std::optional<mrpt::poses::CPose3DInterpolator> interpolated_relative_poses;
+    std::optional<std::map<double, mrpt::poses::CPose3D>> interpolated_relative_poses;
     mrpt::math::TTwist3D constant_twist;  // a copy to avoid the overhead of accessing optional<>
 
     if (use_precise_local_velocities)
@@ -157,8 +158,27 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         ASSERTMSG_(
             ps, "A ParameterSource must be attached if use_precise_local_velocities is enabled");
 
-        interpolated_relative_poses =
-            ps->localVelocityBuffer.build_interpolated_poses_around_reference_time();
+        const auto [it_min, it_max] = std::minmax_element(Ts->cbegin(), Ts->cend());
+        ASSERT_(it_min != Ts->cend());
+        ASSERT_(it_max != Ts->cend());
+
+        const double scan_time_span = *it_max - *it_min;
+
+        const auto imu_poses =
+            ps->localVelocityBuffer.reconstruct_poses_around_reference_time(scan_time_span);
+
+        if (imu_poses.empty())
+        {
+            interpolated_relative_poses.reset();
+            MRPT_LOG_THROTTLE_WARN(
+                1.0,
+                "FilterDeskew: Could not honor 'use_precise_local_velocities' since the local "
+                "velocity buffer seems not to have data enough.");
+        }
+        else
+        {
+            interpolated_relative_poses = imu_poses;
+        }
     }
     else
     {
@@ -190,8 +210,25 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             mrpt::poses::CPose3D pose_increment;
 
-            if (use_precise_local_velocities)
+            // Use precise trajectory, if enabled and if there is enough data (otherwise, fallback
+            // to constant velocity)
+            if (use_precise_local_velocities && interpolated_relative_poses)
             {
+                // Translation:
+                const auto v =
+                    mrpt::math::TVector3D(constant_twist.vx, constant_twist.vy, constant_twist.vz);
+                const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
+
+                // Interpolated rotation:
+                const auto found_pose_opt =
+                    mrpt::containers::find_closest(*interpolated_relative_poses, (*Ts)[i]);
+                if (found_pose_opt.has_value())
+                {
+                    pose_increment = found_pose_opt->second;
+                    pose_increment.x(v_dt.x);
+                    pose_increment.y(v_dt.y);
+                    pose_increment.z(v_dt.z);
+                }
             }
             else
             {
