@@ -78,10 +78,12 @@ std::map<double, mrpt::poses::CPose3D> LocalVelocityBuffer::reconstruct_poses_ar
     // Insert ref pose (=the identity)
     trajectory[0.0 /*ref_time - ref_time*/] = pose;
 
+    constexpr double INTERPOLATION_TIME_STEP_SEC = 0.1e-3;
+
     // 1/2: Forward integration
     auto   it         = it_ref;
     double prev_stamp = it->first;
-    for (;;)
+    while (prev_stamp - ref_time < half_time_span)
     {
         if (it == angular_velocities_.end())
         {
@@ -90,27 +92,31 @@ std::map<double, mrpt::poses::CPose3D> LocalVelocityBuffer::reconstruct_poses_ar
         const auto& w = it->second;
         ++it;
         const double this_abs_stamp = it->first;
-        const double dt             = this_abs_stamp - prev_stamp;
-        prev_stamp                  = this_abs_stamp;
 
-        const double this_rel_stamp = this_abs_stamp - ref_time;
-        if (this_rel_stamp > half_time_span)
+        // Move forward in time in small interpolating steps:
+        for (;;)
         {
-            break;
-        }
-        // Integrate:
-        const auto R =
-            mrpt::poses::Lie::SO<3>::exp((w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>());
-        pose.setRotationMatrix(pose.getRotationMatrix() * R);
+            const double dt = std::min(this_abs_stamp - prev_stamp, INTERPOLATION_TIME_STEP_SEC);
+            prev_stamp += dt;
+            const double this_rel_stamp = prev_stamp - ref_time;
 
-        trajectory[this_rel_stamp] = pose;
+            if (std::abs(dt) < 1e-3 * INTERPOLATION_TIME_STEP_SEC)
+            {
+                break;
+            }
+            // Integrate:
+            const auto R = mrpt::poses::Lie::SO<3>::exp(
+                (w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>());
+            pose.setRotationMatrix(pose.getRotationMatrix() * R);
+            trajectory[this_rel_stamp] = pose;
+        }
     }
 
     // 2/2: Backward integration
     pose       = mrpt::poses::CPose3D::Identity();
     it         = it_ref;
     prev_stamp = it->first;
-    for (;;)
+    while (prev_stamp - ref_time > -half_time_span)
     {
         if (it == angular_velocities_.end() || it == angular_velocities_.begin())
         {
@@ -119,22 +125,27 @@ std::map<double, mrpt::poses::CPose3D> LocalVelocityBuffer::reconstruct_poses_ar
         const auto& w = it->second;
         --it;
         const double this_abs_stamp = it->first;
-        const double dt             = this_abs_stamp - prev_stamp;
-        prev_stamp                  = this_abs_stamp;
 
-        const double this_rel_stamp = this_abs_stamp - ref_time;
-        if (this_rel_stamp < -half_time_span)
-        {
-            break;
-        }
-        // Integrate:
         // NOTE: dt<0, so there is nothing else special to care about while integrating this
         //       backwards in time.
-        const auto R =
-            mrpt::poses::Lie::SO<3>::exp((w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>());
-        pose.setRotationMatrix(pose.getRotationMatrix() * R);
+        // Move forward in time in small interpolating steps:
+        for (;;)
+        {
+            const double dt =
+                -std::min(std::abs(this_abs_stamp - prev_stamp), INTERPOLATION_TIME_STEP_SEC);
+            prev_stamp += dt;
+            const double this_rel_stamp = prev_stamp - ref_time;
 
-        trajectory[this_rel_stamp] = pose;
+            if (std::abs(dt) < 1e-3 * INTERPOLATION_TIME_STEP_SEC)
+            {
+                break;
+            }
+            // Integrate:
+            const auto R = mrpt::poses::Lie::SO<3>::exp(
+                (w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>());
+            pose.setRotationMatrix(pose.getRotationMatrix() * R);
+            trajectory[this_rel_stamp] = pose;
+        }
     }
 
     return trajectory;

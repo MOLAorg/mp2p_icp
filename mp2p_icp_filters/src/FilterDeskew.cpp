@@ -172,8 +172,8 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             interpolated_relative_poses.reset();
             MRPT_LOG_THROTTLE_WARN(
                 1.0,
-                "FilterDeskew: Could not honor 'use_precise_local_velocities' since the local "
-                "velocity buffer seems not to have data enough.");
+                "Could not honor 'use_precise_local_velocities' since the local velocity buffer "
+                "seems not to have data enough.");
         }
         else
         {
