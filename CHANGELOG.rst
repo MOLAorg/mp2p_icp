@@ -2,6 +2,29 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Modernize and unify license notes in all files
+* Merge pull request `#8 <https://github.com/MOLAorg/mp2p_icp/issues/8>`_ from MOLAorg/feat/precise-deskew
+  Precise scan deskew:
+  - Implement LocalVelocityBuffer inside ParameterSource's
+  - Update LocalVelocityBuffer from IMU data from Generators.
+  - Export / Import LocalVelocityBuffer to/from YAML
+  - Implement precise cloud undistortion in FilterDeskew
+  - Use precise cloud undistortion in the context of sm2mm.
+* sm2mm: Use local velocity buffer if available
+* add serialization to velocity buffer
+* Generators now handle IMU readings and forward them to the velocity buffer
+* Update to latest mola_common for embedded builds
+* linter: clang-tidy fixes
+* fix param name for better consistency
+* feature: Option to use std::map instead of tsl robin_map in voxelization filters
+* docs: fill txt2mm man page
+* Feature: txt2mm new import format 'xyzrgb_normalized'
+* remove code to support older MRPT versions; code style clean ups
+* Fix: FilterAdjustTimestamps may trigger exception if input cloud is empty
+* Contributors: Jose Luis Blanco-Claraco
+
 1.7.1 (2025-06-20)
 ------------------
 * docs: Populate sm2mm app page
