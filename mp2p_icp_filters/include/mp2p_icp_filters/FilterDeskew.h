@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2024 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -26,13 +26,16 @@ namespace mp2p_icp_filters
  *
  * Important notes:
  * - The `time` field of each point is assumed to be in seconds since the
- * begining of the scan (e.g. from 0.0 to 0.1 for 10 Hz scans).
+ *   reference time point, which can be the start or middle point of the scan. This can be
+ *   controlled by adding a FilterAdjustTimestamps before this block.
+ *
  * - The input layer must contain a point cloud in the format
- * mrpt::maps::CPointsMapXYZIRT so timestamps are present.
+ *   mrpt::maps::CPointsMapXYZIRT so timestamps are present.
+ *
  * - If the input layer is of a different type, or the `time` field is missing,
- * an exception will be thrown by default, unless the option
- * `silently_ignore_no_timestamps` is set to `true`, in which case the input
- * cloud will be just moved forward to the output.
+ *   an exception will be thrown by default, unless the option
+ *   `silently_ignore_no_timestamps` is set to `true`, in which case the input
+ *   cloud will be just moved forward to the output.
  *
  * \ingroup mp2p_icp_filters_grp
  */
@@ -50,6 +53,7 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      *   output_pointcloud_layer: 'deskewed'
      *   # silently_ignore_no_timestamps: false
      *   # skip_deskew: false  # Can be enabled to bypass deskew
+     *   # use_precise_local_velocities: false  # Use precise IMU-based de-skewing
      *   # These (vx,...,wz) are variable names that must be defined via the
      *   # mp2p_icp::Parameterizable API to update them dynamically.
      *   twist: [vx,vy,vz,wx,wy,wz]
@@ -83,11 +87,18 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      */
     bool skip_deskew = false;
 
+    /** If enabled (true), the constant `twist` field is ignored and the precise twist trajectory
+     *  is retrieved from the LocalVelocityBuffer from the ParameterSource attached to this block.
+     */
+    bool use_precise_local_velocities = false;
+
     /** The velocity (linear and angular) of the vehicle in the local
      * vehicle frame. See FilterDeskew::initialize for an example of how
      * to define it via dynamic variables.
+     * This will be used unless `use_precise_local_velocities` is enabled,
+     * in which case it can be left as an empty `std::optional`.
      */
-    mrpt::math::TTwist3D twist;
+    std::optional<mrpt::math::TTwist3D> twist;
 };
 
 /** @} */

@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  * A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2024 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -14,7 +14,7 @@
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 
-//#define DEBUG_GL
+// #define DEBUG_GL
 
 #ifdef DEBUG_GL
 #include <mrpt/img/color_maps.h>

@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2024 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 
@@ -14,8 +14,10 @@ using namespace mp2p_icp;
 
 void ParameterSource::attach(Parameterizable& obj)
 {
-    for (auto& p : obj.declaredParameters())  //
+    for (auto& p : obj.declaredParameters())
+    {
         attachedDeclParameters_.insert(&p);
+    }
 
     obj.attachedSource_ = this;
 }
@@ -43,8 +45,14 @@ void ParameterSource::realize()
     // 1) compile?
     for (auto& p : attachedDeclParameters_)
     {
-        if (p->is_constant) continue;
-        if (p->compiled.has_value()) continue;  // already done:
+        if (p->is_constant)
+        {
+            continue;
+        }
+        if (p->compiled.has_value())
+        {
+            continue;  // already done:
+        }
 
         auto& expr = p->compiled.emplace();
         expr.compile(p->expression, variables_);
@@ -53,7 +61,10 @@ void ParameterSource::realize()
     // 2) Evaluate and store:
     for (auto& p : attachedDeclParameters_)
     {
-        if (p->is_constant) continue;
+        if (p->is_constant)
+        {
+            continue;
+        }
 
         const double val = p->compiled->eval();
 
@@ -65,8 +76,7 @@ void ParameterSource::realize()
                 if constexpr (std::is_same_v<T, std::monostate>)
                 {
                     throw std::runtime_error(
-                        "[ParameterSource] Attached parameter target is "
-                        "monostate!");
+                        "[ParameterSource] Attached parameter target is monostate!");
                 }
                 else if constexpr (std::is_same_v<T, double*>)
                 {
@@ -109,7 +119,7 @@ void Parameterizable::parseAndDeclareParameter_impl(const std::string& value, T&
         target       = static_cast<T>(e.eval());
         ipm.compiled = std::move(e);
     }
-    catch (const std::exception&)
+    catch (const std::exception&)  // NOLINT
     {
         // We probably need variables, not defined yet.
         // Ignore this exception at this moment. Will trigger if
@@ -137,13 +147,19 @@ void Parameterizable::checkAllParametersAreRealized() const
     std::stringstream errors;
     for (auto& p : declParameters_)
     {
-        if (p.has_been_evaluated) continue;
+        if (p.has_been_evaluated)
+        {
+            continue;
+        }
         errors << "- '" << p.expression << "'"
                << "\n";
     }
 
     const auto sErrs = errors.str();
-    if (sErrs.empty()) return;  // all is ok.
+    if (sErrs.empty())
+    {
+        return;  // all is ok.
+    }
 
     THROW_EXCEPTION_FMT(
         "The following parameter expressions have not been correctly "
@@ -155,7 +171,10 @@ void Parameterizable::unrealizeParameters()
 {
     for (auto& p : declParameters_)
     {
-        if (p.is_constant) continue;
+        if (p.is_constant)
+        {
+            continue;
+        }
         p.has_been_evaluated = false;
     }
 }

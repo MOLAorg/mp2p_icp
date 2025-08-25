@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  * A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2024 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -12,6 +12,7 @@
 
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
+#include <mrpt/containers/find_closest.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
@@ -39,15 +40,21 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
     MCP_LOAD_OPT(c, silently_ignore_no_timestamps);
     MCP_LOAD_OPT(c, output_layer_class);
     MCP_LOAD_OPT(c, skip_deskew);
+    MCP_LOAD_OPT(c, use_precise_local_velocities);
 
-    ASSERT_(c.has("twist") && c["twist"].isSequence());
-    ASSERT_EQUAL_(c["twist"].asSequence().size(), 6UL);
-
-    const auto yamlTwist = c["twist"].asSequence();
-
-    for (int i = 0; i < 6; i++)
+    if (c.has("twist"))
     {
-        Parameterizable::parseAndDeclareParameter(yamlTwist.at(i).as<std::string>(), twist[i]);
+        twist.emplace();  // Define a constant twist model for deskewing
+        ASSERT_(c["twist"].isSequence());
+        ASSERT_EQUAL_(c["twist"].asSequence().size(), 6UL);
+
+        const auto yamlTwist = c["twist"].asSequence();
+
+        for (int i = 0; i < 6; i++)
+        {
+            Parameterizable::parseAndDeclareParameter(
+                yamlTwist.at(i).as<std::string>(), twist.value()[i]);
+        }
     }
 }
 
@@ -114,67 +121,146 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         if (silently_ignore_no_timestamps || skip_deskew)
         {
             // just copy all points, including all optional attributes:
-            for (size_t i = 0; i < n; i++)  //
+            for (size_t i = 0; i < n; i++)
+            {
                 outPc->insertPointFrom(*inPc, i);
+            }
 
             MRPT_LOG_DEBUG_STREAM(
                 "Skipping de-skewing in input cloud '" << input_pointcloud_layer
                                                        << "' with contents: " << inPc->asString());
+
+            return;
+        }
+
+        THROW_EXCEPTION_FMT(
+            "Input layer '%s' does not contain per-point timestamps, "
+            "cannot do scan deskew. Set "
+            "'silently_ignore_no_timestamps=true' to skip de-skew."
+            "Input map contents: '%s'",
+            input_pointcloud_layer.c_str(), inPc->asString().c_str());
+    }
+
+    ASSERT_EQUAL_(Ts->size(), n);
+
+    // Yes, we have timestamps, apply de-skew:
+    const size_t n0 = outPc->size();
+    outPc->resize(n0 + n);
+
+    // Used for precise deskew-only. This contains relative poses of the vehicle frame ("base_link")
+    // with t=0 being the reference time when t=0 in the point cloud timestamp field:
+    std::optional<mp2p_icp::LocalVelocityBuffer::Trajectory> interpolated_relative_poses;
+    mrpt::math::TTwist3D constant_twist;  // a copy to avoid the overhead of accessing optional<>
+
+    if (use_precise_local_velocities)
+    {
+        const auto* ps = attachedSource();
+        ASSERTMSG_(
+            ps, "A ParameterSource must be attached if use_precise_local_velocities is enabled");
+
+        const auto [it_min, it_max] = std::minmax_element(Ts->cbegin(), Ts->cend());
+        ASSERT_(it_min != Ts->cend());
+        ASSERT_(it_max != Ts->cend());
+
+        const double scan_time_span = *it_max - *it_min;
+
+        const auto imu_poses =
+            ps->localVelocityBuffer.reconstruct_poses_around_reference_time(scan_time_span);
+
+        if (imu_poses.empty())
+        {
+            interpolated_relative_poses.reset();
+            MRPT_LOG_THROTTLE_WARN(
+                1.0,
+                "Could not honor 'use_precise_local_velocities' since the local velocity buffer "
+                "seems not to have data enough.");
         }
         else
         {
-            THROW_EXCEPTION_FMT(
-                "Input layer '%s' does not contain per-point timestamps, "
-                "cannot do scan deskew. Set "
-                "'silently_ignore_no_timestamps=true' to skip de-skew."
-                "Input map contents: '%s'",
-                input_pointcloud_layer.c_str(), inPc->asString().c_str());
+            interpolated_relative_poses = imu_poses;
         }
     }
     else
     {
-        ASSERT_EQUAL_(Ts->size(), n);
+        ASSERTMSG_(
+            twist.has_value(),
+            "When use_precise_local_velocities is false, you need to define a constant 'twist' "
+            "field in this filter parameters");
 
-        // Yes, we have timestamps, apply de-skew:
-        const size_t n0 = outPc->size();
-        outPc->resize(n0 + n);
-
-        const auto v = mrpt::math::TVector3D(twist.vx, twist.vy, twist.vz);
-        const auto w = mrpt::math::TVector3D(twist.wx, twist.wy, twist.wz);
+        constant_twist = *twist;
+    }
 
 #if defined(MP2P_HAS_TBB)
-        tbb::parallel_for(
-            static_cast<size_t>(0), n,
-            [&](size_t i)
+    tbb::parallel_for(
+        static_cast<size_t>(0), n,
+        [&](size_t i)
 #else
-        for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
 #endif
+        {
+            const auto pt = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
+            if (pt.x == 0 && pt.y == 0 && pt.z == 0)
             {
-                const auto pt = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
-                if (!(pt.x == 0 && pt.y == 0 && pt.z == 0))
+#if defined(MP2P_HAS_TBB)
+                return;
+#else
+            continue;
+#endif
+            }
+
+            mrpt::poses::CPose3D pose_increment;
+
+            // Use precise trajectory, if enabled and if there is enough data (otherwise, fallback
+            // to constant velocity)
+            if (use_precise_local_velocities && interpolated_relative_poses)
+            {
+                // Translation:
+                const auto v =
+                    mrpt::math::TVector3D(constant_twist.vx, constant_twist.vy, constant_twist.vz);
+                const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
+
+                // Interpolated rotation:
+                const auto found_pose_opt =
+                    mrpt::containers::find_closest(*interpolated_relative_poses, (*Ts)[i]);
+                if (found_pose_opt.has_value())
                 {
-                    // Forward integrate twist:
-                    const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
-                    const mrpt::math::TVector3D w_dt = w * (*Ts)[i];
-
-                    const auto p = mrpt::poses::CPose3D::FromRotationAndTranslation(
-                        // Rotation: From Lie group SO(3) exponential:
-                        mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt)),
-                        // Translation: simple constant velocity model:
-                        v_dt);
-
-                    const auto corrPt = p.composePoint(pt);
-
-                    outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
-                    if (Is && out_Is) (*out_Is)[n0 + i] = (*Is)[i];
-                    if (Rs && out_Rs) (*out_Rs)[n0 + i] = (*Rs)[i];
-                    if (Ts && out_Ts) (*out_Ts)[n0 + i] = (*Ts)[i];
+                    pose_increment = found_pose_opt->second;
+                    pose_increment.x(v_dt.x);
+                    pose_increment.y(v_dt.y);
+                    pose_increment.z(v_dt.z);
                 }
             }
+            else
+            {
+                // Forward integrate constant twist:
+                const auto v =
+                    mrpt::math::TVector3D(constant_twist.vx, constant_twist.vy, constant_twist.vz);
+                const auto w =
+                    mrpt::math::TVector3D(constant_twist.wx, constant_twist.wy, constant_twist.wz);
+
+                const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
+                const mrpt::math::TVector3D w_dt = w * (*Ts)[i];
+
+                pose_increment = mrpt::poses::CPose3D::FromRotationAndTranslation(
+                    // Rotation: From Lie group SO(3) exponential:
+                    mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt)),
+                    // Translation: simple constant velocity model:
+                    v_dt);
+            }
+
+            // Correct point XYZ coordinates:
+            const auto corrPt = pose_increment.composePoint(pt);
+
+            // Set corrected XYZ:
+            outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
+            // and copy the rest of fields:
+            if (Is && out_Is) (*out_Is)[n0 + i] = (*Is)[i];
+            if (Rs && out_Rs) (*out_Rs)[n0 + i] = (*Rs)[i];
+            if (Ts && out_Ts) (*out_Ts)[n0 + i] = (*Ts)[i];
+        }
 #if defined(MP2P_HAS_TBB)
-        );
+    );
 #endif
-    }
 
     outPc->mark_as_modified();
     MRPT_END

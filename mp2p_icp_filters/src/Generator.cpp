@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  * A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2024 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -23,6 +23,7 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservation3DRangeScan.h>
+#include <mrpt/obs/CObservationIMU.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CObservationRotatingScan.h>
 #include <mrpt/obs/CObservationVelodyneScan.h>
@@ -174,6 +175,33 @@ bool Generator::filterVelodyneScan(  //
         "specialized filterVelodyneScan() generator.");
 
     m->insertObservation(pc, robotPose);
+
+    return true;  // implemented
+}
+
+bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu) const
+{
+    auto* parameterSource = const_cast<mp2p_icp::ParameterSource*>(attachedSource());
+    if (!parameterSource)
+    {
+        return false;  // No parameter source attached, nothing to do.
+    }
+
+    if (!imu.has(mrpt::obs::IMU_WX) || !imu.has(mrpt::obs::IMU_WY) || !imu.has(mrpt::obs::IMU_WZ))
+    {
+        // No gyroscope data:
+        return false;
+    }
+
+    // Convert IMU readings to vehicle frame of reference:
+    const double t = mrpt::Clock::toDouble(imu.timestamp);
+
+    const mp2p_icp::LocalVelocityBuffer::AngularVelocity ang_vel_sensor = {
+        imu.get(mrpt::obs::IMU_WX), imu.get(mrpt::obs::IMU_WY), imu.get(mrpt::obs::IMU_WZ)};
+
+    const auto ang_vel_vehicle = imu.sensorPose.rotateVector(ang_vel_sensor);
+
+    parameterSource->localVelocityBuffer.add_angular_velocity(t, ang_vel_vehicle);
 
     return true;  // implemented
 }
@@ -359,26 +387,45 @@ bool Generator::implProcessDefault(
     // load lazy-load from disk:
     o.load();
 
+    // Prepare the local velocity buffer to set the reference zero time to the point cloud
+    // timestamp, which will later on be adjusted with the offset by FilterAdjustTimestamps
+    std::optional<mrpt::Clock::time_point> pointcloud_obs_timestamp;
+
     if (auto oRS = dynamic_cast<const CObservationRotatingScan*>(&o); oRS)
     {
-        processed = filterRotatingScan(*oRS, out, robotPose);
+        processed                = filterRotatingScan(*oRS, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
     }
     else if (auto o0 = dynamic_cast<const CObservationPointCloud*>(&o); o0)
     {
         ASSERT_(o0->pointcloud);
         processed = filterPointCloud(*o0->pointcloud, o0->sensorPose, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
     }
     else if (auto o1 = dynamic_cast<const CObservation2DRangeScan*>(&o); o1)
     {
-        processed = filterScan2D(*o1, out, robotPose);
+        processed                = filterScan2D(*o1, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
     }
     else if (auto o2 = dynamic_cast<const CObservation3DRangeScan*>(&o); o2)
     {
-        processed = filterScan3D(*o2, out, robotPose);
+        processed                = filterScan3D(*o2, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
     }
     else if (auto o3 = dynamic_cast<const CObservationVelodyneScan*>(&o); o3)
     {
-        processed = filterVelodyneScan(*o3, out, robotPose);
+        processed                = filterVelodyneScan(*o3, out, robotPose);
+        pointcloud_obs_timestamp = o.timestamp;
+    }
+    else if (auto oIMU = dynamic_cast<const CObservationIMU*>(&o); oIMU)
+    {
+        processed = processIMU(*oIMU);
+    }
+
+    if (auto ps = this->attachedSource(); ps != nullptr && pointcloud_obs_timestamp)
+    {
+        ps->localVelocityBuffer.set_reference_zero_time(
+            mrpt::Clock::toDouble(*pointcloud_obs_timestamp));
     }
 
     // done?

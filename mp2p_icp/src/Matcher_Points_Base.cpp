@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
- * Copyright (C) 2018-2024 Jose Luis Blanco, University of Almeria
+ * Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria
  * See LICENSE for license information.
  * ------------------------------------------------------------------------- */
 /**
@@ -40,9 +40,15 @@ bool Matcher_Points_Base::impl_match(
         {
             const auto itGlob = weight_pt2pt_layers.find(glLayerName);
             // If we have weights and this layer is not listed, Skip it:
-            if (itGlob == weight_pt2pt_layers.end()) continue;
+            if (itGlob == weight_pt2pt_layers.end())
+            {
+                continue;
+            }
 
-            for (const auto& kv : itGlob->second) localLayers[kv.first] = kv.second;
+            for (const auto& kv : itGlob->second)
+            {
+                localLayers[kv.first] = kv.second;
+            }
         }
         else
         {
@@ -61,12 +67,14 @@ bool Matcher_Points_Base::impl_match(
             {
                 // Silently ignore it:
                 if (!hasWeight)
+                {
                     continue;
-                else
-                    THROW_EXCEPTION_FMT(
-                        "Local pointcloud layer '%s' not found matching global "
-                        "layer '%s'",
-                        localLayerName.c_str(), glLayerName.c_str());
+                }
+
+                THROW_EXCEPTION_FMT(
+                    "Local pointcloud layer '%s' not found matching global "
+                    "layer '%s'",
+                    localLayerName.c_str(), glLayerName.c_str());
             }
 
             const mrpt::maps::CMetricMap::Ptr& glLayer = glLayerKV.second;
@@ -76,10 +84,12 @@ bool Matcher_Points_Base::impl_match(
             ASSERT_(lcLayerMap);
             const auto lcLayer = mp2p_icp::MapToPointsMap(*lcLayerMap);
             if (!lcLayer)
+            {
                 THROW_EXCEPTION_FMT(
                     "Local layer map must be a point cloud, but found type "
                     "'%s'",
                     lcLayerMap->GetRuntimeClass()->className);
+            }
 
             const size_t nBefore = out.paired_pt2pt.size();
 
@@ -154,7 +164,9 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
         "allowMatchAlreadyMatchedGlobalPoints", allowMatchAlreadyMatchedGlobalPoints_);
 
     if (auto val = params.getOrDefault("kdtree_leaf_max_points", 0); val > 0)
+    {
         kdtree_leaf_max_points_ = val;
+    }
 
     bounding_box_intersection_check_epsilon_ = params.getOrDefault(
         "bounding_box_intersection_check_epsilon", bounding_box_intersection_check_epsilon_);
@@ -162,7 +174,7 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
 
 Matcher_Points_Base::TransformedLocalPointCloud Matcher_Points_Base::transform_local_to_global(
     const mrpt::maps::CPointsMap& pcLocal, const mrpt::poses::CPose3D& localPose,
-    const std::size_t maxLocalPoints, const uint64_t localPointsSampleSeed)
+    const std::size_t maxLocalPoints, const uint64_t localPointsSampleSeed)  // NOLINT
 {
     MRPT_START
     TransformedLocalPointCloud r;
