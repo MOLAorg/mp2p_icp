@@ -15,6 +15,7 @@
 #include <mp2p_icp_filters/Generator.h>
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/core/Clock.h>
+#include <mrpt/obs/CObservationComment.h>
 #include <mrpt/system/progress.h>
 
 #include <iostream>
@@ -83,8 +84,55 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     ps.updateVariables(options.customVariables);
     ps.realize();
 
+    const auto lambdaProcessLocalVelocityBuffer = [&](const mrpt::obs::CObservation::Ptr& obs)
+    {
+        auto obsComment = std::dynamic_pointer_cast<mrpt::obs::CObservationComment>(obs);
+        if (!obsComment)
+        {
+            return;
+        }
+
+        const auto commentYaml = [&]()
+        {
+            try
+            {
+                return mrpt::containers::yaml::FromText(obsComment->text);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "Error parsing YAML in comment: " << e.what() << std::endl;
+                return mrpt::containers::yaml();
+            }
+        }();
+
+        if (!commentYaml.isMap() || !commentYaml.has("local_velocity_buffer"))
+        {
+            return;
+        }
+
+        const auto lvb = commentYaml["local_velocity_buffer"];
+        if (!lvb.isMap())
+        {
+            std::cerr << "Error: 'local_velocity_buffer' field is not a map!" << std::endl;
+            return;
+        }
+
+        try
+        {
+            ps.localVelocityBuffer.fromYAML(lvb);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error parsing 'local_velocity_buffer': " << e.what() << std::endl;
+            return;
+        }
+    };
+
     // progress bar:
-    if (options.showProgressBar) std::cout << "\n";  // Needed for the VT100 codes below.
+    if (options.showProgressBar)
+    {
+        std::cout << "\n";  // Needed for the VT100 codes below.
+    }
 
     const double tStart = mrpt::Clock::nowDouble();
 
@@ -130,6 +178,9 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         for (const auto& obs : *sf)
         {
             ASSERT_(obs);
+
+            lambdaProcessLocalVelocityBuffer(obs);
+
             obs->load();
 
             bool handled = mp2p_icp_filters::apply_generators(generators, *obs, mm, robotPose);

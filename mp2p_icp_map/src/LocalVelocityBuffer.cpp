@@ -166,17 +166,23 @@ mrpt::containers::yaml LocalVelocityBuffer::toYAML() const
     {
         mrpt::containers::yaml yamlState = mrpt::containers::yaml::Map();
         yamlState["reference_zero_time"] = reference_zero_time;
-        yamlState["linear_velocities"]   = mrpt::containers::yaml::Map();
-        for (const auto& [time, vel] : linear_velocities_)
+        if (!linear_velocities_.empty())
         {
-            yamlState["linear_velocities"][mrpt::format("%.09lf", time)] =
-                "'" + vel.asString() + "'";
+            yamlState["linear_velocities"] = mrpt::containers::yaml::Map();
+            for (const auto& [time, vel] : linear_velocities_)
+            {
+                yamlState["linear_velocities"][mrpt::format("%.09lf", time)] =
+                    "'" + vel.asString() + "'";
+            }
         }
-        yamlState["angular_velocities"] = mrpt::containers::yaml::Map();
-        for (const auto& [time, w] : angular_velocities_)
+        if (!angular_velocities_.empty())
         {
-            yamlState["angular_velocities"][mrpt::format("%.09lf", time)] =
-                "'" + w.asString() + "'";
+            yamlState["angular_velocities"] = mrpt::containers::yaml::Map();
+            for (const auto& [time, w] : angular_velocities_)
+            {
+                yamlState["angular_velocities"][mrpt::format("%.09lf", time)] =
+                    "'" + w.asString() + "'";
+            }
         }
         root["state"] = yamlState;
     }
@@ -203,17 +209,23 @@ void LocalVelocityBuffer::fromYAML(const mrpt::containers::yaml& y)
         reference_zero_time = state["reference_zero_time"].as<TimeStamp>();
 
         linear_velocities_.clear();
-        for (const auto& [time_str, vel_str] : state["linear_velocities"].asMapRange())
+        if (state.has("linear_velocities"))
         {
-            linear_velocities_[std::stod(time_str.as<std::string>())] =
-                mrpt::math::TVector3D::FromString(vel_str.as<std::string>());
+            for (const auto& [time_str, vel_str] : state["linear_velocities"].asMapRange())
+            {
+                linear_velocities_[std::stod(time_str.as<std::string>())] =
+                    mrpt::math::TVector3D::FromString(vel_str.as<std::string>());
+            }
         }
 
         angular_velocities_.clear();
-        for (const auto& [time_str, w_str] : state["angular_velocities"].asMapRange())
+        if (state.has("angular_velocities"))
         {
-            angular_velocities_[std::stod(time_str.as<std::string>())] =
-                mrpt::math::TVector3D::FromString(w_str.as<std::string>());
+            for (const auto& [time_str, w_str] : state["angular_velocities"].asMapRange())
+            {
+                angular_velocities_[std::stod(time_str.as<std::string>())] =
+                    mrpt::math::TVector3D::FromString(w_str.as<std::string>());
+            }
         }
     }
 }
