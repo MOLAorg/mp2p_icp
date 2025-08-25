@@ -53,11 +53,11 @@ void LocalVelocityBuffer::delete_too_old_entries(const TimeStamp& now)
     }
 }
 
-std::map<double, mrpt::poses::CPose3D> LocalVelocityBuffer::reconstruct_poses_around_reference_time(
+LocalVelocityBuffer::Trajectory LocalVelocityBuffer::reconstruct_poses_around_reference_time(
     double half_time_span) const
 {
     // Recall: In the returned trajectory, t=0 is the reference time
-    std::map<double, mrpt::poses::CPose3D> trajectory;
+    Trajectory trajectory;
 
     const auto closest_stamp_w = mrpt::containers::find_closest_with_tolerance(
         angular_velocities_, reference_zero_time, parameters.tolerance_search_stamp);
@@ -149,4 +149,71 @@ std::map<double, mrpt::poses::CPose3D> LocalVelocityBuffer::reconstruct_poses_ar
     }
 
     return trajectory;
+}
+
+mrpt::containers::yaml LocalVelocityBuffer::toYAML() const
+{
+    mrpt::containers::yaml root = mrpt::containers::yaml::Map();
+
+    {
+        mrpt::containers::yaml yamlParams    = mrpt::containers::yaml::Map();
+        yamlParams["max_time_window"]        = parameters.max_time_window;
+        yamlParams["tolerance_search_stamp"] = parameters.tolerance_search_stamp;
+
+        root["parameters"] = yamlParams;
+    }
+
+    {
+        mrpt::containers::yaml yamlState = mrpt::containers::yaml::Map();
+        yamlState["reference_zero_time"] = reference_zero_time;
+        yamlState["linear_velocities"]   = mrpt::containers::yaml::Map();
+        for (const auto& [time, vel] : linear_velocities_)
+        {
+            yamlState["linear_velocities"][mrpt::format("%.09lf", time)] =
+                "'" + vel.asString() + "'";
+        }
+        yamlState["angular_velocities"] = mrpt::containers::yaml::Map();
+        for (const auto& [time, w] : angular_velocities_)
+        {
+            yamlState["angular_velocities"][mrpt::format("%.09lf", time)] =
+                "'" + w.asString() + "'";
+        }
+        root["state"] = yamlState;
+    }
+    return root;
+}
+
+void LocalVelocityBuffer::fromYAML(const mrpt::containers::yaml& y)
+{
+    if (!y.isMap())
+    {
+        throw std::runtime_error("Invalid YAML format for LocalVelocityBuffer");
+    }
+
+    if (y.has("parameters"))
+    {
+        const auto& params                = y["parameters"];
+        parameters.max_time_window        = params["max_time_window"].as<double>();
+        parameters.tolerance_search_stamp = params["tolerance_search_stamp"].as<double>();
+    }
+
+    if (y.has("state"))
+    {
+        const auto& state   = y["state"];
+        reference_zero_time = state["reference_zero_time"].as<TimeStamp>();
+
+        linear_velocities_.clear();
+        for (const auto& [time_str, vel_str] : state["linear_velocities"].asMapRange())
+        {
+            linear_velocities_[std::stod(time_str.as<std::string>())] =
+                mrpt::math::TVector3D::FromString(vel_str.as<std::string>());
+        }
+
+        angular_velocities_.clear();
+        for (const auto& [time_str, w_str] : state["angular_velocities"].asMapRange())
+        {
+            angular_velocities_[std::stod(time_str.as<std::string>())] =
+                mrpt::math::TVector3D::FromString(w_str.as<std::string>());
+        }
+    }
 }

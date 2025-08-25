@@ -149,7 +149,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Used for precise deskew-only. This contains relative poses of the vehicle frame ("base_link")
     // with t=0 being the reference time when t=0 in the point cloud timestamp field:
-    std::optional<std::map<double, mrpt::poses::CPose3D>> interpolated_relative_poses;
+    std::optional<mp2p_icp::LocalVelocityBuffer::Trajectory> interpolated_relative_poses;
     mrpt::math::TTwist3D constant_twist;  // a copy to avoid the overhead of accessing optional<>
 
     if (use_precise_local_velocities)

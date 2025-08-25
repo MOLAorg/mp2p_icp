@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <mrpt/containers/yaml.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/poses/CPose3D.h>
 
@@ -17,6 +18,8 @@ namespace mp2p_icp
  * estimators or an IMU. This is used to compute the local velocity of the sensor at each point in
  * time for precise scan deformation/deskew.
  *
+ * Its state can be (de)serialized to/from YAML.
+ *
  * \ingroup mp2p_icp_map_grp
  */
 class LocalVelocityBuffer
@@ -27,6 +30,7 @@ class LocalVelocityBuffer
     using TimeStamp       = double;  // seconds in UNIX epoch
     using LinearVelocity  = mrpt::math::TVector3D;
     using AngularVelocity = mrpt::math::TVector3D;
+    using Trajectory      = std::map<double, mrpt::poses::CPose3D>;  // t=0 is the reference time
 
     struct Parameters
     {
@@ -49,6 +53,12 @@ class LocalVelocityBuffer
         angular_velocities_.clear();
     }
 
+    /// Stores the current state and parameters to a YAML dictionary.
+    mrpt::containers::yaml toYAML() const;
+
+    /// Restores the current state and parameters from a YAML dictionary.
+    void fromYAML(const mrpt::containers::yaml& y);
+
     /// Get the current linear velocities map (in the vehicle frame of reference)
     const auto& get_linear_velocities() const { return linear_velocities_; }
 
@@ -68,8 +78,7 @@ class LocalVelocityBuffer
      * In the returned trajectory, t=0 is the reference time.
      * \return The generated trajectory, or an empty one if there is no enough data to build it.
      */
-    std::map<double, mrpt::poses::CPose3D> reconstruct_poses_around_reference_time(
-        double half_time_span) const;
+    Trajectory reconstruct_poses_around_reference_time(double half_time_span) const;
 
    private:
     std::map<TimeStamp, LinearVelocity>  linear_velocities_;  // in the vehicle frame
@@ -78,5 +87,8 @@ class LocalVelocityBuffer
 
     void delete_too_old_entries(const TimeStamp& now);
 };
+
+// So we can build libraries downstream in backward compatible way:
+#define MP2P_ICP_HAS_VELOCITY_BUFFER 1
 
 }  // namespace mp2p_icp
