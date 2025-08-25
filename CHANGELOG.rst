@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.8.0 (2025-08-26)
+------------------
 * Modernize and unify license notes in all files
 * Merge pull request `#8 <https://github.com/MOLAorg/mp2p_icp/issues/8>`_ from MOLAorg/feat/precise-deskew
   Precise scan deskew:
