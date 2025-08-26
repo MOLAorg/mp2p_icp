@@ -173,12 +173,11 @@ inline void AttachToParameterSource(Parameterizable& o, ParameterSource& source)
 #define DECLARE_PARAMETER_OPT(__yaml, __variable) \
     DECLARE_PARAMETER_IN_OPT(__yaml, __variable, (*this))
 
-#define DECLARE_PARAMETER_IN_REQ(__yaml, __variable, __object)                               \
-    if (!(__yaml).has(#__variable))                                                          \
-        throw std::invalid_argument(                                                         \
-            mrpt::format(                                                                    \
-                "Required parameter `%s` not an existing key in dictionary.", #__variable)); \
-    (__object).mp2p_icp::Parameterizable::parseAndDeclareParameter(                          \
+#define DECLARE_PARAMETER_IN_REQ(__yaml, __variable, __object)                           \
+    if (!(__yaml).has(#__variable))                                                      \
+        throw std::invalid_argument(mrpt::format(                                        \
+            "Required parameter `%s` not an existing key in dictionary.", #__variable)); \
+    (__object).mp2p_icp::Parameterizable::parseAndDeclareParameter(                      \
         (__yaml)[#__variable].as<std::string>(), __variable);
 
 #define DECLARE_PARAMETER_REQ(__yaml, __variable) \
