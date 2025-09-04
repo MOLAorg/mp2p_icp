@@ -30,6 +30,8 @@ void FilterNormalizeIntensity::Parameters::load_from_yaml(const mrpt::containers
 {
     MCP_LOAD_REQ(c, pointcloud_layer);
     MCP_LOAD_OPT(c, remember_intensity_range);
+    MCP_LOAD_OPT(c, fixed_minimum_intensity);
+    MCP_LOAD_OPT(c, fixed_maximum_intensity);
 }
 
 FilterNormalizeIntensity::FilterNormalizeIntensity()
@@ -73,34 +75,57 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     std::optional<float> minI, maxI;
 
-    for (size_t i = 0; i < Is.size(); i++)
+    if (params_.fixed_maximum_intensity > 0)
     {
-        const float I = Is[i];
-
-        if (!minI || I < *minI) minI = I;
-        if (!maxI || I > *maxI) maxI = I;
+        maxI = params_.fixed_maximum_intensity;
+        minI = params_.fixed_minimum_intensity;
     }
-    ASSERT_(minI && maxI);
-
-    // Merge with range memory?
-    if (params_.remember_intensity_range)
+    else
     {
-        auto lck = mrpt::lockHelper(minMaxMtx_);
-        if (!minI_ || *minI < *minI_) minI_ = *minI;
-        if (!maxI_ || *maxI > *maxI_) maxI_ = *maxI;
-        minI = *minI_;
-        maxI = *maxI_;
+        for (size_t i = 0; i < Is.size(); i++)
+        {
+            const float I = Is[i];
+
+            if (!minI || I < *minI)
+            {
+                minI = I;
+            }
+            if (!maxI || I > *maxI)
+            {
+                maxI = I;
+            }
+        }
+        ASSERT_(minI && maxI);
+
+        // Merge with range memory?
+        if (params_.remember_intensity_range)
+        {
+            auto lck = mrpt::lockHelper(minMaxMtx_);
+            if (!minI_ || *minI < *minI_)
+            {
+                minI_ = minI;
+            }
+            if (!maxI_ || *maxI > *maxI_)
+            {
+                maxI_ = maxI;
+            }
+            minI = minI_;
+            maxI = maxI_;
+        }
     }
 
     float delta = *maxI - *minI;
-    if (delta == 0) delta = 1;
+    if (delta == 0)
+    {
+        delta = 1;
+    }
     const float delta_inv = 1.0f / delta;
 
     for (size_t i = 0; i < Is.size(); i++)
     {
         float& I = Is[i];
 
-        I = (I - *minI) * delta_inv;
+        I = std::clamp((I - *minI) * delta_inv, 0.0f, 1.0f);
     }
 
     MRPT_LOG_DEBUG_STREAM("Normalized with minI=" << *minI << " maxI=" << *maxI);

@@ -39,6 +39,9 @@ namespace mp2p_icp_filters
  * intensities observed in past clouds. Otherwise, each cloud will have its
  * own extreme values so they will be always normalized to [0, 1].
  *
+ * Alternatively, you can manually specify the maximum intensity value
+ * that will be mapped to "1".
+ *
  * \ingroup mp2p_icp_filters_grp
  */
 class FilterNormalizeIntensity : public mp2p_icp_filters::FilterBase
@@ -60,6 +63,14 @@ class FilterNormalizeIntensity : public mp2p_icp_filters::FilterBase
         std::string pointcloud_layer;
 
         bool remember_intensity_range = false;
+
+        /** If different than 0, this will be directly used as fixed maximum input intensity for
+         *  normalization */
+        double fixed_maximum_intensity = 0.0;
+
+        /** If fixed_maximum_intensity is different than 0, this will be directly used as fixed
+         *  minimum input intensity for normalization */
+        double fixed_minimum_intensity = 0.0;
     };
 
     /** Algorithm parameters */
