@@ -26,9 +26,26 @@
 #include <mp2p_icp_filters/PointCloudToVoxelGridSingle.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/math/TTwist3D.h>
+#include <mrpt/typemeta/TEnumType.h>
 
 namespace mp2p_icp_filters
 {
+/** Enum to select the pointcloud motion compensation method in FilterDeskew
+ *
+ * \ingroup mp2p_icp_filters_grp
+ */
+enum class MotionCompensationMethod : uint8_t
+{
+    /** No compensation: all points are considered to be at vehicle pose for `reference_time`=0 */
+    None = 0,
+
+    Linear,
+
+    IMU,
+
+    IMU_interp
+};
+
 /** Builds a new layer with a deskewed (motion compensated) version of an
  *  input pointcloud from a moving LIDAR, where points are time-stamped.
  *
@@ -98,7 +115,7 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
     /** If enabled (true), the constant `twist` field is ignored and the precise twist trajectory
      *  is retrieved from the LocalVelocityBuffer from the ParameterSource attached to this block.
      */
-    bool use_precise_local_velocities = false;
+    MotionCompensationMethod method = MotionCompensationMethod::Linear;
 
     /** The velocity (linear and angular) of the vehicle in the local
      * vehicle frame. See FilterDeskew::initialize for an example of how
@@ -112,3 +129,10 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
 /** @} */
 
 }  // namespace mp2p_icp_filters
+
+MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp_filters, mp2p_icp_filters::MotionCompensationMethod)
+MRPT_FILL_ENUM(MotionCompensationMethod::None);
+MRPT_FILL_ENUM(MotionCompensationMethod::Linear);
+MRPT_FILL_ENUM(MotionCompensationMethod::IMU);
+MRPT_FILL_ENUM(MotionCompensationMethod::IMU_interp);
+MRPT_ENUM_TYPE_END()
