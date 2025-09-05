@@ -35,6 +35,7 @@
 #include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/serialization/stl_serialization.h>
 #include <mrpt/system/string_utils.h>  // unitsFormat()
+#include <mrpt/version.h>
 
 #include <algorithm>
 #include <iterator>
@@ -288,8 +289,14 @@ void metric_map_t::get_visualization_map_layer(
         if (p.render_voxelmaps_as_points)
         {
             // get occupied voxel XYZ coordinates only:
-            if (voxelMap) pts = voxelMap->getOccupiedVoxels();
-            if (voxelRGBMap) pts = voxelRGBMap->getOccupiedVoxels();
+            if (voxelMap)
+            {
+                pts = voxelMap->getOccupiedVoxels();
+            }
+            if (voxelRGBMap)
+            {
+                pts = voxelRGBMap->getOccupiedVoxels();
+            }
         }
         else
         {
@@ -323,6 +330,12 @@ void metric_map_t::get_visualization_map_layer(
         if (auto glPtsCol = o.getByClass<mrpt::opengl::CPointCloudColoured>(); glPtsCol)
         {
             glPtsCol->setPointSize(p.pointSize);
+#if MRPT_VERSION >= 0x20e0c  // v2.14.12
+            if (p.force_alpha_channel)
+            {
+                glPtsCol->setAllPointsAlpha(p.color.A);
+            }
+#endif
         }
         else if (auto glPts = o.getByClass<mrpt::opengl::CPointCloud>(); glPts)
         {
@@ -345,6 +358,12 @@ void metric_map_t::get_visualization_map_layer(
         glPts->loadFromPointsMap(pts.get());
 
         glPts->setPointSize(p.pointSize);
+#if MRPT_VERSION >= 0x20e0c  // v2.14.12
+        if (p.force_alpha_channel)
+        {
+            glPts->setAllPointsAlpha(p.color.A);
+        }
+#endif
 
         mrpt::math::TBoundingBoxf bb;
 

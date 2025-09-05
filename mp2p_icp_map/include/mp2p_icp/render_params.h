@@ -131,6 +131,10 @@ struct render_params_point_layer_t
     /** Fixed color for all points in the layer. Ignored if colorMode is set. */
     mrpt::img::TColor color{0x00, 0x00, 0xff, 0xff};
 
+    /** If set, it will overwrite the alpha (transparency) channel, even if using RGBA data from the
+     * original colored cloud */
+    bool force_alpha_channel = true;
+
     /** If set, it overrides `color` and defines a "recolorize by coordinate"
      * mode. */
     std::optional<color_mode_t> colorMode;
