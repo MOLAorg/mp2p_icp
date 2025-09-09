@@ -35,10 +35,12 @@
     },
     "ros.distro": "humble",
     "cSpell.words": [
+        "deskewed",
         "eigen",
         "recolorize",
         "reproject",
         "unrealize",
-        "voxelmaps"
+        "voxelmaps",
+        "XYZIRT"
     ]
 }

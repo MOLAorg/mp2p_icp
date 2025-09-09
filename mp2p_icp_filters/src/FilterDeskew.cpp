@@ -47,8 +47,7 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
 
     MCP_LOAD_OPT(c, silently_ignore_no_timestamps);
     MCP_LOAD_OPT(c, output_layer_class);
-    MCP_LOAD_OPT(c, skip_deskew);
-    MCP_LOAD_OPT(c, use_precise_local_velocities);
+    MCP_LOAD_OPT(c, method);
 
     if (c.has("twist"))
     {
@@ -87,8 +86,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     {
         inPc = mp2p_icp::MapToPointsMap(*itLy->second);
         if (!inPc)
+        {
             THROW_EXCEPTION_FMT(
                 "Layer '%s' must be of point cloud type.", input_pointcloud_layer.c_str());
+        }
 
         outPc->reserve(outPc->size() + inPc->size());
     }
@@ -122,30 +123,37 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     auto* out_Rs = outPc->getPointsBufferRef_ring();
     auto* out_Ts = outPc->getPointsBufferRef_timestamp();
 
-    // Do we have input timestamps per point?
-    if (!Ts || Ts->empty() || skip_deskew)
+    // Helper lambda: copy all points (with optional attributes)
+    auto copyAllPoints = [&]()
     {
-        // not possible to do de-skew:
-        if (silently_ignore_no_timestamps || skip_deskew)
+        for (size_t i = 0; i < n; i++)
         {
-            // just copy all points, including all optional attributes:
-            for (size_t i = 0; i < n; i++)
+            outPc->insertPointFrom(*inPc, i);
+        }
+    };
+
+    // No timestamps available or deskewing disabled:
+    const bool noTimestamps   = !Ts || Ts->empty();
+    const bool deskewDisabled = (method == MotionCompensationMethod::None);
+
+    if (noTimestamps || deskewDisabled)
+    {
+        if (silently_ignore_no_timestamps || deskewDisabled)
+        {
+            copyAllPoints();
+
+            if (!deskewDisabled)
             {
-                outPc->insertPointFrom(*inPc, i);
+                MRPT_LOG_DEBUG_STREAM(
+                    "Skipping de-skewing in input cloud '"
+                    << input_pointcloud_layer << "' with contents: " << inPc->asString());
             }
-
-            MRPT_LOG_DEBUG_STREAM(
-                "Skipping de-skewing in input cloud '" << input_pointcloud_layer
-                                                       << "' with contents: " << inPc->asString());
-
             return;
         }
 
         THROW_EXCEPTION_FMT(
-            "Input layer '%s' does not contain per-point timestamps, "
-            "cannot do scan deskew. Set "
-            "'silently_ignore_no_timestamps=true' to skip de-skew."
-            "Input map contents: '%s'",
+            "Input layer '%s' does not contain per-point timestamps, cannot do scan deskew. Set "
+            "'silently_ignore_no_timestamps=true' to skip de-skew. Input map contents: '%s'",
             input_pointcloud_layer.c_str(), inPc->asString().c_str());
     }
 
@@ -158,45 +166,56 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     // Used for precise deskew-only. This contains relative poses of the vehicle frame ("base_link")
     // with t=0 being the reference time when t=0 in the point cloud timestamp field:
     std::optional<mp2p_icp::LocalVelocityBuffer::Trajectory> interpolated_relative_poses;
-    mrpt::math::TTwist3D constant_twist;  // a copy to avoid the overhead of accessing optional<>
 
-    if (use_precise_local_velocities)
+    const mrpt::math::TTwist3D* constant_twist = nullptr;
+
+    switch (method)
     {
-        const auto* ps = attachedSource();
-        ASSERTMSG_(
-            ps, "A ParameterSource must be attached if use_precise_local_velocities is enabled");
-
-        const auto [it_min, it_max] = std::minmax_element(Ts->cbegin(), Ts->cend());
-        ASSERT_(it_min != Ts->cend());
-        ASSERT_(it_max != Ts->cend());
-
-        const double scan_time_span = *it_max - *it_min;
-
-        const auto imu_poses =
-            ps->localVelocityBuffer.reconstruct_poses_around_reference_time(scan_time_span);
-
-        if (imu_poses.empty())
+        case MotionCompensationMethod::IMU:
+        case MotionCompensationMethod::IMU_interp:
         {
-            interpolated_relative_poses.reset();
-            MRPT_LOG_THROTTLE_WARN(
-                1.0,
-                "Could not honor 'use_precise_local_velocities' since the local velocity buffer "
-                "seems not to have data enough.");
-        }
-        else
-        {
-            interpolated_relative_poses = imu_poses;
-        }
-    }
-    else
-    {
-        ASSERTMSG_(
-            twist.has_value(),
-            "When use_precise_local_velocities is false, you need to define a constant 'twist' "
-            "field in this filter parameters");
+            const auto* ps = attachedSource();
+            ASSERTMSG_(
+                ps,
+                "A ParameterSource must be attached if use_precise_local_velocities is enabled");
 
-        constant_twist = *twist;
-    }
+            const auto [it_min, it_max] = std::minmax_element(Ts->cbegin(), Ts->cend());
+            ASSERT_(it_min != Ts->cend());
+            ASSERT_(it_max != Ts->cend());
+
+            const double scan_time_span = *it_max - *it_min;
+
+            const auto imu_poses =
+                ps->localVelocityBuffer.reconstruct_poses_around_reference_time(scan_time_span);
+
+            if (imu_poses.empty())
+            {
+                interpolated_relative_poses.reset();
+                MRPT_LOG_THROTTLE_WARN(
+                    1.0,
+                    "Could not honor 'use_precise_local_velocities' since the local velocity "
+                    "buffer seems not to have data enough.");
+            }
+            else
+            {
+                interpolated_relative_poses = imu_poses;
+            }
+        }
+
+        case MotionCompensationMethod::Linear:
+        {
+            ASSERTMSG_(
+                twist.has_value(),
+                "`MotionCompensationMethod::Linear` needs defining a constant 'twist' field in "
+                "this filter parameters");
+
+            constant_twist = &twist.value();
+        }
+
+        case mp2p_icp_filters::MotionCompensationMethod::None:
+            // Should have been handled above!
+            THROW_EXCEPTION("Shouldn't reach here!")
+    };
 
 #if defined(MP2P_HAS_TBB)
     tbb::parallel_for(
@@ -218,9 +237,9 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             mrpt::poses::CPose3D pose_increment;
 
-            // Use precise trajectory, if enabled and if there is enough data (otherwise, fallback
-            // to constant velocity)
-            if (use_precise_local_velocities && interpolated_relative_poses)
+            // Use precise trajectory, if enabled and if there is enough data (otherwise,
+            // fallback to constant velocity)
+            if (!constant_twist)
             {
                 // Translation:
                 const auto v =
