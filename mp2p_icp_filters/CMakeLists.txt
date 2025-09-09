@@ -60,6 +60,12 @@ set(LIB_PUBLIC_HDRS
 	include/mp2p_icp_filters/sm2mm.h
 )
 
+if(mola_imu_preintegration_FOUND)
+  set(dep_imu_lib    mola::mola_imu_preintegration)
+  set(dep_imu_cmake  mola_imu_preintegration)
+endif()
+
+
 mola_add_library(
 	TARGET ${PROJECT_NAME}
 	SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
@@ -67,12 +73,18 @@ mola_add_library(
 		mp2p_icp_map
 	PRIVATE_LINK_LIBRARIES
 		tsl::robin_map
+    ${dep_imu_lib}
 	CMAKE_DEPENDENCIES
 		mp2p_icp
+    dep_imu_cmake
 		#robin_map
 )
 
 if (TBB_FOUND AND MP2PICP_USE_TBB)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_TBB)
 	target_link_libraries(${PROJECT_NAME} PRIVATE TBB::tbb)
+endif()
+
+if(mola_imu_preintegration_FOUND)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_IMU_PREINTEGRATION_LIB)
 endif()

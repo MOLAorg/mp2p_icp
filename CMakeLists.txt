@@ -23,7 +23,6 @@ endif()
 # Set the possible values of build type for cmake-gui
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo" "SanitizeAddress" "SanitizeThread")
 
-
 # Tell CMake we'll use C++ for use in its tests/flags
 project(mp2p_icp LANGUAGES CXX)
 
@@ -63,6 +62,9 @@ find_package(TBB) # optional
 if(TBB_FOUND)
 	option(MP2PICP_USE_TBB "If found TBB, this option controls whether to use it or not" ON)
 endif()
+
+find_package(mola_imu_preintegration) # optional.- Used for advanced deskew methods in FilterDeskew
+
 
 #----
 # Extract version from package.xml

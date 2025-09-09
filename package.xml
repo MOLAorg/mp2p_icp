@@ -30,7 +30,9 @@
   <depend>mrpt_libgui</depend>
   <depend>mrpt_libtclap</depend>
 
-  <depend>tbb</depend>  <!-- Required to exploit paralelization in many ICP algorithms -->
+  <depend>tbb</depend>  <!-- Required to exploit parallelization in many ICP algorithms -->
+
+  <depend>mola_imu_preintegration</depend>
 
   <!-- optional for part of the tests -->
   <!-- depend>mola_test_datasets</depend>  -->

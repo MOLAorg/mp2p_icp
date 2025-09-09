@@ -28,6 +28,11 @@
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/random/RandomGenerators.h>
 
+#if defined(MP2P_HAS_IMU_PREINTEGRATION_LIB)
+#include <mola_imu_preintegration/IMUIntegrationParams.h>
+#include <mola_imu_preintegration/ImuTransformer.h>
+#endif
+
 #if defined(MP2P_HAS_TBB)
 #include <tbb/parallel_for.h>
 #endif
@@ -175,9 +180,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         case MotionCompensationMethod::IMU_interp:
         {
             const auto* ps = attachedSource();
-            ASSERTMSG_(
-                ps,
-                "A ParameterSource must be attached if use_precise_local_velocities is enabled");
+            ASSERTMSG_(ps, "A ParameterSource must be attached if IMU-based methods are enabled");
 
             const auto [it_min, it_max] = std::minmax_element(Ts->cbegin(), Ts->cend());
             ASSERT_(it_min != Ts->cend());
@@ -214,7 +217,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
         case mp2p_icp_filters::MotionCompensationMethod::None:
             // Should have been handled above!
-            THROW_EXCEPTION("Shouldn't reach here!")
+            THROW_EXCEPTION("Shouldn't reach here!");
     };
 
 #if defined(MP2P_HAS_TBB)
