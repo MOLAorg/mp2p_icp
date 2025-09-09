@@ -170,7 +170,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Used for precise deskew-only. This contains relative poses of the vehicle frame ("base_link")
     // with t=0 being the reference time when t=0 in the point cloud timestamp field:
-    std::optional<mp2p_icp::LocalVelocityBuffer::Trajectory> interpolated_relative_poses;
+    std::optional<mp2p_icp::LocalVelocityBuffer::SampleHistory> sample_history_opt;
 
     const mrpt::math::TTwist3D* constant_twist = nullptr;
 
@@ -188,22 +188,12 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             const double scan_time_span = *it_max - *it_min;
 
-            const auto imu_poses =
-                ps->localVelocityBuffer.reconstruct_poses_around_reference_time(scan_time_span);
-
-            if (imu_poses.empty())
-            {
-                interpolated_relative_poses.reset();
-                MRPT_LOG_THROTTLE_WARN(
-                    1.0,
-                    "Could not honor 'use_precise_local_velocities' since the local velocity "
-                    "buffer seems not to have data enough.");
-            }
-            else
-            {
-                interpolated_relative_poses = imu_poses;
-            }
+            // Recall, the reference time should have been set already by the Generator and/or
+            // FilterAdjustTimestamps:
+            sample_history_opt =
+                ps->localVelocityBuffer.collect_samples_around_reference_time(scan_time_span);
         }
+        break;
 
         case MotionCompensationMethod::Linear:
         {
@@ -214,10 +204,14 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             constant_twist = &twist.value();
         }
+        break;
 
         case mp2p_icp_filters::MotionCompensationMethod::None:
+        {
             // Should have been handled above!
             THROW_EXCEPTION("Shouldn't reach here!");
+            break;
+        }
     };
 
 #if defined(MP2P_HAS_TBB)
@@ -239,6 +233,8 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             }
 
             mrpt::poses::CPose3D pose_increment;
+
+#if 0
 
             // Use precise trajectory, if enabled and if there is enough data (otherwise,
             // fallback to constant velocity)
@@ -277,7 +273,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
                     // Translation: simple constant velocity model:
                     v_dt);
             }
-
+#endif
             // Correct point XYZ coordinates:
             const auto corrPt = pose_increment.composePoint(pt);
 
@@ -295,3 +291,102 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     outPc->mark_as_modified();
     MRPT_END
 }
+
+#if 0
+LocalVelocityBuffer::reconstruct_poses_around_reference_time(double half_time_span) const
+{
+    // Recall: In the returned trajectory, t=0 is the reference time
+    Trajectory trajectory;
+
+    const auto closest_stamp_w = mrpt::containers::find_closest_with_tolerance(
+        angular_velocities_, reference_zero_time, parameters.tolerance_search_stamp);
+
+    if (!closest_stamp_w.has_value())
+    {
+        // We don't have any nearby IMU reading to work with!
+        // Return an empty trajectory.
+        return {};
+    }
+
+    const double ref_time = closest_stamp_w->first;
+
+    auto pose = mrpt::poses::CPose3D::Identity();
+    // Should never fail by preconditions above
+    const auto it_ref = angular_velocities_.find(ref_time);
+
+    // Insert ref pose (=the identity)
+    trajectory[0.0 /*ref_time - ref_time*/] = pose;
+
+    constexpr double INTERPOLATION_TIME_STEP_SEC = 0.1e-3;
+
+    // 1/2: Forward integration
+    auto   it         = it_ref;
+    double prev_stamp = it->first;
+    while (prev_stamp - ref_time < half_time_span)
+    {
+        if (it == angular_velocities_.end())
+        {
+            break;
+        }
+        const auto& w = it->second;
+        ++it;
+        const double this_abs_stamp = it->first;
+
+        // Move forward in time in small interpolating steps:
+        for (;;)
+        {
+            const double dt = std::min(this_abs_stamp - prev_stamp, INTERPOLATION_TIME_STEP_SEC);
+            prev_stamp += dt;
+            const double this_rel_stamp = prev_stamp - ref_time;
+
+            if (std::abs(dt) < 1e-3 * INTERPOLATION_TIME_STEP_SEC)
+            {
+                break;
+            }
+            // Integrate:
+            const auto R = mrpt::poses::Lie::SO<3>::exp(
+                (w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>());
+            pose.setRotationMatrix(pose.getRotationMatrix() * R);
+            trajectory[this_rel_stamp] = pose;
+        }
+    }
+
+    // 2/2: Backward integration
+    pose       = mrpt::poses::CPose3D::Identity();
+    it         = it_ref;
+    prev_stamp = it->first;
+    while (prev_stamp - ref_time > -half_time_span)
+    {
+        if (it == angular_velocities_.end() || it == angular_velocities_.begin())
+        {
+            break;
+        }
+        const auto& w = it->second;
+        --it;
+        const double this_abs_stamp = it->first;
+
+        // NOTE: dt<0, so there is nothing else special to care about while integrating this
+        //       backwards in time.
+        // Move forward in time in small interpolating steps:
+        for (;;)
+        {
+            const double dt =
+                -std::min(std::abs(this_abs_stamp - prev_stamp), INTERPOLATION_TIME_STEP_SEC);
+            prev_stamp += dt;
+            const double this_rel_stamp = prev_stamp - ref_time;
+
+            if (std::abs(dt) < 1e-3 * INTERPOLATION_TIME_STEP_SEC)
+            {
+                break;
+            }
+            // Integrate:
+            const auto R = mrpt::poses::Lie::SO<3>::exp(
+                (w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>());
+            pose.setRotationMatrix(pose.getRotationMatrix() * R);
+            trajectory[this_rel_stamp] = pose;
+        }
+    }
+
+    return trajectory;
+}
+#endif

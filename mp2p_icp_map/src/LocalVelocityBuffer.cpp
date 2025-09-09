@@ -13,7 +13,6 @@
 */
 
 #include <mp2p_icp/LocalVelocityBuffer.h>
-#include <mrpt/containers/find_closest.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/Lie/SO.h>
 
@@ -26,10 +25,23 @@ void LocalVelocityBuffer::add_linear_velocity(
     delete_too_old_entries(time);
 }
 
+void LocalVelocityBuffer::add_linear_acceleration(
+    const TimeStamp& time, const LinearAcceleration& a_vehicle)
+{
+    linear_accelerations_[time] = a_vehicle;
+    delete_too_old_entries(time);
+}
+
 void LocalVelocityBuffer::add_angular_velocity(
     const TimeStamp& time, const AngularVelocity& w_vehicle)
 {
     angular_velocities_[time] = w_vehicle;
+    delete_too_old_entries(time);
+}
+
+void LocalVelocityBuffer::add_orientation(const TimeStamp& time, const SO3& attitude)
+{
+    orientations_[time] = attitude;
     delete_too_old_entries(time);
 }
 
@@ -61,108 +73,41 @@ void LocalVelocityBuffer::delete_too_old_entries(const TimeStamp& now)
     }
 }
 
-LocalVelocityBuffer::Trajectory LocalVelocityBuffer::reconstruct_poses_around_reference_time(
-    double half_time_span) const
+auto LocalVelocityBuffer::collect_samples_around_reference_time(double half_time_span) const
+    -> LocalVelocityBuffer::SampleHistory
 {
-    // Recall: In the returned trajectory, t=0 is the reference time
-    Trajectory trajectory;
+    SampleHistory result;
 
-    const auto closest_stamp_w = mrpt::containers::find_closest_with_tolerance(
-        angular_velocities_, reference_zero_time, parameters.tolerance_search_stamp);
+    const double t0 = reference_zero_time - half_time_span;
+    const double t1 = reference_zero_time + half_time_span;
 
-    if (!closest_stamp_w.has_value())
+    auto collect_from_map = [&](const auto& srcMap, auto Sample::*field)
     {
-        // We don't have any nearby IMU reading to work with!
-        // Return an empty trajectory.
-        return {};
-    }
-
-    const double ref_time = closest_stamp_w->first;
-
-    auto pose = mrpt::poses::CPose3D::Identity();
-    // Should never fail by preconditions above
-    const auto it_ref = angular_velocities_.find(ref_time);
-
-    // Insert ref pose (=the identity)
-    trajectory[0.0 /*ref_time - ref_time*/] = pose;
-
-    constexpr double INTERPOLATION_TIME_STEP_SEC = 0.1e-3;
-
-    // 1/2: Forward integration
-    auto   it         = it_ref;
-    double prev_stamp = it->first;
-    while (prev_stamp - ref_time < half_time_span)
-    {
-        if (it == angular_velocities_.end())
+        for (const auto& [ts, val] : srcMap)
         {
-            break;
-        }
-        const auto& w = it->second;
-        ++it;
-        const double this_abs_stamp = it->first;
-
-        // Move forward in time in small interpolating steps:
-        for (;;)
-        {
-            const double dt = std::min(this_abs_stamp - prev_stamp, INTERPOLATION_TIME_STEP_SEC);
-            prev_stamp += dt;
-            const double this_rel_stamp = prev_stamp - ref_time;
-
-            if (std::abs(dt) < 1e-3 * INTERPOLATION_TIME_STEP_SEC)
+            if (ts < t0 || ts > t1)
             {
-                break;
+                continue;
             }
-            // Integrate:
-            const auto R = mrpt::poses::Lie::SO<3>::exp(
-                (w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>());
-            pose.setRotationMatrix(pose.getRotationMatrix() * R);
-            trajectory[this_rel_stamp] = pose;
+
+            const double rel_t  = ts - reference_zero_time;
+            auto&        sample = result[rel_t];
+            sample.*field       = val;
         }
-    }
+    };
 
-    // 2/2: Backward integration
-    pose       = mrpt::poses::CPose3D::Identity();
-    it         = it_ref;
-    prev_stamp = it->first;
-    while (prev_stamp - ref_time > -half_time_span)
-    {
-        if (it == angular_velocities_.end() || it == angular_velocities_.begin())
-        {
-            break;
-        }
-        const auto& w = it->second;
-        --it;
-        const double this_abs_stamp = it->first;
+    collect_from_map(linear_velocities_, &Sample::v_b);
+    collect_from_map(angular_velocities_, &Sample::w_b);
+    collect_from_map(linear_accelerations_, &Sample::a_b);
+    collect_from_map(orientations_, &Sample::orientation);
 
-        // NOTE: dt<0, so there is nothing else special to care about while integrating this
-        //       backwards in time.
-        // Move forward in time in small interpolating steps:
-        for (;;)
-        {
-            const double dt =
-                -std::min(std::abs(this_abs_stamp - prev_stamp), INTERPOLATION_TIME_STEP_SEC);
-            prev_stamp += dt;
-            const double this_rel_stamp = prev_stamp - ref_time;
-
-            if (std::abs(dt) < 1e-3 * INTERPOLATION_TIME_STEP_SEC)
-            {
-                break;
-            }
-            // Integrate:
-            const auto R = mrpt::poses::Lie::SO<3>::exp(
-                (w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>());
-            pose.setRotationMatrix(pose.getRotationMatrix() * R);
-            trajectory[this_rel_stamp] = pose;
-        }
-    }
-
-    return trajectory;
+    return result;
 }
-
 mrpt::containers::yaml LocalVelocityBuffer::toYAML() const
 {
     mrpt::containers::yaml root = mrpt::containers::yaml::Map();
 
+    // Parameters
     {
         mrpt::containers::yaml yamlParams    = mrpt::containers::yaml::Map();
         yamlParams["max_time_window"]        = parameters.max_time_window;
@@ -171,9 +116,11 @@ mrpt::containers::yaml LocalVelocityBuffer::toYAML() const
         root["parameters"] = yamlParams;
     }
 
+    // State
     {
         mrpt::containers::yaml yamlState = mrpt::containers::yaml::Map();
         yamlState["reference_zero_time"] = reference_zero_time;
+
         if (!linear_velocities_.empty())
         {
             yamlState["linear_velocities"] = mrpt::containers::yaml::Map();
@@ -183,6 +130,7 @@ mrpt::containers::yaml LocalVelocityBuffer::toYAML() const
                     "'" + vel.asString() + "'";
             }
         }
+
         if (!angular_velocities_.empty())
         {
             yamlState["angular_velocities"] = mrpt::containers::yaml::Map();
@@ -192,10 +140,51 @@ mrpt::containers::yaml LocalVelocityBuffer::toYAML() const
                     "'" + w.asString() + "'";
             }
         }
+
+        if (!linear_accelerations_.empty())
+        {
+            yamlState["linear_accelerations"] = mrpt::containers::yaml::Map();
+            for (const auto& [time, acc] : linear_accelerations_)
+            {
+                yamlState["linear_accelerations"][mrpt::format("%.09lf", time)] =
+                    "'" + acc.asString() + "'";
+            }
+        }
+
+        if (!orientations_.empty())
+        {
+            yamlState["orientations"] = mrpt::containers::yaml::Map();
+            for (const auto& [time, R] : orientations_)
+            {
+                yamlState["orientations"][mrpt::format("%.09lf", time)] =
+                    "'" + R.inMatlabFormat() + "'";
+            }
+        }
+
         root["state"] = yamlState;
     }
+
     return root;
 }
+
+namespace
+{
+
+static std::string stripQuotes(const std::string& s)
+{
+    if (s.size() >= 2)
+    {
+        char first = s.front();
+        char last  = s.back();
+        if ((first == '\'' && last == '\'') || (first == '"' && last == '"'))
+        {
+            return s.substr(1, s.size() - 2);
+        }
+    }
+    return s;
+}
+
+}  // namespace
 
 void LocalVelocityBuffer::fromYAML(const mrpt::containers::yaml& y)
 {
@@ -204,6 +193,7 @@ void LocalVelocityBuffer::fromYAML(const mrpt::containers::yaml& y)
         throw std::runtime_error("Invalid YAML format for LocalVelocityBuffer");
     }
 
+    // Parameters
     if (y.has("parameters"))
     {
         const auto& params                = y["parameters"];
@@ -211,28 +201,54 @@ void LocalVelocityBuffer::fromYAML(const mrpt::containers::yaml& y)
         parameters.tolerance_search_stamp = params["tolerance_search_stamp"].as<double>();
     }
 
+    // State
     if (y.has("state"))
     {
         const auto& state   = y["state"];
         reference_zero_time = state["reference_zero_time"].as<TimeStamp>();
 
+        // Linear velocities
         linear_velocities_.clear();
         if (state.has("linear_velocities"))
         {
             for (const auto& [time_str, vel_str] : state["linear_velocities"].asMapRange())
             {
                 linear_velocities_[std::stod(time_str.as<std::string>())] =
-                    mrpt::math::TVector3D::FromString(vel_str.as<std::string>());
+                    mrpt::math::TVector3D::FromString(stripQuotes(vel_str.as<std::string>()));
             }
         }
 
+        // Angular velocities
         angular_velocities_.clear();
         if (state.has("angular_velocities"))
         {
             for (const auto& [time_str, w_str] : state["angular_velocities"].asMapRange())
             {
                 angular_velocities_[std::stod(time_str.as<std::string>())] =
-                    mrpt::math::TVector3D::FromString(w_str.as<std::string>());
+                    mrpt::math::TVector3D::FromString(stripQuotes(w_str.as<std::string>()));
+            }
+        }
+
+        // Linear accelerations
+        linear_accelerations_.clear();
+        if (state.has("linear_accelerations"))
+        {
+            for (const auto& [time_str, acc_str] : state["linear_accelerations"].asMapRange())
+            {
+                linear_accelerations_[std::stod(time_str.as<std::string>())] =
+                    mrpt::math::TVector3D::FromString(stripQuotes(acc_str.as<std::string>()));
+            }
+        }
+
+        // Orientations
+        orientations_.clear();
+        if (state.has("orientations"))
+        {
+            for (const auto& [time_str, R_str] : state["orientations"].asMapRange())
+            {
+                mrpt::math::CMatrixDouble33 R;
+                R.fromMatlabStringFormat(stripQuotes(R_str.as<std::string>()));
+                orientations_[std::stod(time_str.as<std::string>())] = R;
             }
         }
     }

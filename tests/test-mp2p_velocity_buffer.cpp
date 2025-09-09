@@ -22,12 +22,16 @@
 #include <mp2p_icp/LocalVelocityBuffer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/core/round.h>
+#include <mrpt/system/os.h>
 
 #include <iostream>
 
+using namespace mp2p_icp;
+
 namespace
 {
-void unit_test_basic()
+void unit_test_basic_api()
 {
     mp2p_icp::LocalVelocityBuffer buffer;
 
@@ -49,9 +53,11 @@ void unit_test_basic()
     buffer.clear();
     ASSERT_EQUAL_(buffer.get_linear_velocities().size(), 0);
     ASSERT_EQUAL_(buffer.get_angular_velocities().size(), 0);
+
+    std::cout << "✅ LocalVelocityBuffer unit_test_basic_api passed!" << std::endl;
 }
 
-void unit_test_yaml()
+void unit_test_basic_yaml()
 {
     mp2p_icp::LocalVelocityBuffer buffer;
 
@@ -100,6 +106,79 @@ void unit_test_yaml()
         ASSERT_(it != buffer2.get_angular_velocities().end());
         ASSERT_(it->second == w);  // Assuming operator== is defined for AngularVelocity
     }
+    std::cout << "✅ LocalVelocityBuffer unit_test_basic_yaml passed!" << std::endl;
+}
+
+void unit_test_yaml_roundtrip()
+{
+    LocalVelocityBuffer buf;
+
+    // Fill with sample data
+    buf.parameters.max_time_window        = 2.0;
+    buf.parameters.tolerance_search_stamp = 1e-2;
+    buf.set_reference_zero_time(123.456);
+
+    LocalVelocityBuffer::LinearVelocity     v{1.0, 2.0, 3.0};
+    LocalVelocityBuffer::AngularVelocity    w{0.1, 0.2, 0.3};
+    LocalVelocityBuffer::LinearAcceleration a{9.8, 0.0, -9.8};
+    LocalVelocityBuffer::SO3                R = mrpt::math::CMatrixDouble33::Identity();
+
+    buf.add_linear_velocity(123.400, v);
+    buf.add_angular_velocity(123.410, w);
+    buf.add_linear_acceleration(123.420, a);
+    buf.add_orientation(123.430, R);
+
+    // Serialize
+    auto yml = buf.toYAML();
+
+    yml.printAsYAML();
+
+    // Deserialize into a new buffer
+    LocalVelocityBuffer buf2;
+    buf2.fromYAML(yml);
+
+    // Checks
+    ASSERT_EQUAL_(buf2.parameters.max_time_window, buf.parameters.max_time_window);
+    ASSERT_EQUAL_(buf2.parameters.tolerance_search_stamp, buf.parameters.tolerance_search_stamp);
+    ASSERT_EQUAL_(buf2.get_reference_zero_time(), buf.get_reference_zero_time());
+
+    // linear velocities
+    ASSERT_EQUAL_(buf2.get_linear_velocities().size(), buf.get_linear_velocities().size());
+    for (const auto& [t, v1] : buf.get_linear_velocities())
+    {
+        const auto it = buf2.get_linear_velocities().find(t);
+        ASSERT_(it != buf2.get_linear_velocities().end());
+        ASSERT_(v1 == it->second);
+    }
+
+    // angular velocities
+    ASSERT_EQUAL_(buf2.get_angular_velocities().size(), buf.get_angular_velocities().size());
+    for (const auto& [t, w1] : buf.get_angular_velocities())
+    {
+        const auto it = buf2.get_angular_velocities().find(t);
+        ASSERT_(it != buf2.get_angular_velocities().end());
+        ASSERT_(w1 == it->second);
+    }
+
+    // linear accelerations
+    ASSERT_EQUAL_(buf2.get_linear_accelerations().size(), buf.get_linear_accelerations().size());
+    for (const auto& [t, a1] : buf.get_linear_accelerations())
+    {
+        const auto it = buf2.get_linear_accelerations().find(t);
+        ASSERT_(it != buf2.get_linear_accelerations().end());
+        ASSERT_(a1 == it->second);
+    }
+
+    // orientations
+    ASSERT_EQUAL_(buf2.get_orientations().size(), buf.get_orientations().size());
+    for (const auto& [t, R1] : buf.get_orientations())
+    {
+        const auto it = buf2.get_orientations().find(t);
+        ASSERT_(it != buf2.get_orientations().end());
+        ASSERT_(R1 == it->second);
+    }
+
+    std::cout << "✅ LocalVelocityBuffer unit_test_yaml_roundtrip passed!" << std::endl;
 }
 
 }  // namespace
@@ -108,8 +187,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
     {
-        unit_test_basic();
-        unit_test_yaml();
+        unit_test_basic_api();
+        unit_test_basic_yaml();
+        unit_test_yaml_roundtrip();
     }
     catch (std::exception& e)
     {
