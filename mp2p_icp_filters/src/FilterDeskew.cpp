@@ -70,6 +70,95 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
     }
 }
 
+namespace
+{
+// Optimized templated version for compile-time optimization for each method
+template <MotionCompensationMethod method>
+void correctPointsLoop(
+    const mrpt::aligned_std_vector<float>& xs, const mrpt::aligned_std_vector<float>& ys,
+    const mrpt::aligned_std_vector<float>& zs, size_t n, size_t n0, mrpt::maps::CPointsMap* outPc,
+    const mrpt::aligned_std_vector<float>* Is, mrpt::aligned_std_vector<float>* out_Is,
+    const mrpt::aligned_std_vector<uint16_t>* Rs, mrpt::aligned_std_vector<uint16_t>* out_Rs,
+    const mrpt::aligned_std_vector<float>* Ts, mrpt::aligned_std_vector<float>* out_Ts,
+    const mrpt::math::TTwist3D* constant_twist)
+{
+#if defined(MP2P_HAS_TBB)
+    tbb::parallel_for(
+        static_cast<size_t>(0), n,
+        [&](size_t i)
+#else
+    for (size_t i = 0; i < n; i++)
+#endif
+        {
+            const auto pt = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
+            if (pt.x == 0 && pt.y == 0 && pt.z == 0)
+            {
+#if defined(MP2P_HAS_TBB)
+                return;
+#else
+            continue;
+#endif
+            }
+
+            mrpt::poses::CPose3D pose_increment;
+
+            // Compile-time "switch":
+            if constexpr (method == MotionCompensationMethod::Linear)
+            {
+                // Forward integrate constant twist:
+                const auto v = mrpt::math::TVector3D(
+                    constant_twist->vx, constant_twist->vy, constant_twist->vz);
+                const auto w = mrpt::math::TVector3D(
+                    constant_twist->wx, constant_twist->wy, constant_twist->wz);
+
+                const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
+                const mrpt::math::TVector3D w_dt = w * (*Ts)[i];
+
+                pose_increment = mrpt::poses::CPose3D::FromRotationAndTranslation(
+                    // Rotation: From Lie group SO(3) exponential:
+                    mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt)),
+                    // Translation: simple constant velocity model:
+                    v_dt);
+            }
+            else if constexpr (method == MotionCompensationMethod::IMU)
+            {
+                //
+                THROW_EXCEPTION("to do");
+            }
+            else if constexpr (method == MotionCompensationMethod::IMU_interp)
+            {
+                //
+                THROW_EXCEPTION("to do");
+            }
+
+            // Correct point XYZ coordinates.
+            const auto corrPt = pose_increment.composePoint(pt);
+
+            outPc->setPointFast(
+                n0 + i, static_cast<float>(corrPt.x), static_cast<float>(corrPt.y),
+                static_cast<float>(corrPt.z));
+
+            // Copy additional fields
+            if (Is && out_Is)
+            {
+                (*out_Is)[n0 + i] = (*Is)[i];
+            }
+            if (Rs && out_Rs)
+            {
+                (*out_Rs)[n0 + i] = (*Rs)[i];
+            }
+            if (Ts && out_Ts)
+            {
+                (*out_Ts)[n0 + i] = (*Ts)[i];
+            }
+        }
+#if defined(MP2P_HAS_TBB)
+    );
+#endif
+}
+
+}  // namespace
+
 void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
@@ -214,25 +303,31 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         }
     };
 
-#if defined(MP2P_HAS_TBB)
-    tbb::parallel_for(
-        static_cast<size_t>(0), n,
-        [&](size_t i)
-#else
-    for (size_t i = 0; i < n; i++)
-#endif
-        {
-            const auto pt = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
-            if (pt.x == 0 && pt.y == 0 && pt.z == 0)
-            {
-#if defined(MP2P_HAS_TBB)
-                return;
-#else
-            continue;
-#endif
-            }
+    // compile-time optimized code for each method:
+    switch (method)
+    {
+        case MotionCompensationMethod::Linear:
+            correctPointsLoop<MotionCompensationMethod::Linear>(
+                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist);
+            break;
 
-            mrpt::poses::CPose3D pose_increment;
+        case MotionCompensationMethod::IMU:
+            correctPointsLoop<MotionCompensationMethod::IMU>(
+                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist);
+            break;
+
+        case MotionCompensationMethod::IMU_interp:
+            correctPointsLoop<MotionCompensationMethod::IMU_interp>(
+                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist);
+            break;
+
+        default:
+            // Should never arrive here
+            throw std::runtime_error("Unknown MotionCompensationMethod method");
+    }
+
+    MRPT_END
+}
 
 #if 0
 
@@ -258,41 +353,8 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             }
             else
             {
-                // Forward integrate constant twist:
-                const auto v =
-                    mrpt::math::TVector3D(constant_twist.vx, constant_twist.vy, constant_twist.vz);
-                const auto w =
-                    mrpt::math::TVector3D(constant_twist.wx, constant_twist.wy, constant_twist.wz);
-
-                const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
-                const mrpt::math::TVector3D w_dt = w * (*Ts)[i];
-
-                pose_increment = mrpt::poses::CPose3D::FromRotationAndTranslation(
-                    // Rotation: From Lie group SO(3) exponential:
-                    mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt)),
-                    // Translation: simple constant velocity model:
-                    v_dt);
             }
-#endif
-            // Correct point XYZ coordinates:
-            const auto corrPt = pose_increment.composePoint(pt);
 
-            // Set corrected XYZ:
-            outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
-            // and copy the rest of fields:
-            if (Is && out_Is) (*out_Is)[n0 + i] = (*Is)[i];
-            if (Rs && out_Rs) (*out_Rs)[n0 + i] = (*Rs)[i];
-            if (Ts && out_Ts) (*out_Ts)[n0 + i] = (*Ts)[i];
-        }
-#if defined(MP2P_HAS_TBB)
-    );
-#endif
-
-    outPc->mark_as_modified();
-    MRPT_END
-}
-
-#if 0
 LocalVelocityBuffer::reconstruct_poses_around_reference_time(double half_time_span) const
 {
     // Recall: In the returned trajectory, t=0 is the reference time
