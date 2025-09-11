@@ -72,6 +72,25 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
 
 namespace
 {
+
+/// Each of the recovered-trajectory key-points
+struct TrajectoryPoint
+{
+    TrajectoryPoint() = default;
+
+    /// SE(3) pose, relative to "t=0"
+    mrpt::poses::CPose3D p = mrpt::poses::CPose3D::Identity();
+    /// (v,ω)
+    mrpt::math::TTwist3D v = {0, 0, 0, 0, 0, 0};
+    /// (a,α)
+    mrpt::math::TTwist3D a = {0, 0, 0, 0, 0, 0};
+    /// Jerk = \dot{a}
+    mrpt::math::TVector3D j = {0, 0, 0};
+};
+
+/// A recovered trajectory, indexed by relative time in seconds (t=0 is the scan reference stamp)
+using Trajectory = std::map<double, TrajectoryPoint>;
+
 // Optimized templated version for compile-time optimization for each method
 template <MotionCompensationMethod method>
 void correctPointsLoop(
@@ -80,7 +99,7 @@ void correctPointsLoop(
     const mrpt::aligned_std_vector<float>* Is, mrpt::aligned_std_vector<float>* out_Is,
     const mrpt::aligned_std_vector<uint16_t>* Rs, mrpt::aligned_std_vector<uint16_t>* out_Rs,
     const mrpt::aligned_std_vector<float>* Ts, mrpt::aligned_std_vector<float>* out_Ts,
-    const mrpt::math::TTwist3D* constant_twist)
+    const mrpt::math::TTwist3D* constant_twist, const Trajectory& reconstructed_trajectory)
 {
 #if defined(MP2P_HAS_TBB)
     tbb::parallel_for(
@@ -123,12 +142,18 @@ void correctPointsLoop(
             else if constexpr (method == MotionCompensationMethod::IMU)
             {
                 //
+                (void)reconstructed_trajectory;
                 THROW_EXCEPTION("to do");
             }
             else if constexpr (method == MotionCompensationMethod::IMU_interp)
             {
                 //
                 THROW_EXCEPTION("to do");
+            }
+            else
+            {
+                // Should never arrive here
+                THROW_EXCEPTION("Unhandled MotionCompensationMethod method (!)");
             }
 
             // Correct point XYZ coordinates.
@@ -155,6 +180,23 @@ void correctPointsLoop(
 #if defined(MP2P_HAS_TBB)
     );
 #endif
+}
+
+Trajectory reconstructTrajectoryFromIMU(const mp2p_icp::LocalVelocityBuffer::SampleHistory& samples)
+{
+    Trajectory t;
+
+    // Build the list of all timestamps that we will reconstruct:
+
+    return t;
+}
+
+Trajectory reconstructTrajectoryFromIMU_interp(
+    const mp2p_icp::LocalVelocityBuffer::SampleHistory& samples)
+{
+    Trajectory t;
+
+    return t;
 }
 
 }  // namespace
@@ -259,7 +301,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Used for precise deskew-only. This contains relative poses of the vehicle frame ("base_link")
     // with t=0 being the reference time when t=0 in the point cloud timestamp field:
-    std::optional<mp2p_icp::LocalVelocityBuffer::SampleHistory> sample_history_opt;
+    Trajectory reconstructed_trajectory;
 
     const mrpt::math::TTwist3D* constant_twist = nullptr;
 
@@ -279,8 +321,17 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             // Recall, the reference time should have been set already by the Generator and/or
             // FilterAdjustTimestamps:
-            sample_history_opt =
+            const auto sample_history =
                 ps->localVelocityBuffer.collect_samples_around_reference_time(scan_time_span);
+
+            if (method == MotionCompensationMethod::IMU)
+            {
+                reconstructed_trajectory = reconstructTrajectoryFromIMU(sample_history);
+            }
+            else if (method == MotionCompensationMethod::IMU_interp)
+            {
+                reconstructed_trajectory = reconstructTrajectoryFromIMU_interp(sample_history);
+            }
         }
         break;
 
@@ -308,17 +359,20 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     {
         case MotionCompensationMethod::Linear:
             correctPointsLoop<MotionCompensationMethod::Linear>(
-                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist);
+                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist,
+                reconstructed_trajectory);
             break;
 
         case MotionCompensationMethod::IMU:
             correctPointsLoop<MotionCompensationMethod::IMU>(
-                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist);
+                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist,
+                reconstructed_trajectory);
             break;
 
         case MotionCompensationMethod::IMU_interp:
             correctPointsLoop<MotionCompensationMethod::IMU_interp>(
-                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist);
+                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist,
+                reconstructed_trajectory);
             break;
 
         default:

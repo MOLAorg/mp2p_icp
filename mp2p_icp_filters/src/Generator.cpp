@@ -38,6 +38,10 @@
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/system/filesystem.h>
 
+#if MP2P_HAS_IMU_PREINTEGRATION_LIB
+#include <mola_imu_preintegration/ImuTransformer.h>
+#endif
+
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
@@ -187,7 +191,32 @@ bool Generator::filterVelodyneScan(  //
     return true;  // implemented
 }
 
-bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu) const
+#if MP2P_HAS_IMU_PREINTEGRATION_LIB
+class ImuTransformerManager
+{
+   public:
+    static mola::ImuTransformer& getInstance(const std::string& sensorLabel)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto                        it = transformers_.find(sensorLabel);
+        if (it == transformers_.end())
+        {
+            auto [newIt, _] = transformers_.emplace(sensorLabel, mola::ImuTransformer());
+            return newIt->second;
+        }
+        return it->second;
+    }
+
+   private:
+    static std::mutex                                  mutex_;
+    static std::map<std::string, mola::ImuTransformer> transformers_;
+};
+
+std::mutex                                  ImuTransformerManager::mutex_;
+std::map<std::string, mola::ImuTransformer> ImuTransformerManager::transformers_;
+#endif
+
+bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu_raw) const
 {
     auto* parameterSource = const_cast<mp2p_icp::ParameterSource*>(attachedSource());
     if (!parameterSource)
@@ -195,21 +224,35 @@ bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu) const
         return false;  // No parameter source attached, nothing to do.
     }
 
-    if (!imu.has(mrpt::obs::IMU_WX) || !imu.has(mrpt::obs::IMU_WY) || !imu.has(mrpt::obs::IMU_WZ))
-    {
-        // No gyroscope data:
-        return false;
-    }
+    const double t = mrpt::Clock::toDouble(imu_raw.timestamp);
+
+#if MP2P_HAS_IMU_PREINTEGRATION_LIB
+    auto& imu_transformer = ImuTransformerManager::getInstance(imu_raw.sensorLabel);
 
     // Convert IMU readings to vehicle frame of reference:
-    const double t = mrpt::Clock::toDouble(imu.timestamp);
+    const auto imu = imu_transformer.process(imu_raw);
 
-    const mp2p_icp::LocalVelocityBuffer::AngularVelocity ang_vel_sensor = {
-        imu.get(mrpt::obs::IMU_WX), imu.get(mrpt::obs::IMU_WY), imu.get(mrpt::obs::IMU_WZ)};
+    // gyroscope data:
+    if (imu.has(mrpt::obs::IMU_WX) && imu.has(mrpt::obs::IMU_WY) && imu.has(mrpt::obs::IMU_WZ))
+    {
+        parameterSource->localVelocityBuffer.add_angular_velocity(
+            t,
+            {imu.get(mrpt::obs::IMU_WX), imu.get(mrpt::obs::IMU_WY), imu.get(mrpt::obs::IMU_WZ)});
+    }
+    // accelerometer data:
+    if (imu.has(mrpt::obs::IMU_X_ACC) && imu.has(mrpt::obs::IMU_Y_ACC) &&
+        imu.has(mrpt::obs::IMU_Z_ACC))
+    {
+        parameterSource->localVelocityBuffer.add_linear_acceleration(
+            t, {imu.get(mrpt::obs::IMU_X_ACC), imu.get(mrpt::obs::IMU_Y_ACC),
+                imu.get(mrpt::obs::IMU_Z_ACC)});
+    }
 
-    const auto ang_vel_vehicle = imu.sensorPose.rotateVector(ang_vel_sensor);
-
-    parameterSource->localVelocityBuffer.add_angular_velocity(t, ang_vel_vehicle);
+#else
+    MRPT_LOG_THROTTLE_WARN(
+        10.0,
+        "Ignoring IMU data, since mp2p_icp was built without mola_imu_preintegration library");
+#endif
 
     return true;  // implemented
 }

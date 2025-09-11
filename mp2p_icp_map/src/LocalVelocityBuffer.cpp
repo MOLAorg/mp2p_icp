@@ -81,7 +81,8 @@ auto LocalVelocityBuffer::collect_samples_around_reference_time(double half_time
     const double t0 = reference_zero_time - half_time_span;
     const double t1 = reference_zero_time + half_time_span;
 
-    auto collect_from_map = [&](const auto& srcMap, auto Sample::*field)
+    auto collect_from_map =
+        [&](const auto& srcMap, auto Sample::* field, auto SamplesByTime::* fieldByTime)
     {
         for (const auto& [ts, val] : srcMap)
         {
@@ -91,15 +92,17 @@ auto LocalVelocityBuffer::collect_samples_around_reference_time(double half_time
             }
 
             const double rel_t  = ts - reference_zero_time;
-            auto&        sample = result[rel_t];
-            sample.*field       = val;
+            auto&        sample = result.by_time[rel_t];
+
+            sample.*field                        = val;
+            (result.by_type.*fieldByTime)[rel_t] = val;
         }
     };
 
-    collect_from_map(linear_velocities_, &Sample::v_b);
-    collect_from_map(angular_velocities_, &Sample::w_b);
-    collect_from_map(linear_accelerations_, &Sample::a_b);
-    collect_from_map(orientations_, &Sample::orientation);
+    collect_from_map(linear_velocities_, &Sample::v_b, &SamplesByTime::v_b);
+    collect_from_map(angular_velocities_, &Sample::w_b, &SamplesByTime::w_b);
+    collect_from_map(linear_accelerations_, &Sample::a_b, &SamplesByTime::a_b);
+    collect_from_map(orientations_, &Sample::q, &SamplesByTime::q);
 
     return result;
 }

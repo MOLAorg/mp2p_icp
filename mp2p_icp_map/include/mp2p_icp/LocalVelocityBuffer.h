@@ -59,13 +59,31 @@ class LocalVelocityBuffer
     {
         Sample() = default;
 
-        std::optional<SO3>                orientation;
+        std::optional<SO3>                q;
         std::optional<LinearVelocity>     v_b;  //!< linear velocity (body frame)
         std::optional<LinearAcceleration> a_b;  //!< linear acceleration (body frame)
         std::optional<AngularVelocity>    w_b;  //!< Angular velocity (body frame)
     };
 
-    using SampleHistory = std::map<TimeStamp, Sample>;
+    /// Each kind of sample on its own timeline.
+    struct SamplesByTime
+    {
+        std::map<TimeStamp, SO3>                q;  //!< orientations (gravity-aligned, global)
+        std::map<TimeStamp, LinearVelocity>     v_b;  //!< linear velocity (body frame)
+        std::map<TimeStamp, LinearAcceleration> a_b;  //!< linear acceleration (body frame)
+        std::map<TimeStamp, AngularVelocity>    w_b;  //!< Angular velocity (body frame)
+    };
+
+    struct SampleHistory
+    {
+        SampleHistory() = default;
+
+        /// All samples, sorted by time. Each entry may have one type of observation or another.
+        std::map<TimeStamp, Sample> by_time;
+
+        /// Each kind of sample on its own timeline.
+        SamplesByTime by_type;
+    };
 
     /// Add a new global (gravity-aligned) orientation entry
     void add_orientation(const TimeStamp& time, const SO3& attitude);
