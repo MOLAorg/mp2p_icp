@@ -37,6 +37,8 @@
 #include <tbb/parallel_for.h>
 #endif
 
+#include <Eigen/Dense>
+
 IMPLEMENTS_MRPT_OBJECT(FilterDeskew, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
@@ -73,23 +75,124 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
 namespace
 {
 
-/// Each of the recovered-trajectory key-points
+/** Each of the recovered-trajectory key-points.
+ * Some members are std::optional just to help in the process of reconstruction, to know which are
+ * already computed.
+ */
 struct TrajectoryPoint
 {
     TrajectoryPoint() = default;
 
+    TrajectoryPoint(const mrpt::math::CMatrixDouble33& R_, const mrpt::math::TVector3D& p_)
+        : pose(
+              mrpt::poses::CPose3D::FromRotationAndTranslation(
+                  R_, mrpt::math::CVectorFixedDouble<3>(p_)))
+    {
+    }
+
     /// SE(3) pose, relative to "t=0"
-    mrpt::poses::CPose3D p = mrpt::poses::CPose3D::Identity();
-    /// (v,ω)
-    mrpt::math::TTwist3D v = {0, 0, 0, 0, 0, 0};
-    /// (a,α)
-    mrpt::math::TTwist3D a = {0, 0, 0, 0, 0, 0};
+    mrpt::poses::CPose3D pose;
+
+    /// SO(3) orientation, gravity aligned
+    std::optional<mrpt::math::CMatrixDouble33> R_ga;
+
+    /// Linear velocity (v) in the frame of reference of "t=0"
+    std::optional<mrpt::math::TVector3D> v;
+
+    // Angular velocity (ω) in the body (b) frame (directly from IMU)
+    std::optional<mrpt::math::TVector3D> w_b;
+
+    /// Linear acceleration (a) in the body (b) frame (directly from IMU, transformed)
+    /// (This one still has gravity)
+    std::optional<mrpt::math::TVector3D> a_b;
+
+    /// Linear coordinate acceleration (body frame) (without gravity effects)
+    std::optional<mrpt::math::TVector3D> ac_b;
+
+    /// Angular acceleration (α)
+    mrpt::math::TVector3D alpha = {0, 0, 0};
+
     /// Jerk = \dot{a}
     mrpt::math::TVector3D j = {0, 0, 0};
+
+    std::string asString() const
+    {
+        using mrpt::format;
+
+        auto vecToStr = [](const mrpt::math::TVector3D& x)
+        { return mrpt::format("[%.3f %.3f %.3f]", x[0], x[1], x[2]); };
+
+        auto optVecToStr = [&](const std::optional<mrpt::math::TVector3D>& x)
+        { return x ? vecToStr(*x) : std::string{"<none>"}; };
+
+        auto matToStr = [](const mrpt::math::CMatrixDouble33& M)
+        {
+            mrpt::poses::CPose3D pp;
+            pp.setRotationMatrix(M);
+            return mrpt::format(
+                "(ypr)=(%.02f,%.02f,%.02f) [deg]", mrpt::RAD2DEG(pp.yaw()),
+                mrpt::RAD2DEG(pp.pitch()), mrpt::RAD2DEG(pp.roll()));
+        };
+
+        auto optMatToStr = [&](const std::optional<mrpt::math::CMatrixDouble33>& M)
+        { return M ? matToStr(*M) : std::string{"<none>"}; };
+
+        std::ostringstream oss;
+        oss << "TrajectoryPoint{"
+            << "\n  pose = " << pose.asString()  //
+            << "\n  R_ga = " << optMatToStr(R_ga)  //
+            << "\n  v    = " << optVecToStr(v)  //
+            << "\n  w_b  = " << optVecToStr(w_b)  //
+            << "\n  a_b  = " << optVecToStr(a_b)  //
+            << "\n  ac_b = " << optVecToStr(ac_b)  //
+            << "\n  alpha= " << vecToStr(alpha)  //
+            << "\n  j    = " << vecToStr(j)  //
+            << "\n}";
+        return oss.str();
+    }
 };
 
 /// A recovered trajectory, indexed by relative time in seconds (t=0 is the scan reference stamp)
 using Trajectory = std::map<double, TrajectoryPoint>;
+
+auto findBeforeAfter(const Trajectory& trajectory, const double t)
+    -> std::pair<Trajectory::const_iterator, Trajectory::const_iterator>
+{
+    using Iterator = Trajectory::const_iterator;
+
+    // Don't check for "!trajectory.empty()", it's done in the caller.
+
+    Iterator lower = trajectory.lower_bound(t);
+
+    if (lower == trajectory.end())
+    {
+        // key is larger than all elements
+        Iterator last = std::prev(trajectory.end());
+        return {last, last};
+    }
+
+    if (lower->first == t)
+    {
+        // Exact match: before = prev, after = next (clamped)
+        Iterator before = (lower == trajectory.begin()) ? lower : std::prev(lower);
+        Iterator after  = std::next(lower);
+        if (after == trajectory.end())
+        {
+            after = lower;
+        }
+        return {before, after};
+    }
+
+    if (lower == trajectory.begin())
+    {
+        // key is smaller than all elements
+        return {lower, lower};
+    }
+
+    // General case: key lies between prev(lower) and lower
+    Iterator before = std::prev(lower);
+    return {before, lower};
+}
 
 // Optimized templated version for compile-time optimization for each method
 template <MotionCompensationMethod method>
@@ -101,6 +204,8 @@ void correctPointsLoop(
     const mrpt::aligned_std_vector<float>* Ts, mrpt::aligned_std_vector<float>* out_Ts,
     const mrpt::math::TTwist3D* constant_twist, const Trajectory& reconstructed_trajectory)
 {
+    MRPT_TODO("First, build a cache with times -> corrections");
+
 #if defined(MP2P_HAS_TBB)
     tbb::parallel_for(
         static_cast<size_t>(0), n,
@@ -141,9 +246,23 @@ void correctPointsLoop(
             }
             else if constexpr (method == MotionCompensationMethod::IMU)
             {
-                //
-                (void)reconstructed_trajectory;
-                THROW_EXCEPTION("to do");
+                const auto t_point    = (*Ts)[i];
+                const auto [it0, it1] = findBeforeAfter(reconstructed_trajectory, t_point);
+
+                const auto   t_prev  = it0->first;
+                const double dt      = t_point - t_prev;
+                const auto&  tp_prev = it0->second;
+
+                // v was already in the t=0 frame of reference:
+                const mrpt::math::TVector3D v_dt = *tp_prev.v * dt;
+                const mrpt::math::TVector3D w_dt = *tp_prev.w_b * dt;
+
+                pose_increment = mrpt::poses::CPose3D::FromRotationAndTranslation(
+                    // Rotation: From Lie group SO(3) exponential:
+                    tp_prev.pose.getRotationMatrix() *
+                        mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt)),
+                    // Translation: simple constant velocity model:
+                    tp_prev.pose.translation() + v_dt);
             }
             else if constexpr (method == MotionCompensationMethod::IMU_interp)
             {
@@ -182,11 +301,168 @@ void correctPointsLoop(
 #endif
 }
 
+void execute_integration(
+    Trajectory&                                                                           t,
+    const std::function<void(const TrajectoryPoint& p0, TrajectoryPoint& p1, double dt)>& update,
+    const double start_time = 0.0)
+{
+    for (auto it = t.find(start_time); it != t.end(); it++)
+    {
+        auto it_next = std::next(it);
+        if (it_next == t.end())
+        {
+            break;
+        }
+        const auto&  p_prev = it->second;
+        auto&        p_this = it_next->second;
+        const double dt     = it_next->first - it->first;
+
+        update(p_prev, p_this, dt);
+    }
+    for (auto it = std::make_reverse_iterator(std::next(t.find(start_time))); it != t.rend(); ++it)
+    {
+        auto it_next = std::next(it);  // reverse_iterator trick
+        if (it_next == t.rend())
+        {
+            break;
+        }
+
+        const auto&  p_prev = it->second;
+        auto&        p_this = it_next->second;
+        const double dt     = it_next->first - it->first;
+
+        update(p_prev, p_this, dt);
+    }
+};
+
 Trajectory reconstructTrajectoryFromIMU(const mp2p_icp::LocalVelocityBuffer::SampleHistory& samples)
 {
     Trajectory t;
 
-    // Build the list of all timestamps that we will reconstruct:
+    // 1) Build the list of all timestamps that we will reconstruct:
+    // {0, t_IMU}
+    t[0] = TrajectoryPoint(mrpt::math::CMatrixDouble33::Identity(), {.0, .0, .0});
+    for (const auto& [stamp, _] : samples.by_type.w_b)
+    {
+        t[stamp] = {};
+    }
+
+    // 2) Fill (ω,a) from IMU:
+    for (const auto& [stamp, w] : samples.by_type.w_b)
+    {
+        t[stamp].w_b = w;
+    }
+    for (const auto& [stamp, acc] : samples.by_type.a_b)
+    {
+        t[stamp].a_b = acc;
+    }
+
+    // 3) Copy the closest gravity-aligned hints on global orientations:
+    std::optional<double> stamp_first_R_ga;
+    for (const auto& [stamp, so3] : samples.by_type.q)
+    {
+        t[stamp].R_ga = so3;
+        if (!stamp_first_R_ga)
+        {
+            stamp_first_R_ga = stamp;
+        }
+    }
+    ASSERTMSG_(
+        stamp_first_R_ga.has_value(),
+        "At least one entry with gravity-aligned orientation is needed for IMU integration");
+
+    // 4) Integrate R forward / backwards in time:
+    execute_integration(
+        t,
+        [](const TrajectoryPoint& p0, TrajectoryPoint& p1, double dt)
+        {
+            const mrpt::math::TVector3D w =
+                p0.w_b.has_value()
+                    ? *p0.w_b
+                    : (p1.w_b.has_value() ? *p1.w_b : mrpt::math::TVector3D(.0, .0, .0));
+
+            p1.pose.setRotationMatrix(
+                p0.pose.getRotationMatrix() *
+                mrpt::poses::Lie::SO<3>::exp(
+                    (w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>()));
+        });
+
+    // 5) Integrate R_gravity_aligned:
+    execute_integration(
+        t,
+        [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
+        {
+            p1.R_ga = (*p0.R_ga) *
+                      ((p0.pose.getRotationMatrix()).inverse() * (p1.pose.getRotationMatrix()));
+        },
+        stamp_first_R_ga.value());
+
+    // 6) convert acceleration:
+    // proper acceleration in the body frame => coordinate acceleration in the body frame
+    for (auto& [stamp, p] : t)
+    {
+        MRPT_TODO("get acc bias");
+        const mrpt::math::TVector3D bias_acc = {0, 0, 0};
+        const Eigen::Vector3d       gravity(0, 0, -9.81);
+
+        if (p.a_b)
+        {
+            MRPT_TODO("verify this!");
+            const auto gravity_b = p.R_ga->asEigen().inverse() * gravity;
+
+            ASSERT_(p.a_b);
+            p.ac_b = *p.a_b - bias_acc +
+                     mrpt::math::TVector3D(gravity_b.x(), gravity_b.y(), gravity_b.z());
+        }
+        else
+        {
+            p.ac_b = {0, 0, 0};
+        }
+    }
+
+    // 7) Copy the closest velocity from the given samples:
+    std::optional<double> stamp_first_v_b;
+    for (const auto& [stamp, v_b] : samples.by_type.v_b)
+    {
+        t[stamp].v = v_b;
+        if (!stamp_first_v_b)
+        {
+            stamp_first_v_b = stamp;
+        }
+    }
+    ASSERTMSG_(
+        stamp_first_v_b.has_value(),
+        "At least one entry with velocity is needed for IMU integration");
+
+    // 8) Integrate v:
+    execute_integration(
+        t,
+        [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
+        {
+            ASSERT_(p0.v.has_value());
+            p1.v = *p0.v + p0.pose.rotateVector(p0.ac_b.value() * dt);
+        },
+        stamp_first_v_b.value());
+
+    // 9) Integrate p:
+    execute_integration(
+        t,
+        [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
+        {
+            ASSERT_(p0.v.has_value());
+            const auto t = p0.pose.translation() + p0.v.value() * dt;
+            p1.pose.x(t.x);
+            p1.pose.y(t.y);
+            p1.pose.z(t.z);
+        });
+
+#if 0
+    // Debug print
+    for (auto& [stamp, p] : t)
+    {
+        std::cout << "t=" << stamp << " " << p.asString() << "\n";
+    }
+#endif
 
     return t;
 }

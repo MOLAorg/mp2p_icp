@@ -70,7 +70,7 @@ class LocalVelocityBuffer
     {
         std::map<TimeStamp, SO3>                q;  //!< orientations (gravity-aligned, global)
         std::map<TimeStamp, LinearVelocity>     v_b;  //!< linear velocity (body frame)
-        std::map<TimeStamp, LinearAcceleration> a_b;  //!< linear acceleration (body frame)
+        std::map<TimeStamp, LinearAcceleration> a_b;  //!< proper linear acceleration (body frame)
         std::map<TimeStamp, AngularVelocity>    w_b;  //!< Angular velocity (body frame)
     };
 
