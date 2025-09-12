@@ -38,6 +38,7 @@
 #endif
 
 #include <Eigen/Dense>
+#include <type_traits>
 
 IMPLEMENTS_MRPT_OBJECT(FilterDeskew, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -253,6 +254,11 @@ void correctPointsLoop(
                 const double dt      = t_point - t_prev;
                 const auto&  tp_prev = it0->second;
 
+                if (std::abs(dt) > 0.075)
+                {
+                    printf("dt: %f ms\n", dt * 1e3);
+                }
+
                 // v was already in the t=0 frame of reference:
                 const mrpt::math::TVector3D v_dt = *tp_prev.v * dt;
                 const mrpt::math::TVector3D w_dt = *tp_prev.w_b * dt;
@@ -264,10 +270,31 @@ void correctPointsLoop(
                     // Translation: simple constant velocity model:
                     tp_prev.pose.translation() + v_dt);
             }
-            else if constexpr (method == MotionCompensationMethod::IMU_interp)
+            else if constexpr (method == MotionCompensationMethod::IMUt)
             {
-                //
-                THROW_EXCEPTION("to do");
+                const auto t_point    = (*Ts)[i];
+                const auto [it0, it1] = findBeforeAfter(reconstructed_trajectory, t_point);
+
+                const auto   t_prev  = it0->first;
+                const double dt      = t_point - t_prev;
+                const auto&  tp_prev = it0->second;
+                const auto&  tp_next = it1->second;
+
+                if (std::abs(dt) > 0.075)
+                {
+                    printf("dt: %f ms\n", dt * 1e3);
+                }
+
+                // v was already in the t=0 frame of reference:
+                const mrpt::math::TVector3D v_dt = (*tp_prev.v + *tp_next.v) * dt * 0.5;
+                const mrpt::math::TVector3D w_dt = (*tp_prev.w_b + *tp_next.w_b) * dt * 0.5;
+
+                pose_increment = mrpt::poses::CPose3D::FromRotationAndTranslation(
+                    // Rotation: From Lie group SO(3) exponential:
+                    tp_prev.pose.getRotationMatrix() *
+                        mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt)),
+                    // Translation: simple constant velocity model:
+                    tp_prev.pose.translation() + v_dt);
             }
             else
             {
@@ -301,10 +328,13 @@ void correctPointsLoop(
 #endif
 }
 
+template <bool SourceIsConst = true>
 void execute_integration(
-    Trajectory&                                                                           t,
-    const std::function<void(const TrajectoryPoint& p0, TrajectoryPoint& p1, double dt)>& update,
-    const double start_time = 0.0)
+    Trajectory&                           t,
+    const std::function<void(
+        std::conditional_t<SourceIsConst, const TrajectoryPoint&, TrajectoryPoint&> p0,
+        TrajectoryPoint& p1, double dt)>& update,
+    const double                          start_time = 0.0)
 {
     for (auto it = t.find(start_time); it != t.end(); it++)
     {
@@ -313,7 +343,7 @@ void execute_integration(
         {
             break;
         }
-        const auto&  p_prev = it->second;
+        auto&        p_prev = it->second;
         auto&        p_this = it_next->second;
         const double dt     = it_next->first - it->first;
 
@@ -327,7 +357,7 @@ void execute_integration(
             break;
         }
 
-        const auto&  p_prev = it->second;
+        auto&        p_prev = it->second;
         auto&        p_this = it_next->second;
         const double dt     = it_next->first - it->first;
 
@@ -335,27 +365,28 @@ void execute_integration(
     }
 };
 
-Trajectory reconstructTrajectoryFromIMU(const mp2p_icp::LocalVelocityBuffer::SampleHistory& samples)
+Trajectory reconstructTrajectoryFromIMU(
+    const mp2p_icp::LocalVelocityBuffer::SampleHistory& samples, bool use_higher_order)
 {
     Trajectory t;
 
     // 1) Build the list of all timestamps that we will reconstruct:
     // {0, t_IMU}
     t[0] = TrajectoryPoint(mrpt::math::CMatrixDouble33::Identity(), {.0, .0, .0});
-    for (const auto& [stamp, _] : samples.by_type.w_b)
-    {
-        t[stamp] = {};
-    }
 
     // 2) Fill (ω,a) from IMU:
-    for (const auto& [stamp, w] : samples.by_type.w_b)
+    for (const auto& [stamp, sample] : samples.by_time)
     {
-        t[stamp].w_b = w;
+        if (sample.w_b.has_value() && sample.a_b.has_value())
+        {
+            t[stamp].w_b = *sample.w_b;
+            t[stamp].a_b = *sample.a_b;
+        }
     }
-    for (const auto& [stamp, acc] : samples.by_type.a_b)
-    {
-        t[stamp].a_b = acc;
-    }
+
+    // and assign the closest IMU reading to t=0:
+    t[0].w_b = mrpt::containers::find_closest(samples.by_type.w_b, 0.0)->second;
+    t[0].a_b = mrpt::containers::find_closest(samples.by_type.a_b, 0.0)->second;
 
     // 3) Copy the closest gravity-aligned hints on global orientations:
     std::optional<double> stamp_first_R_ga;
@@ -371,8 +402,14 @@ Trajectory reconstructTrajectoryFromIMU(const mp2p_icp::LocalVelocityBuffer::Sam
         stamp_first_R_ga.has_value(),
         "At least one entry with gravity-aligned orientation is needed for IMU integration");
 
+    // and assign the closest IMU reading to this frame:
+    t[*stamp_first_R_ga].w_b =
+        mrpt::containers::find_closest(samples.by_type.w_b, *stamp_first_R_ga)->second;
+    t[*stamp_first_R_ga].a_b =
+        mrpt::containers::find_closest(samples.by_type.a_b, *stamp_first_R_ga)->second;
+
     // 4) Integrate R forward / backwards in time:
-    execute_integration(
+    execute_integration<>(
         t,
         [](const TrajectoryPoint& p0, TrajectoryPoint& p1, double dt)
         {
@@ -388,7 +425,7 @@ Trajectory reconstructTrajectoryFromIMU(const mp2p_icp::LocalVelocityBuffer::Sam
         });
 
     // 5) Integrate R_gravity_aligned:
-    execute_integration(
+    execute_integration<>(
         t,
         [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
         {
@@ -420,6 +457,21 @@ Trajectory reconstructTrajectoryFromIMU(const mp2p_icp::LocalVelocityBuffer::Sam
         }
     }
 
+    // 7) (only for higher-order) Estimate jerk and alpha:
+    if (use_higher_order)
+    {
+        // Estimate jerk & alpha:
+        execute_integration<false>(
+            t,
+            [](TrajectoryPoint& p0, TrajectoryPoint& p1, double dt)
+            {
+                ASSERT_(p0.w_b && p1.w_b);
+                ASSERT_(p0.ac_b && p1.ac_b);
+                p0.alpha = p1.alpha = (*p1.w_b - *p0.w_b) / dt;
+                p0.j = p1.j = (*p1.ac_b - *p0.ac_b) / dt;
+            });
+    }
+
     // 7) Copy the closest velocity from the given samples:
     std::optional<double> stamp_first_v_b;
     for (const auto& [stamp, v_b] : samples.by_type.v_b)
@@ -435,7 +487,7 @@ Trajectory reconstructTrajectoryFromIMU(const mp2p_icp::LocalVelocityBuffer::Sam
         "At least one entry with velocity is needed for IMU integration");
 
     // 8) Integrate v:
-    execute_integration(
+    execute_integration<>(
         t,
         [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
         {
@@ -445,15 +497,15 @@ Trajectory reconstructTrajectoryFromIMU(const mp2p_icp::LocalVelocityBuffer::Sam
         stamp_first_v_b.value());
 
     // 9) Integrate p:
-    execute_integration(
+    execute_integration<>(
         t,
         [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
         {
             ASSERT_(p0.v.has_value());
-            const auto t = p0.pose.translation() + p0.v.value() * dt;
-            p1.pose.x(t.x);
-            p1.pose.y(t.y);
-            p1.pose.z(t.z);
+            const auto pt = p0.pose.translation() + p0.v.value() * dt;
+            p1.pose.x(pt.x);
+            p1.pose.y(pt.y);
+            p1.pose.z(pt.z);
         });
 
 #if 0
@@ -463,14 +515,6 @@ Trajectory reconstructTrajectoryFromIMU(const mp2p_icp::LocalVelocityBuffer::Sam
         std::cout << "t=" << stamp << " " << p.asString() << "\n";
     }
 #endif
-
-    return t;
-}
-
-Trajectory reconstructTrajectoryFromIMU_interp(
-    const mp2p_icp::LocalVelocityBuffer::SampleHistory& samples)
-{
-    Trajectory t;
 
     return t;
 }
@@ -584,7 +628,8 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     switch (method)
     {
         case MotionCompensationMethod::IMU:
-        case MotionCompensationMethod::IMU_interp:
+        case MotionCompensationMethod::IMUh:
+        case MotionCompensationMethod::IMUt:
         {
             const auto* ps = attachedSource();
             ASSERTMSG_(ps, "A ParameterSource must be attached if IMU-based methods are enabled");
@@ -600,14 +645,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             const auto sample_history =
                 ps->localVelocityBuffer.collect_samples_around_reference_time(scan_time_span);
 
-            if (method == MotionCompensationMethod::IMU)
-            {
-                reconstructed_trajectory = reconstructTrajectoryFromIMU(sample_history);
-            }
-            else if (method == MotionCompensationMethod::IMU_interp)
-            {
-                reconstructed_trajectory = reconstructTrajectoryFromIMU_interp(sample_history);
-            }
+            const bool use_higher_order = (method == MotionCompensationMethod::IMUh);
+
+            reconstructed_trajectory =
+                reconstructTrajectoryFromIMU(sample_history, use_higher_order);
         }
         break;
 
@@ -645,8 +686,14 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
                 reconstructed_trajectory);
             break;
 
-        case MotionCompensationMethod::IMU_interp:
-            correctPointsLoop<MotionCompensationMethod::IMU_interp>(
+        case MotionCompensationMethod::IMUh:
+            correctPointsLoop<MotionCompensationMethod::IMUh>(
+                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist,
+                reconstructed_trajectory);
+            break;
+
+        case MotionCompensationMethod::IMUt:
+            correctPointsLoop<MotionCompensationMethod::IMUt>(
                 xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist,
                 reconstructed_trajectory);
             break;
@@ -660,30 +707,6 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 }
 
 #if 0
-
-            // Use precise trajectory, if enabled and if there is enough data (otherwise,
-            // fallback to constant velocity)
-            if (!constant_twist)
-            {
-                // Translation:
-                const auto v =
-                    mrpt::math::TVector3D(constant_twist.vx, constant_twist.vy, constant_twist.vz);
-                const mrpt::math::TVector3D v_dt = v * (*Ts)[i];
-
-                // Interpolated rotation:
-                const auto found_pose_opt =
-                    mrpt::containers::find_closest(*interpolated_relative_poses, (*Ts)[i]);
-                if (found_pose_opt.has_value())
-                {
-                    pose_increment = found_pose_opt->second;
-                    pose_increment.x(v_dt.x);
-                    pose_increment.y(v_dt.y);
-                    pose_increment.z(v_dt.z);
-                }
-            }
-            else
-            {
-            }
 
 LocalVelocityBuffer::reconstruct_poses_around_reference_time(double half_time_span) const
 {

@@ -42,11 +42,15 @@ enum class MotionCompensationMethod : uint8_t
     None = 0,
     /** Constant linear and angular velocity model to interpolate between key-frames */
     Linear,
-    /** IMU-based integration between IMU frames using constant linear acceleration and angular
-       velocity */
+    /** IMU-based integration between IMU frames using Euler integration of constant linear
+       acceleration and angular velocity */
     IMU,
-    /** IMU-based integration between IMU frames using constant jerk and angular acceleration */
-    IMU_interp
+    /** IMU-based integration between IMU frames using (h) higher-order terms: constant jerk and
+     * angular acceleration */
+    IMUh,
+    /** IMU-based integration between IMU frames using (t) trapezoidal integration of constant
+     * linear acceleration and angular velocity */
+    IMUt
 };
 
 /** Builds a new layer with a deskewed (motion compensated) version of an
@@ -131,5 +135,6 @@ MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp_filters, mp2p_icp_filters::MotionCompens
 MRPT_FILL_ENUM(MotionCompensationMethod::None);
 MRPT_FILL_ENUM(MotionCompensationMethod::Linear);
 MRPT_FILL_ENUM(MotionCompensationMethod::IMU);
-MRPT_FILL_ENUM(MotionCompensationMethod::IMU_interp);
+MRPT_FILL_ENUM(MotionCompensationMethod::IMUh);
+MRPT_FILL_ENUM(MotionCompensationMethod::IMUt);
 MRPT_ENUM_TYPE_END()
