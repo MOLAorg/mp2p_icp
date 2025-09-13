@@ -51,11 +51,25 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
 
     MCP_LOAD_REQ(c, input_pointcloud_layer);
-    MCP_LOAD_REQ(c, output_pointcloud_layer);
+    MCP_LOAD_OPT(c, output_pointcloud_layer);
 
     MCP_LOAD_OPT(c, silently_ignore_no_timestamps);
     MCP_LOAD_OPT(c, output_layer_class);
     MCP_LOAD_OPT(c, method);
+    MCP_LOAD_OPT(c, in_place);
+
+    if (in_place)
+    {
+        ASSERTMSG_(
+            output_pointcloud_layer.empty(),
+            "If using `in_place=true`, `output_pointcloud_layer` cannot be defined.");
+    }
+    else
+    {
+        ASSERTMSG_(
+            !output_pointcloud_layer.empty(),
+            "If using `in_place=false`, `output_pointcloud_layer` must be defined.");
+    }
 
     if (c.has("twist"))
     {
@@ -198,14 +212,16 @@ auto findBeforeAfter(const Trajectory& trajectory, const double t)
 // Optimized templated version for compile-time optimization for each method
 template <MotionCompensationMethod method>
 void correctPointsLoop(
-    const mrpt::aligned_std_vector<float>& xs, const mrpt::aligned_std_vector<float>& ys,
-    const mrpt::aligned_std_vector<float>& zs, size_t n, size_t n0, mrpt::maps::CPointsMap* outPc,
+    mrpt::aligned_std_vector<float>& xs, mrpt::aligned_std_vector<float>& ys,
+    mrpt::aligned_std_vector<float>& zs, size_t n, size_t n0, mrpt::maps::CPointsMap* outPc,
     const mrpt::aligned_std_vector<float>* Is, mrpt::aligned_std_vector<float>* out_Is,
     const mrpt::aligned_std_vector<uint16_t>* Rs, mrpt::aligned_std_vector<uint16_t>* out_Rs,
     const mrpt::aligned_std_vector<float>* Ts, mrpt::aligned_std_vector<float>* out_Ts,
     const mrpt::math::TTwist3D* constant_twist, const Trajectory& reconstructed_trajectory)
 {
     MRPT_TODO("First, build a cache with times -> corrections");
+
+    const bool in_place = (outPc == nullptr);
 
 #if defined(MP2P_HAS_TBB)
     tbb::parallel_for(
@@ -320,24 +336,31 @@ void correctPointsLoop(
             }
 
             // Correct point XYZ coordinates.
-            const auto corrPt = pose_increment.composePoint(pt);
+            const auto corrPt = pose_increment.composePoint(pt).cast<float>();
 
-            outPc->setPointFast(
-                n0 + i, static_cast<float>(corrPt.x), static_cast<float>(corrPt.y),
-                static_cast<float>(corrPt.z));
+            if (in_place)
+            {
+                xs[i] = corrPt.x;
+                ys[i] = corrPt.y;
+                zs[i] = corrPt.z;
+            }
+            else
+            {
+                outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
 
-            // Copy additional fields
-            if (Is && out_Is)
-            {
-                (*out_Is)[n0 + i] = (*Is)[i];
-            }
-            if (Rs && out_Rs)
-            {
-                (*out_Rs)[n0 + i] = (*Rs)[i];
-            }
-            if (Ts && out_Ts)
-            {
-                (*out_Ts)[n0 + i] = (*Ts)[i];
+                // Copy additional fields
+                if (Is && out_Is)
+                {
+                    (*out_Is)[n0 + i] = (*Is)[i];
+                }
+                if (Rs && out_Rs)
+                {
+                    (*out_Rs)[n0 + i] = (*Rs)[i];
+                }
+                if (Ts && out_Ts)
+                {
+                    (*out_Ts)[n0 + i] = (*Ts)[i];
+                }
             }
         }
 #if defined(MP2P_HAS_TBB)
@@ -615,17 +638,19 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     checkAllParametersAreRealized();
 
-    // Out:
-    ASSERT_(!output_pointcloud_layer.empty());
-
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
-        inOut, output_pointcloud_layer, false /*dont allow empty names*/, output_layer_class);
+    mrpt::maps::CPointsMap::Ptr outPc;
+    if (!in_place)
+    {
+        outPc = GetOrCreatePointLayer(
+            inOut, output_pointcloud_layer, false /*dont allow empty names*/, output_layer_class);
+    }
 
     // In:
     ASSERT_(!input_pointcloud_layer.empty());
 
-    const mrpt::maps::CPointsMap* inPc = nullptr;
+    mrpt::maps::CPointsMap* inPc = nullptr;
+
     if (auto itLy = inOut.layers.find(input_pointcloud_layer); itLy != inOut.layers.end())
     {
         inPc = mp2p_icp::MapToPointsMap(*itLy->second);
@@ -635,7 +660,11 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
                 "Layer '%s' must be of point cloud type.", input_pointcloud_layer.c_str());
         }
 
-        outPc->reserve(outPc->size() + inPc->size());
+        // Reserve memory in output layer:
+        if (!in_place)
+        {
+            outPc->reserve(outPc->size() + inPc->size());
+        }
     }
     else
     {
@@ -653,9 +682,9 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     // mandatory fields:
-    const auto&  xs = inPc->getPointsBufferRef_x();
-    const auto&  ys = inPc->getPointsBufferRef_y();
-    const auto&  zs = inPc->getPointsBufferRef_z();
+    auto&        xs = const_cast<mrpt::aligned_std_vector<float>&>(inPc->getPointsBufferRef_x());
+    auto&        ys = const_cast<mrpt::aligned_std_vector<float>&>(inPc->getPointsBufferRef_y());
+    auto&        zs = const_cast<mrpt::aligned_std_vector<float>&>(inPc->getPointsBufferRef_z());
     const size_t n  = xs.size();
 
     // optional fields:
@@ -663,9 +692,9 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     const auto* Ts = inPc->getPointsBufferRef_timestamp();
     const auto* Rs = inPc->getPointsBufferRef_ring();
 
-    auto* out_Is = outPc->getPointsBufferRef_intensity();
-    auto* out_Rs = outPc->getPointsBufferRef_ring();
-    auto* out_Ts = outPc->getPointsBufferRef_timestamp();
+    auto* out_Is = outPc ? outPc->getPointsBufferRef_intensity() : nullptr;
+    auto* out_Rs = outPc ? outPc->getPointsBufferRef_ring() : nullptr;
+    auto* out_Ts = outPc ? outPc->getPointsBufferRef_timestamp() : nullptr;
 
     // Helper lambda: copy all points (with optional attributes)
     auto copyAllPoints = [&]()
@@ -684,7 +713,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     {
         if (silently_ignore_no_timestamps || deskewDisabled)
         {
-            copyAllPoints();
+            if (!in_place)
+            {
+                copyAllPoints();
+            }
 
             if (!deskewDisabled)
             {
@@ -704,8 +736,11 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_EQUAL_(Ts->size(), n);
 
     // Yes, we have timestamps, apply de-skew:
-    const size_t n0 = outPc->size();
-    outPc->resize(n0 + n);
+    const size_t n0 = outPc ? outPc->size() : 0;
+    if (outPc)
+    {
+        outPc->resize(n0 + n);
+    }
 
     // Used for precise deskew-only. This contains relative poses of the vehicle frame ("base_link")
     // with t=0 being the reference time when t=0 in the point cloud timestamp field:

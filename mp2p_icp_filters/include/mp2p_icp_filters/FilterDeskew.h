@@ -84,6 +84,7 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      *   input_pointcloud_layer: 'raw'
      *   output_pointcloud_layer: 'deskewed'
      *   method: 'MotionCompensationMethod::Linear'
+     *   #in_place: true   # Set to true for the output layer to be the same input layer
      *   # silently_ignore_no_timestamps: false
      *   # These (vx,...,wz) are variable names that must be defined via the
      *   # mp2p_icp::Parameterizable API to update them dynamically.
@@ -101,7 +102,10 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      */
     std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
-    /** The output point cloud layer name */
+    /** If set to `true` to deskew directly on the same input layer, so no new map is created  */
+    bool in_place = false;
+
+    /** The output point cloud layer name, required unless `in_place` is `true` */
     std::string output_pointcloud_layer;
 
     /** The class name for output layer if it does not exist and needs to be
