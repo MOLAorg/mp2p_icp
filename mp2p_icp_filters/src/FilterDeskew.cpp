@@ -111,10 +111,10 @@ struct TrajectoryPoint
     std::optional<mrpt::math::TVector3D> ac_b;
 
     /// Angular acceleration (α)
-    mrpt::math::TVector3D alpha = {0, 0, 0};
+    mrpt::math::TVector3D alpha_b = {0, 0, 0};
 
     /// Jerk = \dot{a}
-    mrpt::math::TVector3D j = {0, 0, 0};
+    mrpt::math::TVector3D j_b = {0, 0, 0};
 
     std::string asString() const
     {
@@ -146,8 +146,8 @@ struct TrajectoryPoint
             << "\n  w_b  = " << optVecToStr(w_b)  //
             << "\n  a_b  = " << optVecToStr(a_b)  //
             << "\n  ac_b = " << optVecToStr(ac_b)  //
-            << "\n  alpha= " << vecToStr(alpha)  //
-            << "\n  j    = " << vecToStr(j)  //
+            << "\n  alpha= " << vecToStr(alpha_b)  //
+            << "\n  j_b  = " << vecToStr(j_b)  //
             << "\n}";
         return oss.str();
     }
@@ -254,11 +254,6 @@ void correctPointsLoop(
                 const double dt      = t_point - t_prev;
                 const auto&  tp_prev = it0->second;
 
-                if (std::abs(dt) > 0.075)
-                {
-                    printf("dt: %f ms\n", dt * 1e3);
-                }
-
                 // v was already in the t=0 frame of reference:
                 const mrpt::math::TVector3D v_dt = *tp_prev.v * dt;
                 const mrpt::math::TVector3D w_dt = *tp_prev.w_b * dt;
@@ -280,11 +275,6 @@ void correctPointsLoop(
                 const auto&  tp_prev = it0->second;
                 const auto&  tp_next = it1->second;
 
-                if (std::abs(dt) > 0.075)
-                {
-                    printf("dt: %f ms\n", dt * 1e3);
-                }
-
                 // v was already in the t=0 frame of reference:
                 const mrpt::math::TVector3D v_dt = (*tp_prev.v + *tp_next.v) * dt * 0.5;
                 const mrpt::math::TVector3D w_dt = (*tp_prev.w_b + *tp_next.w_b) * dt * 0.5;
@@ -295,6 +285,33 @@ void correctPointsLoop(
                         mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt)),
                     // Translation: simple constant velocity model:
                     tp_prev.pose.translation() + v_dt);
+            }
+            else if constexpr (method == MotionCompensationMethod::IMUh)
+            {
+                const auto t_point    = (*Ts)[i];
+                const auto [it0, it1] = findBeforeAfter(reconstructed_trajectory, t_point);
+
+                const auto   t_prev  = it0->first;
+                const double dt      = t_point - t_prev;
+                const double dt2     = dt * dt;
+                const double dt3     = dt2 * dt;
+                const auto&  tp_prev = it0->second;
+
+                // v was already in the t=0 frame of reference:
+                const mrpt::math::TVector3D delta_t =
+                    *tp_prev.v * dt +
+                    tp_prev.pose.rotateVector(
+                        tp_prev.ac_b.value() * 0.5 * dt2 + tp_prev.j_b * (1.0 / 6.0) * dt3);
+
+                const mrpt::math::TVector3D delta_w =
+                    *tp_prev.w_b * dt + tp_prev.alpha_b * 0.5 * dt2;
+
+                pose_increment = mrpt::poses::CPose3D::FromRotationAndTranslation(
+                    // Rotation: From Lie group SO(3) exponential:
+                    tp_prev.pose.getRotationMatrix() *
+                        mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(delta_w)),
+                    // Translation: simple constant velocity model:
+                    tp_prev.pose.translation() + delta_t);
             }
             else
             {
@@ -408,21 +425,54 @@ Trajectory reconstructTrajectoryFromIMU(
     t[*stamp_first_R_ga].a_b =
         mrpt::containers::find_closest(samples.by_type.a_b, *stamp_first_R_ga)->second;
 
-    // 4) Integrate R forward / backwards in time:
-    execute_integration<>(
-        t,
-        [](const TrajectoryPoint& p0, TrajectoryPoint& p1, double dt)
-        {
-            const mrpt::math::TVector3D w =
-                p0.w_b.has_value()
-                    ? *p0.w_b
-                    : (p1.w_b.has_value() ? *p1.w_b : mrpt::math::TVector3D(.0, .0, .0));
+    // 7) (only for higher-order) Estimate alpha:
+    if (use_higher_order)
+    {
+        // Estimate jerk & alpha:
+        execute_integration<false>(
+            t,
+            [](TrajectoryPoint& p0, TrajectoryPoint& p1, double dt)
+            {
+                ASSERT_(p0.w_b && p1.w_b);
+                p0.alpha_b = p1.alpha_b = (*p1.w_b - *p0.w_b) / dt;
+            });
+    }
 
-            p1.pose.setRotationMatrix(
-                p0.pose.getRotationMatrix() *
-                mrpt::poses::Lie::SO<3>::exp(
-                    (w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>()));
-        });
+    // 4) Integrate R forward / backwards in time:
+    if (use_higher_order)
+    {
+        execute_integration<>(
+            t,
+            [](const TrajectoryPoint& p0, TrajectoryPoint& p1, double dt)
+            {
+                ASSERT_(p0.w_b.has_value());
+                const mrpt::math::TVector3D  w     = *p0.w_b;
+                const mrpt::math::TVector3D& alpha = p0.alpha_b;
+
+                const double dt2 = dt * dt;
+
+                p1.pose.setRotationMatrix(
+                    p0.pose.getRotationMatrix() *
+                    mrpt::poses::Lie::SO<3>::exp(
+                        (w * dt + alpha * 0.5 * dt2)
+                            .asVector<mrpt::math::CVectorFixedDouble<3>>()));
+            });
+    }
+    else
+    {
+        execute_integration<>(
+            t,
+            [](const TrajectoryPoint& p0, TrajectoryPoint& p1, double dt)
+            {
+                ASSERT_(p0.w_b.has_value());
+                const mrpt::math::TVector3D w = *p0.w_b;
+
+                p1.pose.setRotationMatrix(
+                    p0.pose.getRotationMatrix() *
+                    mrpt::poses::Lie::SO<3>::exp(
+                        (w * dt).asVector<mrpt::math::CVectorFixedDouble<3>>()));
+            });
+    }
 
     // 5) Integrate R_gravity_aligned:
     execute_integration<>(
@@ -457,7 +507,7 @@ Trajectory reconstructTrajectoryFromIMU(
         }
     }
 
-    // 7) (only for higher-order) Estimate jerk and alpha:
+    // 7) (only for higher-order) Estimate jerk:
     if (use_higher_order)
     {
         // Estimate jerk & alpha:
@@ -467,8 +517,7 @@ Trajectory reconstructTrajectoryFromIMU(
             {
                 ASSERT_(p0.w_b && p1.w_b);
                 ASSERT_(p0.ac_b && p1.ac_b);
-                p0.alpha = p1.alpha = (*p1.w_b - *p0.w_b) / dt;
-                p0.j = p1.j = (*p1.ac_b - *p0.ac_b) / dt;
+                p0.j_b = p1.j_b = (*p1.ac_b - *p0.ac_b) / dt;
             });
     }
 
@@ -487,26 +536,65 @@ Trajectory reconstructTrajectoryFromIMU(
         "At least one entry with velocity is needed for IMU integration");
 
     // 8) Integrate v:
-    execute_integration<>(
-        t,
-        [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
-        {
-            ASSERT_(p0.v.has_value());
-            p1.v = *p0.v + p0.pose.rotateVector(p0.ac_b.value() * dt);
-        },
-        stamp_first_v_b.value());
+    if (use_higher_order)
+    {
+        execute_integration<>(
+            t,
+            [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
+            {
+                ASSERT_(p0.v.has_value());
+                const double dt2 = dt * dt;
+                p1.v = *p0.v + p0.pose.rotateVector(p0.ac_b.value() * dt + p0.j_b * dt2 * 0.5);
+            },
+            stamp_first_v_b.value());
+    }
+    else
+    {
+        execute_integration<>(
+            t,
+            [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
+            {
+                ASSERT_(p0.v.has_value());
+                p1.v = *p0.v + p0.pose.rotateVector(p0.ac_b.value() * dt);
+            },
+            stamp_first_v_b.value());
+    }
 
     // 9) Integrate p:
-    execute_integration<>(
-        t,
-        [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
-        {
-            ASSERT_(p0.v.has_value());
-            const auto pt = p0.pose.translation() + p0.v.value() * dt;
-            p1.pose.x(pt.x);
-            p1.pose.y(pt.y);
-            p1.pose.z(pt.z);
-        });
+    if (use_higher_order)
+    {
+        execute_integration<>(
+            t,
+            [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
+            {
+                ASSERT_(p0.v.has_value());
+                const double dt2 = dt * dt;
+                const double dt3 = dt2 * dt;
+
+                const auto pt =  //
+                    p0.pose.translation() +  //
+                    p0.v.value() * dt +
+                    p0.pose.rotateVector(
+                        p0.ac_b.value() * dt2 * 0.5 +  //
+                        p0.j_b * dt3 * (1.0 / 6.0));
+                p1.pose.x(pt.x);
+                p1.pose.y(pt.y);
+                p1.pose.z(pt.z);
+            });
+    }
+    else
+    {
+        execute_integration<>(
+            t,
+            [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
+            {
+                ASSERT_(p0.v.has_value());
+                const auto pt = p0.pose.translation() + p0.v.value() * dt;
+                p1.pose.x(pt.x);
+                p1.pose.y(pt.y);
+                p1.pose.z(pt.z);
+            });
+    }
 
 #if 0
     // Debug print
