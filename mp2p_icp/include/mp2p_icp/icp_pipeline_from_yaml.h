@@ -58,7 +58,7 @@ namespace mp2p_icp
  *
  * \ingroup mp2p_icp_grp
  */
-std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters> icp_pipeline_from_yaml(
+[[nodiscard]] std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters> icp_pipeline_from_yaml(
     const mrpt::containers::yaml&       config,
     const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 
