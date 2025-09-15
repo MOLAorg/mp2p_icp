@@ -612,7 +612,10 @@ Trajectory reconstructTrajectoryFromIMU(
             [](const TrajectoryPoint& p0, TrajectoryPoint& p1, [[maybe_unused]] double dt)
             {
                 ASSERT_(p0.v.has_value());
-                const auto pt = p0.pose.translation() + p0.v.value() * dt;
+                const double dt2 = dt * dt;
+
+                const auto pt = p0.pose.translation() + p0.v.value() * dt +
+                                p0.pose.rotateVector(p0.ac_b.value() * dt2 * 0.5);
                 p1.pose.x(pt.x);
                 p1.pose.y(pt.y);
                 p1.pose.z(pt.z);
