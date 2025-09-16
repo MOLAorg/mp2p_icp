@@ -410,6 +410,11 @@ Trajectory reconstructTrajectoryFromIMU(
 {
     Trajectory t;
 
+    MRPT_TODO("get acc bias");
+    const mrpt::math::TVector3D bias_acc  = {0, 0, 0};
+    const mrpt::math::TVector3D bias_gyro = {0, 0, 0};
+    const Eigen::Vector3d       gravity(0, 0, -9.81);
+
     // 1) Build the list of all timestamps that we will reconstruct:
     // {0, t_IMU}
     t[0] = TrajectoryPoint(mrpt::math::CMatrixDouble33::Identity(), {.0, .0, .0});
@@ -419,14 +424,14 @@ Trajectory reconstructTrajectoryFromIMU(
     {
         if (sample.w_b.has_value() && sample.a_b.has_value())
         {
-            t[stamp].w_b = *sample.w_b;
-            t[stamp].a_b = *sample.a_b;
+            t[stamp].w_b = *sample.w_b - bias_gyro;
+            t[stamp].a_b = *sample.a_b - bias_acc;
         }
     }
 
     // and assign the closest IMU reading to t=0:
-    t[0].w_b = mrpt::containers::find_closest(samples.by_type.w_b, 0.0)->second;
-    t[0].a_b = mrpt::containers::find_closest(samples.by_type.a_b, 0.0)->second;
+    t[0].w_b = mrpt::containers::find_closest(samples.by_type.w_b, 0.0)->second - bias_gyro;
+    t[0].a_b = mrpt::containers::find_closest(samples.by_type.a_b, 0.0)->second - bias_acc;
 
     // 3) Copy the closest gravity-aligned hints on global orientations:
     std::optional<double> stamp_first_R_ga;
@@ -444,9 +449,9 @@ Trajectory reconstructTrajectoryFromIMU(
 
     // and assign the closest IMU reading to this frame:
     t[*stamp_first_R_ga].w_b =
-        mrpt::containers::find_closest(samples.by_type.w_b, *stamp_first_R_ga)->second;
+        mrpt::containers::find_closest(samples.by_type.w_b, *stamp_first_R_ga)->second - bias_gyro;
     t[*stamp_first_R_ga].a_b =
-        mrpt::containers::find_closest(samples.by_type.a_b, *stamp_first_R_ga)->second;
+        mrpt::containers::find_closest(samples.by_type.a_b, *stamp_first_R_ga)->second - bias_acc;
 
     // 7) (only for higher-order) Estimate alpha:
     if (use_higher_order)
@@ -511,18 +516,12 @@ Trajectory reconstructTrajectoryFromIMU(
     // proper acceleration in the body frame => coordinate acceleration in the body frame
     for (auto& [stamp, p] : t)
     {
-        MRPT_TODO("get acc bias");
-        const mrpt::math::TVector3D bias_acc = {0, 0, 0};
-        const Eigen::Vector3d       gravity(0, 0, -9.81);
-
         if (p.a_b)
         {
-            MRPT_TODO("verify this!");
-            const auto gravity_b = p.R_ga->asEigen().inverse() * gravity;
+            const auto gravity_b = p.R_ga->transpose() * gravity;
 
             ASSERT_(p.a_b);
-            p.ac_b = *p.a_b - bias_acc +
-                     mrpt::math::TVector3D(gravity_b.x(), gravity_b.y(), gravity_b.z());
+            p.ac_b = *p.a_b + mrpt::math::TVector3D(gravity_b.x(), gravity_b.y(), gravity_b.z());
         }
         else
         {
