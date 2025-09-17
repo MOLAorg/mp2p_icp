@@ -36,8 +36,10 @@ mola_add_library(
     mrpt::maps
     mrpt::opengl
     mrpt::topography
+    mola::mola_imu_preintegration
   CMAKE_DEPENDENCIES
     mrpt-maps
     mrpt-opengl
     mrpt-topography
+    mola_imu_preintegration
 )
