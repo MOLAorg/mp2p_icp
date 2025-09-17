@@ -67,11 +67,11 @@ mola_add_library(
   PUBLIC_LINK_LIBRARIES
     mp2p_icp_map
   PRIVATE_LINK_LIBRARIES
+    mola::mola_imu_preintegration
     tsl::robin_map
-    ${dep_imu_lib}
   CMAKE_DEPENDENCIES
     mp2p_icp
-    ${dep_imu_cmake}
+    mola_imu_preintegration
     #robin_map
 )
 

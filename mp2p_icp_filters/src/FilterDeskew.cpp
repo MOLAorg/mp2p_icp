@@ -18,6 +18,9 @@
  * @date   Dec 13, 2023
  */
 
+#include <mola_imu_preintegration/ImuIntegrationParams.h>
+#include <mola_imu_preintegration/ImuTransformer.h>
+#include <mola_imu_preintegration/trajectory_from_buffer.h>
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
@@ -25,12 +28,6 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/random/RandomGenerators.h>
-
-#if defined(MP2P_HAS_IMU_PREINTEGRATION_LIB)
-#include <mola_imu_preintegration/IMUIntegrationParams.h>
-#include <mola_imu_preintegration/ImuTransformer.h>
-#include <mola_imu_preintegration/trajectory_from_buffer.h>
-#endif
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/parallel_for.h>
@@ -88,10 +85,10 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
 namespace
 {
 
-auto findBeforeAfter(const Trajectory& trajectory, const double t)
-    -> std::pair<Trajectory::const_iterator, Trajectory::const_iterator>
+auto findBeforeAfter(const mola::imu::Trajectory& trajectory, const double t)
+    -> std::pair<mola::imu::Trajectory::const_iterator, mola::imu::Trajectory::const_iterator>
 {
-    using Iterator = Trajectory::const_iterator;
+    using Iterator = mola::imu::Trajectory::const_iterator;
 
     // Don't check for "!trajectory.empty()", it's done in the caller.
 
@@ -135,7 +132,8 @@ void correctPointsLoop(
     const mrpt::aligned_std_vector<float>* Is, mrpt::aligned_std_vector<float>* out_Is,
     const mrpt::aligned_std_vector<uint16_t>* Rs, mrpt::aligned_std_vector<uint16_t>* out_Rs,
     const mrpt::aligned_std_vector<float>* Ts, mrpt::aligned_std_vector<float>* out_Ts,
-    const mrpt::math::TTwist3D* constant_twist, const Trajectory& reconstructed_trajectory)
+    const mrpt::math::TTwist3D*  constant_twist,
+    const mola::imu::Trajectory& reconstructed_trajectory)
 {
     MRPT_TODO("First, build a cache with times -> corrections");
 
@@ -400,7 +398,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Used for precise deskew-only. This contains relative poses of the vehicle frame ("base_link")
     // with t=0 being the reference time when t=0 in the point cloud timestamp field:
-    Trajectory reconstructed_trajectory;
+    mola::imu::Trajectory reconstructed_trajectory;
+
+    MRPT_TODO("Load these IMU parameters!!");
+    mola::imu::ImuIntegrationParams imu_params;
 
     const mrpt::math::TTwist3D* constant_twist = nullptr;
 
@@ -427,7 +428,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             const bool use_higher_order = (method == MotionCompensationMethod::IMUh);
 
             reconstructed_trajectory =
-                reconstructTrajectoryFromIMU(sample_history, use_higher_order);
+                mola::imu::trajectory_from_buffer(sample_history, imu_params, use_higher_order);
         }
         break;
 

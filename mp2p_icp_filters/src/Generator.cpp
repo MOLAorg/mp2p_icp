@@ -18,6 +18,7 @@
  * @date   Jun 10, 2019
  */
 
+#include <mola_imu_preintegration/ImuTransformer.h>
 #include <mp2p_icp/load_plugin.h>
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/Generator.h>
@@ -37,10 +38,6 @@
 #include <mrpt/obs/CObservationVelodyneScan.h>
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/system/filesystem.h>
-
-#if MP2P_HAS_IMU_PREINTEGRATION_LIB
-#include <mola_imu_preintegration/ImuTransformer.h>
-#endif
 
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
@@ -191,30 +188,28 @@ bool Generator::filterVelodyneScan(  //
     return true;  // implemented
 }
 
-#if MP2P_HAS_IMU_PREINTEGRATION_LIB
 class ImuTransformerManager
 {
    public:
-    static mola::ImuTransformer& getInstance(const std::string& sensorLabel)
+    static mola::imu::ImuTransformer& getInstance(const std::string& sensorLabel)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto                        it = transformers_.find(sensorLabel);
         if (it == transformers_.end())
         {
-            auto [newIt, _] = transformers_.emplace(sensorLabel, mola::ImuTransformer());
+            auto [newIt, _] = transformers_.emplace(sensorLabel, mola::imu::ImuTransformer());
             return newIt->second;
         }
         return it->second;
     }
 
    private:
-    static std::mutex                                  mutex_;
-    static std::map<std::string, mola::ImuTransformer> transformers_;
+    static std::mutex                                       mutex_;
+    static std::map<std::string, mola::imu::ImuTransformer> transformers_;
 };
 
-std::mutex                                  ImuTransformerManager::mutex_;
-std::map<std::string, mola::ImuTransformer> ImuTransformerManager::transformers_;
-#endif
+std::mutex                                       ImuTransformerManager::mutex_;
+std::map<std::string, mola::imu::ImuTransformer> ImuTransformerManager::transformers_;
 
 bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu_raw) const
 {
@@ -226,7 +221,6 @@ bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu_raw) const
 
     const double t = mrpt::Clock::toDouble(imu_raw.timestamp);
 
-#if MP2P_HAS_IMU_PREINTEGRATION_LIB
     auto& imu_transformer = ImuTransformerManager::getInstance(imu_raw.sensorLabel);
 
     // Convert IMU readings to vehicle frame of reference:
@@ -247,12 +241,6 @@ bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu_raw) const
             t, {imu.get(mrpt::obs::IMU_X_ACC), imu.get(mrpt::obs::IMU_Y_ACC),
                 imu.get(mrpt::obs::IMU_Z_ACC)});
     }
-
-#else
-    MRPT_LOG_THROTTLE_WARN(
-        10.0,
-        "Ignoring IMU data, since mp2p_icp was built without mola_imu_preintegration library");
-#endif
 
     return true;  // implemented
 }
