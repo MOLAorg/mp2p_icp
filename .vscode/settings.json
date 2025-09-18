@@ -39,6 +39,7 @@
         "eigen",
         "recolorize",
         "reproject",
+        "tfest",
         "unrealize",
         "voxelmaps",
         "XYZIRT"

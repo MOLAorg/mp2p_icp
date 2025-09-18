@@ -68,7 +68,7 @@ class Matcher_Points_Base : public Matcher
 
     /** The additional "margin" in all axes (x,y,z) that bounding box is
      * enlarged for checking the feasibility of pairings to exist. */
-    double bounding_box_intersection_check_epsilon_ = 0.20;
+    float bounding_box_intersection_check_epsilon_ = 0.20f;
 
     /** Common parameters to all derived classes:
      *

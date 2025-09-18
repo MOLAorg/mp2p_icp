@@ -92,12 +92,15 @@ void ICP::align(
             obj.attachToParameterSource(ownParamSource_);
             ps = &ownParamSource_;
         }
-        ps->updateVariable("ICP_ITERATION", result.nIterations);
+        ps->updateVariable("ICP_ITERATION", static_cast<double>(result.nIterations));
         activeParamSouces.insert(ps);
     };
     auto lambdaRealizeParamSources = [&]()
     {
-        for (auto& ps : activeParamSouces) ps->realize();
+        for (auto& ps : activeParamSouces)
+        {
+            ps->realize();
+        }
     };
 
     // ------------------------------------------------------
@@ -106,7 +109,10 @@ void ICP::align(
     mrpt::system::CTimeLoggerEntry tle2(profiler_, "align.2_create_state");
 
     ICP_State state(pcGlobal, pcLocal);
-    if (currentLog) state.log = &currentLog.value();
+    if (currentLog)
+    {
+        state.log = &currentLog.value();
+    }
 
     tle2.stop();
 
@@ -128,9 +134,18 @@ void ICP::align(
         state.currentIteration = result.nIterations;
 
         // ...and via programmable formulas:
-        for (auto& obj : matchers_) lambdaAddOwnParams(*obj);
-        for (auto& obj : solvers_) lambdaAddOwnParams(*obj);
-        for (auto& [obj, _] : quality_evaluators_) lambdaAddOwnParams(*obj);
+        for (auto& obj : matchers_)
+        {
+            lambdaAddOwnParams(*obj);
+        }
+        for (auto& obj : solvers_)
+        {
+            lambdaAddOwnParams(*obj);
+        }
+        for (auto& [obj, _] : quality_evaluators_)
+        {
+            lambdaAddOwnParams(*obj);
+        }
         lambdaRealizeParamSources();
 
         // Matchings
@@ -411,8 +426,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$GLOBAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcGlobal && log.pcGlobal->id.has_value()) ? log.pcGlobal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
@@ -426,8 +441,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$LOCAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcLocal && log.pcLocal->id.has_value()) ? log.pcLocal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
