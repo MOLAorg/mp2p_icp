@@ -69,7 +69,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
     // Outputs:
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outLow = GetOrCreatePointLayer(
-        inOut, params_.output_layer_low_intensity, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_low_intensity, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -77,7 +77,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outHigh = GetOrCreatePointLayer(
-        inOut, params_.output_layer_high_intensity, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_high_intensity, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -85,7 +85,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outMid = GetOrCreatePointLayer(
-        inOut, params_.output_layer_mid_intensity, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_mid_intensity, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 

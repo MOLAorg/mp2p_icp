@@ -69,7 +69,7 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
         inOut.layers.count(params.input_pointcloud_layer) != 0,
         mrpt::format("Input layer '%s' not found.", params.input_pointcloud_layer.c_str()));
 
-    const auto mapPtr = inOut.layers.at(params_.input_pointcloud_layer);
+    const auto mapPtr = inOut.layers.at(params.input_pointcloud_layer);
     ASSERT_(mapPtr);
 
     const auto pcPtr = mp2p_icp::MapToPointsMap(*mapPtr);
@@ -85,7 +85,7 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
         inOut.layers.count(params.target_layer) != 0,
         mrpt::format("Target map layer '%s' not found.", params.target_layer.c_str()));
 
-    mrpt::maps::CMetricMap::Ptr out = inOut.layers.at(params_.target_layer);
+    mrpt::maps::CMetricMap::Ptr out = inOut.layers.at(params.target_layer);
 
     // Create fake observation for insertion:
     mrpt::obs::CObservationPointCloud obs;

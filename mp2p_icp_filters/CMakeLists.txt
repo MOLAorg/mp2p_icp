@@ -15,6 +15,7 @@ set(LIB_SRCS
   src/FilterDeleteLayer.cpp
   src/FilterDeskew.cpp
   src/FilterEdgesPlanes.cpp
+  src/FilterFartherPointSampling.cpp
   src/FilterMerge.cpp
   src/FilterNormalizeIntensity.cpp
   src/FilterPoleDetector.cpp
@@ -44,6 +45,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterDeleteLayer.h
   include/mp2p_icp_filters/FilterDeskew.h
   include/mp2p_icp_filters/FilterEdgesPlanes.h
+  include/mp2p_icp_filters/FilterFartherPointSampling.h
   include/mp2p_icp_filters/FilterMerge.h
   include/mp2p_icp_filters/FilterNormalizeIntensity.h
   include/mp2p_icp_filters/FilterPoleDetector.h

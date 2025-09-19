@@ -81,7 +81,7 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outBetween = GetOrCreatePointLayer(
-        inOut, params_.output_layer_between, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_between, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -89,7 +89,7 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Optional output layer for deleted points:
     mrpt::maps::CPointsMap::Ptr outOutside = GetOrCreatePointLayer(
-        inOut, params_.output_layer_outside, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_outside, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 

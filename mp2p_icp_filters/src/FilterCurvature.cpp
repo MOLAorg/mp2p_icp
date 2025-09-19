@@ -71,23 +71,29 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     // Outputs:
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPcLarger = GetOrCreatePointLayer(
-        inOut, params_.output_layer_larger_curvature,
+        inOut, params.output_layer_larger_curvature,
         /*allow empty name for nullptr*/
         true,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-    if (outPcLarger) outPcLarger->reserve(outPcLarger->size() + pc.size() / 10);
+    if (outPcLarger)
+    {
+        outPcLarger->reserve(outPcLarger->size() + pc.size() / 10);
+    }
 
     mrpt::maps::CPointsMap::Ptr outPcSmaller = GetOrCreatePointLayer(
-        inOut, params_.output_layer_smaller_curvature,
+        inOut, params.output_layer_smaller_curvature,
         /*allow empty name for nullptr*/
         true,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-    if (outPcSmaller) outPcSmaller->reserve(outPcSmaller->size() + pc.size() / 10);
+    if (outPcSmaller)
+    {
+        outPcSmaller->reserve(outPcSmaller->size() + pc.size() / 10);
+    }
 
     mrpt::maps::CPointsMap::Ptr outPcOther = GetOrCreatePointLayer(
-        inOut, params_.output_layer_other,
+        inOut, params.output_layer_other,
         /*allow empty name for nullptr*/
         true,
         /* create cloud of the same type */

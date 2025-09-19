@@ -70,7 +70,7 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
         inOut.layers.count(params.input_layer),
         mrpt::format("Input layer '%s' was not found.", params.input_layer.c_str()));
 
-    const auto in            = inOut.layers.at(params_.input_layer);
+    const auto in            = inOut.layers.at(params.input_layer);
     auto       inVoxelMap    = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(in);
     auto       inVoxelMapRGB = std::dynamic_pointer_cast<mrpt::maps::CVoxelMapRGB>(in);
 

@@ -68,7 +68,7 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         inOut.layers.count(params.input_pointcloud_layer) != 0,
         mrpt::format("Input layer '%s' not found.", params.input_pointcloud_layer.c_str()));
 
-    const auto mapPtr = inOut.layers.at(params_.input_pointcloud_layer);
+    const auto mapPtr = inOut.layers.at(params.input_pointcloud_layer);
     ASSERT_(mapPtr);
 
     const auto pcPtr = mp2p_icp::MapToPointsMap(*mapPtr);
@@ -83,7 +83,7 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         inOut.layers.count(params.input_voxel_layer) != 0,
         mrpt::format("Input layer '%s' not found.", params.input_voxel_layer.c_str()));
 
-    const auto voxelMapPtr = inOut.layers.at(params_.input_voxel_layer);
+    const auto voxelMapPtr = inOut.layers.at(params.input_voxel_layer);
     ASSERT_(voxelMapPtr);
 
     const auto voxelPtr = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(voxelMapPtr);
@@ -96,7 +96,7 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
     // Outputs:
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPcStatic = GetOrCreatePointLayer(
-        inOut, params_.output_layer_static_objects,
+        inOut, params.output_layer_static_objects,
         /*allow empty name for nullptr*/
         true,
         /* create cloud of the same type */
@@ -104,7 +104,7 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
     if (outPcStatic) outPcStatic->reserve(outPcStatic->size() + pcPtr->size() / 2);
 
     mrpt::maps::CPointsMap::Ptr outPcDynamic = GetOrCreatePointLayer(
-        inOut, params_.output_layer_dynamic_objects,
+        inOut, params.output_layer_dynamic_objects,
         /*allow empty name for nullptr*/
         true,
         /* create cloud of the same type */

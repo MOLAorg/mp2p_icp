@@ -142,7 +142,7 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
             const float k = *maxT != *minT ? 1.0f / (*maxT - *minT) : 1.0f;
             for (auto& t : Ts)
             {
-                t = (t - m) * k + static_cast<float>(params_.time_offset);
+                t = (t - m) * k + static_cast<float>(params.time_offset);
             }
         }
         break;

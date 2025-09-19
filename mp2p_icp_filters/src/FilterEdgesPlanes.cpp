@@ -51,7 +51,7 @@ void FilterEdgesPlanes::initialize(const mrpt::containers::yaml& c)
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params.load_from_yaml(c);
 
-    filter_grid_.setConfiguration(params_.voxel_filter_resolution, params_.use_tsl_robin_map);
+    filter_grid_.setConfiguration(params.voxel_filter_resolution, params.use_tsl_robin_map);
 
     MRPT_END
 }
@@ -196,16 +196,16 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
             }
             if (dest != nullptr)
             {
-                for (size_t i = 0; i < vxl.indices.size(); i += params_.voxel_filter_decimation)
+                for (size_t i = 0; i < vxl.indices.size(); i += params.voxel_filter_decimation)
                 {
                     const auto pt_idx = vxl.indices[i];
                     dest->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
                 }
             }
             // full_pointcloud_decimation=0 means dont use this layer
-            if (params_.full_pointcloud_decimation > 0)
+            if (params.full_pointcloud_decimation > 0)
             {
-                for (size_t i = 0; i < vxl.indices.size(); i += params_.full_pointcloud_decimation)
+                for (size_t i = 0; i < vxl.indices.size(); i += params.full_pointcloud_decimation)
                 {
                     const auto pt_idx = vxl.indices[i];
                     pc_full_decim->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
