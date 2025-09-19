@@ -4,9 +4,11 @@ project(mp2p_icp_map LANGUAGES CXX)
 # define lib:
 set(LIB_SRCS
   src/estimate_points_eigen.cpp
+  src/IcpPrepareCapable.cpp
   src/load_xyz_file.cpp
   src/metricmap.cpp
   src/NearestPlaneCapable.cpp
+  src/NearestPointWithCovCapable.cpp
   src/pointcloud_sanity_check.cpp
   #
   src/register.cpp # This must be last
@@ -14,6 +16,7 @@ set(LIB_SRCS
 
 set(LIB_PUBLIC_HDRS
   include/mp2p_icp/estimate_points_eigen.h
+  include/mp2p_icp/IcpPrepareCapable.h
   include/mp2p_icp/layer_name_t.h
   include/mp2p_icp/load_xyz_file.h
   include/mp2p_icp/metricmap.h

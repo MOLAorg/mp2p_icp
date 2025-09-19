@@ -19,6 +19,7 @@
  */
 
 #include <mp2p_icp/ICP.h>
+#include <mp2p_icp/IcpPrepareCapable.h>
 #include <mp2p_icp/covariance.h>
 #include <mp2p_icp/load_plugin.h>
 #include <mrpt/core/exceptions.h>
@@ -120,6 +121,43 @@ void ICP::align(
 
     state.currentSolution.optimalPose = initGuess;
 
+    // If global map supports it, prepare for ICP:
+    // ------------------------------------------------------
+    mrpt::system::CTimeLoggerEntry tle2b(profiler_, "align.3_prepare_global");
+
+    std::optional<mrpt::math::TBoundingBoxf> local_map_roi;
+
+    const auto& lambda_update_local_map_roi = [&]()
+    {
+        if (local_map_roi.has_value())
+        {
+            return;
+        }
+
+        for (const auto& [layer, localMapLayer] : pcLocal.layers)
+        {
+            const auto this_bb = localMapLayer->boundingBox();
+            if (!local_map_roi)
+            {
+                local_map_roi = this_bb;
+            }
+            else
+            {
+                local_map_roi = local_map_roi->unionWith(this_bb);
+            }
+        }
+    };
+
+    for (const auto& [layer, mmap] : pcGlobal.layers)
+    {
+        if (auto* ipc = dynamic_cast<const IcpPrepareCapable*>(mmap.get()); ipc)
+        {
+            lambda_update_local_map_roi();
+            ipc->icp_get_prepared(initGuess, local_map_roi);
+        }
+    }
+    tle2b.stop();
+
     mrpt::poses::CPose3D                prev_solution = state.currentSolution.optimalPose;
     std::optional<mrpt::poses::CPose3D> prev2_solution;  // 2 steps ago
     std::optional<mrpt::poses::CPose3D> lastCorrection;
@@ -128,7 +166,7 @@ void ICP::align(
 
     for (result.nIterations = 0; result.nIterations < p.maxIterations; result.nIterations++)
     {
-        mrpt::system::CTimeLoggerEntry tle3(profiler_, "align.3_iter");
+        mrpt::system::CTimeLoggerEntry tle3(profiler_, "align.4");
 
         // Update iteration count, both in direct C++ structure...
         state.currentIteration = result.nIterations;
@@ -153,7 +191,7 @@ void ICP::align(
         MatchContext mc;
         mc.icpIteration = state.currentIteration;
 
-        mrpt::system::CTimeLoggerEntry tle4(profiler_, "align.3.1_matchers");
+        mrpt::system::CTimeLoggerEntry tle4(profiler_, "align.4.1_matchers");
 
         state.currentPairings = run_matchers(
             matchers_, state.pcGlobal, state.pcLocal, state.currentSolution.optimalPose, mc);
@@ -174,7 +212,7 @@ void ICP::align(
 
         // Optimal relative pose:
         // ---------------------------------------
-        mrpt::system::CTimeLoggerEntry tle5(profiler_, "align.3.2_solvers");
+        mrpt::system::CTimeLoggerEntry tle5(profiler_, "align.4.2_solvers");
 
         sc.icpIteration = state.currentIteration;
         sc.guessRelativePose.emplace(state.currentSolution.optimalPose);
@@ -200,7 +238,7 @@ void ICP::align(
         }
 
         // Updated solution is already in "state.currentSolution".
-        mrpt::system::CTimeLoggerEntry tle6(profiler_, "align.3.3_end_criterions");
+        mrpt::system::CTimeLoggerEntry tle6(profiler_, "align.4.3_end_criterions");
 
         // Termination criterion: small delta:
         auto lambdaCalcIncrs =
@@ -326,12 +364,17 @@ void ICP::align(
     // Fill in "result"
     // ----------------------------
     if (result.nIterations >= p.maxIterations)
+    {
         result.terminationReason = IterTermReason::MaxIterations;
+    }
 
     // Quality:
-    mrpt::system::CTimeLoggerEntry tle7(profiler_, "align.4_quality");
+    mrpt::system::CTimeLoggerEntry tle7(profiler_, "align.5_quality");
 
-    for (auto& e : quality_evaluators_) lambdaAddOwnParams(*e.obj);
+    for (auto& e : quality_evaluators_)
+    {
+        lambdaAddOwnParams(*e.obj);
+    }
     lambdaRealizeParamSources();
 
     result.quality = evaluate_quality(
@@ -351,10 +394,19 @@ void ICP::align(
     result.optimal_tf.cov =
         mp2p_icp::covariance(result.finalPairings, result.optimal_tf.mean, covParams);
 
+    // Clean-up global map icp preparation:
+    for (const auto& [layer, mmap] : pcGlobal.layers)
+    {
+        if (auto* ipc = dynamic_cast<const IcpPrepareCapable*>(mmap.get()); ipc)
+        {
+            ipc->icp_cleanup();
+        }
+    }
+
     // ----------------------------
     // Log records
     // ----------------------------
-    mrpt::system::CTimeLoggerEntry tle8(profiler_, "align.5_save_log");
+    mrpt::system::CTimeLoggerEntry tle8(profiler_, "align.6_save_log");
 
     if (currentLog)
     {

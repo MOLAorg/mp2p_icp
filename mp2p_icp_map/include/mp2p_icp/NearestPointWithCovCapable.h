@@ -14,10 +14,9 @@
 
 /**
  * @file   NearestPointWithCovCapable.h
- * @brief  Defines a virtual interface for maps capable of finding pt-plane
- * pairings.
+ * @brief  Virtual interface for "nearest point with covariance" search algorithms
  * @author Jose Luis Blanco Claraco
- * @date   Sep 8, 2024
+ * @date   Sep 19, 2025
  */
 #pragma once
 
