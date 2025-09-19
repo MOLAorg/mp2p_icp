@@ -18,6 +18,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/load_xyz_file.h
   include/mp2p_icp/metricmap.h
   include/mp2p_icp/NearestPlaneCapable.h
+  include/mp2p_icp/NearestPointWithCovCapable.h
   include/mp2p_icp/plane_patch.h
   include/mp2p_icp/point_plane_pair_t.h
   include/mp2p_icp/pointcloud_bitfield.h
