@@ -12,7 +12,6 @@ set(LIB_SRCS
   src/FilterCurvature.cpp
   src/FilterDecimateAdaptive.cpp
   src/FilterDecimateVoxels.cpp
-  src/FilterDecimateVoxelsQuadratic.cpp
   src/FilterDeleteLayer.cpp
   src/FilterDeskew.cpp
   src/FilterEdgesPlanes.cpp
@@ -42,7 +41,6 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterCurvature.h
   include/mp2p_icp_filters/FilterDecimateAdaptive.h
   include/mp2p_icp_filters/FilterDecimateVoxels.h
-  include/mp2p_icp_filters/FilterDecimateVoxelsQuadratic.h
   include/mp2p_icp_filters/FilterDeleteLayer.h
   include/mp2p_icp_filters/FilterDeskew.h
   include/mp2p_icp_filters/FilterEdgesPlanes.h
