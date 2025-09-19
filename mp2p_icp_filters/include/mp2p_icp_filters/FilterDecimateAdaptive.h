@@ -62,9 +62,7 @@ class FilterDecimateAdaptive : public mp2p_icp_filters::FilterBase
          * layer */
         unsigned int minimum_input_points_per_voxel = 1;
 
-        // These are used to automatically estimate the voxel size:
-        double       assumed_minimum_pointcloud_bbox   = 10.0;  // [m]
-        unsigned int maximum_voxel_count_per_dimension = 100;
+        float voxel_size = 0.10;
     };
 
     /** Algorithm parameters */

@@ -34,8 +34,7 @@ void FilterDecimateAdaptive::Parameters::load_from_yaml(const mrpt::containers::
 
     MCP_LOAD_REQ(c, desired_output_point_count);
 
-    MCP_LOAD_OPT(c, assumed_minimum_pointcloud_bbox);
-    MCP_LOAD_OPT(c, maximum_voxel_count_per_dimension);
+    MCP_LOAD_OPT(c, voxel_size);
     MCP_LOAD_OPT(c, minimum_input_points_per_voxel);
 }
 
@@ -86,18 +85,8 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     // Estimate voxel size dynamically from the input cloud:
     filter_grid_.clear();
 
-    auto inputBbox = pc.boundingBox();
-    auto bboxSize  = mrpt::math::TVector3Df(inputBbox.max - inputBbox.min);
-    mrpt::keep_max(bboxSize.x, _.assumed_minimum_pointcloud_bbox);
-    mrpt::keep_max(bboxSize.y, _.assumed_minimum_pointcloud_bbox);
-    mrpt::keep_max(bboxSize.z, _.assumed_minimum_pointcloud_bbox);
-
-    const float largest_dim = bboxSize.norm();  // diagonal
-
-    const float voxel_size = largest_dim / static_cast<float>(_.maximum_voxel_count_per_dimension);
-
     // Parse input cloud through subsampling:
-    filter_grid_.setConfiguration(voxel_size, true);
+    filter_grid_.setConfiguration(params.voxel_size, true);
     filter_grid_.processPointCloud(pc);
 
     struct DataPerVoxel
@@ -129,20 +118,42 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Perform resampling:
     // -------------------
+    constexpr int FRACTIONARY_BIT_COUNT = 12;
+
     const size_t nVoxels           = voxels.size();
-    size_t       voxelIdxIncrement = 1;
-    if (params.desired_output_point_count < nVoxels)
+    float        voxelIdxIncrement = 1.0f;
+    if (nVoxels > params.desired_output_point_count)
     {
-        voxelIdxIncrement = std::max<size_t>(
-            1, mrpt::round(
-                   static_cast<float>(nVoxels) /
-                   static_cast<float>(params.desired_output_point_count)));
+        voxelIdxIncrement =
+            static_cast<float>(nVoxels) / static_cast<float>(params.desired_output_point_count);
     }
+
+    const auto voxelIdxIncrement_frac =
+        static_cast<std::size_t>(voxelIdxIncrement * (1 << FRACTIONARY_BIT_COUNT));
 
     bool anyInsertInTheRound = false;
 
-    for (size_t i = 0; outPc->size() < params.desired_output_point_count;)
+    std::size_t i_frac = 0;
+    while (outPc->size() < params.desired_output_point_count)
     {
+        std::size_t i = i_frac >> FRACTIONARY_BIT_COUNT;
+
+        if (i >= nVoxels)
+        {
+            i_frac = i_frac % (nVoxels << FRACTIONARY_BIT_COUNT);
+            i      = i_frac >> FRACTIONARY_BIT_COUNT;
+
+            if (!anyInsertInTheRound)
+            {
+                // This means there is no more points and we must end
+                // despite we didn't reached the user's desired number of
+                // points:
+                break;
+            }
+
+            anyInsertInTheRound = false;
+        }
+
         auto& ith = voxels[i];
         if (!ith.exhausted)
         {
@@ -156,27 +167,10 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
             }
         }
 
-        i += voxelIdxIncrement;
-        if (i >= nVoxels)
-        {
-            // one round done.
-            i = (i + 123653 /*a large arbitrary prime*/) % nVoxels;
-
-            if (!anyInsertInTheRound)
-            {
-                // This means there is no more points and we must end
-                // despite we didn't reached the user's desired number of
-                // points:
-                break;
-            }
-
-            anyInsertInTheRound = false;
-        }
+        i_frac += voxelIdxIncrement_frac;
     }
 
-    MRPT_LOG_DEBUG_STREAM(
-        "voxel_size=" << voxel_size <<  //
-        ", used voxels=" << nTotalVoxels);
+    MRPT_LOG_DEBUG_STREAM("used voxels=" << nTotalVoxels);
 
     MRPT_END
 }
