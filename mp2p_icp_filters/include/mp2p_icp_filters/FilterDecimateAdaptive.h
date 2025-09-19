@@ -52,8 +52,6 @@ class FilterDecimateAdaptive : public mp2p_icp_filters::FilterBase
     {
         void load_from_yaml(const mrpt::containers::yaml& c);
 
-        bool enabled = true;
-
         std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
         std::string output_pointcloud_layer;
@@ -70,7 +68,7 @@ class FilterDecimateAdaptive : public mp2p_icp_filters::FilterBase
     };
 
     /** Algorithm parameters */
-    Parameters params_;
+    Parameters params;
 
    private:
     mutable PointCloudToVoxelGrid filter_grid_;

@@ -49,7 +49,7 @@ void FilterEdgesPlanes::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params.load_from_yaml(c);
 
     filter_grid_.setConfiguration(params_.voxel_filter_resolution, params_.use_tsl_robin_map);
 
@@ -61,11 +61,11 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     // In:
-    const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    const auto& pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
@@ -92,11 +92,11 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& ys = pc.getPointsBufferRef_y();
     const auto& zs = pc.getPointsBufferRef_z();
 
-    const float max_e20 = params_.voxel_filter_max_e2_e0;
-    const float max_e10 = params_.voxel_filter_max_e1_e0;
-    const float min_e20 = params_.voxel_filter_min_e2_e0;
-    const float min_e10 = params_.voxel_filter_min_e1_e0;
-    const float min_e1  = params_.voxel_filter_min_e1;
+    const float max_e20 = params.voxel_filter_max_e2_e0;
+    const float max_e10 = params.voxel_filter_max_e1_e0;
+    const float min_e20 = params.voxel_filter_min_e2_e0;
+    const float min_e10 = params.voxel_filter_min_e1_e0;
+    const float min_e1  = params.voxel_filter_min_e1;
 
     std::size_t nEdgeVoxels = 0, nPlaneVoxels = 0, nTotalVoxels = 0;
 

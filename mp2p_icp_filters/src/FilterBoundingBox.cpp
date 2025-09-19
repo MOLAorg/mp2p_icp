@@ -66,7 +66,7 @@ void FilterBoundingBox::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -76,11 +76,11 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     // In:
-    const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    const auto pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
@@ -105,7 +105,7 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
 
     for (size_t i = 0; i < xs.size(); i++)
     {
-        const bool isInside = params_.bounding_box.containsPoint({xs[i], ys[i], zs[i]});
+        const bool isInside = params.bounding_box.containsPoint({xs[i], ys[i], zs[i]});
 
         auto* targetPc = isInside ? insidePc.get() : outsidePc.get();
 

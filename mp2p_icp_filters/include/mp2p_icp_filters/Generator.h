@@ -151,7 +151,7 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
         bool throw_on_unhandled_observation_class = false;
     };
 
-    Parameters params_;
+    Parameters params;
 
     /** @} */
 

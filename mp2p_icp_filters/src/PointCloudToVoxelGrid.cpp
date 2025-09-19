@@ -68,9 +68,9 @@ void PointCloudToVoxelGrid::processPointCloud(const mrpt::maps::CPointsMap& p)
     for (std::size_t i = 0; i < point_count; i++)
     {
         // Skip this point?
-        if (params_.min_consecutive_distance != .0f &&
+        if (params.min_consecutive_distance != .0f &&
             max3(abs(x0 - xs[i]), abs(y0 - ys[i]), abs(z0 - zs[i])) <
-                params_.min_consecutive_distance)
+                params.min_consecutive_distance)
         {
             continue;
         }

@@ -59,7 +59,7 @@ void FilterByRange::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -71,11 +71,11 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     checkAllParametersAreRealized();
 
     // In:
-    const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    const auto pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
@@ -99,13 +99,13 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& ys = pc.getPointsBufferRef_y();
     const auto& zs = pc.getPointsBufferRef_z();
 
-    const float sqrMin = mrpt::square(params_.range_min);
-    const float sqrMax = mrpt::square(params_.range_max);
+    const float sqrMin = mrpt::square(params.range_min);
+    const float sqrMax = mrpt::square(params.range_max);
 
     for (size_t i = 0; i < xs.size(); i++)
     {
         const float sqrNorm =
-            (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params_.center).sqrNorm();
+            (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params.center).sqrNorm();
 
         const bool isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
 

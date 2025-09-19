@@ -89,21 +89,24 @@ class FilterDecimateVoxelsQuadratic : public mp2p_icp_filters::FilterBase
     };
 
     /** Algorithm parameters */
-    Parameters params_;
+    Parameters params;
 
     inline float real2grid(float x) const
     {
-        if (std::abs(x) > params_.quadratic_reference_radius)
+        if (std::abs(x) > params.quadratic_reference_radius)
+        {
             return x;
-        else
-            return mrpt::sign(x) * mrpt::square(x) * quadratic_reference_radius_inv_;
+        }
+        return mrpt::sign(x) * mrpt::square(x) * quadratic_reference_radius_inv_;
     }
     inline float grid2real(float y) const
     {
-        if (std::abs(y) > params_.quadratic_reference_radius)
+        if (std::abs(y) > params.quadratic_reference_radius)
+        {
             return y;
-        else
-            return std::sqrt(y * params_.quadratic_reference_radius) * mrpt::sign(y);
+        }
+
+        return std::sqrt(y * params.quadratic_reference_radius) * mrpt::sign(y);
     }
 
    private:

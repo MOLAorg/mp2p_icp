@@ -120,13 +120,13 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
     };
 
     /** Algorithm parameters */
-    Parameters params_;
+    Parameters params;
 
    private:
     mutable std::optional<PointCloudToVoxelGrid>       filter_grid_;
     mutable std::optional<PointCloudToVoxelGridSingle> filter_grid_single_;
 
-    bool useSingleGrid() const { return params_.decimate_method == DecimateMethod::FirstPoint; }
+    bool useSingleGrid() const { return params.decimate_method == DecimateMethod::FirstPoint; }
 };
 
 /** @} */

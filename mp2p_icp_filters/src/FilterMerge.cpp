@@ -53,7 +53,7 @@ void FilterMerge::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -66,8 +66,8 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
 
     // In:
     ASSERTMSG_(
-        inOut.layers.count(params_.input_pointcloud_layer) != 0,
-        mrpt::format("Input layer '%s' not found.", params_.input_pointcloud_layer.c_str()));
+        inOut.layers.count(params.input_pointcloud_layer) != 0,
+        mrpt::format("Input layer '%s' not found.", params.input_pointcloud_layer.c_str()));
 
     const auto mapPtr = inOut.layers.at(params_.input_pointcloud_layer);
     ASSERT_(mapPtr);
@@ -77,13 +77,13 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
         pcPtr, mrpt::format(
                    "Input point cloud layer '%s' could not be converted into a "
                    "point cloud (class='%s')",
-                   params_.input_pointcloud_layer.c_str(), mapPtr->GetRuntimeClass()->className));
+                   params.input_pointcloud_layer.c_str(), mapPtr->GetRuntimeClass()->className));
 
     // Out:
-    ASSERT_(!params_.target_layer.empty());
+    ASSERT_(!params.target_layer.empty());
     ASSERTMSG_(
-        inOut.layers.count(params_.target_layer) != 0,
-        mrpt::format("Target map layer '%s' not found.", params_.target_layer.c_str()));
+        inOut.layers.count(params.target_layer) != 0,
+        mrpt::format("Target map layer '%s' not found.", params.target_layer.c_str()));
 
     mrpt::maps::CMetricMap::Ptr out = inOut.layers.at(params_.target_layer);
 
@@ -93,9 +93,9 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
     obs.pointcloud                        = pts;
 
     // Copy the input layer here, as seen from the robot (hence the "-"):
-    const auto robotPose = mrpt::poses::CPose3D(params_.robot_pose);
+    const auto robotPose = mrpt::poses::CPose3D(params.robot_pose);
 
-    if (params_.input_layer_in_local_coordinates)
+    if (params.input_layer_in_local_coordinates)
     {
         pts->insertAnotherMap(pcPtr, mrpt::poses::CPose3D::Identity());
     }

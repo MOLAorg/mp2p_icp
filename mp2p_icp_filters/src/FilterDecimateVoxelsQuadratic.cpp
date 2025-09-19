@@ -51,10 +51,10 @@ void FilterDecimateVoxelsQuadratic::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params.load_from_yaml(c);
 
     filter_grid_.setConfiguration(params_.voxel_filter_resolution, true);
-    quadratic_reference_radius_inv_ = 1.0f / params_.quadratic_reference_radius;
+    quadratic_reference_radius_inv_ = 1.0f / params.quadratic_reference_radius;
 
     MRPT_END
 }
@@ -64,7 +64,7 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     // Out:
-    ASSERT_(!params_.output_pointcloud_layer.empty());
+    ASSERT_(!params.output_pointcloud_layer.empty());
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc =
@@ -72,20 +72,20 @@ void FilterDecimateVoxelsQuadratic::filter(mp2p_icp::metric_map_t& inOut) const
 
     // In:
     mrpt::maps::CPointsMap* pcPtr = nullptr;
-    if (auto itLy = inOut.layers.find(params_.input_pointcloud_layer); itLy != inOut.layers.end())
+    if (auto itLy = inOut.layers.find(params.input_pointcloud_layer); itLy != inOut.layers.end())
     {
         pcPtr = mp2p_icp::MapToPointsMap(*itLy->second);
         if (!pcPtr)
             THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.", params_.input_pointcloud_layer.c_str());
+                "Layer '%s' must be of point cloud type.", params.input_pointcloud_layer.c_str());
     }
     else
     {
         // Input layer doesn't exist:
-        if (params_.error_on_missing_input_layer)
+        if (params.error_on_missing_input_layer)
         {
             THROW_EXCEPTION_FMT(
-                "Input layer '%s' not found on input map.", params_.input_pointcloud_layer.c_str());
+                "Input layer '%s' not found on input map.", params.input_pointcloud_layer.c_str());
         }
         else
         {

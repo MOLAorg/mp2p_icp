@@ -29,9 +29,7 @@ using namespace mp2p_icp_filters;
 
 void FilterDecimateAdaptive::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
-    MCP_LOAD_OPT(c, enabled);
-
-    MCP_LOAD_OPT(c, input_pointcloud_layer);
+    MCP_LOAD_REQ(c, input_pointcloud_layer);
     MCP_LOAD_REQ(c, output_pointcloud_layer);
 
     MCP_LOAD_REQ(c, desired_output_point_count);
@@ -51,7 +49,7 @@ void FilterDecimateAdaptive::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params.load_from_yaml(c);
 
     MRPT_END
 }
@@ -60,22 +58,28 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
 
-    if (!params_.enabled) return;
+    checkAllParametersAreRealized();
 
     // In:
-    const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
-        pcPtr,
+        inOut.layers.count(params.input_pointcloud_layer) != 0,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
+
+    auto pcPtr = mp2p_icp::MapToPointsMap(*inOut.layers.at(params.input_pointcloud_layer));
+    if (!pcPtr)
+    {
+        THROW_EXCEPTION_FMT(
+            "Layer '%s' must be of point cloud type.", params.input_pointcloud_layer.c_str());
+    }
 
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc =
-        GetOrCreatePointLayer(inOut, params_.output_pointcloud_layer);
+        GetOrCreatePointLayer(inOut, params.output_pointcloud_layer);
 
-    const auto& _ = params_;  // shortcut
+    const auto& _ = params;  // shortcut
 
     outPc->reserve(outPc->size() + _.desired_output_point_count);
 
@@ -121,15 +125,15 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     // -------------------
     const size_t nVoxels           = voxels.size();
     size_t       voxelIdxIncrement = 1;
-    if (params_.desired_output_point_count < nVoxels)
+    if (params.desired_output_point_count < nVoxels)
     {
         voxelIdxIncrement = std::max<size_t>(
-            1, mrpt::round(nVoxels / static_cast<float>(params_.desired_output_point_count)));
+            1, mrpt::round(nVoxels / static_cast<float>(params.desired_output_point_count)));
     }
 
     bool anyInsertInTheRound = false;
 
-    for (size_t i = 0; outPc->size() < params_.desired_output_point_count;)
+    for (size_t i = 0; outPc->size() < params.desired_output_point_count;)
     {
         auto& ith = voxels[i];
         if (!ith.exhausted)

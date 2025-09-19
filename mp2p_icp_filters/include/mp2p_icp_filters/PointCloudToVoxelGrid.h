@@ -58,7 +58,7 @@ class PointCloudToVoxelGrid
         float min_consecutive_distance{.0f};
     };
 
-    Parameters params_;
+    Parameters params;
 
     /** The list of point indices in each voxel */
     struct voxel_t
