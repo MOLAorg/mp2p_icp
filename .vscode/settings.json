@@ -41,6 +41,7 @@
         "reproject",
         "tfest",
         "unrealize",
+        "voxelizes",
         "voxelmaps",
         "XYZIRT"
     ]

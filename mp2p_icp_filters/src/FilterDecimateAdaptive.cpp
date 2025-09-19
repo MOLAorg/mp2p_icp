@@ -94,9 +94,9 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     const float largest_dim = bboxSize.norm();  // diagonal
 
-    const float voxel_size = largest_dim / _.maximum_voxel_count_per_dimension;
+    const float voxel_size = largest_dim / static_cast<float>(_.maximum_voxel_count_per_dimension);
 
-    // Parse input cloud thru voxelization:
+    // Parse input cloud through subsampling:
     filter_grid_.setConfiguration(voxel_size, true);
     filter_grid_.processPointCloud(pc);
 
@@ -115,8 +115,14 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     filter_grid_.visit_voxels(
         [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& data)
         {
-            if (!data.indices.empty()) nTotalVoxels++;
-            if (data.indices.size() < _.minimum_input_points_per_voxel) return;
+            if (!data.indices.empty())
+            {
+                nTotalVoxels++;
+            }
+            if (data.indices.size() < _.minimum_input_points_per_voxel)
+            {
+                return;
+            }
 
             voxels.emplace_back().voxel = &data;
         });
@@ -128,7 +134,9 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     if (params.desired_output_point_count < nVoxels)
     {
         voxelIdxIncrement = std::max<size_t>(
-            1, mrpt::round(nVoxels / static_cast<float>(params.desired_output_point_count)));
+            1, mrpt::round(
+                   static_cast<float>(nVoxels) /
+                   static_cast<float>(params.desired_output_point_count)));
     }
 
     bool anyInsertInTheRound = false;
@@ -142,7 +150,10 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
             outPc->insertPointFrom(pc, ptIdx);
             anyInsertInTheRound = true;
 
-            if (ith.nextIdx >= ith.voxel->indices.size()) ith.exhausted = true;
+            if (ith.nextIdx >= ith.voxel->indices.size())
+            {
+                ith.exhausted = true;
+            }
         }
 
         i += voxelIdxIncrement;
