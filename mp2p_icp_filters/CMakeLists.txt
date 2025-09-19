@@ -65,12 +65,14 @@ mola_add_library(
   TARGET ${PROJECT_NAME}
   SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
   PUBLIC_LINK_LIBRARIES
-    mp2p_icp_map
+    mola::mp2p_icp_map
+    mola::mp2p_icp_common
   PRIVATE_LINK_LIBRARIES
     mola::mola_imu_preintegration
     tsl::robin_map
   CMAKE_DEPENDENCIES
     mp2p_icp
+    mp2p_icp_common
     mola_imu_preintegration
     #robin_map
 )

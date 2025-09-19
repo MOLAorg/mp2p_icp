@@ -83,6 +83,9 @@ set(MP2P_ICP_PATCH_VERSION ${CMAKE_MATCH_3})
 # define library targets:
 # -----------------------
 
+# Helper parameter source library:
+add_subdirectory(mp2p_icp_common)
+
 # Metric map container library:
 add_subdirectory(mp2p_icp_map)
 

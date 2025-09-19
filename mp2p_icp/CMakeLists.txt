@@ -80,13 +80,15 @@ mola_add_library(
   TARGET ${lib_name}
   SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
   PUBLIC_LINK_LIBRARIES
-    mp2p_icp_map
+    mola::mp2p_icp_map
+    mola::mp2p_icp_common
     mrpt::containers
     mrpt::tfest
     mrpt::maps
     mrpt::gui
   CMAKE_DEPENDENCIES
     mp2p_icp_map
+    mp2p_icp_common
     mrpt-containers
     mrpt-maps
     mrpt-tfest
