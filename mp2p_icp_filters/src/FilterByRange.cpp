@@ -48,7 +48,9 @@ void FilterByRange::Parameters::load_from_yaml(
         auto cc = c["center"].asSequence();
 
         for (int i = 0; i < 3; i++)
+        {
             parent.parseAndDeclareParameter(cc.at(i).as<std::string>(), center[i]);
+        }
     }
 }
 
@@ -85,7 +87,10 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outBetween) outBetween->reserve(outBetween->size() + pc.size() / 10);
+    if (outBetween)
+    {
+        outBetween->reserve(outBetween->size() + pc.size() / 10);
+    }
 
     // Optional output layer for deleted points:
     mrpt::maps::CPointsMap::Ptr outOutside = GetOrCreatePointLayer(
@@ -93,7 +98,10 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outOutside) outOutside->reserve(outOutside->size() + pc.size() / 10);
+    if (outOutside)
+    {
+        outOutside->reserve(outOutside->size() + pc.size() / 10);
+    }
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
@@ -111,7 +119,10 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
         auto* targetPc = isInside ? outBetween.get() : outOutside.get();
 
-        if (targetPc) targetPc->insertPointFrom(pc, i);
+        if (targetPc)
+        {
+            targetPc->insertPointFrom(pc, i);
+        }
     }
 
     MRPT_END

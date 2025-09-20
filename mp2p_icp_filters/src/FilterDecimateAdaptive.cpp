@@ -75,8 +75,12 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap::Ptr outPc =
-        GetOrCreatePointLayer(inOut, params.output_pointcloud_layer);
+    mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
+        inOut, params.output_pointcloud_layer,
+        /*do not allow empty*/
+        false,
+        /* create cloud of the same type */
+        pcPtr->GetRuntimeClass()->className);
 
     const auto& _ = params;  // shortcut
 

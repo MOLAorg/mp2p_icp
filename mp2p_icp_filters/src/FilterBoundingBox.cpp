@@ -90,14 +90,20 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (insidePc) insidePc->reserve(insidePc->size() + pc.size() / 10);
+    if (insidePc)
+    {
+        insidePc->reserve(insidePc->size() + pc.size() / 10);
+    }
 
     mrpt::maps::CPointsMap::Ptr outsidePc = GetOrCreatePointLayer(
         inOut, params.outside_pointcloud_layer, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outsidePc) outsidePc->reserve(outsidePc->size() + pc.size() / 10);
+    if (outsidePc)
+    {
+        outsidePc->reserve(outsidePc->size() + pc.size() / 10);
+    }
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
@@ -109,7 +115,10 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
 
         auto* targetPc = isInside ? insidePc.get() : outsidePc.get();
 
-        if (targetPc) targetPc->insertPointFrom(pc, i);
+        if (targetPc)
+        {
+            targetPc->insertPointFrom(pc, i);
+        }
     }
 
     MRPT_END
