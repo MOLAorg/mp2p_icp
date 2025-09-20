@@ -48,7 +48,6 @@ namespace mp2p_icp
  *   - class: mp2p_icp::Matcher_Points_DistanceThreshold
  *     params:
  *       threshold: 0.20
- *       maxLocalPointsPerLayer: 500
  *
  * quality:
  *   - class: mp2p_icp::QualityEvaluator_PairedRatio

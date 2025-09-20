@@ -59,8 +59,7 @@ void Matcher_Point2Plane::implMatchOneLayer(
         return;
     }
 
-    const TransformedLocalPointCloud tl = transform_local_to_global(
-        pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
+    const TransformedLocalPointCloud tl = transform_local_to_global(pcLocal, localPose);
 
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(

@@ -41,7 +41,6 @@ matchers:
     params:
       threshold: 2.00
       #pairingsPerPoint: 3
-      #maxLocalPointsPerLayer: 0  # !=0 means subsample "local" point cloud
       enabled: true
       runFromIteration: 0 # "from 0 to 0" means "all"
       runUpToIteration: 5
