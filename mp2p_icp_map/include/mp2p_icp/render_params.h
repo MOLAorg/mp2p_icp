@@ -211,6 +211,13 @@ struct render_params_pairings_pt2pl_t
     double            planePatchSize = 0.2;
 };
 
+struct render_params_pairings_cov2cov_t
+{
+    render_params_pairings_cov2cov_t() = default;
+
+    bool visible = false;
+};
+
 struct render_params_pairings_pt2ln_t
 {
     render_params_pairings_pt2ln_t() = default;

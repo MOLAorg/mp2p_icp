@@ -29,7 +29,7 @@
 
 using namespace mp2p_icp;
 
-static const uint8_t SERIALIZATION_VERSION = 1;
+static const uint8_t SERIALIZATION_VERSION = 2;
 
 Pairings::~Pairings() = default;
 
@@ -39,16 +39,26 @@ void Pairings::serializeTo(mrpt::serialization::CArchive& out) const
     out << paired_pt2pt;
     out << paired_pt2ln << paired_pt2pl << paired_ln2ln << paired_pl2pl << point_weights;
     out << potential_pairings;  // v1
+    out << paired_cov2cov;  // v2
 }
 
 void Pairings::serializeFrom(mrpt::serialization::CArchive& in)
 {
     const auto readVersion = in.ReadAs<uint8_t>();
 
+    *this = {};
+
     ASSERT_LE_(readVersion, SERIALIZATION_VERSION);
     in >> paired_pt2pt;
     in >> paired_pt2ln >> paired_pt2pl >> paired_ln2ln >> paired_pl2pl >> point_weights;
-    if (readVersion >= 1) in >> potential_pairings;
+    if (readVersion >= 1)
+    {
+        in >> potential_pairings;
+    }
+    if (readVersion >= 2)
+    {
+        in >> paired_cov2cov;
+    }
 }
 
 mrpt::serialization::CArchive& mp2p_icp::operator<<(
@@ -143,7 +153,7 @@ void Pairings::push_back(Pairings&& o)
 size_t Pairings::size() const
 {
     return paired_pt2pt.size() + paired_pt2ln.size() + paired_pt2pl.size() + paired_ln2ln.size() +
-           paired_pl2pl.size();
+           paired_pl2pl.size() + paired_cov2cov.size();
 }
 
 template <typename CONTAINER>
@@ -151,8 +161,14 @@ void append_container_size(const CONTAINER& c, const std::string& name, std::str
 {
     using namespace std::string_literals;
 
-    if (c.empty()) return;
-    if (!ret.empty()) ret += ", "s;
+    if (c.empty())
+    {
+        return;
+    }
+    if (!ret.empty())
+    {
+        ret += ", "s;
+    }
     ret += std::to_string(c.size()) + " "s + name;
 }
 
@@ -160,7 +176,10 @@ std::string Pairings::contents_summary() const
 {
     using namespace std::string_literals;
 
-    if (empty()) return {"none"s};
+    if (empty())
+    {
+        return {"none"s};
+    }
 
     std::string ret;
     append_container_size(paired_pt2pt, "point-point", ret);
@@ -242,11 +261,28 @@ void Pairings::get_visualization_pt2pl(
     o.insert(lns);
 }
 
+void Pairings::get_visualization_cov2cov(
+    [[maybe_unused]] mrpt::opengl::CSetOfObjects&            o,
+    [[maybe_unused]] const mrpt::poses::CPose3D&             localWrtGlobal,
+    [[maybe_unused]] const render_params_pairings_cov2cov_t& p) const
+{
+    if (!p.visible)
+    {
+        return;
+    }
+
+    // TODO!
+    THROW_EXCEPTION("To do!");
+}
+
 void Pairings::get_visualization_pt2ln(
     mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
     const render_params_pairings_pt2ln_t& p) const
 {
-    if (!p.visible) return;
+    if (!p.visible)
+    {
+        return;
+    }
 
     auto pairingLines = mrpt::opengl::CSetOfLines::Create();
     pairingLines->setColor_u8(p.segmentColor);
@@ -337,6 +373,25 @@ CArchive& operator>>(CArchive& in, mp2p_icp::matched_plane_t& obj)
 
     in >> obj.p_local.centroid >> obj.p_local.plane;
     in >> obj.p_global.centroid >> obj.p_global.plane;
+    return in;
+}
+
+CArchive& operator<<(CArchive& out, const mp2p_icp::point_with_cov_pair_t& obj)
+{
+    out.WriteAs<uint8_t>(0);
+    out << obj.local << obj.local_idx;
+    out << obj.global << obj.global_idx;
+    out.WriteBufferFixEndianness(obj.cov_inv.data(), obj.cov_inv.size());
+    return out;
+}
+CArchive& operator>>(CArchive& in, mp2p_icp::point_with_cov_pair_t& obj)
+{
+    const auto version = in.ReadAs<uint8_t>();
+    ASSERT_(version == 0);
+
+    in >> obj.local >> obj.local_idx;
+    in >> obj.global >> obj.global_idx;
+    in.ReadBufferFixEndianness(obj.cov_inv.data(), obj.cov_inv.size());
     return in;
 }
 

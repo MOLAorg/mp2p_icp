@@ -74,6 +74,25 @@ struct point_line_pair_t
 
 using MatchedPointLineList = std::vector<point_line_pair_t>;
 
+/** point-with-cov correspondences */
+struct point_with_cov_pair_t
+{
+    mrpt::math::TPoint3Df global;
+    mrpt::math::TPoint3Df local;
+    uint32_t              global_idx = std::numeric_limits<uint32_t>::max();
+    uint32_t              local_idx  = std::numeric_limits<uint32_t>::max();
+
+    /** The Mahalanobis distance weight matrix.
+     * Following GICP \cite segal2009gicp this should be:
+     *  `(COV_{global} + R*COV_{local}*R^T)^{-1}`
+     */
+    mrpt::math::CMatrixFloat33 cov_inv;
+
+    DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::point_with_cov_pair_t)
+};
+
+using MatchedPointWithCovList = std::vector<point_with_cov_pair_t>;
+
 /** Common pairing input data for OLAE, Horn's, and other solvers.
  * Planes and lines must have unit director and normal vectors, respectively.
  *
@@ -83,19 +102,23 @@ using MatchedPointLineList = std::vector<point_line_pair_t>;
  */
 struct Pairings
 {
-    Pairings() = default;
+    Pairings()                           = default;
+    Pairings(const Pairings&)            = default;
+    Pairings& operator=(const Pairings&) = default;
+    Pairings(Pairings&&)                 = default;
+    Pairings& operator=(Pairings&&)      = default;
     virtual ~Pairings();
 
     /** @name Data fields
      * @{ */
 
-    /// We reuse MRPT struct to allow using their matching functions.
-    /// \note on MRPT naming convention: "this"=global; "other"=local.
+    /// We reuse MRPT struct for pt2pt to allow using their matching functions.
     mrpt::tfest::TMatchingPairList paired_pt2pt;
     MatchedPointLineList           paired_pt2ln;
     MatchedPointPlaneList          paired_pt2pl;
     MatchedLineList                paired_ln2ln;
     MatchedPlaneList               paired_pl2pl;
+    MatchedPointWithCovList        paired_cov2cov;
 
     /// Each Matcher will add pairings in the fields above, and will increment
     /// this `potential_pairings` with the maximum number of potential pairings
@@ -117,7 +140,7 @@ struct Pairings
     virtual bool empty() const
     {
         return paired_pt2pt.empty() && paired_pl2pl.empty() && paired_ln2ln.empty() &&
-               paired_pt2ln.empty() && paired_pt2pl.empty();
+               paired_pt2ln.empty() && paired_pt2pl.empty() && paired_cov2cov.empty();
     }
 
     /** Overall number of element-to-element pairings (points, lines, planes) */
@@ -158,6 +181,11 @@ struct Pairings
     virtual void get_visualization_pt2pl(
         mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
         const render_params_pairings_pt2pl_t& p) const;
+
+    /** Used inside get_visualization(), renders cov-to-cov pairings only. */
+    virtual void get_visualization_cov2cov(
+        mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
+        const render_params_pairings_cov2cov_t& p) const;
 
     /** Used inside get_visualization(), renders pt-to-ln pairings only. */
     virtual void get_visualization_pt2ln(
@@ -216,5 +244,8 @@ CArchive& operator>>(CArchive& in, mp2p_icp::matched_line_t& obj);
 
 CArchive& operator<<(CArchive& out, const mp2p_icp::matched_plane_t& obj);
 CArchive& operator>>(CArchive& in, mp2p_icp::matched_plane_t& obj);
+
+CArchive& operator<<(CArchive& out, const mp2p_icp::point_with_cov_pair_t& obj);
+CArchive& operator>>(CArchive& in, mp2p_icp::point_with_cov_pair_t& obj);
 
 }  // namespace mrpt::serialization

@@ -148,12 +148,13 @@ void ICP::align(
         }
     };
 
+    // Let global layers that we are about to start ICP:
     for (const auto& [layer, mmap] : pcGlobal.layers)
     {
         if (auto* ipc = dynamic_cast<const IcpPrepareCapable*>(mmap.get()); ipc)
         {
             lambda_update_local_map_roi();
-            ipc->icp_get_prepared(initGuess, local_map_roi);
+            ipc->icp_get_prepared_as_global(initGuess, local_map_roi);
         }
     }
     tle2b.stop();
@@ -185,6 +186,15 @@ void ICP::align(
             lambdaAddOwnParams(*obj);
         }
         lambdaRealizeParamSources();
+
+        // Let local layers that we are about to start ICP:
+        for (const auto& [layer, mmap] : pcLocal.layers)
+        {
+            if (auto* ipc = dynamic_cast<const IcpPrepareCapable*>(mmap.get()); ipc)
+            {
+                ipc->icp_get_prepared_as_local(state.currentSolution.optimalPose);
+            }
+        }
 
         // Matchings
         // ---------------------------------------
@@ -478,8 +488,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$GLOBAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcGlobal && log.pcGlobal->id.has_value()) ? log.pcGlobal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
@@ -493,8 +503,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$LOCAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcLocal && log.pcLocal->id.has_value()) ? log.pcLocal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
