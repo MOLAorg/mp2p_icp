@@ -47,6 +47,8 @@ class NearestPointWithCovCapable
     virtual void nn_search_cov2cov(
         const NearestPointWithCovCapable& localMap, const mrpt::poses::CPose3D& localMapPose,
         const float max_search_distance, MatchedPointWithCovList& outPairings) const = 0;
+
+    [[nodiscard]] virtual std::size_t point_count() const = 0;
 };
 
 /** @} */

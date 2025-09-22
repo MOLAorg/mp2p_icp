@@ -137,6 +137,7 @@ void Pairings::push_back(const Pairings& o)
     push_back_copy(o.paired_pt2pl, paired_pt2pl);
     push_back_copy(o.paired_ln2ln, paired_ln2ln);
     push_back_copy(o.paired_pl2pl, paired_pl2pl);
+    push_back_copy(o.paired_cov2cov, paired_cov2cov);
     potential_pairings += o.potential_pairings;
 }
 
@@ -147,6 +148,7 @@ void Pairings::push_back(Pairings&& o)
     push_back_move(std::move(o.paired_pt2pl), paired_pt2pl);
     push_back_move(std::move(o.paired_ln2ln), paired_ln2ln);
     push_back_move(std::move(o.paired_pl2pl), paired_pl2pl);
+    push_back_move(std::move(o.paired_cov2cov), paired_cov2cov);
     potential_pairings = o.potential_pairings;
 }
 
@@ -187,6 +189,7 @@ std::string Pairings::contents_summary() const
     append_container_size(paired_pt2pl, "point-plane", ret);
     append_container_size(paired_ln2ln, "line-line", ret);
     append_container_size(paired_pl2pl, "plane-plane", ret);
+    append_container_size(paired_cov2cov, "cov-cov", ret);
     ret += " out of "s + std::to_string(potential_pairings);
 
     return ret;
@@ -211,7 +214,10 @@ void Pairings::get_visualization_pt2pt(
     mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
     const render_params_pairings_pt2pt_t& p) const
 {
-    if (!p.visible) return;
+    if (!p.visible)
+    {
+        return;
+    }
 
     auto lns = mrpt::opengl::CSetOfLines::Create();
     lns->setColor_u8(p.color);
@@ -230,7 +236,10 @@ void Pairings::get_visualization_pt2pl(
     mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
     const render_params_pairings_pt2pl_t& p) const
 {
-    if (!p.visible) return;
+    if (!p.visible)
+    {
+        return;
+    }
 
     auto lns = mrpt::opengl::CSetOfLines::Create();
     lns->setColor_u8(p.segmentColor);

@@ -11,9 +11,10 @@
                          and individual contributors.
  SPDX-License-Identifier: BSD-3-Clause
 */
+
 /**
  * @file   optimal_tf_gauss_newton.cpp
- * @brief  Simple non-linear optimizer to find the SE(3) optimal transformation
+ * @brief  Iterative non-linear optimizer for the optimal SE(3) transformation from diverse pairings
  * @author Jose Luis Blanco Claraco
  * @date   Jun 16, 2019
  */
@@ -50,11 +51,12 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     const robust_sqrt_weight_func_t robustSqrtWeightFunc =
         mp2p_icp::create_robust_kernel(gnParams.kernel, gnParams.kernelParam);
 
-    const auto nPt2Pt = in.paired_pt2pt.size();
-    const auto nPt2Ln = in.paired_pt2ln.size();
-    const auto nPt2Pl = in.paired_pt2pl.size();
-    const auto nPl2Pl = in.paired_pl2pl.size();
-    const auto nLn2Ln = in.paired_ln2ln.size();
+    const auto nPt2Pt   = in.paired_pt2pt.size();
+    const auto nCov2Cov = in.paired_cov2cov.size();
+    const auto nPt2Ln   = in.paired_pt2ln.size();
+    const auto nPt2Pl   = in.paired_pt2pl.size();
+    const auto nPl2Pl   = in.paired_pl2pl.size();
+    const auto nLn2Ln   = in.paired_ln2ln.size();
 
     // Note: Using Matrix<N,1> instead of Vector<N> for compatibility
     //       with Eigen<=3.4 in ROS Noetic.
@@ -187,6 +189,63 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             g.noalias() += weight * Ji.transpose() * err_i;
             H.noalias() += weight * Ji.transpose() * Ji;
         }
+#endif
+
+        //
+        // ============== cov-to-cov ===============
+        //
+#if defined(MP2P_HAS_TBB)
+        const auto& [H_tbb_cov2cov, g_tbb_cov2cov] = tbb::parallel_reduce(
+            // Range
+            tbb::blocked_range<size_t>{0, nCov2Cov},
+            // Identity
+            Result(),
+            // 1st lambda: Parallel computation
+            [&](const tbb::blocked_range<size_t>& r, Result res) -> Result
+            {
+                auto& [H_local, g_local] = res;
+                for (size_t idx_pairing = r.begin(); idx_pairing < r.end(); idx_pairing++)
+                {
+                    // Error:
+                    const auto&                             p = in.paired_cov2cov[idx_pairing];
+                    mrpt::math::CMatrixFixed<double, 3, 12> J1;
+
+                    MRPT_TODO("Refactor this!");
+                    mrpt::tfest::TMatchingPair auxP;
+                    auxP.local  = p.local;
+                    auxP.global = p.global;
+                    mrpt::math::CVectorFixedDouble<3> ret =
+                        mp2p_icp::error_point2point(auxP, result.optimalPose, J1);
+
+                    const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
+
+                    // Apply robust kernel?
+                    double weight     = 1.0;
+                    double retSqrNorm = ret.transpose() * cov_inv * ret.asEigen();
+                    if (robustSqrtWeightFunc)
+                    {
+                        weight *= robustSqrtWeightFunc(retSqrNorm);
+                    }
+
+                    // Error and Jacobian:
+                    const Eigen::Vector3d err_i = ret.asEigen();
+                    errNormSqr += weight * retSqrNorm;
+
+                    const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
+                    MRPT_TODO("Check this! may it be sqrt(cov_inv)?");
+                    g_local.noalias() += weight * Ji.transpose() * cov_inv * err_i;
+                    H_local.noalias() += weight * Ji.transpose() * cov_inv * Ji;
+                }
+                return res;
+            },
+            // 2nd lambda: Parallel reduction
+            [](Result a, const Result& b) -> Result { return a + b; });
+
+        H = std::move(H_tbb_cov2cov);
+        g = std::move(g_tbb_cov2cov);
+#else
+        THROW_EXCEPTION("Write me!");
+
 #endif
 
         //

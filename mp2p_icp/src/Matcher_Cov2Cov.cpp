@@ -79,6 +79,8 @@ bool Matcher_Cov2Cov::impl_match(
                 lcLayerMap->GetRuntimeClass()->className);
         }
 
+        out.potential_pairings += lcLayer->point_count();
+
         // matcher implementation:
         glLayer->nn_search_cov2cov(*lcLayer, localPose, this->threshold, out.paired_cov2cov);
     }
