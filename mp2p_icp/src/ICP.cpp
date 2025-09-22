@@ -629,7 +629,8 @@ void ICP::initialize_matchers(const mrpt::containers::yaml& params, matcher_list
 
         const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
-        ASSERT_(o);
+        ASSERTMSG_(
+            o, mrpt::format("`%s` matcher class seems not to be registered", sClass.c_str()));
 
         auto m = std::dynamic_pointer_cast<Matcher>(o);
         ASSERTMSG_(

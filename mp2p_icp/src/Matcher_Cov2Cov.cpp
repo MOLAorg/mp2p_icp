@@ -23,10 +23,12 @@
 
 using namespace mp2p_icp;
 
+IMPLEMENTS_MRPT_OBJECT(Matcher_Cov2Cov, Matcher, mp2p_icp)
+
 bool Matcher_Cov2Cov::impl_match(
     const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
-    const mrpt::poses::CPose3D& localPose, [[maybe_unused]] const MatchContext& mc, MatchState& ms,
-    Pairings& out) const
+    const mrpt::poses::CPose3D& localPose, [[maybe_unused]] const MatchContext& mc,
+    [[maybe_unused]] MatchState& ms, Pairings& out) const
 {
     MRPT_START
 

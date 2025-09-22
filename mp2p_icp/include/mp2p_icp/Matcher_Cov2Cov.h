@@ -35,6 +35,8 @@ namespace mp2p_icp
  */
 class Matcher_Cov2Cov : public Matcher
 {
+    DEFINE_MRPT_OBJECT(Matcher_Cov2Cov, mp2p_icp)
+
    public:
     Matcher_Cov2Cov() = default;
 
