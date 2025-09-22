@@ -38,24 +38,26 @@ class Matcher_Cov2Cov : public Matcher
    public:
     Matcher_Cov2Cov() = default;
 
-    /** Weights for each potential Local->Global layer matching.
-     * If empty, the output Pairings::point_weights
-     * will left empty (=all points have equal weight).
-     * \note Note: this field can be loaded from a configuration file via
-     * initializeLayerWeights().
+    /** Pairs of Local->Global layers to match.
+     * \note Note: this field can be loaded from a configuration file via initialize().
      *
-     * \note Map is: w["globalLayer"]["localLayer"]=weight;
+     * \note Map is: { {"globalLayer", "localLayer"} [,...] }
      *
      */
-    std::map<std::string, std::map<std::string, double>> weight_pt2pt_layers;
+    std::vector<std::pair<std::string, std::string>> layer_matches;
 
     /** The additional "margin" in all axes (x,y,z) that bounding box is
      * enlarged for checking the feasibility of pairings to exist. */
-    float bounding_box_intersection_check_epsilon_ = 0.20f;
+    float bounding_box_intersection_check_epsilon = 0.20f;
+
+    /** Inliers distance threshold [meters] */
+    float threshold = 0.40f;
 
     /** Common parameters to all derived classes:
      *
-     * - `pointLayerMatches`: Optional map of layer names to relative weights.
+     * - `threshold`: Inliers distance threshold [meters][mandatory]
+     *
+     * - `layerMatches`: Optional map of layer names to match.
      *  Refer to example YAML files.
      *
      * - `bounding_box_intersection_check_epsilon`: Optional (Default=0.20). The
@@ -68,7 +70,7 @@ class Matcher_Cov2Cov : public Matcher
     bool impl_match(
         const metric_map_t& pcGlobal, const metric_map_t& pcLocal,
         const mrpt::poses::CPose3D& localPose, const MatchContext& mc, MatchState& ms,
-        Pairings& out) const override final;
+        Pairings& out) const override;
 };
 
 }  // namespace mp2p_icp

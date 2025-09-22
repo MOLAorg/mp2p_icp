@@ -21,10 +21,6 @@
 #include <mp2p_icp/Matcher_Cov2Cov.h>
 #include <mp2p_icp/NearestPointWithCovCapable.h>
 
-#if defined(MP2P_HAS_TBB)
-#include <tbb/parallel_for.h>
-#endif
-
 using namespace mp2p_icp;
 
 bool Matcher_Cov2Cov::impl_match(
@@ -36,85 +32,55 @@ bool Matcher_Cov2Cov::impl_match(
 
     out = Pairings();
 
-    // Analyze point cloud layers, one by one:
-    for (const auto& glLayerKV : pcGlobal.layers)
+    // TODO: Add option to allow layer matches not found not to trigger an error?
+
+    // Analyze layer pairs:
+    for (const auto& [globalLayerName, localLayerName] : layer_matches)
     {
-        const auto& glLayerName = glLayerKV.first;
-
-        // List of local layers to match against (and optional weights)
-        std::map<std::string, std::optional<double>> localLayers;
-
-        if (!weight_pt2pt_layers.empty())
+        auto itLocal = pcLocal.layers.find(localLayerName);
+        if (itLocal == pcLocal.layers.end())
         {
-            const auto itGlob = weight_pt2pt_layers.find(glLayerName);
-            // If we have weights and this layer is not listed, Skip it:
-            if (itGlob == weight_pt2pt_layers.end())
-            {
-                continue;
-            }
-
-            for (const auto& kv : itGlob->second)
-            {
-                localLayers[kv.first] = kv.second;
-            }
-        }
-        else
-        {
-            // Default: match by identical layer names:
-            localLayers[glLayerName] = {};
+            THROW_EXCEPTION_FMT(
+                "Local layer '%s' not found trying to matching global layer '%s'",
+                localLayerName.c_str(), globalLayerName.c_str());
         }
 
-        for (const auto& localWeight : localLayers)
+        auto itGlobal = pcGlobal.layers.find(globalLayerName);
+        if (itGlobal == pcLocal.layers.end())
         {
-            const auto& localLayerName = localWeight.first;
-            const bool  hasWeight      = localWeight.second.has_value();
-
-            // Look for a matching layer in "local":
-            auto itLocal = pcLocal.layers.find(localLayerName);
-            if (itLocal == pcLocal.layers.end())
-            {
-                // Silently ignore it:
-                if (!hasWeight)
-                {
-                    continue;
-                }
-
-                THROW_EXCEPTION_FMT(
-                    "Local pointcloud layer '%s' not found matching global "
-                    "layer '%s'",
-                    localLayerName.c_str(), glLayerName.c_str());
-            }
-
-            const mrpt::maps::CMetricMap::Ptr& glLayer = glLayerKV.second;
-            ASSERT_(glLayer);
-
-            const mrpt::maps::CMetricMap::Ptr& lcLayerMap = itLocal->second;
-            ASSERT_(lcLayerMap);
-
-            const auto lcLayer =
-                std::dynamic_pointer_cast<mp2p_icp::NearestPointWithCovCapable>(lcLayerMap);
-            if (!lcLayer)
-            {
-                THROW_EXCEPTION_FMT(
-                    "Local layer map must implement mp2p_icp::NearestPointWithCovCapable, but "
-                    "found type '%s'",
-                    lcLayerMap->GetRuntimeClass()->className);
-            }
-
-            const size_t nBefore = out.paired_pt2pt.size();
-
-            // matcher implementation:
-            implMatchOneLayer(*glLayer, *lcLayer, localPose, ms, glLayerName, localLayerName, out);
-
-            const size_t nAfter = out.paired_pt2pt.size();
-
-            if (hasWeight && nAfter != nBefore)
-            {
-                const double w = localWeight.second.value();
-                out.point_weights.emplace_back(nAfter - nBefore, w);
-            }
+            THROW_EXCEPTION_FMT(
+                "Global layer '%s' not found trying to matching local layer '%s'",
+                globalLayerName.c_str(), localLayerName.c_str());
         }
+
+        const mrpt::maps::CMetricMap::Ptr& glLayerMap = itGlobal->second;
+        ASSERT_(glLayerMap);
+        const auto glLayer =
+            std::dynamic_pointer_cast<mp2p_icp::NearestPointWithCovCapable>(glLayerMap);
+        if (!glLayer)
+        {
+            THROW_EXCEPTION_FMT(
+                "Global layer map must implement mp2p_icp::NearestPointWithCovCapable, but "
+                "found type '%s'",
+                glLayerMap->GetRuntimeClass()->className);
+        }
+
+        const mrpt::maps::CMetricMap::Ptr& lcLayerMap = itLocal->second;
+        ASSERT_(lcLayerMap);
+        const auto lcLayer =
+            std::dynamic_pointer_cast<mp2p_icp::NearestPointWithCovCapable>(lcLayerMap);
+        if (!lcLayer)
+        {
+            THROW_EXCEPTION_FMT(
+                "Local layer map must implement mp2p_icp::NearestPointWithCovCapable, but "
+                "found type '%s'",
+                lcLayerMap->GetRuntimeClass()->className);
+        }
+
+        // matcher implementation:
+        glLayer->nn_search_cov2cov(*lcLayer, localPose, this->threshold, out.paired_cov2cov);
     }
+
     return true;
     MRPT_END
 }
@@ -123,15 +89,18 @@ void Matcher_Cov2Cov::initialize(const mrpt::containers::yaml& params)
 {
     Matcher::initialize(params);
 
-    if (params.has("pointLayerMatches"))
-    {
-        auto& p = params["pointLayerMatches"];
+    MCP_LOAD_REQ(params, threshold);
+    MCP_LOAD_OPT(params, bounding_box_intersection_check_epsilon);
 
-        weight_pt2pt_layers.clear();
+    if (params.has("layerMatches"))
+    {
+        auto& p = params["layerMatches"];
+
+        layer_matches.clear();
         ASSERT_(p.isSequence());
 
-        // - {global: "raw", local: "decimated", weight: 1.0}
-        // - {global: "raw", local: "decimated", weight: 1.0}
+        // - {global: "raw", local: "decimated"}
+        // - {global: "raw", local: "decimated"}
         // ...
 
         for (const auto& entry : p.asSequence())
@@ -144,12 +113,8 @@ void Matcher_Cov2Cov::initialize(const mrpt::containers::yaml& params)
 
             const std::string globalLayer = em.at("global").as<std::string>();
             const std::string localLayer  = em.at("local").as<std::string>();
-            const double      w = em.count("weight") != 0 ? em.at("weight").as<double>() : 1.0;
 
-            weight_pt2pt_layers[globalLayer][localLayer] = w;
+            layer_matches.emplace_back(globalLayer, localLayer);
         }
     }
-
-    bounding_box_intersection_check_epsilon_ = params.getOrDefault(
-        "bounding_box_intersection_check_epsilon", bounding_box_intersection_check_epsilon_);
 }

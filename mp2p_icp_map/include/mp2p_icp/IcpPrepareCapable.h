@@ -46,11 +46,6 @@ class IcpPrepareCapable
         const mrpt::poses::CPose3D&                     icp_ref_point,
         const std::optional<mrpt::math::TBoundingBoxf>& local_map_roi = std::nullopt) const = 0;
 
-    /** Prepare the local map for ICP with a given pose as the current ICP estimate for local map
-     * This will be called once before each ICP iteration.
-     */
-    virtual void icp_get_prepared_as_local(const mrpt::poses::CPose3D& icp_ref_point) const = 0;
-
     /// Optionally, clean up after ICP is done.
     virtual void icp_cleanup() const {}
 };

@@ -24,6 +24,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/NearestPointWithCovCapable.h
   include/mp2p_icp/plane_patch.h
   include/mp2p_icp/point_plane_pair_t.h
+  include/mp2p_icp/point_with_cov_pair_t.h
   include/mp2p_icp/pointcloud_bitfield.h
   include/mp2p_icp/pointcloud_sanity_check.h
   include/mp2p_icp/render_params.h

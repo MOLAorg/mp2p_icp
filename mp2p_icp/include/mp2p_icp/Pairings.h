@@ -21,6 +21,7 @@
 
 #include <mp2p_icp/plane_patch.h>
 #include <mp2p_icp/point_plane_pair_t.h>
+#include <mp2p_icp/point_with_cov_pair_t.h>
 #include <mp2p_icp/render_params.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/TLine3D.h>
@@ -73,25 +74,6 @@ struct point_line_pair_t
 };
 
 using MatchedPointLineList = std::vector<point_line_pair_t>;
-
-/** point-with-cov correspondences */
-struct point_with_cov_pair_t
-{
-    mrpt::math::TPoint3Df global;
-    mrpt::math::TPoint3Df local;
-    uint32_t              global_idx = std::numeric_limits<uint32_t>::max();
-    uint32_t              local_idx  = std::numeric_limits<uint32_t>::max();
-
-    /** The Mahalanobis distance weight matrix.
-     * Following GICP \cite segal2009gicp this should be:
-     *  `(COV_{global} + R*COV_{local}*R^T)^{-1}`
-     */
-    mrpt::math::CMatrixFloat33 cov_inv;
-
-    DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::point_with_cov_pair_t)
-};
-
-using MatchedPointWithCovList = std::vector<point_with_cov_pair_t>;
 
 /** Common pairing input data for OLAE, Horn's, and other solvers.
  * Planes and lines must have unit director and normal vectors, respectively.

@@ -20,10 +20,9 @@
  */
 #pragma once
 
+#include <mp2p_icp/point_with_cov_pair_t.h>
 #include <mrpt/math/CMatrixFixed.h>
-#include <mrpt/math/TPoint3D.h>
-
-#include <optional>
+#include <mrpt/poses/CPose3D.h>
 
 namespace mp2p_icp
 {
@@ -42,20 +41,12 @@ class NearestPointWithCovCapable
     NearestPointWithCovCapable(NearestPointWithCovCapable&&)                 = default;
     NearestPointWithCovCapable& operator=(NearestPointWithCovCapable&&)      = default;
 
-    struct NearestPointCovResult
-    {
-        NearestPointCovResult() = default;
-
-        /// Found pairing and its covariance (both in the "global" frame of reference):
-        mrpt::math::TPoint3Df       point;
-        mrpt::math::CMatrixDouble33 cov;
-
-        /// Absolute value of plane-point distance, if a pairing is found:
-        float distance = 0;
-    };
-
-    virtual std::optional<NearestPointCovResult> nn_search_pt2pl(
-        const mrpt::math::TPoint3Df& point, const float max_search_distance) const = 0;
+    /** Implements search for pairings between me ("global") and another ("local") map
+     * outPairings may not be empty, so implementations must add values here, never clear it.
+     */
+    virtual void nn_search_cov2cov(
+        const NearestPointWithCovCapable& localMap, const mrpt::poses::CPose3D& localMapPose,
+        const float max_search_distance, MatchedPointWithCovList& outPairings) const = 0;
 };
 
 /** @} */

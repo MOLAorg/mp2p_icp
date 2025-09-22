@@ -187,15 +187,6 @@ void ICP::align(
         }
         lambdaRealizeParamSources();
 
-        // Let local layers that we are about to start ICP:
-        for (const auto& [layer, mmap] : pcLocal.layers)
-        {
-            if (auto* ipc = dynamic_cast<const IcpPrepareCapable*>(mmap.get()); ipc)
-            {
-                ipc->icp_get_prepared_as_local(state.currentSolution.optimalPose);
-            }
-        }
-
         // Matchings
         // ---------------------------------------
         MatchContext mc;
