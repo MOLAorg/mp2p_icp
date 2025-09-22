@@ -287,7 +287,10 @@ void ICP::align(
             (p.decimationIterationDetails == 0 ||
              state.currentIteration % p.decimationIterationDetails == 0 || stalled))
         {
-            if (!currentLog->iterationsDetails.has_value()) currentLog->iterationsDetails.emplace();
+            if (!currentLog->iterationsDetails.has_value())
+            {
+                currentLog->iterationsDetails.emplace();
+            }
 
             auto& id       = currentLog->iterationsDetails.value()[state.currentIteration];
             id.optimalPose = state.currentSolution.optimalPose;
@@ -315,7 +318,10 @@ void ICP::align(
         {
             const double minQuality = itQ->second;
 
-            for (auto& e : quality_evaluators_) lambdaAddOwnParams(*e.obj);
+            for (auto& e : quality_evaluators_)
+            {
+                lambdaAddOwnParams(*e.obj);
+            }
             lambdaRealizeParamSources();
 
             const double quality = evaluate_quality(
@@ -443,7 +449,9 @@ void ICP::align(
 
         // return log info:
         if (outputDebugInfo.has_value())
+        {
             outputDebugInfo.value().get() = std::move(currentLog.value());
+        }
     }
 
     MRPT_END
@@ -453,7 +461,10 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
 {
     using namespace std::string_literals;
 
-    if (!p.generateDebugFiles) return;
+    if (!p.generateDebugFiles)
+    {
+        return;
+    }
 
     // global log file record counter:
     static unsigned int logFileCounter = 0;
@@ -465,7 +476,9 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
         RECORD_UNIQUE_ID = logFileCounter++;
 
         if (p.decimationDebugFiles > 1 && (RECORD_UNIQUE_ID % p.decimationDebugFiles) != 0)
+        {
             return;  // skip due to decimation
+        }
     }
 
     std::string filename = p.debugFileNameFormat;
@@ -541,7 +554,10 @@ bool ICP::run_solvers(
     for (const auto& solver : solvers)
     {
         ASSERT_(solver);
-        if (solver->optimal_pose(pairings, out, sc)) return true;
+        if (solver->optimal_pose(pairings, out, sc))
+        {
+            return true;
+        }
     }
     return false;
 }
