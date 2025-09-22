@@ -9,6 +9,7 @@ set(LIB_SRCS
   src/metricmap.cpp
   src/NearestPlaneCapable.cpp
   src/NearestPointWithCovCapable.cpp
+  src/point_with_cov_pair_t.cpp
   src/pointcloud_sanity_check.cpp
   #
   src/register.cpp # This must be last

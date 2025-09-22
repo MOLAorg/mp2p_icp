@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <vector>
 
 namespace mp2p_icp
@@ -45,6 +46,9 @@ struct point_with_cov_pair_t
      *  `(COV_{global} + R*COV_{local}*R^T)^{-1}`
      */
     mrpt::math::CMatrixFloat33 cov_inv;
+
+    /** Retuns a printable description of the structure, mostly for debugging */
+    std::string asString() const;
 
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::point_with_cov_pair_t)
 };
