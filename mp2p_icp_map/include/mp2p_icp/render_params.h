@@ -218,8 +218,8 @@ struct render_params_pairings_cov2cov_t
     bool visible = false;
 
     mrpt::img::TColor segmentColor{0x00, 0xff, 0x00, 0xa0};
-    mrpt::img::TColor covColor{0x00, 0xff, 0x00, 0x80};
-    double            covScale = 0.2;
+    mrpt::img::TColor covColor{0x00, 0x00, 0xff, 0x20};
+    double            covScale = 0.1;
 };
 
 struct render_params_pairings_pt2ln_t

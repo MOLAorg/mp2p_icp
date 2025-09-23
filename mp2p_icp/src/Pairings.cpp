@@ -19,6 +19,7 @@
  */
 
 #include <mp2p_icp/Pairings.h>
+#include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CSetOfLines.h>
 #include <mrpt/opengl/CSetOfObjects.h>
 #include <mrpt/opengl/CTexturedPlane.h>
@@ -87,7 +88,7 @@ std::tuple<mrpt::math::TPoint3D, mrpt::math::TPoint3D> mp2p_icp::eval_centroids_
 
     // Normalized weights for centroids.
     // Discount outliers.
-    const double wcPoints = 1.0 / (nPt2Pt - outliers.point2point.size());
+    const double wcPoints = 1.0 / static_cast<double>(nPt2Pt - outliers.point2point.size());
 
     // Add global coordinate of points for now, we'll convert them later to
     // unit vectors relative to the centroids:
@@ -205,6 +206,7 @@ auto Pairings::get_visualization(
     get_visualization_pt2pt(*o, localWrtGlobal, p.pt2pt);
     get_visualization_pt2pl(*o, localWrtGlobal, p.pt2pl);
     get_visualization_pt2ln(*o, localWrtGlobal, p.pt2ln);
+    get_visualization_cov2cov(*o, localWrtGlobal, p.cov2cov);
 
     return o;
     MRPT_END
@@ -244,7 +246,7 @@ void Pairings::get_visualization_pt2pl(
     auto lns = mrpt::opengl::CSetOfLines::Create();
     lns->setColor_u8(p.segmentColor);
 
-    const double L = 0.5 * p.planePatchSize;
+    const float L = 0.5f * static_cast<float>(p.planePatchSize);
 
     for (const auto& pair : paired_pt2pl)
     {
@@ -282,8 +284,6 @@ void Pairings::get_visualization_cov2cov(
     auto lns = mrpt::opengl::CSetOfLines::Create();
     lns->setColor_u8(p.segmentColor);
 
-    // const double L = p.covScale;
-
     for (const auto& pair : paired_cov2cov)
     {
         const auto ptLocal   = pair.local;
@@ -291,6 +291,24 @@ void Pairings::get_visualization_cov2cov(
 
         // line segment:
         lns->appendLine(ptLocalTf, pair.global);
+
+        // covariance:
+        try
+        {
+            auto glEllipse = mrpt::opengl::CEllipsoid3D::Create();
+            glEllipse->setLocation(pair.global.x, pair.global.y, pair.global.z);
+            auto cov = pair.cov_inv.inverse().cast_double();
+            cov *= p.covScale;
+            glEllipse->setCovMatrix(cov);
+            glEllipse->set3DsegmentsCount(6);
+            glEllipse->setColor_u8(p.covColor);
+
+            o.insert(glEllipse);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error rendering cov2cov ellipsoid for: " << pair.asString() << "\n";
+        }
     }
 
     o.insert(lns);
