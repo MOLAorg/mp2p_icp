@@ -41,8 +41,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
     MRPT_START
 
-    // Run Gauss-Newton steps, using SE(3) relinearization at the current
-    // solution:
+    // Run Gauss-Newton steps, using SE(3) relinearization at the current solution:
     ASSERTMSG_(
         gnParams.linearizationPoint.has_value(), "This method requires a linearization point");
 
@@ -217,11 +216,13 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     mrpt::math::CVectorFixedDouble<3> ret =
                         mp2p_icp::error_point2point(auxP, result.optimalPose, J1);
 
-                    const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
+                    const Eigen::Matrix3d cov_inv      = p.cov_inv.asEigen().cast<double>();
+                    const Eigen::Matrix3d cov_inv_sqrt = p.cov_inv_sqrt.asEigen().cast<double>();
 
                     // Apply robust kernel?
                     double weight     = 1.0;
                     double retSqrNorm = ret.transpose() * cov_inv * ret.asEigen();
+
                     if (robustSqrtWeightFunc)
                     {
                         weight *= robustSqrtWeightFunc(retSqrNorm);
@@ -232,9 +233,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     errNormSqr += weight * retSqrNorm;
 
                     const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
-                    MRPT_TODO("Check this! may it be sqrt(cov_inv)?");
-                    g_local.noalias() += weight * Ji.transpose() * cov_inv * err_i;
-                    H_local.noalias() += weight * Ji.transpose() * cov_inv * Ji;
+
+                    // Whitening: multiply times \Sigma^{-1/2}
+                    g_local.noalias() += weight * Ji.transpose() * cov_inv_sqrt * err_i;
+                    H_local.noalias() += weight * Ji.transpose() * cov_inv_sqrt * Ji;
                 }
                 return res;
             },
@@ -244,10 +246,44 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         H = std::move(H_tbb_cov2cov);
         g = std::move(g_tbb_cov2cov);
 #else
-        THROW_EXCEPTION("Write me!");
+        // Cov-to-cov:
+        for (size_t idx_pairing = 0; idx_pairing < nCov2Cov; idx_pairing++)
+        {
+            // Error:
+            const auto&                             p = in.paired_cov2cov[idx_pairing];
+            mrpt::math::CMatrixFixed<double, 3, 12> J1;
 
+            // TODO: Refactor this (same as in TBB branch)
+            mrpt::tfest::TMatchingPair auxP;
+            auxP.local  = p.local;
+            auxP.global = p.global;
+
+            mrpt::math::CVectorFixedDouble<3> ret =
+                mp2p_icp::error_point2point(auxP, result.optimalPose, J1);
+
+            const Eigen::Matrix3d cov_inv      = p.cov_inv.asEigen().cast<double>();
+            const Eigen::Matrix3d cov_inv_sqrt = p.cov_inv_sqrt.asEigen().cast<double>();
+
+            // Apply robust kernel?
+            double weight     = 1.0;
+            double retSqrNorm = ret.transpose() * cov_inv * ret.asEigen();
+
+            if (robustSqrtWeightFunc)
+            {
+                weight *= robustSqrtWeightFunc(retSqrNorm);
+            }
+
+            // Error and Jacobian:
+            const Eigen::Vector3d err_i = ret.asEigen();
+            errNormSqr += weight * retSqrNorm;
+
+            const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
+
+            // Whitening: multiply by Σ^{-1/2}
+            g.noalias() += weight * Ji.transpose() * cov_inv_sqrt * err_i;
+            H.noalias() += weight * Ji.transpose() * cov_inv_sqrt * Ji;
+        }
 #endif
-
         //
         // ============== Point-to-line ===============
         //

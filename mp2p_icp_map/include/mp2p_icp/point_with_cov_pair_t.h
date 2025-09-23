@@ -47,6 +47,9 @@ struct point_with_cov_pair_t
      */
     mrpt::math::CMatrixFloat33 cov_inv;
 
+    /** The square root of cov_inv, that is, \f$ \Sigma^{-1/2} \f$ */
+    mrpt::math::CMatrixFloat33 cov_inv_sqrt;
+
     /** Retuns a printable description of the structure, mostly for debugging */
     std::string asString() const;
 
