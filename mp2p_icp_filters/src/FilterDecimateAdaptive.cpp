@@ -23,6 +23,11 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/round.h>
 
+#if defined(MP2P_HAS_TBB)
+#include <tbb/enumerable_thread_specific.h>
+#include <tbb/parallel_for.h>
+#endif
+
 IMPLEMENTS_MRPT_OBJECT(FilterDecimateAdaptive, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
@@ -36,9 +41,19 @@ void FilterDecimateAdaptive::Parameters::load_from_yaml(const mrpt::containers::
 
     MCP_LOAD_OPT(c, voxel_size);
     MCP_LOAD_OPT(c, minimum_input_points_per_voxel);
+    MCP_LOAD_OPT(c, parallelization_grain_size);
 }
 
-FilterDecimateAdaptive::FilterDecimateAdaptive()
+struct FilterDecimateAdaptive::Impl
+{
+#if defined(MP2P_HAS_TBB)
+    tbb::enumerable_thread_specific<PointCloudToVoxelGrid> tls;
+#else
+    PointCloudToVoxelGrid filter_grid;
+#endif
+};
+
+FilterDecimateAdaptive::FilterDecimateAdaptive() : impl_(mrpt::make_impl<Impl>())
 {
     mrpt::system::COutputLogger::setLoggerName("FilterDecimateAdaptive");
 }
@@ -86,13 +101,6 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     outPc->reserve(outPc->size() + _.desired_output_point_count);
 
-    // Estimate voxel size dynamically from the input cloud:
-    filter_grid_.clear();
-
-    // Parse input cloud through subsampling:
-    filter_grid_.setConfiguration(params.voxel_size, true);
-    filter_grid_.processPointCloud(pc);
-
     struct DataPerVoxel
     {
         const PointCloudToVoxelGrid::voxel_t* voxel     = nullptr;
@@ -102,23 +110,69 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     // A list of all "valid" voxels:
     std::vector<DataPerVoxel> voxels;
-    voxels.reserve(filter_grid_.size());
 
     std::size_t nTotalVoxels = 0;
-    filter_grid_.visit_voxels(
-        [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& data)
-        {
-            if (!data.indices.empty())
-            {
-                nTotalVoxels++;
-            }
-            if (data.indices.size() < _.minimum_input_points_per_voxel)
-            {
-                return;
-            }
 
-            voxels.emplace_back().voxel = &data;
+    const auto lambdaVisitVoxel =
+        [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& data)
+    {
+        if (!data.indices.empty())
+        {
+            nTotalVoxels++;
+        }
+        if (data.indices.size() < _.minimum_input_points_per_voxel)
+        {
+            return;
+        }
+
+        voxels.emplace_back().voxel = &data;
+    };
+
+    // Parse input cloud through subsampling:
+#if defined(MP2P_HAS_TBB)
+
+    // Clear from past runs:
+    for (auto& grid : impl_->tls)
+    {
+        grid.setConfiguration(params.voxel_size, true);
+    }
+
+    const auto pointCount = pc.size();
+
+    const size_t grainsize = params.parallelization_grain_size;  // minimum block size hint
+
+    tbb::parallel_for(
+        tbb::blocked_range<size_t>(0, pointCount, grainsize),
+        [&](const tbb::blocked_range<size_t>& r)
+        {
+            const auto start  = r.begin();
+            const auto length = r.end() - r.begin();
+
+            bool  tls_exists;
+            auto& grid = impl_->tls.local(tls_exists);
+            if (!tls_exists)
+            {
+                // Configure for first time:
+                grid.setConfiguration(params.voxel_size, true);
+            }
+            grid.processPointCloud(pc, start, length);
         });
+
+    for (auto& grid : impl_->tls)
+    {
+        grid.visit_voxels(lambdaVisitVoxel);
+    }
+
+#else
+    impl_->filter_grid.clear();
+    impl_->filter_grid.setConfiguration(params.voxel_size, true);
+    impl_->filter_grid.processPointCloud(pc);
+
+    voxels.reserve(impl_->filter_grid.size());
+
+    impl_->filter_grid.visit_voxels(lambdaVisitVoxel);
+
+#endif
 
     // Perform resampling:
     // -------------------

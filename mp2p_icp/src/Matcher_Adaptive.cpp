@@ -69,7 +69,10 @@ void Matcher_Adaptive::implMatchOneLayer(
     out.potential_pairings += pcLocal.size() * maxPt2PtCorrespondences;
 
     // Empty maps?  Nothing to do
-    if (pcGlobalMap.isEmpty() || pcLocal.empty()) return;
+    if (pcGlobalMap.isEmpty() || pcLocal.empty())
+    {
+        return;
+    }
 
     const TransformedLocalPointCloud tl = transform_local_to_global(pcLocal, localPose);
 

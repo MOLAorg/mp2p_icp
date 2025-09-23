@@ -23,6 +23,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
+#include <mrpt/core/pimpl.h>
 #include <mrpt/maps/CPointsMap.h>
 
 namespace mp2p_icp_filters
@@ -63,13 +64,21 @@ class FilterDecimateAdaptive : public mp2p_icp_filters::FilterBase
         unsigned int minimum_input_points_per_voxel = 1;
 
         float voxel_size = 0.10;
+
+        /// When TBB is enabled, the grainsize for splitting the input clouds into threads
+        size_t parallelization_grain_size = 16UL * 1024UL;
     };
 
     /** Algorithm parameters */
     Parameters params;
 
    private:
-    mutable PointCloudToVoxelGrid filter_grid_;
+    /** The PointCloudToVoxelGrid filter objects.
+     * Hidden inside a PIMP to allow TBB parallel implementation without polluting user headers with
+     * tbb.
+     */
+    struct Impl;
+    mutable mrpt::pimpl<Impl> impl_;
 };
 
 /** @} */
