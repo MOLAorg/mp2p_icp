@@ -216,6 +216,10 @@ struct render_params_pairings_cov2cov_t
     render_params_pairings_cov2cov_t() = default;
 
     bool visible = false;
+
+    mrpt::img::TColor segmentColor{0x00, 0xff, 0x00, 0xa0};
+    mrpt::img::TColor covColor{0x00, 0xff, 0x00, 0x80};
+    double            covScale = 0.2;
 };
 
 struct render_params_pairings_pt2ln_t
@@ -234,9 +238,10 @@ struct pairings_render_params_t
 {
     pairings_render_params_t() = default;
 
-    render_params_pairings_pt2pt_t pt2pt;
-    render_params_pairings_pt2pl_t pt2pl;
-    render_params_pairings_pt2ln_t pt2ln;
+    render_params_pairings_pt2pt_t   pt2pt;
+    render_params_pairings_pt2pl_t   pt2pl;
+    render_params_pairings_pt2ln_t   pt2ln;
+    render_params_pairings_cov2cov_t cov2cov;
 };
 
 /** @} */

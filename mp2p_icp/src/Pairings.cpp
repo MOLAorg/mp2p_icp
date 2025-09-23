@@ -271,17 +271,29 @@ void Pairings::get_visualization_pt2pl(
 }
 
 void Pairings::get_visualization_cov2cov(
-    [[maybe_unused]] mrpt::opengl::CSetOfObjects&            o,
-    [[maybe_unused]] const mrpt::poses::CPose3D&             localWrtGlobal,
-    [[maybe_unused]] const render_params_pairings_cov2cov_t& p) const
+    mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
+    const render_params_pairings_cov2cov_t& p) const
 {
     if (!p.visible)
     {
         return;
     }
 
-    // TODO!
-    THROW_EXCEPTION("To do!");
+    auto lns = mrpt::opengl::CSetOfLines::Create();
+    lns->setColor_u8(p.segmentColor);
+
+    // const double L = p.covScale;
+
+    for (const auto& pair : paired_cov2cov)
+    {
+        const auto ptLocal   = pair.local;
+        const auto ptLocalTf = localWrtGlobal.composePoint(ptLocal);
+
+        // line segment:
+        lns->appendLine(ptLocalTf, pair.global);
+    }
+
+    o.insert(lns);
 }
 
 void Pairings::get_visualization_pt2ln(
