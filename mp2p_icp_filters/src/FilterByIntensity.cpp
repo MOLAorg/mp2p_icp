@@ -35,10 +35,10 @@ void FilterByIntensity::Parameters::load_from_yaml(const mrpt::containers::yaml&
     MCP_LOAD_OPT(c, output_layer_mid_intensity);
 
     ASSERTMSG_(
-        !output_layer_low_intensity.empty() || !output_layer_low_intensity.empty() ||
+        !output_layer_low_intensity.empty() || !output_layer_high_intensity.empty() ||
             !output_layer_mid_intensity.empty(),
         "At least one of 'output_layer_low_intensity' or "
-        "'output_layer_low_intensity' or 'output_layer_mid_intensity' must be "
+        "'output_layer_high_intensity' or 'output_layer_mid_intensity' must be "
         "provided.");
 
     MCP_LOAD_REQ(c, low_threshold);
