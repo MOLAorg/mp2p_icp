@@ -33,6 +33,7 @@ void FilterByRange::Parameters::load_from_yaml(
     MCP_LOAD_REQ(c, input_pointcloud_layer);
     MCP_LOAD_OPT(c, output_layer_between);
     MCP_LOAD_OPT(c, output_layer_outside);
+    MCP_LOAD_OPT(c, metric_l_infinity);
     DECLARE_PARAMETER_IN_REQ(c, range_min, parent);
     DECLARE_PARAMETER_IN_REQ(c, range_max, parent);
 
@@ -112,10 +113,23 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
     for (size_t i = 0; i < xs.size(); i++)
     {
-        const float sqrNorm =
-            (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params.center).sqrNorm();
+        bool isInside;
 
-        const bool isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
+        if (params.metric_l_infinity)
+        {
+            const float lInfNorm = mrpt::max3(
+                std::abs(xs[i] - params.center.x), std::abs(ys[i] - params.center.y),
+                std::abs(zs[i] - params.center.z));
+
+            isInside = lInfNorm >= params.range_min && lInfNorm <= params.range_max;
+        }
+        else
+        {
+            const float sqrNorm =
+                (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params.center).sqrNorm();
+
+            isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
+        }
 
         auto* targetPc = isInside ? outBetween.get() : outOutside.get();
 
