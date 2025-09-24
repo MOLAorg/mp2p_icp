@@ -73,7 +73,10 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outLow) outLow->reserve(outLow->size() + pc.size() / 10);
+    if (outLow)
+    {
+        outLow->reserve(outLow->size() + pc.size() / 10);
+    }
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outHigh = GetOrCreatePointLayer(
@@ -81,7 +84,10 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outHigh) outHigh->reserve(outHigh->size() + pc.size() / 10);
+    if (outHigh)
+    {
+        outHigh->reserve(outHigh->size() + pc.size() / 10);
+    }
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outMid = GetOrCreatePointLayer(
@@ -89,7 +95,10 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outMid) outMid->reserve(outMid->size() + pc.size() / 10);
+    if (outMid)
+    {
+        outMid->reserve(outMid->size() + pc.size() / 10);
+    }
 
     ASSERTMSG_(
         outLow || outHigh || outMid,
@@ -138,7 +147,10 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
             ++countMid;
         }
 
-        if (trg) trg->insertPointFrom(pc, i);
+        if (trg)
+        {
+            trg->insertPointFrom(pc, i);
+        }
     }
 
     MRPT_LOG_DEBUG_STREAM(
