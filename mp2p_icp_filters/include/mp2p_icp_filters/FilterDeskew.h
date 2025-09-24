@@ -26,6 +26,7 @@
 #include <mp2p_icp_filters/PointCloudToVoxelGridSingle.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/math/TTwist3D.h>
+#include <mrpt/typemeta/TEnumType.h>
 
 namespace mp2p_icp_filters
 {
@@ -119,7 +120,7 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
     /** If enabled (true), the constant `twist` field is ignored and the precise twist trajectory
      *  is retrieved from the LocalVelocityBuffer from the ParameterSource attached to this block.
      */
-    bool use_precise_local_velocities = false;
+    MotionCompensationMethod method = MotionCompensationMethod::Linear;
 
     /** The velocity (linear and angular) of the vehicle in the local
      * vehicle frame. See FilterDeskew::initialize for an example of how
