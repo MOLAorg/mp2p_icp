@@ -206,10 +206,11 @@ Matcher_Points_Base::TransformedLocalPointCloud Matcher_Points_Base::transform_l
     tbb::parallel_for(
         static_cast<size_t>(0), nLocalPoints,
         [&](size_t i)
+        {
 #else
     for (size_t i = 0; i < nLocalPoints; i++)
+    {
 #endif
-        {
             localPose.composePoint(
                 lxs[i], lys[i], lzs[i], r.x_locals[i], r.y_locals[i], r.z_locals[i]);
         }
