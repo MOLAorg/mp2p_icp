@@ -18,6 +18,7 @@
  * @date   Jun 10, 2019
  */
 
+#include <mp2p_icp/MetricMapMergeCapable.h>
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/io/CFileGZInputStream.h>
@@ -461,7 +462,8 @@ void metric_map_t::clear() { *this = metric_map_t(); }
 void metric_map_t::merge_with(
     const metric_map_t& otherPc, const std::optional<mrpt::math::TPose3D>& otherRelativePose)
 {
-    mrpt::poses::CPose3D pose;
+    auto pose = mrpt::poses::CPose3D::Identity();
+
     if (otherRelativePose.has_value())
     {
         pose = mrpt::poses::CPose3D(otherRelativePose.value());
@@ -504,7 +506,7 @@ void metric_map_t::merge_with(
         std::copy(otherPc.planes.begin(), otherPc.planes.end(), std::back_inserter(planes));
     }
 
-    // Points:
+    // Generic map layers:
     for (const auto& layer : otherPc.layers)
     {
         const auto& name     = layer.first;
@@ -523,29 +525,41 @@ void metric_map_t::merge_with(
                 {
                     // Transform:
                     pts->changeCoordinatesReference(pose);
+                    continue;
                 }
-                else
+
+                if (auto mrg = std::dynamic_pointer_cast<MetricMapMergeCapable>(layers[name]); mrg)
                 {
-                    THROW_EXCEPTION(
-                        "Merging with SE(3) transform only available for "
-                        "metric maps of point cloud types.");
+                    // Transform:
+                    mrg->transform_map_left_multiply(pose);
+                    continue;
                 }
+                THROW_EXCEPTION(
+                    "Merging with SE(3) transform only available for metric maps of point "
+                    "cloud types or MetricMapMergeCapable.");
             }
         }
         else
-        {
-            // merge with existing layer:
+        {  // merge with existing layer:
             if (auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(layers[name]); pts)
             {
                 pts->insertAnotherMap(
                     std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(otherMap).get(), pose);
+                continue;
             }
-            else
+            auto mrg_trg = std::dynamic_pointer_cast<MetricMapMergeCapable>(layers[name]);
+            auto mrg_src = std::dynamic_pointer_cast<const MetricMapMergeCapable>(otherMap);
+
+            if (mrg_trg && mrg_src)
             {
-                THROW_EXCEPTION(
-                    "Merging with SE(3) transform only available for "
-                    "metric maps of point cloud types.");
+                // Transform:
+                mrg_trg->merge_with(*mrg_src, pose);
+                continue;
             }
+
+            THROW_EXCEPTION(
+                "Merging with SE(3) transform only available for metric maps of point "
+                "cloud types or MetricMapMergeCapable");
         }
     }
 }

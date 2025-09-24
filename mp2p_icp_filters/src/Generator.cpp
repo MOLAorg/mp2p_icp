@@ -39,6 +39,8 @@
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/system/filesystem.h>
 
+MRPT_TODO("Add a 'name' field, use for profiler and logger");
+
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;

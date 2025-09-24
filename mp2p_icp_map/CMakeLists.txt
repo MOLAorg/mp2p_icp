@@ -7,6 +7,7 @@ set(LIB_SRCS
   src/IcpPrepareCapable.cpp
   src/load_xyz_file.cpp
   src/metricmap.cpp
+  src/MetricMapMergeCapable.cpp
   src/NearestPlaneCapable.cpp
   src/NearestPointWithCovCapable.cpp
   src/point_with_cov_pair_t.cpp
@@ -21,6 +22,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/layer_name_t.h
   include/mp2p_icp/load_xyz_file.h
   include/mp2p_icp/metricmap.h
+  include/mp2p_icp/MetricMapMergeCapable.h
   include/mp2p_icp/NearestPlaneCapable.h
   include/mp2p_icp/NearestPointWithCovCapable.h
   include/mp2p_icp/plane_patch.h

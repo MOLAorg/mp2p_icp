@@ -210,7 +210,8 @@ class metric_map_t : public mrpt::serialization::CSerializable,
      * \note Point layers will be merged for coinciding names, or created if the
      * layer did not exist in `this`.
      * \note This method is virtual for user-extended point clouds can handle
-     * other geometric primitives as needed.
+     * other geometric primitives as needed. Alternatively, metric map layers can implement
+     * the MetricMapMergeCapable interface
      */
     virtual void merge_with(
         const metric_map_t&                       otherPc,

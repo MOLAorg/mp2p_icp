@@ -22,6 +22,8 @@
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mrpt/system/CTimeLogger.h>
 
+MRPT_TODO("Add a 'name' field, use for profiler and logger");
+
 IMPLEMENTS_VIRTUAL_MRPT_OBJECT(FilterBase, mrpt::rtti::CObject, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
