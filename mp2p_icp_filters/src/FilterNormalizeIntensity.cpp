@@ -74,10 +74,10 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     std::optional<float> minI, maxI;
 
-    if (params_.fixed_maximum_intensity > 0)
+    if (params.fixed_maximum_intensity > 0)
     {
-        maxI = params_.fixed_maximum_intensity;
-        minI = params_.fixed_minimum_intensity;
+        maxI = params.fixed_maximum_intensity;
+        minI = params.fixed_minimum_intensity;
     }
     else
     {
@@ -97,7 +97,7 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         ASSERT_(minI && maxI);
 
         // Merge with range memory?
-        if (params_.remember_intensity_range)
+        if (params.remember_intensity_range)
         {
             auto lck = mrpt::lockHelper(minMaxMtx_);
             if (!minI_ || *minI < *minI_)
