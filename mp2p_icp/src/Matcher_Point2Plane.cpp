@@ -41,7 +41,7 @@ void Matcher_Point2Plane::initialize(const mrpt::containers::yaml& params)
 void Matcher_Point2Plane::implMatchOneLayer(
     const mrpt::maps::CMetricMap& pcGlobalMap, const mrpt::maps::CPointsMap& pcLocal,
     const mrpt::poses::CPose3D& localPose, MatchState& ms,
-    [[maybe_unused]] const layer_name_t& globalName, const layer_name_t& localName,
+    [[maybe_unused]] const layer_name_t& globalName, const layer_name_t& localName,  // NOLINT
     Pairings& out) const
 {
     MRPT_START
@@ -54,16 +54,20 @@ void Matcher_Point2Plane::implMatchOneLayer(
     out.potential_pairings += pcLocal.size();
 
     // Empty maps?  Nothing to do
-    if (pcGlobalMap.isEmpty() || pcLocal.empty()) return;
+    if (pcGlobalMap.isEmpty() || pcLocal.empty())
+    {
+        return;
+    }
 
-    const TransformedLocalPointCloud tl = transform_local_to_global(
-        pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
+    const TransformedLocalPointCloud tl = transform_local_to_global(pcLocal, localPose);
 
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(
             {tl.localMin, tl.localMax},
             distanceThreshold + bounding_box_intersection_check_epsilon_))
+    {
         return;
+    }
 
     // Prepare output: no correspondences initially:
     out.paired_pt2pl.reserve(out.paired_pt2pl.size() + pcLocal.size() / 10);
@@ -82,7 +86,9 @@ void Matcher_Point2Plane::implMatchOneLayer(
 
         if (!allowMatchAlreadyMatchedPoints_ &&
             ms.localPairedBitField.point_layers.at(localName)[localIdx])
+        {
             continue;  // skip, already paired.
+        }
 
         // Don't discard **global** map points if already used by another
         // matcher, since the assumption of "plane" features implies that
@@ -97,8 +103,14 @@ void Matcher_Point2Plane::implMatchOneLayer(
         const NearestPlaneCapable::NearestPlaneResult np =
             nnGlobal.nn_search_pt2pl({lx, ly, lz}, distanceThreshold);
 
-        if (!np.pairing) continue;
-        if (np.distance > distanceThreshold) continue;  // plane is too distant
+        if (!np.pairing)
+        {
+            continue;
+        }
+        if (np.distance > distanceThreshold)
+        {
+            continue;  // plane is too distant
+        }
 
         // OK, all conditions pass: add the new pairing:
         auto& p     = out.paired_pt2pl.emplace_back();

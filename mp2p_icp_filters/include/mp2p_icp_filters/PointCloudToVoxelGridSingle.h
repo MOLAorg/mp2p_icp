@@ -41,7 +41,9 @@ class PointCloudToVoxelGridSingle
     /** Changes the voxel settings, clearing past contents */
     void setConfiguration(const float voxel_size, bool use_tsl_robin_map = true);
 
-    void processPointCloud(const mrpt::maps::CPointsMap& p);
+    void processPointCloud(
+        const mrpt::maps::CPointsMap& p, const std::size_t first_pt_idx = 0,
+        const std::size_t points_to_process = 0);
 
     /** Remove all points and internal data.
      */

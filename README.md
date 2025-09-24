@@ -27,6 +27,7 @@ C++ libraries for multi primitive-to-primitive (MP2P) ICP algorithms and flexibl
 
 The project provides these C++ libraries:
  * `mp2p_icp_map`: Provides the [`mp2p_icp::metric_map_t`](https://docs.mola-slam.org/latest/class_mp2p_icp_metric_map_t.html#doxid-classmp2p-icp-1-1metric-map-t) generic metric map container. Metric map files with extension `*.mm` are serializations of instances of this class.
+ * `mp2p_icp_common`: Provides utility classes like `ParameterSources` and IMU-based velocity buffers.
  * `mp2p_icp`: With ICP algorithms. It depends on `mp2p_icp_map`.
  * `mp2p_icp_filters`: With point cloud filtering and manipulation algorithms. It depends on `mp2p_icp_map`.
 

@@ -11,9 +11,10 @@
                          and individual contributors.
  SPDX-License-Identifier: BSD-3-Clause
 */
+
 /**
  * @file   optimal_tf_gauss_newton.h
- * @brief  Simple non-linear optimizer to find the SE(3) optimal transformation
+ * @brief  Iterative non-linear optimizer for the optimal SE(3) transformation from diverse pairings
  * @author Jose Luis Blanco Claraco
  * @date   Jun 16, 2019
  */

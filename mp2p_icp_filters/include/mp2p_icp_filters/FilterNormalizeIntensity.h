@@ -63,7 +63,7 @@ class FilterNormalizeIntensity : public mp2p_icp_filters::FilterBase
     };
 
     /** Algorithm parameters */
-    Parameters params_;
+    Parameters params;
 
    private:
     mutable std::optional<float> minI_, maxI_;

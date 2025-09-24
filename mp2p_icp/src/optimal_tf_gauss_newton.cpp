@@ -11,9 +11,10 @@
                          and individual contributors.
  SPDX-License-Identifier: BSD-3-Clause
 */
+
 /**
  * @file   optimal_tf_gauss_newton.cpp
- * @brief  Simple non-linear optimizer to find the SE(3) optimal transformation
+ * @brief  Iterative non-linear optimizer for the optimal SE(3) transformation from diverse pairings
  * @author Jose Luis Blanco Claraco
  * @date   Jun 16, 2019
  */
@@ -40,8 +41,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
     MRPT_START
 
-    // Run Gauss-Newton steps, using SE(3) relinearization at the current
-    // solution:
+    // Run Gauss-Newton steps, using SE(3) relinearization at the current solution:
     ASSERTMSG_(
         gnParams.linearizationPoint.has_value(), "This method requires a linearization point");
 
@@ -50,11 +50,12 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     const robust_sqrt_weight_func_t robustSqrtWeightFunc =
         mp2p_icp::create_robust_kernel(gnParams.kernel, gnParams.kernelParam);
 
-    const auto nPt2Pt = in.paired_pt2pt.size();
-    const auto nPt2Ln = in.paired_pt2ln.size();
-    const auto nPt2Pl = in.paired_pt2pl.size();
-    const auto nPl2Pl = in.paired_pl2pl.size();
-    const auto nLn2Ln = in.paired_ln2ln.size();
+    const auto nPt2Pt   = in.paired_pt2pt.size();
+    const auto nCov2Cov = in.paired_cov2cov.size();
+    const auto nPt2Ln   = in.paired_pt2ln.size();
+    const auto nPt2Pl   = in.paired_pt2pl.size();
+    const auto nPl2Pl   = in.paired_pl2pl.size();
+    const auto nLn2Ln   = in.paired_ln2ln.size();
 
     // Note: Using Matrix<N,1> instead of Vector<N> for compatibility
     //       with Eigen<=3.4 in ROS Noetic.
@@ -74,6 +75,9 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
         double errNormSqr = 0;
 
+        //
+        // ============== point-to-point ===============
+        //
 #if defined(MP2P_HAS_TBB)
         // For the TBB lambdas:
         // TBB call structure based on the beautiful implementation in KISS-ICP.
@@ -127,7 +131,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
                     // Apply robust kernel?
                     double weight = w.pt2pt, retSqrNorm = ret.asEigen().squaredNorm();
-                    if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
+                    if (robustSqrtWeightFunc)
+                    {
+                        weight *= robustSqrtWeightFunc(retSqrNorm);
+                    }
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
@@ -168,7 +175,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.pt2pt, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc)
+            {
+                weight *= robustSqrtWeightFunc(retSqrNorm);
+            }
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
@@ -180,7 +190,103 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         }
 #endif
 
-        // Point-to-line
+        //
+        // ============== cov-to-cov ===============
+        //
+#if defined(MP2P_HAS_TBB)
+        const auto& [H_tbb_cov2cov, g_tbb_cov2cov] = tbb::parallel_reduce(
+            // Range
+            tbb::blocked_range<size_t>{0, nCov2Cov},
+            // Identity
+            Result(),
+            // 1st lambda: Parallel computation
+            [&](const tbb::blocked_range<size_t>& r, Result res) -> Result
+            {
+                auto& [H_local, g_local] = res;
+                for (size_t idx_pairing = r.begin(); idx_pairing < r.end(); idx_pairing++)
+                {
+                    // Error:
+                    const auto&                             p = in.paired_cov2cov[idx_pairing];
+                    mrpt::math::CMatrixFixed<double, 3, 12> J1;
+
+                    MRPT_TODO("Refactor this!");
+                    mrpt::tfest::TMatchingPair auxP;
+                    auxP.local  = p.local;
+                    auxP.global = p.global;
+                    mrpt::math::CVectorFixedDouble<3> ret =
+                        mp2p_icp::error_point2point(auxP, result.optimalPose, J1);
+
+                    const Eigen::Matrix3d cov_inv      = p.cov_inv.asEigen().cast<double>();
+                    const Eigen::Matrix3d cov_inv_sqrt = p.cov_inv_sqrt.asEigen().cast<double>();
+
+                    // Apply robust kernel?
+                    double weight     = 1.0;
+                    double retSqrNorm = ret.transpose() * cov_inv * ret.asEigen();
+
+                    if (robustSqrtWeightFunc)
+                    {
+                        weight *= robustSqrtWeightFunc(retSqrNorm);
+                    }
+
+                    // Error and Jacobian:
+                    const Eigen::Vector3d err_i = ret.asEigen();
+                    errNormSqr += weight * retSqrNorm;
+
+                    const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
+
+                    // Whitening: multiply times \Sigma^{-1/2}
+                    g_local.noalias() += weight * Ji.transpose() * cov_inv_sqrt * err_i;
+                    H_local.noalias() += weight * Ji.transpose() * cov_inv_sqrt * Ji;
+                }
+                return res;
+            },
+            // 2nd lambda: Parallel reduction
+            [](Result a, const Result& b) -> Result { return a + b; });
+
+        H = std::move(H_tbb_cov2cov);
+        g = std::move(g_tbb_cov2cov);
+#else
+        // Cov-to-cov:
+        for (size_t idx_pairing = 0; idx_pairing < nCov2Cov; idx_pairing++)
+        {
+            // Error:
+            const auto&                             p = in.paired_cov2cov[idx_pairing];
+            mrpt::math::CMatrixFixed<double, 3, 12> J1;
+
+            // TODO: Refactor this (same as in TBB branch)
+            mrpt::tfest::TMatchingPair auxP;
+            auxP.local  = p.local;
+            auxP.global = p.global;
+
+            mrpt::math::CVectorFixedDouble<3> ret =
+                mp2p_icp::error_point2point(auxP, result.optimalPose, J1);
+
+            const Eigen::Matrix3d cov_inv      = p.cov_inv.asEigen().cast<double>();
+            const Eigen::Matrix3d cov_inv_sqrt = p.cov_inv_sqrt.asEigen().cast<double>();
+
+            // Apply robust kernel?
+            double weight     = 1.0;
+            double retSqrNorm = ret.transpose() * cov_inv * ret.asEigen();
+
+            if (robustSqrtWeightFunc)
+            {
+                weight *= robustSqrtWeightFunc(retSqrNorm);
+            }
+
+            // Error and Jacobian:
+            const Eigen::Vector3d err_i = ret.asEigen();
+            errNormSqr += weight * retSqrNorm;
+
+            const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
+
+            // Whitening: multiply by Σ^{-1/2}
+            g.noalias() += weight * Ji.transpose() * cov_inv_sqrt * err_i;
+            H.noalias() += weight * Ji.transpose() * cov_inv_sqrt * Ji;
+        }
+#endif
+        //
+        // ============== Point-to-line ===============
+        //
         for (size_t idx_pt = 0; idx_pt < nPt2Ln; idx_pt++)
         {
             // Error
@@ -202,7 +308,9 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             H.noalias() += weight * Ji.transpose() * Ji;
         }
 
-        // Line-to-Line
+        //
+        // ============== Line-to-Line ===============
+        //
         // Minimum angle to approach zero
         for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++)
         {
@@ -213,7 +321,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.ln2ln, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc)
+            {
+                weight *= robustSqrtWeightFunc(retSqrNorm);
+            }
 
             // Error and Jacobian:
             const Eigen::Vector4d err_i = ret.asEigen();
@@ -224,8 +335,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             H.noalias() += weight * Ji.transpose() * Ji;
         }
 
+        //
+        // ============== Point-to-plane ===============
+        //
 #if defined(MP2P_HAS_TBB)
-        // Point-to-plane:
         const auto& [H_tbb_pt2pl, g_tbb_pt2pl] = tbb::parallel_reduce(
             // Range
             tbb::blocked_range<size_t>{0, nPt2Pl},
@@ -245,7 +358,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
                     // Apply robust kernel?
                     double weight = w.pt2pl, retSqrNorm = ret.asEigen().squaredNorm();
-                    if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
+                    if (robustSqrtWeightFunc)
+                    {
+                        weight *= robustSqrtWeightFunc(retSqrNorm);
+                    }
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
@@ -286,7 +402,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         }
 #endif
 
-        // Plane-to-plane (only direction of normal vectors):
+        // ============= Plane-to-plane ====================
+        // (only direction of normal vectors)
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
         {
             // Error term:
@@ -297,7 +414,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.pl2pl, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc)
+            {
+                weight *= robustSqrtWeightFunc(retSqrNorm);
+            }
 
             const Eigen::Vector3d err_i = ret.asEigen();
             errNormSqr += weight * weight * retSqrNorm;
@@ -340,10 +460,13 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             H.noalias() += (df_de2.transpose() * priorInf.asEigen()) * df_de2.asEigen();
         }
 
+        // ============ Termination criterion =============
         // Target error?
         const double errNorm = std::sqrt(errNormSqr);
-
-        if (errNorm <= gnParams.maxCost) break;
+        if (errNorm <= gnParams.maxCost)
+        {
+            break;
+        }
 
         // 3) Solve Gauss-Newton:
         // g = J.transpose() * err;
@@ -361,8 +484,11 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                       << " delta:" << delta.transpose() << "\n";
         }
 
-        // Simple convergence test:
-        if (delta.norm() < gnParams.minDelta) break;
+        // Termination criterion:
+        if (delta.norm() < gnParams.minDelta)
+        {
+            break;
+        }
 
     }  // for each iteration
 

@@ -80,10 +80,14 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
          * \endcode
          */
         mrpt::math::TPoint3Df center = {0, 0, 0};
+
+        /** L2 Euclidean norm is used by default, unless `metric_l_infinity` is `true`, then L-inf
+         * is used (which is much more efficient) */
+        bool metric_l_infinity = false;
     };
 
     /** Algorithm parameters */
-    Parameters params_;
+    Parameters params;
 };
 
 /** @} */

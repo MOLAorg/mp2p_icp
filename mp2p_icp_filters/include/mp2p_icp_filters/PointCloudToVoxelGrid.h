@@ -40,7 +40,9 @@ class PointCloudToVoxelGrid
     /** Sets the voxel grid configuration, clearing past contents */
     void setConfiguration(const float voxel_size, bool use_tsl_robin_map);
 
-    void processPointCloud(const mrpt::maps::CPointsMap& p);
+    void processPointCloud(
+        const mrpt::maps::CPointsMap& p, const std::size_t first_pt_idx = 0,
+        const std::size_t points_to_process = 0);
 
     /** Remove all points and internal data.
      */
@@ -48,17 +50,10 @@ class PointCloudToVoxelGrid
 
     struct Parameters
     {
-        /** Minimum distance (infinity norm) between **consecutive** points to
-         * be accepted in a voxel. By looking at points in order, this allows
-         * for a very fast discrimination of too-close consecutive points
-         * without the need to query any KD-tree.
-         *
-         * (Default=0, i.e. disabled).
-         */
-        float min_consecutive_distance{.0f};
+        // None
     };
 
-    Parameters params_;
+    Parameters params;
 
     /** The list of point indices in each voxel */
     struct voxel_t

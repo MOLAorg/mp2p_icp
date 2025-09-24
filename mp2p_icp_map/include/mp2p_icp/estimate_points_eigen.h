@@ -62,7 +62,7 @@ struct PointCloudEigen
  *
  * \ingroup mp2p_icp_map_grp
  */
-PointCloudEigen estimate_points_eigen(
+[[nodiscard]] PointCloudEigen estimate_points_eigen(
     const float* xs, const float* ys, const float* zs,
     mrpt::optional_ref<const std::vector<size_t>> indices,
     std::optional<size_t>                         totalCount = std::nullopt);

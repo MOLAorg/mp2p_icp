@@ -145,7 +145,7 @@ bool GeneratorEdgesFromRangeImage::filterRotatingScan(  //
 
     }  // end for each row
 
-    out.layers[params_.target_layer] = outPc;
+    out.layers[params.target_layer] = outPc;
     return true;  // Yes, it's implemented
 }
 
@@ -157,7 +157,7 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
 
     // Optional output layer for deleted points:
     mrpt::maps::CPointsMap::Ptr outEdges = GetOrCreatePointLayer(
-        out, params_.target_layer, true /*allow empty for nullptr*/,
+        out, params.target_layer, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         "mrpt::maps::CSimplePointsMap");
 
@@ -168,7 +168,7 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
 
     if (outEdges)
     {
-        out.layers[params_.target_layer] = outEdges;
+        out.layers[params.target_layer] = outEdges;
     }
     if (outPlanes)
     {

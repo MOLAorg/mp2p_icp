@@ -19,6 +19,7 @@
  */
 
 #include <mp2p_icp/ICP.h>
+#include <mp2p_icp/IcpPrepareCapable.h>
 #include <mp2p_icp/covariance.h>
 #include <mp2p_icp/load_plugin.h>
 #include <mrpt/core/exceptions.h>
@@ -92,12 +93,15 @@ void ICP::align(
             obj.attachToParameterSource(ownParamSource_);
             ps = &ownParamSource_;
         }
-        ps->updateVariable("ICP_ITERATION", result.nIterations);
+        ps->updateVariable("ICP_ITERATION", static_cast<double>(result.nIterations));
         activeParamSouces.insert(ps);
     };
     auto lambdaRealizeParamSources = [&]()
     {
-        for (auto& ps : activeParamSouces) ps->realize();
+        for (auto& ps : activeParamSouces)
+        {
+            ps->realize();
+        }
     };
 
     // ------------------------------------------------------
@@ -106,13 +110,54 @@ void ICP::align(
     mrpt::system::CTimeLoggerEntry tle2(profiler_, "align.2_create_state");
 
     ICP_State state(pcGlobal, pcLocal);
-    if (currentLog) state.log = &currentLog.value();
+    if (currentLog)
+    {
+        state.log = &currentLog.value();
+    }
 
     tle2.stop();
 
     const auto initGuess = mrpt::poses::CPose3D(initialGuessLocalWrtGlobal);
 
     state.currentSolution.optimalPose = initGuess;
+
+    // If global map supports it, prepare for ICP:
+    // ------------------------------------------------------
+    mrpt::system::CTimeLoggerEntry tle2b(profiler_, "align.3_prepare_global");
+
+    std::optional<mrpt::math::TBoundingBoxf> local_map_roi;
+
+    const auto& lambda_update_local_map_roi = [&]()
+    {
+        if (local_map_roi.has_value())
+        {
+            return;
+        }
+
+        for (const auto& [layer, localMapLayer] : pcLocal.layers)
+        {
+            const auto this_bb = localMapLayer->boundingBox();
+            if (!local_map_roi)
+            {
+                local_map_roi = this_bb;
+            }
+            else
+            {
+                local_map_roi = local_map_roi->unionWith(this_bb);
+            }
+        }
+    };
+
+    // Let global layers that we are about to start ICP:
+    for (const auto& [layer, mmap] : pcGlobal.layers)
+    {
+        if (auto* ipc = dynamic_cast<const IcpPrepareCapable*>(mmap.get()); ipc)
+        {
+            lambda_update_local_map_roi();
+            ipc->icp_get_prepared_as_global(initGuess, local_map_roi);
+        }
+    }
+    tle2b.stop();
 
     mrpt::poses::CPose3D                prev_solution = state.currentSolution.optimalPose;
     std::optional<mrpt::poses::CPose3D> prev2_solution;  // 2 steps ago
@@ -122,15 +167,24 @@ void ICP::align(
 
     for (result.nIterations = 0; result.nIterations < p.maxIterations; result.nIterations++)
     {
-        mrpt::system::CTimeLoggerEntry tle3(profiler_, "align.3_iter");
+        mrpt::system::CTimeLoggerEntry tle3(profiler_, "align.4");
 
         // Update iteration count, both in direct C++ structure...
         state.currentIteration = result.nIterations;
 
         // ...and via programmable formulas:
-        for (auto& obj : matchers_) lambdaAddOwnParams(*obj);
-        for (auto& obj : solvers_) lambdaAddOwnParams(*obj);
-        for (auto& [obj, _] : quality_evaluators_) lambdaAddOwnParams(*obj);
+        for (auto& obj : matchers_)
+        {
+            lambdaAddOwnParams(*obj);
+        }
+        for (auto& obj : solvers_)
+        {
+            lambdaAddOwnParams(*obj);
+        }
+        for (auto& [obj, _] : quality_evaluators_)
+        {
+            lambdaAddOwnParams(*obj);
+        }
         lambdaRealizeParamSources();
 
         // Matchings
@@ -138,7 +192,7 @@ void ICP::align(
         MatchContext mc;
         mc.icpIteration = state.currentIteration;
 
-        mrpt::system::CTimeLoggerEntry tle4(profiler_, "align.3.1_matchers");
+        mrpt::system::CTimeLoggerEntry tle4(profiler_, "align.4.1_matchers");
 
         state.currentPairings = run_matchers(
             matchers_, state.pcGlobal, state.pcLocal, state.currentSolution.optimalPose, mc);
@@ -159,7 +213,7 @@ void ICP::align(
 
         // Optimal relative pose:
         // ---------------------------------------
-        mrpt::system::CTimeLoggerEntry tle5(profiler_, "align.3.2_solvers");
+        mrpt::system::CTimeLoggerEntry tle5(profiler_, "align.4.2_solvers");
 
         sc.icpIteration = state.currentIteration;
         sc.guessRelativePose.emplace(state.currentSolution.optimalPose);
@@ -185,7 +239,7 @@ void ICP::align(
         }
 
         // Updated solution is already in "state.currentSolution".
-        mrpt::system::CTimeLoggerEntry tle6(profiler_, "align.3.3_end_criterions");
+        mrpt::system::CTimeLoggerEntry tle6(profiler_, "align.4.3_end_criterions");
 
         // Termination criterion: small delta:
         auto lambdaCalcIncrs =
@@ -233,7 +287,10 @@ void ICP::align(
             (p.decimationIterationDetails == 0 ||
              state.currentIteration % p.decimationIterationDetails == 0 || stalled))
         {
-            if (!currentLog->iterationsDetails.has_value()) currentLog->iterationsDetails.emplace();
+            if (!currentLog->iterationsDetails.has_value())
+            {
+                currentLog->iterationsDetails.emplace();
+            }
 
             auto& id       = currentLog->iterationsDetails.value()[state.currentIteration];
             id.optimalPose = state.currentSolution.optimalPose;
@@ -261,7 +318,10 @@ void ICP::align(
         {
             const double minQuality = itQ->second;
 
-            for (auto& e : quality_evaluators_) lambdaAddOwnParams(*e.obj);
+            for (auto& e : quality_evaluators_)
+            {
+                lambdaAddOwnParams(*e.obj);
+            }
             lambdaRealizeParamSources();
 
             const double quality = evaluate_quality(
@@ -311,12 +371,17 @@ void ICP::align(
     // Fill in "result"
     // ----------------------------
     if (result.nIterations >= p.maxIterations)
+    {
         result.terminationReason = IterTermReason::MaxIterations;
+    }
 
     // Quality:
-    mrpt::system::CTimeLoggerEntry tle7(profiler_, "align.4_quality");
+    mrpt::system::CTimeLoggerEntry tle7(profiler_, "align.5_quality");
 
-    for (auto& e : quality_evaluators_) lambdaAddOwnParams(*e.obj);
+    for (auto& e : quality_evaluators_)
+    {
+        lambdaAddOwnParams(*e.obj);
+    }
     lambdaRealizeParamSources();
 
     result.quality = evaluate_quality(
@@ -336,10 +401,19 @@ void ICP::align(
     result.optimal_tf.cov =
         mp2p_icp::covariance(result.finalPairings, result.optimal_tf.mean, covParams);
 
+    // Clean-up global map icp preparation:
+    for (const auto& [layer, mmap] : pcGlobal.layers)
+    {
+        if (auto* ipc = dynamic_cast<const IcpPrepareCapable*>(mmap.get()); ipc)
+        {
+            ipc->icp_cleanup();
+        }
+    }
+
     // ----------------------------
     // Log records
     // ----------------------------
-    mrpt::system::CTimeLoggerEntry tle8(profiler_, "align.5_save_log");
+    mrpt::system::CTimeLoggerEntry tle8(profiler_, "align.6_save_log");
 
     if (currentLog)
     {
@@ -375,7 +449,9 @@ void ICP::align(
 
         // return log info:
         if (outputDebugInfo.has_value())
+        {
             outputDebugInfo.value().get() = std::move(currentLog.value());
+        }
     }
 
     MRPT_END
@@ -385,7 +461,10 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
 {
     using namespace std::string_literals;
 
-    if (!p.generateDebugFiles) return;
+    if (!p.generateDebugFiles)
+    {
+        return;
+    }
 
     // global log file record counter:
     static unsigned int logFileCounter = 0;
@@ -397,7 +476,9 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
         RECORD_UNIQUE_ID = logFileCounter++;
 
         if (p.decimationDebugFiles > 1 && (RECORD_UNIQUE_ID % p.decimationDebugFiles) != 0)
+        {
             return;  // skip due to decimation
+        }
     }
 
     std::string filename = p.debugFileNameFormat;
@@ -411,8 +492,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$GLOBAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcGlobal && log.pcGlobal->id.has_value()) ? log.pcGlobal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
@@ -426,8 +507,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$LOCAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcLocal && log.pcLocal->id.has_value()) ? log.pcLocal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
@@ -473,7 +554,10 @@ bool ICP::run_solvers(
     for (const auto& solver : solvers)
     {
         ASSERT_(solver);
-        if (solver->optimal_pose(pairings, out, sc)) return true;
+        if (solver->optimal_pose(pairings, out, sc))
+        {
+            return true;
+        }
     }
     return false;
 }
@@ -545,7 +629,8 @@ void ICP::initialize_matchers(const mrpt::containers::yaml& params, matcher_list
 
         const auto sClass = e.at("class").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
-        ASSERT_(o);
+        ASSERTMSG_(
+            o, mrpt::format("`%s` matcher class seems not to be registered", sClass.c_str()));
 
         auto m = std::dynamic_pointer_cast<Matcher>(o);
         ASSERTMSG_(

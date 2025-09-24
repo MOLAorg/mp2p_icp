@@ -29,6 +29,29 @@
 
 namespace mp2p_icp_filters
 {
+/** Enum to select the pointcloud motion compensation method in FilterDeskew.
+ *
+ * Refer to mathematical description for each method in the paper [TO-DO].
+ *
+ * \ingroup mp2p_icp_filters_grp
+ */
+enum class MotionCompensationMethod : uint8_t
+{
+    /** No compensation: all points are considered to be at vehicle pose for `reference_time`=0 */
+    None = 0,
+    /** Constant linear and angular velocity model to interpolate between key-frames */
+    Linear,
+    /** IMU-based integration between IMU frames using Euler integration of constant linear
+       acceleration and angular velocity */
+    IMU,
+    /** IMU-based integration between IMU frames using (h) higher-order terms: constant jerk and
+     * angular acceleration */
+    IMUh,
+    /** IMU-based integration between IMU frames using (t) trapezoidal integration of constant
+     * linear acceleration and angular velocity */
+    IMUt
+};
+
 /** Builds a new layer with a deskewed (motion compensated) version of an
  *  input pointcloud from a moving LIDAR, where points are time-stamped.
  *
@@ -59,9 +82,9 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      * params:
      *   input_pointcloud_layer: 'raw'
      *   output_pointcloud_layer: 'deskewed'
+     *   method: 'MotionCompensationMethod::Linear'
+     *   #in_place: true   # Set to true for the output layer to be the same input layer
      *   # silently_ignore_no_timestamps: false
-     *   # skip_deskew: false  # Can be enabled to bypass deskew
-     *   # use_precise_local_velocities: false  # Use precise IMU-based de-skewing
      *   # These (vx,...,wz) are variable names that must be defined via the
      *   # mp2p_icp::Parameterizable API to update them dynamically.
      *   twist: [vx,vy,vz,wx,wy,wz]
@@ -78,7 +101,10 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      */
     std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
-    /** The output point cloud layer name */
+    /** If set to `true` to deskew directly on the same input layer, so no new map is created  */
+    bool in_place = false;
+
+    /** The output point cloud layer name, required unless `in_place` is `true` */
     std::string output_pointcloud_layer;
 
     /** The class name for output layer if it does not exist and needs to be
@@ -90,11 +116,6 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      */
     bool silently_ignore_no_timestamps = false;
 
-    /** If enabled (set to true), no "de-skew" will be performed, and the input
-     *  points will be just copied into the output layer.
-     */
-    bool skip_deskew = false;
-
     /** If enabled (true), the constant `twist` field is ignored and the precise twist trajectory
      *  is retrieved from the LocalVelocityBuffer from the ParameterSource attached to this block.
      */
@@ -103,8 +124,8 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
     /** The velocity (linear and angular) of the vehicle in the local
      * vehicle frame. See FilterDeskew::initialize for an example of how
      * to define it via dynamic variables.
-     * This will be used unless `use_precise_local_velocities` is enabled,
-     * in which case it can be left as an empty `std::optional`.
+     * This will be used only for `method=MotionCompensationMethod::Linear`; otherwise, it can be
+     * left as an empty `std::optional`.
      */
     std::optional<mrpt::math::TTwist3D> twist;
 };
@@ -112,3 +133,11 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
 /** @} */
 
 }  // namespace mp2p_icp_filters
+
+MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp_filters, mp2p_icp_filters::MotionCompensationMethod)
+MRPT_FILL_ENUM(MotionCompensationMethod::None);
+MRPT_FILL_ENUM(MotionCompensationMethod::Linear);
+MRPT_FILL_ENUM(MotionCompensationMethod::IMU);
+MRPT_FILL_ENUM(MotionCompensationMethod::IMUh);
+MRPT_FILL_ENUM(MotionCompensationMethod::IMUt);
+MRPT_ENUM_TYPE_END()

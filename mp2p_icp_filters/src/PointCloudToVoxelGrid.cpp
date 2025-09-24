@@ -47,43 +47,29 @@ void PointCloudToVoxelGrid::setConfiguration(const float voxel_size, bool use_ts
     MRPT_END
 }
 
-void PointCloudToVoxelGrid::processPointCloud(const mrpt::maps::CPointsMap& p)
+void PointCloudToVoxelGrid::processPointCloud(
+    const mrpt::maps::CPointsMap& p, const std::size_t first_pt_idx,
+    const std::size_t points_to_process)
 {
     using mrpt::max3;
     using std::abs;
 
-    const auto& xs          = p.getPointsBufferRef_x();
-    const auto& ys          = p.getPointsBufferRef_y();
-    const auto& zs          = p.getPointsBufferRef_z();
-    const auto  point_count = xs.size();
+    const auto& xs = p.getPointsBufferRef_x();
+    const auto& ys = p.getPointsBufferRef_y();
+    const auto& zs = p.getPointsBufferRef_z();
+
+    const auto last_pt_idx = points_to_process ? (first_pt_idx + points_to_process) : xs.size();
 
     // Previous point:
-    float x0, y0, z0;
-    x0 = y0 = z0 = std::numeric_limits<float>::max();
-
     auto& pts_voxels = impl_->pts_voxels;
+    pts_voxels.reserve(pts_voxels.size() + last_pt_idx - first_pt_idx);
 
-    pts_voxels.reserve(pts_voxels.size() + point_count);
-
-    for (std::size_t i = 0; i < point_count; i++)
+    for (std::size_t i = first_pt_idx; i < last_pt_idx; i++)
     {
-        // Skip this point?
-        if (params_.min_consecutive_distance != .0f &&
-            max3(abs(x0 - xs[i]), abs(y0 - ys[i]), abs(z0 - zs[i])) <
-                params_.min_consecutive_distance)
-        {
-            continue;
-        }
-
-        // Save for the next point:
-        x0 = xs[i];
-        y0 = ys[i];
-        z0 = zs[i];
-
-        const indices_t vxl_idx = {coord2idx(x0), coord2idx(y0), coord2idx(z0)};
+        const indices_t vxl_idx = {coord2idx(xs[i]), coord2idx(ys[i]), coord2idx(zs[i])};
 
         auto& cell = pts_voxels[vxl_idx];
-        cell.indices.push_back(i);  // only if not out of grid range
+        cell.indices.push_back(i);
     }
 }
 

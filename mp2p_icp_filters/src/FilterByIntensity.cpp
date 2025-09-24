@@ -35,10 +35,10 @@ void FilterByIntensity::Parameters::load_from_yaml(const mrpt::containers::yaml&
     MCP_LOAD_OPT(c, output_layer_mid_intensity);
 
     ASSERTMSG_(
-        !output_layer_low_intensity.empty() || !output_layer_low_intensity.empty() ||
+        !output_layer_low_intensity.empty() || !output_layer_high_intensity.empty() ||
             !output_layer_mid_intensity.empty(),
         "At least one of 'output_layer_low_intensity' or "
-        "'output_layer_low_intensity' or 'output_layer_mid_intensity' must be "
+        "'output_layer_high_intensity' or 'output_layer_mid_intensity' must be "
         "provided.");
 
     MCP_LOAD_REQ(c, low_threshold);
@@ -50,7 +50,7 @@ FilterByIntensity::FilterByIntensity() = default;
 void FilterByIntensity::initialize(const mrpt::containers::yaml& c)
 {
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params.load_from_yaml(c);
 }
 
 void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
@@ -58,18 +58,18 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     // In:
-    const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    const auto& pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
     // Outputs:
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outLow = GetOrCreatePointLayer(
-        inOut, params_.output_layer_low_intensity, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_low_intensity, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -77,7 +77,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outHigh = GetOrCreatePointLayer(
-        inOut, params_.output_layer_high_intensity, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_high_intensity, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -85,7 +85,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outMid = GetOrCreatePointLayer(
-        inOut, params_.output_layer_mid_intensity, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_mid_intensity, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -107,7 +107,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
             "Error: this filter needs the input layer '%s' to has an "
             "'intensity' "
             "point channel.",
-            params_.input_pointcloud_layer.c_str());
+            params.input_pointcloud_layer.c_str());
     }
 
     const auto& Is = *ptrI;
@@ -122,12 +122,12 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
         mrpt::maps::CPointsMap* trg = nullptr;
 
-        if (I < params_.low_threshold)
+        if (I < params.low_threshold)
         {
             trg = outLow.get();
             ++countLow;
         }
-        else if (I > params_.high_threshold)
+        else if (I > params.high_threshold)
         {
             trg = outHigh.get();
             ++countHigh;
