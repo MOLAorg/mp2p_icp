@@ -273,7 +273,7 @@ void Pairings::get_visualization_pt2pl(
 }
 
 void Pairings::get_visualization_cov2cov(
-    mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
+    mrpt::opengl::CSetOfObjects& o, [[]] const mrpt::poses::CPose3D& localWrtGlobal,
     const render_params_pairings_cov2cov_t& p) const
 {
     if (!p.visible)
@@ -284,8 +284,16 @@ void Pairings::get_visualization_cov2cov(
     auto lns = mrpt::opengl::CSetOfLines::Create();
     lns->setColor_u8(p.segmentColor);
 
+    std::size_t decimationCounter = 0;
+
     for (const auto& pair : paired_cov2cov)
     {
+        if (++decimationCounter < p.decimation)
+        {
+            continue;
+        }
+        decimationCounter = 0;
+
         const auto ptLocal   = pair.local;
         const auto ptLocalTf = localWrtGlobal.composePoint(ptLocal);
 
@@ -302,6 +310,7 @@ void Pairings::get_visualization_cov2cov(
             glEllipse->setCovMatrix(cov);
             glEllipse->set3DsegmentsCount(6);
             glEllipse->setColor_u8(p.covColor);
+            glEllipse->enableDrawSolid3D(true);
 
             o.insert(glEllipse);
         }
