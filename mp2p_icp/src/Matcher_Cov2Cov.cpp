@@ -93,7 +93,7 @@ void Matcher_Cov2Cov::initialize(const mrpt::containers::yaml& params)
 {
     Matcher::initialize(params);
 
-    MCP_LOAD_REQ(params, threshold);
+    DECLARE_PARAMETER_REQ(params, threshold);
     MCP_LOAD_OPT(params, bounding_box_intersection_check_epsilon);
 
     if (params.has("layerMatches"))
