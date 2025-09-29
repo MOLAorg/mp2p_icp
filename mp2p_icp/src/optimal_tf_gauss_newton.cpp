@@ -243,8 +243,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             // 2nd lambda: Parallel reduction
             [](Result a, const Result& b) -> Result { return a + b; });
 
-        H = std::move(H_tbb_cov2cov);
-        g = std::move(g_tbb_cov2cov);
+        H.noalias() += H_tbb_cov2cov;
+        g.noalias() += g_tbb_cov2cov;
 #else
         // Cov-to-cov:
         for (size_t idx_pairing = 0; idx_pairing < nCov2Cov; idx_pairing++)
