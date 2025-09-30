@@ -433,8 +433,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             const auto& priorMean = gnParams.prior->mean;
             const auto& priorInf  = gnParams.prior->cov_inv;
 
-            // Compute the residual pose error of these pair of nodes + its
-            // constraint:
+            // Compute the residual pose error of these pair of nodes + its constraint:
             // SE(3) error = inv(P_prior) * P_current
             //             = (P_current \ominus P_prior)
 
@@ -456,7 +455,6 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 df_de2);
 
             g.noalias() += (df_de2.transpose() * priorInf.asEigen()) * err_i.asEigen();
-
             H.noalias() += (df_de2.transpose() * priorInf.asEigen()) * df_de2.asEigen();
         }
 
