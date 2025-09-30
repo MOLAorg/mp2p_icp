@@ -7,7 +7,6 @@ set(lib_name mp2p_icp) # we cannot use PROJECT_NAME here, since catkin requires 
 set(LIB_SRCS
   src/covariance.cpp
   src/errorTerms.cpp
-  src/ICP_LibPointmatcher.cpp
   src/icp_pipeline_from_yaml.cpp
   src/ICP.cpp
   src/LogRecord.cpp
@@ -44,7 +43,6 @@ set(LIB_SRCS
 set(LIB_PUBLIC_HDRS
   include/mp2p_icp/covariance.h
   include/mp2p_icp/errorTerms.h
-  include/mp2p_icp/ICP_LibPointmatcher.h
   include/mp2p_icp/icp_pipeline_from_yaml.h
   include/mp2p_icp/ICP.h
   include/mp2p_icp/IterTermReason.h
@@ -96,11 +94,6 @@ mola_add_library(
     mrpt-tfest
     mrpt-gui
 )
-
-if (MP2PICP_BUILD_POINTMATCHER)
-  target_compile_definitions(${lib_name} PRIVATE MP2P_HAS_LIBPOINTMATCHER)
-  target_link_libraries(${lib_name} PRIVATE libpointmatcher::libpointmatcher)
-endif()
 
 if (TBB_FOUND AND MP2PICP_USE_TBB)
   target_compile_definitions(${lib_name} PRIVATE MP2P_HAS_TBB)

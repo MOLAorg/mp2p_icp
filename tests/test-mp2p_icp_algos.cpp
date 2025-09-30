@@ -19,7 +19,7 @@
  * @date   May 12, 2019
  */
 
-#include <mp2p_icp/ICP_LibPointmatcher.h>
+#include <mp2p_icp/ICP.h>
 #include <mp2p_icp/Matcher_Point2Plane.h>
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
 #include <mp2p_icp/Solver_GaussNewton.h>
@@ -263,16 +263,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         // clang-format on
 
         // Optional methods:
-#if 0  // Disabled for now: we now need to initialize from a YAML file:
-        if (mp2p_icp::ICP_LibPointmatcher::methodAvailable())
-            lst_algos.push_back({"mp2p_icp::ICP_LibPointmatcher", "", "", 1});
-#endif
 
         for (const auto& algo : lst_algos)
+        {
             for (const auto& fil : lst_files)
+            {
                 test_icp(
                     fil, std::get<0>(algo), std::get<1>(algo), std::get<2>(algo),
                     std::get<3>(algo));
+            }
+        }
     }
     catch (std::exception& e)
     {

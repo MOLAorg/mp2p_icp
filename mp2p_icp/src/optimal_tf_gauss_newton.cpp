@@ -216,8 +216,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     mrpt::math::CVectorFixedDouble<3> ret =
                         mp2p_icp::error_point2point(auxP, result.optimalPose, J1);
 
-                    const Eigen::Matrix3d cov_inv      = p.cov_inv.asEigen().cast<double>();
-                    const Eigen::Matrix3d cov_inv_sqrt = p.cov_inv_sqrt.asEigen().cast<double>();
+                    const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
 
                     // Apply robust kernel?
                     double weight     = 1.0;
@@ -235,8 +234,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
 
                     // Whitening: multiply times \Sigma^{-1/2}
-                    g_local.noalias() += weight * Ji.transpose() * cov_inv_sqrt * err_i;
-                    H_local.noalias() += weight * Ji.transpose() * cov_inv_sqrt * Ji;
+                    g_local.noalias() += weight * Ji.transpose() * cov_inv * err_i;
+                    H_local.noalias() += weight * Ji.transpose() * cov_inv * Ji;
                 }
                 return res;
             },
@@ -261,8 +260,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CVectorFixedDouble<3> ret =
                 mp2p_icp::error_point2point(auxP, result.optimalPose, J1);
 
-            const Eigen::Matrix3d cov_inv      = p.cov_inv.asEigen().cast<double>();
-            const Eigen::Matrix3d cov_inv_sqrt = p.cov_inv_sqrt.asEigen().cast<double>();
+            const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
 
             // Apply robust kernel?
             double weight     = 1.0;
@@ -280,8 +278,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
 
             // Whitening: multiply by Σ^{-1/2}
-            g.noalias() += weight * Ji.transpose() * cov_inv_sqrt * err_i;
-            H.noalias() += weight * Ji.transpose() * cov_inv_sqrt * Ji;
+            g.noalias() += weight * Ji.transpose() * cov_inv * err_i;
+            H.noalias() += weight * Ji.transpose() * cov_inv * Ji;
         }
 #endif
         //
@@ -438,7 +436,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             //             = (P_current \ominus P_prior)
 
             const mrpt::poses::CPose3D P1invP2 = result.optimalPose - priorMean;
-            const auto                 err_i   = mrpt::poses::Lie::SE<3>::log(P1invP2);
+            auto                       err_i   = mrpt::poses::Lie::SE<3>::log(P1invP2);
 
             mrpt::math::CMatrixDouble66 df_de2;
 
