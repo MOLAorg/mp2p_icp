@@ -42,7 +42,9 @@ void FilterMerge::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Fi
         auto cc = c["robot_pose"].asSequence();
 
         for (int i = 0; i < 6; i++)
+        {
             parent.parseAndDeclareParameter(cc.at(i).as<std::string>(), robot_pose[i]);
+        }
     }
 }
 
@@ -72,6 +74,7 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
     const auto mapPtr = inOut.layers.at(params.input_pointcloud_layer);
     ASSERT_(mapPtr);
 
+    // TODO: This is an unnecessary copy for layers actually being point clouds (refactor?)
     const auto pcPtr = mp2p_icp::MapToPointsMap(*mapPtr);
     ASSERTMSG_(
         pcPtr, mrpt::format(
@@ -89,8 +92,12 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Create fake observation for insertion:
     mrpt::obs::CObservationPointCloud obs;
-    auto                              pts = mrpt::maps::CSimplePointsMap::Create();
-    obs.pointcloud                        = pts;
+    // Create cloud of the same type than the input to avoid losing point fields:
+    auto newCloudObj = pcPtr->GetRuntimeClass()->createObject();
+    auto pts         = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(newCloudObj);
+    ASSERTMSG_(pts, "Not a pointcloud class as input?");
+
+    obs.pointcloud = pts;
 
     // Copy the input layer here, as seen from the robot (hence the "-"):
     const auto robotPose = mrpt::poses::CPose3D(params.robot_pose);
