@@ -113,14 +113,22 @@ void run_sm_to_mm()
     }
 
     if (arg_lazy_load_base_dir.isSet())
+    {
         mrpt::io::setLazyLoadPathBase(arg_lazy_load_base_dir.getValue());
+    }
 
     mp2p_icp_filters::sm2mm_options_t opts;
     opts.showProgressBar = !argNoProgressBar.isSet();
     opts.verbosity       = logLevel;
 
-    if (argIndexFrom.isSet()) opts.start_index = argIndexFrom.getValue();
-    if (argIndexTo.isSet()) opts.end_index = argIndexTo.getValue();
+    if (argIndexFrom.isSet())
+    {
+        opts.start_index = argIndexFrom.getValue();
+    }
+    if (argIndexTo.isSet())
+    {
+        opts.end_index = argIndexTo.getValue();
+    }
 
     // Create the map:
     mp2p_icp_filters::simplemap_to_metricmap(sm, mm, yamlData, opts);
@@ -132,7 +140,9 @@ void run_sm_to_mm()
     std::cout << "[sm2mm] Writing metric map to: '" << filOut << "'..." << std::endl;
 
     if (!mm.save_to_file(filOut))
+    {
         THROW_EXCEPTION_FMT("Error writing to target file '%s'", filOut.c_str());
+    }
 }
 
 int main(int argc, char** argv)
@@ -140,7 +150,10 @@ int main(int argc, char** argv)
     try
     {
         // Parse arguments:
-        if (!cmd.parse(argc, argv)) return 1;  // should exit.
+        if (!cmd.parse(argc, argv))
+        {
+            return 1;  // should exit.
+        }
 
         run_sm_to_mm();
     }

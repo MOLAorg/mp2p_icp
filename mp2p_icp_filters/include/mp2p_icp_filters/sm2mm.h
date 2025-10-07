@@ -37,8 +37,7 @@ namespace mp2p_icp_filters
 /// Options for simplemap_to_metricmap()
 struct sm2mm_options_t
 {
-    sm2mm_options_t()  = default;
-    ~sm2mm_options_t() = default;
+    sm2mm_options_t() = default;
 
     mrpt::system::VerbosityLevel                verbosity       = mrpt::system::LVL_INFO;
     bool                                        showProgressBar = false;
