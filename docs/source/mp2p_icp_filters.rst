@@ -1,7 +1,6 @@
 .. _mp2p_icp_filters:
 
-Point Cloud Filters
-===================
+.. title is in mola/docs rst file
 
 Point cloud **Filters** in ``mp2p_icp`` are used to modify or extract part of the information from an input point cloud.
 This can involve tasks like removing noise, downsampling, segmenting points into different layers based on properties
@@ -11,7 +10,16 @@ All filters inherit from :cpp:class:`mp2p_icp_filters::FilterBase` and can be co
 or via a YAML file using the **filter pipeline** API, e.g. :cpp:class:`mp2p_icp_filters::filter_pipeline_from_yaml()` 
 or :cpp:class:`mp2p_icp_filters::filter_pipeline_from_yaml_file()`.
 
-The following is a list of all available filters and their specific parameters.
+____________________________________________
+
+.. contents:: Available filters
+   :depth: 1
+   :local:
+   :backlinks: none
+
+____________________________________________
+
+|
 
 Filter: `FilterAdjustTimestamps`
 --------------------------------
