@@ -402,6 +402,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     MRPT_TODO("Load these IMU parameters!!");
     mola::imu::ImuIntegrationParams imu_params;
+    // imu_params.bias_acc =...
 
     const mrpt::math::TTwist3D* constant_twist = nullptr;
 
@@ -423,7 +424,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             // Recall, the reference time should have been set already by the Generator and/or
             // FilterAdjustTimestamps:
             const auto sample_history =
-                ps->localVelocityBuffer.collect_samples_around_reference_time(scan_time_span);
+                ps->localVelocityBuffer.collect_samples_around_reference_time(2 * scan_time_span);
 
             const bool use_higher_order = (method == MotionCompensationMethod::IMUh);
 

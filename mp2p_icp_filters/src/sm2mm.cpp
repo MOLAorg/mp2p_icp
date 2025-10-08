@@ -77,8 +77,8 @@ void mp2p_icp_filters::simplemap_to_metricmap(
 
     // Parameters for twist, and possibly other user-provided variables.
     mp2p_icp::ParameterSource ps;
-    mp2p_icp::AttachToParameterSource(generators, ps);
     mp2p_icp::AttachToParameterSource(filters, ps);
+    mp2p_icp::AttachToParameterSource(generators, ps);
 
     // Default values for twist variables:
     ps.updateVariables({{"vx", .0}, {"vy", .0}, {"vz", .0}, {"wx", .0}, {"wy", .0}, {"wz", .0}});
@@ -190,9 +190,13 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             lambdaProcessLocalVelocityBuffer(obs);
         }
 
+        // Save the ref time used for reconstructing the trajectory:
+        const auto lvbRefTime = ps.localVelocityBuffer.get_reference_zero_time();
+
         // Next, do the actual sensor data processing:
         for (const auto& obs : *sf)
         {
+            ASSERT_(obs);
             obs->load();
 
             bool handled = mp2p_icp_filters::apply_generators(generators, *obs, mm, robotPose);
@@ -201,6 +205,8 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             {
                 continue;
             }
+
+            ps.localVelocityBuffer.set_reference_zero_time(lvbRefTime);
 
             // process it:
             mp2p_icp_filters::apply_filter_pipeline(filters, mm);
