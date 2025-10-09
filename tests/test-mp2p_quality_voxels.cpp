@@ -56,7 +56,7 @@ void unit_test()
     {
         std::string          global, local;
         mrpt::poses::CPose3D local_pose_wrt_global;
-        bool                 is_good_lc;
+        bool                 is_good_lc = false;
     };
 
     std::vector<Entry> LCs;

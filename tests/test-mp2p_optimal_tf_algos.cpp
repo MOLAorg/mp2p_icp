@@ -33,7 +33,6 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <sstream>
 
 // Used to validate OLAE. However, it may make the Gauss-Newton solver, or the
 // robust kernel with outliers to fail.
@@ -128,7 +127,10 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>> transform_points_plan
     {
         // outlier?
         const bool is_outlier = (rnd.drawUniform(0.0, 1.0) < outliers_ratio);
-        if (is_outlier) gt_outlier_indices.push_back(i);
+        if (is_outlier)
+        {
+            gt_outlier_indices.push_back(i);
+        }
 
         if (!is_outlier)
         {
@@ -164,7 +166,10 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>> transform_points_plan
     for (std::size_t i = 0; i < plA.size(); ++i)
     {
         const bool is_outlier = (rnd.drawUniform(0.0, 1.0) < outliers_ratio);
-        if (is_outlier) gt_outlier_indices.push_back(pA.size() + i);
+        if (is_outlier)
+        {
+            gt_outlier_indices.push_back(pA.size() + i);
+        }
 
         if (!is_outlier)
         {
@@ -175,7 +180,9 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>> transform_points_plan
         {
             // Outlier
             for (int k = 0; k < 3; k++)
+            {
                 plB[i].centroid[k] = rnd.drawUniform(-outliers_bbox, outliers_bbox);
+            }
         }
 
         const auto sigma_c = xyz_noise_std;
@@ -210,7 +217,10 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>> transform_points_plan
                     v *= rnd_ang;
 
                     mrpt::math::CVectorFixed<double, 3> vv;
-                    for (int k = 0; k < 3; k++) vv[k] = v[k];
+                    for (int k = 0; k < 3; k++)
+                    {
+                        vv[k] = v[k];
+                    }
 
                     const auto R33 = mrpt::poses::Lie::SO<3>::exp(vv);
                     const auto p =
@@ -235,7 +245,10 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>> transform_points_plan
         else
         {
             // Outlier:
-            for (int k = 0; k < 4; k++) plB[i].plane.coefs[k] = rnd.drawUniform(-1.0, 1.0);
+            for (int k = 0; k < 4; k++)
+            {
+                plB[i].plane.coefs[k] = rnd.drawUniform(-1.0, 1.0);
+            }
             plB[i].plane.unitarize();
         }
 
@@ -249,7 +262,8 @@ std::tuple<mrpt::poses::CPose3D, std::vector<std::size_t>> transform_points_plan
         mp2p_icp::point_plane_pair_t pt2pl;
         pt2pl.pl_global = plA[i];
         pt2pl.pt_local =
-            mrpt::math::TPoint3Df(plB[i].centroid.x, plB[i].centroid.y, plB[i].centroid.z);
+            mrpt::math::TPoint3D(plB[i].centroid.x, plB[i].centroid.y, plB[i].centroid.z)
+                .cast<float>();
 
         pt2plPairs.push_back(pt2pl);
     }
@@ -471,12 +485,14 @@ bool test_icp_algos(
     }  // for each repetition
 
     // RMSE:
-    rmse_olea     = std::sqrt(rmse_olea / num_reps);
-    rmse_xyz_olea = std::sqrt(rmse_xyz_olea / num_reps);
-    rmse_horn     = std::sqrt(rmse_horn / num_reps);
-    rmse_xyz_horn = std::sqrt(rmse_xyz_horn / num_reps);
-    rmse_gn       = std::sqrt(rmse_gn / num_reps);
-    rmse_xyz_gn   = std::sqrt(rmse_xyz_gn / num_reps);
+    const double num_reps_1 = 1.0 / static_cast<double>(num_reps);
+
+    rmse_olea     = std::sqrt(rmse_olea * num_reps_1);
+    rmse_xyz_olea = std::sqrt(rmse_xyz_olea * num_reps_1);
+    rmse_horn     = std::sqrt(rmse_horn * num_reps_1);
+    rmse_xyz_horn = std::sqrt(rmse_xyz_horn * num_reps_1);
+    rmse_gn       = std::sqrt(rmse_gn * num_reps_1);
+    rmse_xyz_gn   = std::sqrt(rmse_xyz_gn * num_reps_1);
 
     const double dt_olea = profiler.getMeanTime("olea_match");
     const double dt_horn = profiler.getMeanTime("se3_l2");
@@ -495,11 +511,13 @@ bool test_icp_algos(
     // clang-format on
 
     if (DO_SAVE_STAT_FILES)
+    {
         stats.saveToTextFile(
             mrpt::system::fileNameStripInvalidChars(tstName) + std::string(".txt"),
             mrpt::math::MATRIX_FORMAT_ENG, true,
             "% Columns: execution time x 3, norm(SO3_error) x3, "
             "norm(XYZ_error) x3 (OLAE, Horn, GaussNewton)\n\n");
+    }
 
     return true;  // all ok.
     MRPT_END
@@ -541,11 +559,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         {
             // Points only. Noisy w. outliers:
             for (int robust = 0; robust <= 1; robust++)
+            {
                 for (double Or = .025; Or < 0.76; Or += 0.025)
+                {
                     ASSERT_(test_icp_algos(200 /*pt*/, 0, 0, nXYZ, .0, robust != 0, Or));
+                }
+            }
         }
     }
-    catch (std::exception& e)
+    catch (const std::exception& e)
     {
         std::cerr << mrpt::exception_to_str(e) << "\n";
         return 1;

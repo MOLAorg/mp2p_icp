@@ -27,8 +27,14 @@ static mrpt::maps::CSimplePointsMap::Ptr generateGlobalPoints()
 {
     auto pts = mrpt::maps::CSimplePointsMap::Create();
 
-    for (int i = 0; i < 10; i++) pts->insertPoint(i * 0.01f, 5.0f, .0f);
-    for (int i = 0; i < 10; i++) pts->insertPoint(10.0f, i * 0.01f, 1.0f);
+    for (int i = 0; i < 10; i++)
+    {
+        pts->insertPoint(static_cast<float>(i) * 0.01f, 5.0f, .0f);
+    }
+    for (int i = 0; i < 10; i++)
+    {
+        pts->insertPoint(10.0f, static_cast<float>(i) * 0.01f, 1.0f);
+    }
 
     return pts;
 }
