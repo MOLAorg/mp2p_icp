@@ -12,7 +12,6 @@ set(LIB_SRCS
   src/LogRecord.cpp
   src/Matcher_Adaptive.cpp
   src/Matcher_Cov2Cov.cpp
-  src/Matcher_Planes_Normals.cpp
   src/Matcher_Point2Line.cpp
   src/Matcher_Point2Plane.cpp
   src/Matcher_Points_Base.cpp
