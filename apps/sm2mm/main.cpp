@@ -87,7 +87,6 @@ void run_sm_to_mm()
 
     std::cout << "[sm2mm] Reading simplemap from: '" << filSM << "'..." << std::endl;
 
-    // TODO: progress bar
     sm.loadFromFile(filSM);
 
     std::cout << "[sm2mm] Done read simplemap with " << sm.size() << " keyframes." << std::endl;

@@ -115,7 +115,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     const auto&                             p = in.paired_pt2pt[idx_pt];
                     mrpt::math::CMatrixFixed<double, 3, 12> J1;
                     mrpt::math::CVectorFixedDouble<3>       ret =
-                        mp2p_icp::error_point2point(p, result.optimalPose, J1);
+                        mp2p_icp::error_point2point(p.local, p.global, result.optimalPose, J1);
 
                     // Get point weight:
                     if (has_per_pt_weight)
@@ -159,7 +159,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             const auto&                             p = in.paired_pt2pt[idx_pt];
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
             mrpt::math::CVectorFixedDouble<3>       ret =
-                mp2p_icp::error_point2point(p, result.optimalPose, J1);
+                mp2p_icp::error_point2point(p.local, p.global, result.optimalPose, J1);
 
             // Get point weight:
             if (has_per_pt_weight)
@@ -209,12 +209,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     const auto&                             p = in.paired_cov2cov[idx_pairing];
                     mrpt::math::CMatrixFixed<double, 3, 12> J1;
 
-                    MRPT_TODO("Refactor this!");
-                    mrpt::tfest::TMatchingPair auxP;
-                    auxP.local  = p.local;
-                    auxP.global = p.global;
                     mrpt::math::CVectorFixedDouble<3> ret =
-                        mp2p_icp::error_point2point(auxP, result.optimalPose, J1);
+                        mp2p_icp::error_point2point(p.local, p.global, result.optimalPose, J1);
 
                     const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
 
@@ -252,13 +248,8 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             const auto&                             p = in.paired_cov2cov[idx_pairing];
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
 
-            // TODO: Refactor this (same as in TBB branch)
-            mrpt::tfest::TMatchingPair auxP;
-            auxP.local  = p.local;
-            auxP.global = p.global;
-
             mrpt::math::CVectorFixedDouble<3> ret =
-                mp2p_icp::error_point2point(auxP, result.optimalPose, J1);
+                mp2p_icp::error_point2point(p.local, p.global, result.optimalPose, J1);
 
             const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
 
@@ -295,7 +286,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.pt2ln, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc)
+            {
+                weight *= robustSqrtWeightFunc(retSqrNorm);
+            }
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
@@ -388,7 +382,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Apply robust kernel?
             double weight = w.pt2pl, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc) weight *= robustSqrtWeightFunc(retSqrNorm);
+            if (robustSqrtWeightFunc)
+            {
+                weight *= robustSqrtWeightFunc(retSqrNorm);
+            }
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();

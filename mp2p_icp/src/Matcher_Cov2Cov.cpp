@@ -34,8 +34,6 @@ bool Matcher_Cov2Cov::impl_match(
 
     out = Pairings();
 
-    // TODO: Add option to allow layer matches not found not to trigger an error?
-
     // Analyze layer pairs:
     for (const auto& [globalLayerName, localLayerName] : layer_matches)
     {

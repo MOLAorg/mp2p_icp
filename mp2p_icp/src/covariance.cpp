@@ -84,9 +84,11 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
         {
             // Error:
-            const auto&                       p   = in.paired_pt2pt[idx_pt];
-            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_point2point(p, pose);
-            err.block<3, 1>(idx_pt * 3, 0)        = ret.asEigen();
+            const auto& p = in.paired_pt2pt[idx_pt];
+
+            mrpt::math::CVectorFixedDouble<3> ret =
+                mp2p_icp::error_point2point(p.local, p.global, pose);
+            err.block<3, 1>(idx_pt * 3, 0) = ret.asEigen();
         }
         auto base_idx = nPt2Pt * 3;
 
@@ -129,22 +131,19 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
             err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
         }
 
-        // Point-to-point:
+        // cov-to-cov:
         for (size_t idx_cov2cov = 0; idx_cov2cov < nCov2Cov; idx_cov2cov++)
         {
             // Error:
             const auto& p = in.paired_cov2cov[idx_cov2cov];
 
-            MRPT_TODO("Refactor this!");
-            mrpt::tfest::TMatchingPair auxP;
-            auxP.local                            = p.local;
-            auxP.global                           = p.global;
-            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_point2point(auxP, pose);
+            const mrpt::math::CVectorFixedDouble<3> ret =
+                mp2p_icp::error_point2point(p.local, p.global, pose);
 
             const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
 
-            MRPT_TODO("Add sqrt(COV) term");
-            err.block<3, 1>(idx_cov2cov * 3, 0) = ret.asEigen();
+            // TODO: Add sqrt(COV) term?
+            err.block<3, 1>(idx_cov2cov * 3, 0) = cov_inv * ret.asEigen();
         }
     };
 
