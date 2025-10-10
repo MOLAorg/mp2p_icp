@@ -61,7 +61,7 @@ FilterBoundingBox::FilterBoundingBox()
     mrpt::system::COutputLogger::setLoggerName("FilterBoundingBox");
 }
 
-void FilterBoundingBox::initialize(const mrpt::containers::yaml& c)
+void FilterBoundingBox::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

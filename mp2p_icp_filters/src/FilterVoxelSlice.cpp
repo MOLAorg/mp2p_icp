@@ -46,7 +46,7 @@ FilterVoxelSlice::FilterVoxelSlice()
     mrpt::system::COutputLogger::setLoggerName("FilterVoxelSlice");
 }
 
-void FilterVoxelSlice::initialize(const mrpt::containers::yaml& c)
+void FilterVoxelSlice::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

@@ -57,7 +57,7 @@ void FilterByRange::Parameters::load_from_yaml(
 
 FilterByRange::FilterByRange() { mrpt::system::COutputLogger::setLoggerName("FilterByRange"); }
 
-void FilterByRange::initialize(const mrpt::containers::yaml& c)
+void FilterByRange::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

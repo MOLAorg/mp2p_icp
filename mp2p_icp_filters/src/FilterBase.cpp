@@ -22,8 +22,6 @@
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mrpt/system/CTimeLogger.h>
 
-MRPT_TODO("Add a 'name' field, use for profiler and logger");
-
 IMPLEMENTS_VIRTUAL_MRPT_OBJECT(FilterBase, mrpt::rtti::CObject, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
@@ -31,6 +29,19 @@ using namespace mp2p_icp_filters;
 FilterBase::FilterBase() : mrpt::system::COutputLogger("FilterBase") {}
 
 FilterBase::~FilterBase() = default;
+
+void FilterBase::initialize(const mrpt::containers::yaml& cfg_block)
+{
+    initialize_filter(cfg_block);
+
+    // Load custom user-provided name for this filter:
+    MCP_LOAD_OPT(cfg_block, name);
+
+    if (!name.empty())
+    {
+        mrpt::system::COutputLogger::setLoggerName(name);
+    }
+}
 
 void mp2p_icp_filters::apply_filter_pipeline(
     const FilterPipeline& filters, mp2p_icp::metric_map_t& inOut,
@@ -40,12 +51,21 @@ void mp2p_icp_filters::apply_filter_pipeline(
     {
         ASSERT_(f.get() != nullptr);
 
+        // Optional profiler:
         std::optional<mrpt::system::CTimeLoggerEntry> tle;
         if (profiler)
         {
-            tle.emplace(*profiler, f->GetRuntimeClass()->className);
+            if (f->name.empty())
+            {
+                tle.emplace(*profiler, f->GetRuntimeClass()->className);
+            }
+            else
+            {
+                tle.emplace(*profiler, f->name);
+            }
         }
 
+        // Run filter:
         f->filter(inOut);
     }
 }

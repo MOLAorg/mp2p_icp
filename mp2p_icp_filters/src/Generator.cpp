@@ -42,8 +42,6 @@
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/system/filesystem.h>
 
-MRPT_TODO("Add a 'name' field, use for profiler and logger");
-
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
@@ -59,6 +57,12 @@ void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Gene
     MCP_LOAD_OPT(c, process_class_names_regex);
     MCP_LOAD_OPT(c, process_sensor_labels_regex);
     MCP_LOAD_OPT(c, throw_on_unhandled_observation_class);
+
+    MCP_LOAD_OPT(c, name);
+    if (!name.empty())
+    {
+        parent.mrpt::system::COutputLogger::setLoggerName(name);
+    }
 
     if (c.has("metric_map_definition"))
     {

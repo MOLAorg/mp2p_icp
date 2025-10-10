@@ -49,7 +49,7 @@ void FilterCurvature::Parameters::load_from_yaml(const mrpt::containers::yaml& c
 
 FilterCurvature::FilterCurvature() = default;
 
-void FilterCurvature::initialize(const mrpt::containers::yaml& c)
+void FilterCurvature::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params.load_from_yaml(c);

@@ -47,7 +47,7 @@ void FilterByIntensity::Parameters::load_from_yaml(const mrpt::containers::yaml&
 
 FilterByIntensity::FilterByIntensity() = default;
 
-void FilterByIntensity::initialize(const mrpt::containers::yaml& c)
+void FilterByIntensity::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params.load_from_yaml(c);

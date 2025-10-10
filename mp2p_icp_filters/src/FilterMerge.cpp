@@ -50,7 +50,7 @@ void FilterMerge::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Fi
 
 FilterMerge::FilterMerge() { mrpt::system::COutputLogger::setLoggerName("FilterMerge"); }
 
-void FilterMerge::initialize(const mrpt::containers::yaml& c)
+void FilterMerge::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

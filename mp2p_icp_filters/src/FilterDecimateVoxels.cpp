@@ -82,7 +82,7 @@ FilterDecimateVoxels::FilterDecimateVoxels()
     mrpt::system::COutputLogger::setLoggerName("FilterDecimateVoxels");
 }
 
-void FilterDecimateVoxels::initialize(const mrpt::containers::yaml& c)
+void FilterDecimateVoxels::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

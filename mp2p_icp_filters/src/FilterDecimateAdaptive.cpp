@@ -58,7 +58,7 @@ FilterDecimateAdaptive::FilterDecimateAdaptive() : impl_(mrpt::make_impl<Impl>()
     mrpt::system::COutputLogger::setLoggerName("FilterDecimateAdaptive");
 }
 
-void FilterDecimateAdaptive::initialize(const mrpt::containers::yaml& c)
+void FilterDecimateAdaptive::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

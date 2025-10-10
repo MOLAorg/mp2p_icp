@@ -44,7 +44,7 @@ using namespace mp2p_icp_filters;
 
 FilterDeskew::FilterDeskew() { mrpt::system::COutputLogger::setLoggerName("FilterDeskew"); }
 
-void FilterDeskew::initialize(const mrpt::containers::yaml& c)
+void FilterDeskew::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
 

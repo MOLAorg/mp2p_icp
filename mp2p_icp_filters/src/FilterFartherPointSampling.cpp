@@ -65,7 +65,7 @@ FilterFartherPointSampling::FilterFartherPointSampling()
     mrpt::system::COutputLogger::setLoggerName("FilterFartherPointSampling");
 }
 
-void FilterFartherPointSampling::initialize(const mrpt::containers::yaml& c)
+void FilterFartherPointSampling::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

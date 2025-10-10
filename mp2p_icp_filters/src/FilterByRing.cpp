@@ -55,7 +55,7 @@ void FilterByRing::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 
 FilterByRing::FilterByRing() = default;
 
-void FilterByRing::initialize(const mrpt::containers::yaml& c)
+void FilterByRing::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params.load_from_yaml(c);

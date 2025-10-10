@@ -39,7 +39,7 @@ FilterNormalizeIntensity::FilterNormalizeIntensity()
     mrpt::system::COutputLogger::setLoggerName("FilterNormalizeIntensity");
 }
 
-void FilterNormalizeIntensity::initialize(const mrpt::containers::yaml& c)
+void FilterNormalizeIntensity::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

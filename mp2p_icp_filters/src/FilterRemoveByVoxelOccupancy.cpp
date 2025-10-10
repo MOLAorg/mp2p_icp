@@ -44,7 +44,7 @@ FilterRemoveByVoxelOccupancy::FilterRemoveByVoxelOccupancy()
     mrpt::system::COutputLogger::setLoggerName("FilterRemoveByVoxelOccupancy");
 }
 
-void FilterRemoveByVoxelOccupancy::initialize(const mrpt::containers::yaml& c)
+void FilterRemoveByVoxelOccupancy::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

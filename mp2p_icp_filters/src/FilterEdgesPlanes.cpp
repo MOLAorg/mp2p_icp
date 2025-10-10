@@ -44,7 +44,7 @@ void FilterEdgesPlanes::Parameters::load_from_yaml(const mrpt::containers::yaml&
 
 FilterEdgesPlanes::FilterEdgesPlanes() = default;
 
-void FilterEdgesPlanes::initialize(const mrpt::containers::yaml& c)
+void FilterEdgesPlanes::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

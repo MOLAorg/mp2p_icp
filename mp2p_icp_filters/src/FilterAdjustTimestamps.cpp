@@ -42,7 +42,7 @@ FilterAdjustTimestamps::FilterAdjustTimestamps()
     mrpt::system::COutputLogger::setLoggerName("FilterAdjustTimestamps");
 }
 
-void FilterAdjustTimestamps::initialize(const mrpt::containers::yaml& c)
+void FilterAdjustTimestamps::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

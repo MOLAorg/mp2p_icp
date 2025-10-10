@@ -128,7 +128,7 @@ FilterPoleDetector::FilterPoleDetector()
     mrpt::system::COutputLogger::setLoggerName("FilterPoleDetector");
 }
 
-void FilterPoleDetector::initialize(const mrpt::containers::yaml& c)
+void FilterPoleDetector::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 

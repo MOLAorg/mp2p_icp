@@ -61,7 +61,7 @@ FilterDeleteLayer::FilterDeleteLayer()
     mrpt::system::COutputLogger::setLoggerName("FilterDeleteLayer");
 }
 
-void FilterDeleteLayer::initialize(const mrpt::containers::yaml& c)
+void FilterDeleteLayer::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
