@@ -154,6 +154,10 @@ void correctPointsLoop(
 
     const bool in_place = (outPc == nullptr);
 
+    const bool has_I = Is != nullptr && out_Is != nullptr && !Is->empty();
+    const bool has_R = Rs != nullptr && out_Rs != nullptr && !Rs->empty();
+    const bool has_T = Ts != nullptr && out_Ts != nullptr && !Ts->empty();
+
 #if defined(MP2P_HAS_TBB)
     tbb::parallel_for(
         static_cast<size_t>(0), n,
@@ -282,15 +286,15 @@ void correctPointsLoop(
                 outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
 
                 // Copy additional fields
-                if (Is && out_Is)
+                if (has_I)
                 {
                     (*out_Is)[n0 + i] = (*Is)[i];
                 }
-                if (Rs && out_Rs)
+                if (has_R)
                 {
                     (*out_Rs)[n0 + i] = (*Rs)[i];
                 }
-                if (Ts && out_Ts)
+                if (has_T)
                 {
                     (*out_Ts)[n0 + i] = (*Ts)[i];
                 }
