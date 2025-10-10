@@ -13,13 +13,22 @@ find_package(mola_test_datasets QUIET)
 # ---------------------------------------------------------------------------
 # Usage: mp2p_add_test(foo) to define a test named "test_mp2p_icp_foo"
 #   from "test-foo.cpp". Additional extra .cpp files can be added as argv
+#   Example with EXTRA_LIBS:
+#     mp2p_add_test(mp2p_example_test EXTRA_LIBS some_extra_lib)
 # ---------------------------------------------------------------------------
 function(mp2p_add_test NAME)
+  set(options)
+  set(oneValueArgs EXTRA_LIBS)
+  set(multiValueArgs)
+  cmake_parse_arguments(MP2P_ADD_TEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+
   mola_add_test(
     TARGET  test-${NAME}
-    SOURCES test-${NAME}.cpp ${ARGN}
+    SOURCES test-${NAME}.cpp ${MP2P_ADD_TEST_UNPARSED_ARGUMENTS}
     LINK_LIBRARIES
     mp2p_icp
+    ${MP2P_ADD_TEST_EXTRA_LIBS}
   )
   target_compile_definitions(test-${NAME}
     PRIVATE
@@ -33,7 +42,7 @@ function(mp2p_add_test NAME)
 endfunction()
 
 #mp2p_add_test(mp2p_matcher_pt2pl)  # TODO: This now requires a NP metric map to run the test
-mp2p_add_test(mp2p_deskew)
+mp2p_add_test(mp2p_deskew EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_error_terms_jacobians)
 mp2p_add_test(mp2p_georef_yaml)
 mp2p_add_test(mp2p_icp_algos)
