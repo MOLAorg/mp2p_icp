@@ -18,9 +18,12 @@
  * @date   Dec 13, 2023
  */
 
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
 #include <mola_imu_preintegration/ImuIntegrationParams.h>
 #include <mola_imu_preintegration/ImuTransformer.h>
 #include <mola_imu_preintegration/trajectory_from_buffer.h>
+#endif
+
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
@@ -82,8 +85,19 @@ void FilterDeskew::initialize(const mrpt::containers::yaml& c)
     }
 }
 
+// Minimal fake class for when building without IMU library:
+#if !defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
+namespace mola::imu
+{
+struct Trajectory
+{
+};
+}  // namespace mola::imu
+#endif
+
 namespace
 {
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
 
 auto findBeforeAfter(const mola::imu::Trajectory& trajectory, const double t)
     -> std::pair<mola::imu::Trajectory::const_iterator, mola::imu::Trajectory::const_iterator>
@@ -123,6 +137,7 @@ auto findBeforeAfter(const mola::imu::Trajectory& trajectory, const double t)
     Iterator before = std::prev(lower);
     return {before, lower};
 }
+#endif  // MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION
 
 // Optimized templated version for compile-time optimization for each method
 template <MotionCompensationMethod method>
@@ -177,6 +192,7 @@ void correctPointsLoop(
                     // Translation: simple constant velocity model:
                     v_dt);
             }
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
             else if constexpr (method == MotionCompensationMethod::IMU)
             {
                 const auto t_point    = (*Ts)[i];
@@ -245,6 +261,7 @@ void correctPointsLoop(
                     // Translation: simple constant velocity model:
                     tp_prev.pose.translation() + delta_t);
             }
+#endif
             else
             {
                 // Should never arrive here
@@ -400,9 +417,12 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     // with t=0 being the reference time when t=0 in the point cloud timestamp field:
     mola::imu::Trajectory reconstructed_trajectory;
 
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
     MRPT_TODO("Load these IMU parameters!!");
     mola::imu::ImuIntegrationParams imu_params;
     // imu_params.bias_acc =...
+
+#endif
 
     const mrpt::math::TTwist3D* constant_twist = nullptr;
 
@@ -412,6 +432,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         case MotionCompensationMethod::IMUh:
         case MotionCompensationMethod::IMUt:
         {
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
             const auto* ps = attachedSource();
             ASSERTMSG_(ps, "A ParameterSource must be attached if IMU-based methods are enabled");
 
@@ -430,6 +451,11 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             reconstructed_trajectory =
                 mola::imu::trajectory_from_buffer(sample_history, imu_params, use_higher_order);
+#else
+            THROW_EXCEPTION(
+                "Only Linear deskew method is available when building mp2p_icp without "
+                "mola_imu_preintegration");
+#endif
         }
         break;
 

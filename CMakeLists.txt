@@ -63,7 +63,10 @@ if(TBB_FOUND)
   option(MP2PICP_USE_TBB "If found TBB, this option controls whether to use it or not" ON)
 endif()
 
-find_package(mola_imu_preintegration REQUIRED) # Used for advanced deskew methods in FilterDeskew
+find_package(mola_imu_preintegration) # Used for advanced deskew methods in FilterDeskew
+if (NOT mola_imu_preintegration_FOUND)
+  message(WARNING "mola_imu_preintegration not found: advanced deskew will not be available")
+endif()
 
 #----
 # Extract version from package.xml

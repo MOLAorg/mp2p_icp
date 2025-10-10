@@ -18,7 +18,10 @@
  * @date   Jun 10, 2019
  */
 
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
 #include <mola_imu_preintegration/ImuTransformer.h>
+#endif
+
 #include <mp2p_icp/load_plugin.h>
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/Generator.h>

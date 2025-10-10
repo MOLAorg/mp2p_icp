@@ -61,6 +61,11 @@ set(LIB_PUBLIC_HDRS
 )
 
 
+if (mola_imu_preintegration_FOUND)
+  set(imu_pub_link_ mola::mola_imu_preintegration)
+  set(imu_cmake_dep_ mola_imu_preintegration)
+endif()
+
 mola_add_library(
   TARGET ${PROJECT_NAME}
   SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
@@ -68,12 +73,12 @@ mola_add_library(
     mola::mp2p_icp_map
     mola::mp2p_icp_common
   PRIVATE_LINK_LIBRARIES
-    mola::mola_imu_preintegration
+    ${imu_pub_link_}
     tsl::robin_map
   CMAKE_DEPENDENCIES
     mp2p_icp
     mp2p_icp_common
-    mola_imu_preintegration
+    ${imu_cmake_dep_}
     #robin_map
 )
 
@@ -82,3 +87,6 @@ if (TBB_FOUND AND MP2PICP_USE_TBB)
   target_link_libraries(${PROJECT_NAME} PRIVATE TBB::tbb)
 endif()
 
+if (mola_imu_preintegration_FOUND)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
+endif()
