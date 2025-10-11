@@ -33,18 +33,30 @@ namespace
 {
 using mrpt::literals::operator""_deg;
 
-constexpr std::size_t NUM_POINTS   = 10;
-constexpr double      LINEAR_SPEED = 1.0;
-constexpr double      ANGULAR_VEL  = 90.0_deg;
-constexpr double      SCAN_PERIOD  = 0.10;  // seconds
+struct SimulationParams
+{
+    std::size_t point_count  = 10;
+    double      linear_speed = 1.0;
+    double      angular_vel  = 0.001_deg;
+    double      scan_period  = 0.10;  // seconds
 
-std::vector<mrpt::math::TPoint3D> create_gt_points()
+    mp2p_icp_filters::MotionCompensationMethod deskew_method =
+        mp2p_icp_filters::MotionCompensationMethod::None;
+};
+
+struct SimulationResult
+{
+    float              rmse = 0;
+    std::vector<float> individual_frame_rmse;
+};
+
+std::vector<mrpt::math::TPoint3D> create_gt_points(const SimulationParams& p)
 {
     std::vector<mrpt::math::TPoint3D> pts;
-    pts.reserve(NUM_POINTS);
+    pts.reserve(p.point_count);
     std::mt19937                           rng(42);  // Fixed seed for reproducibility
     std::uniform_real_distribution<double> dist(-10.0, 10.0);
-    for (size_t i = 0; i < NUM_POINTS; ++i)
+    for (size_t i = 0; i < p.point_count; ++i)
     {
         pts.emplace_back(dist(rng), dist(rng), dist(rng));
     }
@@ -54,7 +66,7 @@ std::vector<mrpt::math::TPoint3D> create_gt_points()
 std::tuple<
     mrpt::poses::CPose3DInterpolator, std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>,
     std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>>
-    create_gt_keyframes()
+    create_gt_keyframes(const SimulationParams& p)
 {
     mrpt::poses::CPose3DInterpolator                        kfs;
     std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D> kfTwists;
@@ -77,15 +89,16 @@ std::tuple<
     kfs.insert(
         mrpt::Clock::fromDouble(0.2),
         mrpt::poses::CPose3D::FromXYZYawPitchRoll(0, 0, 0, 0.0_deg, 0.0_deg, 0.0_deg));
-    kfTwists[mrpt::Clock::fromDouble(0.2)] = {LINEAR_SPEED, 0, 0, 0.0_deg, 0.0_deg, ANGULAR_VEL};
+    kfTwists[mrpt::Clock::fromDouble(0.2)] = {p.linear_speed, 0,       0,
+                                              0.0_deg,        0.0_deg, p.angular_vel};
 
     for (int i = 0; i < 40; i++)
     {
         const double t      = 0.3 + 0.1 * i;
         const auto   stamp  = mrpt::Clock::fromDouble(t);
         const double dt     = t - 0.2;
-        const double radius = LINEAR_SPEED / ANGULAR_VEL;
-        const double theta  = ANGULAR_VEL * dt;
+        const double radius = p.linear_speed / p.angular_vel;
+        const double theta  = p.angular_vel * dt;
 
         // Center of rotation at (0, radius, 0)
         const double x = radius * std::sin(theta);
@@ -94,7 +107,7 @@ std::tuple<
 
         kfs.insert(
             stamp, mrpt::poses::CPose3D::FromXYZYawPitchRoll(x, y, z, 0.0_deg, 0.0_deg, theta));
-        kfTwists[stamp] = {LINEAR_SPEED, 0, 0, 0.0_deg, 0.0_deg, ANGULAR_VEL};
+        kfTwists[stamp] = {p.linear_speed, 0, 0, 0.0_deg, 0.0_deg, p.angular_vel};
     }
 
     // Fill imuReadings at 100 Hz (every 0.01s) over the keyframe time range
@@ -175,12 +188,13 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     return pts;
 }
 
-void run_deskew_test()
+// Returns: rmse error
+[[nodiscard]] SimulationResult run_deskew_test(const SimulationParams& p)
 {
     // Generate test data:
-    const auto gtPoints = create_gt_points();
+    const auto gtPoints = create_gt_points(p);
 
-    const auto [gtKeyframes, gtTwist, imuReadings] = create_gt_keyframes();
+    const auto [gtKeyframes, gtTwist, imuReadings] = create_gt_keyframes(p);
 
 #if 0
     for (const auto& [stamp, pose] : gtKeyframes)
@@ -197,13 +211,17 @@ void run_deskew_test()
     deskew.silently_ignore_no_timestamps = false;
     deskew.input_pointcloud_layer        = "raw";
     deskew.output_pointcloud_layer       = "deskewed";
-    deskew.method                        = mp2p_icp_filters::MotionCompensationMethod::Linear;
+    deskew.method                        = p.deskew_method;
 
     deskew.attachToParameterSource(ps);
 
     // Run test:
-    const auto  numKfs = gtKeyframes.size();
-    std::size_t kfIdx  = 0;
+    SimulationResult result;
+
+    float       sum_error_sqr = .0f;
+    std::size_t error_terms   = 0;
+    const auto  numKfs        = gtKeyframes.size();
+    std::size_t kfIdx         = 0;
     for (const auto& [stamp, pose] : gtKeyframes)
     {
         if (kfIdx == numKfs - 1)
@@ -215,7 +233,8 @@ void run_deskew_test()
         const auto kfGtTwist = gtTwist.at(stamp);
 
         // Simulate the skewed points:
-        const auto skewedPoints = simulate_skewed_points(stamp, gtKeyframes, gtPoints, SCAN_PERIOD);
+        const auto skewedPoints =
+            simulate_skewed_points(stamp, gtKeyframes, gtPoints, p.scan_period);
 
         // Get the GT deskewed points:
         const auto gtLocalPoints = simulate_gt_local_points(mrpt::poses::CPose3D(pose), gtPoints);
@@ -224,15 +243,17 @@ void run_deskew_test()
         deskew.twist = kfGtTwist;
 
         // Update local velocity buffer:
-        ps.localVelocityBuffer.add_orientation(
-            mrpt::Clock::toDouble(stamp), pose.getRotationMatrix());
+        const double stamp_s = mrpt::Clock::toDouble(stamp);
+        ps.localVelocityBuffer.add_orientation(stamp_s, pose.getRotationMatrix());
         ps.localVelocityBuffer.add_linear_velocity(
-            mrpt::Clock::toDouble(stamp), {kfGtTwist.vx, kfGtTwist.vy, kfGtTwist.vz});
+            stamp_s, {kfGtTwist.vx, kfGtTwist.vy, kfGtTwist.vz});
+
+        ps.localVelocityBuffer.set_reference_zero_time(stamp_s);
 
         // For all IMU readings from "stamp" to "stamp+SCAN_PERIOD", add IMU readings:
         {
-            const double t_start = mrpt::Clock::toDouble(stamp);
-            const double t_end   = t_start + SCAN_PERIOD;
+            const double t_start = stamp_s;
+            const double t_end   = t_start + p.scan_period;
             for (double t = t_start; t <= t_end + 1e-8; t += 0.01)
             {
                 mrpt::Clock::time_point imu_stamp = mrpt::Clock::fromDouble(t);
@@ -245,7 +266,7 @@ void run_deskew_test()
 
                 const auto& twist = it->second;
                 // Add linear acceleration (assume zero for this test):
-                ps.localVelocityBuffer.add_linear_acceleration(t, {0, 0, 0});
+                ps.localVelocityBuffer.add_linear_acceleration(t, {0, 0, 9.81});
                 // Add angular velocity:
                 ps.localVelocityBuffer.add_angular_velocity(t, {twist.wx, twist.wy, twist.wz});
             }
@@ -256,10 +277,33 @@ void run_deskew_test()
         m.layers["raw"] = skewedPoints;
         deskew.filter(m);
 
+        float frame_sum_error_sqr = .0f;
+
         // Compare points:
+        const auto deskewedPts = m.point_layer("deskewed");
+        ASSERT_EQUAL_(deskewedPts->size(), gtLocalPoints.size());
+        for (size_t i = 0; i < deskewedPts->size(); i++)
+        {
+            mrpt::math::TPoint3Df pt;
+            deskewedPts->getPoint(i, pt.x, pt.y, pt.z);
+            mrpt::math::TPoint3Df gtPt;
+            gtLocalPoints.getPoint(i, gtPt.x, gtPt.y, gtPt.z);
+
+            const auto error = (pt - gtPt).norm();
+            sum_error_sqr += mrpt::square(error);
+            frame_sum_error_sqr += mrpt::square(error);
+            error_terms++;
+        }
+
+        const float frame_rmse =
+            std::sqrt(frame_sum_error_sqr / static_cast<float>(deskewedPts->size()));
+        result.individual_frame_rmse.push_back(frame_rmse);
 
         ++kfIdx;
-    }
+    }  // end for each timestep
+
+    result.rmse = std::sqrt(sum_error_sqr / static_cast<float>(error_terms));
+    return result;
 }
 
 }  // namespace
@@ -268,7 +312,48 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
     {
-        run_deskew_test();
+        std::vector<mp2p_icp_filters::MotionCompensationMethod> methods = {
+            mp2p_icp_filters::MotionCompensationMethod::None,
+            mp2p_icp_filters::MotionCompensationMethod::Linear};
+#if MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION
+        methods.push_back(mp2p_icp_filters::MotionCompensationMethod::IMU);
+        methods.push_back(mp2p_icp_filters::MotionCompensationMethod::IMUh);
+#endif
+
+        const std::vector<std::pair<float, float>> test_velocities = {
+            {0.0f, 1e-6f},  // stationary
+            {1.0f, 1e-6f},  // linear only
+            {0.0f, 0.02f},  // angular only
+            {1.0f, 0.02f},  // linear + angular
+            {2.0f, 0.05f},  // faster linear + angular
+            {0.5f, 0.10f},  // slow linear, fast angular
+            {3.0f, 0.05f}  // fast linear, slow angular
+        };
+
+        for (const auto& [lin, ang] : test_velocities)
+        {
+            SimulationParams p;
+            p.linear_speed = lin;
+            p.angular_vel  = ang;
+            std::cout << "\n=== Test velocities: lin=" << lin << " ang=" << ang << "\n";
+
+            for (const auto method : methods)
+            {
+                p.deskew_method = method;
+
+                const auto eval = run_deskew_test(p);
+
+                printf(
+                    " %-32s | rmse: %10.6f | errs: ", mrpt::typemeta::enum2str(method).c_str(),
+                    eval.rmse);
+
+                for (std::size_t i = 0; i < 5; i++)
+                {
+                    printf("%4.02f ", eval.individual_frame_rmse[i]);
+                }
+                printf("...\n");
+            }
+        }
     }
     catch (std::exception& e)
     {
