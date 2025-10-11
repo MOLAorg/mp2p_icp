@@ -76,3 +76,9 @@ jobs:
           . /opt/ros/*/setup.sh
           env
           MAKEFLAGS="-j2" colcon build --symlink-install --parallel-workers 2 --event-handlers console_direct+
+
+      - name: Run unit tests
+        run: |
+          . /opt/ros/*/setup.sh
+          colcon test --event-handlers console_direct+
+          colcon test-result --verbose
