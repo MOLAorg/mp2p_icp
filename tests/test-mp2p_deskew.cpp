@@ -110,7 +110,7 @@ std::
         const double z = 0.0;
 
         kfs.insert(
-            stamp, mrpt::poses::CPose3D::FromXYZYawPitchRoll(x, y, z, 0.0_deg, 0.0_deg, theta));
+            stamp, mrpt::poses::CPose3D::FromXYZYawPitchRoll(x, y, z, theta, 0.0_deg, 0.0_deg));
         kfTwists[stamp] = {p.linear_speed, 0, 0, 0.0_deg, 0.0_deg, p.angular_vel};
     }
 
@@ -332,6 +332,7 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
+    int num_errors = 0;
     try
     {
         std::vector<mp2p_icp_filters::MotionCompensationMethod> methods = {
@@ -371,9 +372,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
                 for (std::size_t i = 0; i < 7; i++)
                 {
-                    printf("%4.02f ", eval.individual_frame_rmse[i]);
+                    printf("%4.02f ", eval.individual_frame_rmse[i] * 1e3);
                 }
-                printf("...\n");
+                printf("... [mm]\n");
+
+                // Check:
+                const float threshold =
+                    method == mp2p_icp_filters::MotionCompensationMethod::None ? 0.25 : 0.001;
+                if (eval.rmse > threshold)
+                {
+                    printf("**FAILURE**");
+                    num_errors++;
+                }
+                else
+                {
+                    printf("✅ Passed.\n");
+                }
             }
         }
     }
@@ -382,4 +396,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         std::cerr << mrpt::exception_to_str(e) << "\n";
         return 1;
     }
+
+    printf("Number of test failures: %i\n", num_errors);
+
+    return num_errors == 0 ? 0 : 1;
 }

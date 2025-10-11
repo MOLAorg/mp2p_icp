@@ -206,6 +206,21 @@ void correctPointsLoop(
                 const double dt      = t_point - t_prev;
                 const auto&  tp_prev = it0->second;
 
+                if (std::abs(dt) > 0.1)
+                {
+                    thread_local double last_warning = mrpt::Clock::nowDouble();
+                    const auto          tNow         = mrpt::Clock::nowDouble();
+                    if (tNow - last_warning > 5.0)
+                    {
+                        last_warning = tNow;
+                        fprintf(
+                            stderr,
+                            "[FilterDeskew|WARN]: Excessive time between point stamp and "
+                            "trajectory point (dt=%.03f s)",
+                            dt);
+                    }
+                }
+
                 // v was already in the t=0 frame of reference:
                 const mrpt::math::TVector3D v_dt = *tp_prev.v * dt;
                 const mrpt::math::TVector3D w_dt = *tp_prev.w_b * dt;
@@ -455,6 +470,15 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             reconstructed_trajectory =
                 mola::imu::trajectory_from_buffer(sample_history, imu_params, use_higher_order);
+
+#if 0  // For *really* in-depth debugging
+            std::cout << "\n\n ==== INPUT BUFFER:\n" << ps->localVelocityBuffer.toYAML();
+            std::cout << "\n\n ==== INPUT SAMPLES:\n" << sample_history.by_type.asString();
+            std::cout << "\n\n ==== RECONSTRUCTED:\n"
+                      << mola::imu::trajectory_as_string(reconstructed_trajectory);
+            std::cout << "\n\n\n ------------------------------------------ \n";
+#endif
+
 #else
             THROW_EXCEPTION(
                 "Only Linear deskew method is available when building mp2p_icp without "
