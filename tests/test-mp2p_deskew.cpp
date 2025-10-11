@@ -63,14 +63,18 @@ std::vector<mrpt::math::TPoint3D> create_gt_points(const SimulationParams& p)
     return pts;
 }
 
-std::tuple<
-    mrpt::poses::CPose3DInterpolator, std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>,
-    std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>>
+std::
+    tuple<
+        mrpt::poses::CPose3DInterpolator, std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>,
+        std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D> /* IMU ang vel */,
+        std::map<mrpt::Clock::time_point, mrpt::math::TVector3D> /**acceleration*/
+        >
     create_gt_keyframes(const SimulationParams& p)
 {
-    mrpt::poses::CPose3DInterpolator                        kfs;
-    std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D> kfTwists;
-    std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D> imuReadings;
+    mrpt::poses::CPose3DInterpolator                         kfs;
+    std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>  kfTwists;
+    std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>  imuReadings;
+    std::map<mrpt::Clock::time_point, mrpt::math::TVector3D> imuReadingsAcc;
 
     // t=0: stopped
     kfs.insert(
@@ -122,16 +126,34 @@ std::tuple<
         auto it = kfTwists.upper_bound(stamp);
         if (it == kfTwists.begin())
         {
-            imuReadings[stamp] = mrpt::math::TTwist3D();  // Default zero twist
+            imuReadings[stamp]    = mrpt::math::TTwist3D();  // Default zero twist
+            imuReadingsAcc[stamp] = mrpt::math::TVector3D(0, 0, 9.81);  // Only gravity
         }
         else
         {
             --it;
             imuReadings[stamp] = it->second;
+
+            // Compute linear acceleration in world frame
+            // For this simulation, include centripetal acceleration if moving in a circle
+            const auto& twist = it->second;
+            double      vx    = twist.vx;
+            double      wz    = twist.wz;
+
+            mrpt::math::TVector3D acc(0, 0, 9.81);  // gravity
+
+            if (std::abs(wz) > 1e-8)
+            {
+                // Centripetal acceleration: a_c = v^2 / r = v * w
+                // Direction: towards center of rotation (negative y in local frame)
+                double a_c = vx * wz;
+                acc.y -= a_c;  // subtract because center is at +y
+            }
+            imuReadingsAcc[stamp] = acc;
         }
     }
 
-    return {kfs, kfTwists, imuReadings};
+    return {kfs, kfTwists, imuReadings, imuReadingsAcc};
 }
 
 mrpt::maps::CPointsMapXYZIRT::Ptr simulate_skewed_points(
@@ -194,7 +216,7 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     // Generate test data:
     const auto gtPoints = create_gt_points(p);
 
-    const auto [gtKeyframes, gtTwist, imuReadings] = create_gt_keyframes(p);
+    const auto [gtKeyframes, gtTwist, imuReadings, imuReadingsAcc] = create_gt_keyframes(p);
 
 #if 0
     for (const auto& [stamp, pose] : gtKeyframes)
@@ -254,19 +276,19 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
         {
             const double t_start = stamp_s;
             const double t_end   = t_start + p.scan_period;
-            for (double t = t_start; t <= t_end + 1e-8; t += 0.01)
+
+            for (auto it = imuReadings.lower_bound(mrpt::Clock::fromDouble(t_start));
+                 it != imuReadings.end(); ++it)
             {
-                mrpt::Clock::time_point imu_stamp = mrpt::Clock::fromDouble(t);
-                // Get IMU reading at this time:
-                auto it = imuReadings.find(imu_stamp);
-                if (it == imuReadings.end())
+                const double t = mrpt::Clock::toDouble(it->first);
+                if (t > t_end + 1e-8)
                 {
-                    continue;
+                    break;
                 }
 
                 const auto& twist = it->second;
-                // Add linear acceleration (assume zero for this test):
-                ps.localVelocityBuffer.add_linear_acceleration(t, {0, 0, 9.81});
+                // Add linear acceleration:
+                ps.localVelocityBuffer.add_linear_acceleration(t, imuReadingsAcc.at(it->first));
                 // Add angular velocity:
                 ps.localVelocityBuffer.add_angular_velocity(t, {twist.wx, twist.wy, twist.wz});
             }
@@ -347,7 +369,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                     " %-32s | rmse: %10.6f | errs: ", mrpt::typemeta::enum2str(method).c_str(),
                     eval.rmse);
 
-                for (std::size_t i = 0; i < 5; i++)
+                for (std::size_t i = 0; i < 7; i++)
                 {
                     printf("%4.02f ", eval.individual_frame_rmse[i]);
                 }
