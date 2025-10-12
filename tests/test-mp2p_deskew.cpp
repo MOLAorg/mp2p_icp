@@ -381,7 +381,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                     method == mp2p_icp_filters::MotionCompensationMethod::None ? 0.25 : 0.001;
                 if (eval.rmse > threshold)
                 {
-                    printf("**FAILURE**");
+                    printf("❌ FAILED.\n");
                     num_errors++;
                 }
                 else

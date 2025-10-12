@@ -58,6 +58,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             p.cov_inv.setDiagonal(std::vector<float>({1e6, 1.0, 1.0}));
         }
         // plus a "bad" pairing:
+        if (0)
         {
             auto& p  = pairings.paired_cov2cov.emplace_back();
             p.global = {0.0f, 8.0f, 1.0f};

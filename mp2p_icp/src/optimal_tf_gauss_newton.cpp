@@ -57,11 +57,6 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     const auto nPl2Pl   = in.paired_pl2pl.size();
     const auto nLn2Ln   = in.paired_ln2ln.size();
 
-    // Note: Using Matrix<N,1> instead of Vector<N> for compatibility
-    //       with Eigen<=3.4 in ROS Noetic.
-    Eigen::Matrix<double, 6, 1> g = Eigen::Matrix<double, 6, 1>::Zero();
-    Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
-
     auto w = gnParams.pairWeights;
 
     const bool  has_per_pt_weight       = !in.point_weights.empty();
@@ -70,6 +65,11 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
     for (size_t iter = 0; iter < gnParams.maxInnerLoopIterations; iter++)
     {
+        // Note: Using Matrix<N,1> instead of Vector<N> for compatibility
+        //       with Eigen<=3.4 in ROS Noetic.
+        Eigen::Matrix<double, 6, 1> g = Eigen::Matrix<double, 6, 1>::Zero();
+        Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
+
         // (12x6 Jacobian)
         const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(result.optimalPose);
 
@@ -87,20 +87,24 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             {
                 H.setZero();
                 g.setZero();
+                errNormSqr = 0;
             }
 
-            Result operator+(const Result& other)
+            Result operator+(const Result& other) const
             {
-                H += other.H;
-                g += other.g;
-                return *this;
+                Result res = *this;
+                res.H += other.H;
+                res.g += other.g;
+                res.errNormSqr += other.errNormSqr;
+                return res;
             }
 
             Eigen::Matrix<double, 6, 6> H;
             Eigen::Matrix<double, 6, 1> g;
+            double                      errNormSqr = 0;
         };
 
-        const auto& [H_tbb_pt2pt, g_tbb_pt2pt] = tbb::parallel_reduce(
+        const auto [H_tbb_pt2pt, g_tbb_pt2pt, errNormSqr_tbb_pt2pt] = tbb::parallel_reduce(
             // Range
             tbb::blocked_range<size_t>{0, nPt2Pt},
             // Identity
@@ -108,7 +112,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             // 1st lambda: Parallel computation
             [&](const tbb::blocked_range<size_t>& r, Result res) -> Result
             {
-                auto& [H_local, g_local] = res;
+                auto& [H_local, g_local, errNormSqr_local] = res;
                 for (size_t idx_pt = r.begin(); idx_pt < r.end(); idx_pt++)
                 {
                     // Error:
@@ -138,7 +142,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
-                    errNormSqr += weight * retSqrNorm;
+                    errNormSqr_local += weight * retSqrNorm;
 
                     const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
                     g_local.noalias() += weight * Ji.transpose() * err_i;
@@ -147,10 +151,11 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 return res;
             },
             // 2nd lambda: Parallel reduction
-            [](Result a, const Result& b) -> Result { return a + b; });
+            [](const Result& a, const Result& b) -> Result { return a + b; });
 
-        H = std::move(H_tbb_pt2pt);
-        g = std::move(g_tbb_pt2pt);
+        H          = std::move(H_tbb_pt2pt);
+        g          = std::move(g_tbb_pt2pt);
+        errNormSqr = errNormSqr_tbb_pt2pt;
 #else
         // Point-to-point:
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
@@ -194,7 +199,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         // ============== cov-to-cov ===============
         //
 #if defined(MP2P_HAS_TBB)
-        const auto& [H_tbb_cov2cov, g_tbb_cov2cov] = tbb::parallel_reduce(
+        const auto [H_tbb_cov2cov, g_tbb_cov2cov, errNormSqr_tbb_cov2cov] = tbb::parallel_reduce(
             // Range
             tbb::blocked_range<size_t>{0, nCov2Cov},
             // Identity
@@ -202,7 +207,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             // 1st lambda: Parallel computation
             [&](const tbb::blocked_range<size_t>& r, Result res) -> Result
             {
-                auto& [H_local, g_local] = res;
+                auto& [H_local, g_local, errNormSqr_local] = res;
                 for (size_t idx_pairing = r.begin(); idx_pairing < r.end(); idx_pairing++)
                 {
                     // Error:
@@ -225,7 +230,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
-                    errNormSqr += weight * retSqrNorm;
+                    errNormSqr_local += weight * retSqrNorm;
 
                     const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
 
@@ -236,10 +241,11 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 return res;
             },
             // 2nd lambda: Parallel reduction
-            [](Result a, const Result& b) -> Result { return a + b; });
+            [](const Result& a, const Result& b) -> Result { return a + b; });
 
         H.noalias() += H_tbb_cov2cov;
         g.noalias() += g_tbb_cov2cov;
+        errNormSqr += errNormSqr_tbb_cov2cov;
 #else
         // Cov-to-cov:
         for (size_t idx_pairing = 0; idx_pairing < nCov2Cov; idx_pairing++)
@@ -293,7 +299,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
-            errNormSqr += weight * weight * retSqrNorm;
+            errNormSqr += weight * retSqrNorm;
 
             const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
@@ -320,7 +326,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Error and Jacobian:
             const Eigen::Vector4d err_i = ret.asEigen();
-            errNormSqr += weight * weight * retSqrNorm;
+            errNormSqr += weight * retSqrNorm;
 
             const Eigen::Matrix<double, 4, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
@@ -331,7 +337,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         // ============== Point-to-plane ===============
         //
 #if defined(MP2P_HAS_TBB)
-        const auto& [H_tbb_pt2pl, g_tbb_pt2pl] = tbb::parallel_reduce(
+        const auto [H_tbb_pt2pl, g_tbb_pt2pl, errNormSqr_tbb_pl2pl] = tbb::parallel_reduce(
             // Range
             tbb::blocked_range<size_t>{0, nPt2Pl},
             // Identity
@@ -339,7 +345,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             // 1st lambda: Parallel computation
             [&](const tbb::blocked_range<size_t>& r, Result res) -> Result
             {
-                auto& [H_local, g_local] = res;
+                auto& [H_local, g_local, errNormSqr_local] = res;
                 for (size_t idx_pl = r.begin(); idx_pl < r.end(); idx_pl++)
                 {
                     // Error:
@@ -357,7 +363,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
-                    errNormSqr += weight * retSqrNorm;
+                    errNormSqr_local += weight * retSqrNorm;
 
                     const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
                     g_local.noalias() += weight * Ji.transpose() * err_i;
@@ -366,10 +372,11 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 return res;
             },
             // 2nd lambda: Parallel reduction
-            [](Result a, const Result& b) -> Result { return a + b; });
+            [](const Result& a, const Result& b) -> Result { return a + b; });
 
         H += H_tbb_pt2pl;
         g += g_tbb_pt2pl;
+        errNormSqr += errNormSqr_tbb_pl2pl;
 #else
         // Point-to-plane:
         for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
@@ -389,7 +396,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
-            errNormSqr += weight * weight * retSqrNorm;
+            errNormSqr += weight * retSqrNorm;
 
             const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
@@ -415,7 +422,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             }
 
             const Eigen::Vector3d err_i = ret.asEigen();
-            errNormSqr += weight * weight * retSqrNorm;
+            errNormSqr += weight * retSqrNorm;
 
             const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
