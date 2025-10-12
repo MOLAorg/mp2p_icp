@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.0.0 (2025-10-13)
+------------------
 * Merge pull request `#9 <https://github.com/MOLAorg/mp2p_icp/issues/9>`_ from MOLAorg/feature/better-lio
   Better LIO
 * sm2mm cli app: add --profiler flag
