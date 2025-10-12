@@ -136,6 +136,15 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
 
     /** Only used when `points_already_global` is `true` */
     mrpt::math::TPose3D robot_pose;
+
+    /// Accelerometer bias (in sensor frame coordinates)
+    mrpt::math::TVector3D bias_acc{0, 0, 0};
+
+    /// Gyroscope bias (in sensor frame coordinates)
+    mrpt::math::TVector3D bias_gyro{0, 0, 0};
+
+    /// Gravity vector (in global frame)
+    mrpt::math::TVector3D gravity_vector{0, 0, -9.81};
 };
 
 /** @} */

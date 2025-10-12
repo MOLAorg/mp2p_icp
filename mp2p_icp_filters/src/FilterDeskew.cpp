@@ -55,17 +55,25 @@ void FilterDeskew::initialize_filter(const mrpt::containers::yaml& c)
 
     MCP_LOAD_OPT(c, points_already_global);
 
-    if (c.has("robot_pose"))
+    auto handleVectorParam = [&](const std::string& key, auto& vec, const std::size_t dim)
     {
-        ASSERT_(c["robot_pose"].isSequence() && c["robot_pose"].asSequence().size() == 6);
-
-        auto cc = c["robot_pose"].asSequence();
-
-        for (int i = 0; i < 6; i++)
+        if (c.has(key))
         {
-            parseAndDeclareParameter(cc.at(i).as<std::string>(), robot_pose[i]);
+            ASSERT_(c[key].isSequence() && c[key].asSequence().size() == dim);
+            const auto& seq = c[key].asSequenceRange();
+
+            for (size_t i = 0; i < dim; i++)
+            {
+                parseAndDeclareParameter(seq.at(i).as<std::string>(), vec[i]);
+            }
         }
-    }
+    };
+
+    handleVectorParam("robot_pose", robot_pose, 6);
+
+    handleVectorParam("bias_acc", bias_acc, 3);
+    handleVectorParam("bias_gyro", bias_gyro, 3);
+    handleVectorParam("gravity_vector", gravity_vector, 3);
 
     if (in_place)
     {
@@ -83,16 +91,8 @@ void FilterDeskew::initialize_filter(const mrpt::containers::yaml& c)
     if (c.has("twist"))
     {
         twist.emplace();  // Define a constant twist model for deskewing
-        ASSERT_(c["twist"].isSequence());
-        ASSERT_EQUAL_(c["twist"].asSequence().size(), 6UL);
 
-        const auto yamlTwist = c["twist"].asSequence();
-
-        for (int i = 0; i < 6; i++)
-        {
-            Parameterizable::parseAndDeclareParameter(
-                yamlTwist.at(i).as<std::string>(), twist.value()[i]);
-        }
+        handleVectorParam("twist", *twist, 6);
     }
 }
 
@@ -481,10 +481,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     mola::imu::Trajectory reconstructed_trajectory;
 
 #if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
-    MRPT_TODO("Load these IMU parameters!!");
     mola::imu::ImuIntegrationParams imu_params;
-    // imu_params.bias_acc =...
-
+    imu_params.bias_acc       = bias_acc;
+    imu_params.bias_gyro      = bias_gyro;
+    imu_params.gravity_vector = gravity_vector;
 #endif
 
     const mrpt::math::TTwist3D* constant_twist = nullptr;
