@@ -52,8 +52,7 @@ struct sm2mm_options_t
  *  see
  * [sm2mm](https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm).
  *
- * The former constents of outMap are cleared.
- *
+ * The former contents of outMap are cleared.
  */
 void simplemap_to_metricmap(
     const mrpt::maps::CSimpleMap& sm, mp2p_icp::metric_map_t& outMap,

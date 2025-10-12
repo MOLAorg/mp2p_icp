@@ -21,10 +21,13 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterDeskew.h>
+#include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/math/TTwist3D.h>
+#include <mrpt/obs/CObservationComment.h>
+#include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
 
 #include <random>
@@ -210,7 +213,7 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     return pts;
 }
 
-// Returns: rmse error
+// === DESKEW TEST ===
 [[nodiscard]] SimulationResult run_deskew_test(const SimulationParams& p)
 {
     // Generate test data:
@@ -244,6 +247,7 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     std::size_t error_terms   = 0;
     const auto  numKfs        = gtKeyframes.size();
     std::size_t kfIdx         = 0;
+
     for (const auto& [stamp, pose] : gtKeyframes)
     {
         if (kfIdx == numKfs - 1)
@@ -328,6 +332,202 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     return result;
 }
 
+// === DESKEW TEST VIA SM2MM  ===
+[[nodiscard]] SimulationResult run_deskew_in_sm2mm_test(const SimulationParams& p)
+{
+    // Generate test data:
+    const auto gtPoints = create_gt_points(p);
+
+    const auto [gtKeyframes, gtTwist, imuReadings, imuReadingsAcc] = create_gt_keyframes(p);
+
+#if 0
+    for (const auto& [stamp, pose] : gtKeyframes)
+    {
+        std::cout << "Stamp: " << mrpt::Clock::toDouble(stamp) << " | Pose: " << pose.asString()
+                  << " | Twist: " << gtTwist.at(stamp).asString() << "\n";
+    }
+#endif
+
+    // Create deskew method:
+    mp2p_icp::ParameterSource ps;
+
+    mp2p_icp_filters::FilterDeskew deskew;
+    deskew.silently_ignore_no_timestamps = false;
+    deskew.input_pointcloud_layer        = "raw";
+    deskew.output_pointcloud_layer       = "deskewed";
+    deskew.method                        = p.deskew_method;
+
+    deskew.attachToParameterSource(ps);
+
+    // Run test:
+    SimulationResult result;
+
+    mrpt::maps::CSimpleMap sm;
+
+    mrpt::maps::CSimplePointsMap gtGlobalPointsAggregated;
+
+    float       sum_error_sqr = .0f;
+    std::size_t error_terms   = 0;
+    const auto  numKfs        = gtKeyframes.size();
+    std::size_t kfIdx         = 0;
+    for (const auto& [stamp, pose] : gtKeyframes)
+    {
+        if (kfIdx == numKfs - 1)
+        {
+            // We cannot interpolate past the last one
+            break;
+        }
+
+        const auto kfGtTwist = gtTwist.at(stamp);
+
+        // Simulate the skewed points:
+        const auto skewedPoints =
+            simulate_skewed_points(stamp, gtKeyframes, gtPoints, p.scan_period);
+
+        // Get the GT deskewed points:
+        const auto gtLocalPoints = simulate_gt_local_points(mrpt::poses::CPose3D(pose), gtPoints);
+        gtGlobalPointsAggregated.insertAnotherMap(&gtLocalPoints, mrpt::poses::CPose3D(pose));
+
+        // Update deskew params (needed for Linear method only):
+        deskew.twist = kfGtTwist;
+
+        // Update local velocity buffer:
+        const double stamp_s = mrpt::Clock::toDouble(stamp);
+        ps.localVelocityBuffer.add_orientation(stamp_s, pose.getRotationMatrix());
+        ps.localVelocityBuffer.add_linear_velocity(
+            stamp_s, {kfGtTwist.vx, kfGtTwist.vy, kfGtTwist.vz});
+
+        ps.localVelocityBuffer.set_reference_zero_time(stamp_s);
+
+        // For all IMU readings from "stamp" to "stamp+SCAN_PERIOD", add IMU readings:
+        {
+            const double t_start = stamp_s;
+            const double t_end   = t_start + p.scan_period;
+
+            for (auto it = imuReadings.lower_bound(mrpt::Clock::fromDouble(t_start));
+                 it != imuReadings.end(); ++it)
+            {
+                const double t = mrpt::Clock::toDouble(it->first);
+                if (t > t_end + 1e-8)
+                {
+                    break;
+                }
+
+                const auto& twist = it->second;
+                // Add linear acceleration:
+                ps.localVelocityBuffer.add_linear_acceleration(t, imuReadingsAcc.at(it->first));
+                // Add angular velocity:
+                ps.localVelocityBuffer.add_angular_velocity(t, {twist.wx, twist.wy, twist.wz});
+            }
+        }
+
+        // Store into SimpleMap:
+        auto keyframe_obs = mrpt::obs::CSensoryFrame::Create();
+        {
+            auto pcObs         = mrpt::obs::CObservationPointCloud::Create();
+            pcObs->timestamp   = stamp;
+            pcObs->sensorLabel = "scan";
+            pcObs->pointcloud  = skewedPoints;
+            keyframe_obs->insert(pcObs);
+        }
+        mrpt::containers::yaml kf_metadata = mrpt::containers::yaml::Map();
+
+        // Store local velocity buffer in the KF metadata so it is possible to deskew the scan later
+        // on with precision
+        kf_metadata["local_velocity_buffer"] = ps.localVelocityBuffer.toYAML();
+
+        // convert yaml to string:
+        std::stringstream ss;
+        ss << kf_metadata;
+
+        auto metadataObs         = mrpt::obs::CObservationComment::Create();
+        metadataObs->timestamp   = stamp;
+        metadataObs->sensorLabel = "metadata";
+        metadataObs->text        = ss.str();
+
+        // insert it:
+        *keyframe_obs += metadataObs;
+
+        sm.insert(
+            // Pose: mean + covariance
+            mrpt::poses::CPose3DPDFGaussian::Create(mrpt::poses::CPose3D(pose)),
+            // SensoryFrame: set of observations from this KeyFrame:
+            keyframe_obs,
+            // twist
+            kfGtTwist);
+
+        ++kfIdx;
+    }  // end for each timestep
+
+    // Now, reconstruct the points within the SM:
+    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(
+        mrpt::format(
+            R"yaml(
+# --------------------------------------------------------
+# 1) Generator (observation -> local frame metric maps)
+# --------------------------------------------------------
+#generators:
+#  - class_name: mp2p_icp_filters::Generator
+#    params: ~
+
+# --------------------------------------------------------
+# 2) Per local frame filtering
+# --------------------------------------------------------
+filters:
+  - class_name: mp2p_icp_filters::FilterAdjustTimestamps
+    params:
+      pointcloud_layer: "raw"
+      silently_ignore_no_timestamps: false
+      #method: "TimestampAdjustMethod::MiddleIsZero"
+      method: "TimestampAdjustMethod::EarliestIsZero"
+
+  - class_name: mp2p_icp_filters::FilterDeskew
+    params:
+      input_pointcloud_layer: "raw"
+      output_pointcloud_layer: "deskewed"
+      method: %s
+      silently_ignore_no_timestamps: false
+
+      output_layer_class: "mrpt::maps::CPointsMapXYZIRT" # Keep intensity & ring channels
+
+      # These (vx,...,wz) are variable names that must be defined via the
+      # mp2p_icp::Parameterizable API to update them dynamically.
+      twist: [vx, vy, vz, wx, wy, wz]
+
+  - class_name: mp2p_icp_filters::FilterDeleteLayer
+    params:
+      # one or more layers to remove
+      pointcloud_layer_to_remove: ["raw"]
+    )yaml",
+            mrpt::typemeta::enum2str(p.deskew_method).c_str()));
+
+    mp2p_icp::metric_map_t            mm;
+    mp2p_icp_filters::sm2mm_options_t sm2mm_opts;
+    // sm2mm_opts.verbosity = mrpt::system::LVL_DEBUG;
+
+    mp2p_icp_filters::simplemap_to_metricmap(sm, mm, sm2mmPipeline, sm2mm_opts);
+
+    // And evaluate:
+    // ---------------------------
+    // Compare points:
+    const auto deskewedPts = mm.point_layer("deskewed");
+    ASSERT_EQUAL_(deskewedPts->size(), gtGlobalPointsAggregated.size());
+    for (size_t i = 0; i < deskewedPts->size(); i++)
+    {
+        mrpt::math::TPoint3Df pt;
+        deskewedPts->getPoint(i, pt.x, pt.y, pt.z);
+        mrpt::math::TPoint3Df gtPt;
+        gtGlobalPointsAggregated.getPoint(i, gtPt.x, gtPt.y, gtPt.z);
+
+        const auto error = (pt - gtPt).norm();
+        sum_error_sqr += mrpt::square(error);
+        error_terms++;
+    }
+
+    result.rmse = std::sqrt(sum_error_sqr / static_cast<float>(error_terms));
+    return result;
+}
+
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -353,43 +553,52 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             {3.0f, 0.05f}  // fast linear, slow angular
         };
 
-        for (const auto& [lin, ang] : test_velocities)
+        for (int use_sm2mm = 0; use_sm2mm <= 1; use_sm2mm++)
         {
-            SimulationParams p;
-            p.linear_speed = lin;
-            p.angular_vel  = ang;
-            std::cout << "\n=== Test velocities: lin=" << lin << " ang=" << ang << "\n";
+            std::cout
+                << (use_sm2mm != 0 ? "\n######### Using FilterDesk directly\n"
+                                   : "\n######### Using ms2mm() function\n");
 
-            for (const auto method : methods)
+            for (const auto& [lin, ang] : test_velocities)
             {
-                p.deskew_method = method;
+                SimulationParams p;
+                p.linear_speed = lin;
+                p.angular_vel  = ang;
+                std::cout << "\n=== Test velocities: lin=" << lin << " ang=" << ang << "\n";
 
-                const auto eval = run_deskew_test(p);
-
-                printf(
-                    " %-32s | rmse: %10.6f | errs: ", mrpt::typemeta::enum2str(method).c_str(),
-                    eval.rmse);
-
-                for (std::size_t i = 0; i < 7; i++)
+                for (const auto method : methods)
                 {
-                    printf("%4.02f ", eval.individual_frame_rmse[i] * 1e3);
-                }
-                printf("... [mm]\n");
+                    p.deskew_method = method;
 
-                // Check:
-                const float threshold =
-                    method == mp2p_icp_filters::MotionCompensationMethod::None ? 0.25 : 0.001;
-                if (eval.rmse > threshold)
-                {
-                    printf("❌ FAILED.\n");
-                    num_errors++;
-                }
-                else
-                {
-                    printf("✅ Passed.\n");
+                    // Run one of two possible tests:
+                    const auto eval = use_sm2mm ? run_deskew_in_sm2mm_test(p) : run_deskew_test(p);
+
+                    printf(
+                        " %-32s | rmse: %10.6f | errs: ", mrpt::typemeta::enum2str(method).c_str(),
+                        eval.rmse);
+
+                    for (std::size_t i = 0;
+                         i < std::min<std::size_t>(eval.individual_frame_rmse.size(), 6U); i++)
+                    {
+                        printf("%6.02f ", eval.individual_frame_rmse[i] * 1e3);
+                    }
+                    printf("... [mm] ");
+
+                    // Check:
+                    const float threshold =
+                        method == mp2p_icp_filters::MotionCompensationMethod::None ? 0.25 : 0.001;
+                    if (eval.rmse > threshold)
+                    {
+                        printf("❌ FAILED.\n");
+                        num_errors++;
+                    }
+                    else
+                    {
+                        printf("✅ Passed.\n");
+                    }
                 }
             }
-        }
+        }  // end use_sm2mm
     }
     catch (std::exception& e)
     {
