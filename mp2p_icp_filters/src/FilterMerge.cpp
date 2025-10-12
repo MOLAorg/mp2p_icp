@@ -74,7 +74,8 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
     const auto mapPtr = inOut.layers.at(params.input_pointcloud_layer);
     ASSERT_(mapPtr);
 
-    // TODO: This is an unnecessary copy for layers actually being point clouds (refactor?)
+    // This may seem as an (unnecessary?) copy for layers actually being point clouds, but it's
+    // safer to make a copy to prevent modifying the original observation pointcloud.
     const auto pcPtr = mp2p_icp::MapToPointsMap(*mapPtr);
     ASSERTMSG_(
         pcPtr, mrpt::format(
