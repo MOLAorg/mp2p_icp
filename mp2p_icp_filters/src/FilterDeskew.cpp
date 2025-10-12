@@ -30,13 +30,10 @@
 #include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/Lie/SO.h>
-#include <mrpt/random/RandomGenerators.h>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/parallel_for.h>
 #endif
-
-#include <Eigen/Dense>
 
 IMPLEMENTS_MRPT_OBJECT(FilterDeskew, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -55,6 +52,20 @@ void FilterDeskew::initialize_filter(const mrpt::containers::yaml& c)
     MCP_LOAD_OPT(c, output_layer_class);
     MCP_LOAD_OPT(c, method);
     MCP_LOAD_OPT(c, in_place);
+
+    MCP_LOAD_OPT(c, points_already_global);
+
+    if (c.has("robot_pose"))
+    {
+        ASSERT_(c["robot_pose"].isSequence() && c["robot_pose"].asSequence().size() == 6);
+
+        auto cc = c["robot_pose"].asSequence();
+
+        for (int i = 0; i < 6; i++)
+        {
+            parseAndDeclareParameter(cc.at(i).as<std::string>(), robot_pose[i]);
+        }
+    }
 
     if (in_place)
     {
@@ -139,18 +150,37 @@ auto findBeforeAfter(const mola::imu::Trajectory& trajectory, const double t)
 }
 #endif  // MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION
 
+struct CorrectPointsArguments
+{
+    mrpt::aligned_std_vector<float>&          xs;
+    mrpt::aligned_std_vector<float>&          ys;
+    mrpt::aligned_std_vector<float>&          zs;
+    size_t                                    n;
+    size_t                                    n0;
+    mrpt::maps::CPointsMap*                   outPc;
+    const mrpt::aligned_std_vector<float>*    Is;
+    mrpt::aligned_std_vector<float>*          out_Is;
+    const mrpt::aligned_std_vector<uint16_t>* Rs;
+    mrpt::aligned_std_vector<uint16_t>*       out_Rs;
+    const mrpt::aligned_std_vector<float>*    Ts;
+    mrpt::aligned_std_vector<float>*          out_Ts;
+    const mrpt::math::TTwist3D*               constant_twist;
+    const mola::imu::Trajectory&              reconstructed_trajectory;
+    bool                                      points_already_global;
+    const mrpt::math::TPose3D&                global_robot_pose;
+};
+
 // Optimized templated version for compile-time optimization for each method
 template <MotionCompensationMethod method>
-void correctPointsLoop(
-    mrpt::aligned_std_vector<float>& xs, mrpt::aligned_std_vector<float>& ys,
-    mrpt::aligned_std_vector<float>& zs, size_t n, size_t n0, mrpt::maps::CPointsMap* outPc,
-    const mrpt::aligned_std_vector<float>* Is, mrpt::aligned_std_vector<float>* out_Is,
-    const mrpt::aligned_std_vector<uint16_t>* Rs, mrpt::aligned_std_vector<uint16_t>* out_Rs,
-    const mrpt::aligned_std_vector<float>* Ts, mrpt::aligned_std_vector<float>* out_Ts,
-    const mrpt::math::TTwist3D*  constant_twist,
-    const mola::imu::Trajectory& reconstructed_trajectory)
+void correctPointsLoop(const CorrectPointsArguments& args)
 {
     MRPT_TODO("First, build a cache with times -> corrections");
+
+    // Capturing these bindings requires C++20.
+    auto& [xs, ys, zs, n, n0, outPc, Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist, reconstructed_trajectory, points_already_global, global_robot_pose_t] =
+        args;
+
+    const auto global_robot_pose = mrpt::poses::CPose3D(global_robot_pose_t);
 
     const bool in_place = (outPc == nullptr);
 
@@ -288,7 +318,21 @@ void correctPointsLoop(
             }
 
             // Correct point XYZ coordinates.
-            const auto corrPt = pose_increment.composePoint(pt).cast<float>();
+            mrpt::math::TPoint3Df corrPt;
+
+            if (!points_already_global)
+            {
+                // Simple case: points are local wrt the vehicle:
+                corrPt = pose_increment.composePoint(pt).cast<float>();
+            }
+            else
+            {
+                // Points are already projected into global coordinates.
+                // We must apply the deskew correction to the local point coordinates and project
+                // again:
+                const auto localPt = global_robot_pose.inverseComposePoint(pt.cast<double>());
+                corrPt = (global_robot_pose + pose_increment).composePoint(localPt).cast<float>();
+            }
 
             if (in_place)
             {
@@ -506,31 +550,42 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         }
     };
 
+    // Prepare call arguments:
+    const CorrectPointsArguments args = {
+        xs,
+        ys,
+        zs,
+        n,
+        n0,
+        outPc.get(),
+        Is,
+        out_Is,
+        Rs,
+        out_Rs,
+        Ts,
+        out_Ts,
+        constant_twist,
+        reconstructed_trajectory,
+        points_already_global,
+        robot_pose};
+
     // compile-time optimized code for each method:
     switch (method)
     {
         case MotionCompensationMethod::Linear:
-            correctPointsLoop<MotionCompensationMethod::Linear>(
-                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist,
-                reconstructed_trajectory);
+            correctPointsLoop<MotionCompensationMethod::Linear>(args);
             break;
 
         case MotionCompensationMethod::IMU:
-            correctPointsLoop<MotionCompensationMethod::IMU>(
-                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist,
-                reconstructed_trajectory);
+            correctPointsLoop<MotionCompensationMethod::IMU>(args);
             break;
 
         case MotionCompensationMethod::IMUh:
-            correctPointsLoop<MotionCompensationMethod::IMUh>(
-                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist,
-                reconstructed_trajectory);
+            correctPointsLoop<MotionCompensationMethod::IMUh>(args);
             break;
 
         case MotionCompensationMethod::IMUt:
-            correctPointsLoop<MotionCompensationMethod::IMUt>(
-                xs, ys, zs, n, n0, outPc.get(), Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist,
-                reconstructed_trajectory);
+            correctPointsLoop<MotionCompensationMethod::IMUt>(args);
             break;
 
         default:

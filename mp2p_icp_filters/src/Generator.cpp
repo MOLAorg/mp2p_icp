@@ -157,7 +157,8 @@ bool Generator::process(
     const auto obsClassName = o.GetRuntimeClass()->className;
 
     MRPT_LOG_DEBUG_FMT(
-        "Processing observation type='%s' label='%s'", obsClassName, o.sensorLabel.c_str());
+        "Processing observation type='%s' label='%s' stamp=%.04f", obsClassName,
+        o.sensorLabel.c_str(), mrpt::Clock::toDouble(o.timestamp));
 
     // default: use point clouds:
     if (params.metric_map_definition_ini_file.empty() && params.metric_map_definition.empty())
@@ -472,8 +473,11 @@ bool Generator::implProcessDefault(
 
     if (auto ps = this->attachedSource(); ps != nullptr && pointcloud_obs_timestamp)
     {
-        ps->localVelocityBuffer.set_reference_zero_time(
-            mrpt::Clock::toDouble(*pointcloud_obs_timestamp));
+        const auto refStamp = mrpt::Clock::toDouble(*pointcloud_obs_timestamp);
+        MRPT_LOG_DEBUG_FMT(
+            "Setting localVelocityBuffer.set_reference_zero_time() to %.04f", refStamp);
+
+        ps->localVelocityBuffer.set_reference_zero_time(refStamp);
     }
 
     // done?

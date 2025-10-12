@@ -82,6 +82,10 @@ mola_add_library(
     #robin_map
 )
 
+# We want C++20 for mp2p_icp_filters, to capture structured bindings (FilterDeskew.cpp)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
+
+
 if (TBB_FOUND AND MP2PICP_USE_TBB)
   target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_HAS_TBB)
   target_link_libraries(${PROJECT_NAME} PRIVATE TBB::tbb)

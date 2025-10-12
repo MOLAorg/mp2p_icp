@@ -94,6 +94,12 @@ filters:
       # mp2p_icp::Parameterizable API to update them dynamically.
       twist: [vx, vy, vz, wx, wy, wz]
 
+      # IMPORTANT: In the context of sm2mm, de-skew happens with points already in global coordinates
+      # so we need the robot pose to correct points:
+      points_already_global: true
+      robot_pose:
+        [robot_x, robot_y, robot_z, robot_yaw, robot_pitch, robot_roll]
+
   - class_name: mp2p_icp_filters::FilterByRange
     params:
       input_pointcloud_layer: "deskewed"

@@ -129,6 +129,13 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      * left as an empty `std::optional`.
      */
     std::optional<mrpt::math::TTwist3D> twist;
+
+    /** If input points are already in global coordinates (as in the context of sm2mm) set to true
+     * and then fill in `robot_pose` */
+    bool points_already_global = false;
+
+    /** Only used when `points_already_global` is `true` */
+    mrpt::math::TPose3D robot_pose;
 };
 
 /** @} */

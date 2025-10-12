@@ -41,6 +41,7 @@ namespace
 struct HeapItem
 {
     HeapItem() = default;
+    HeapItem(const double dist_, std::size_t idx_) : dist(dist_), idx(idx_) {}
 
     double      dist = 0;
     std::size_t idx  = 0;
