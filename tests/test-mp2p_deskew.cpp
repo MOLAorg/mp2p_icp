@@ -82,81 +82,154 @@ Scenario simulate_scenario(const SimulationParams& p)
     auto&    imuReadings    = s.imuAngVel;
     auto&    imuReadingsAcc = s.imuAccel;
 
-    // t=0: stopped
-    kfs.insert(
-        mrpt::Clock::fromDouble(0.0),
-        mrpt::poses::CPose3D::FromXYZYawPitchRoll(0, 0, 0, 0.0_deg, 0.0_deg, 0.0_deg));
-    kfTwists[mrpt::Clock::fromDouble(0.0)] = {0, 0, 0, 0.0_deg, 0.0_deg, 0.0_deg};
+    // --- Simulation Parameters & Constants ---
+    const double T_ACCEL    = 3.0;  // Time for the acceleration phase (seconds)
+    const double T_CONST    = 1.0;  // Time for the constant speed phase (seconds)
+    const double T_END      = T_ACCEL + T_CONST;
+    const double KF_PERIOD  = 0.10;  // KeyFrame generation period (10 Hz)
+    const double IMU_PERIOD = 0.01;  // IMU reading period (100 Hz)
 
-    // t=0.1: stopped
-    kfs.insert(
-        mrpt::Clock::fromDouble(0.1),
-        mrpt::poses::CPose3D::FromXYZYawPitchRoll(0, 0, 0, 0.0_deg, 0.0_deg, 0.0_deg));
-    kfTwists[mrpt::Clock::fromDouble(0.1)] = {0, 0, 0, 0.0_deg, 0.0_deg, 0.0_deg};
+    // Target final velocities
+    const double V_FINAL = p.linear_speed;  // local +X
+    const double W_FINAL = p.angular_vel;  // local +Z (yaw)
 
-    // t=0.2: start moving in circles
+    // Calculate accelerations
+    // Uniform acceleration: a = dv/dt
+    const double A_LINEAR  = V_FINAL / T_ACCEL;  // linear acceleration (local +X)
+    const double ALPHA_ANG = W_FINAL / T_ACCEL;  // angular acceleration (local +Z)
 
-    kfs.insert(
-        mrpt::Clock::fromDouble(0.2),
-        mrpt::poses::CPose3D::FromXYZYawPitchRoll(0, 0, 0, 0.0_deg, 0.0_deg, 0.0_deg));
-    kfTwists[mrpt::Clock::fromDouble(0.2)] = {p.linear_speed, 0,       0,
-                                              0.0_deg,        0.0_deg, p.angular_vel};
+    // --- Phase 1: Uniformly Accelerated Motion (0.0s to 3.0s) ---
+    double               t = 0.0;
+    mrpt::poses::CPose3D pose_prev(0, 0, 0, 0.0_deg, 0.0_deg, 0.0_deg);
 
-    for (int i = 0; i < 40; i++)
+    // Initial state at t=0.0
+    kfs.insert(mrpt::Clock::fromDouble(t), pose_prev);
+    kfTwists[mrpt::Clock::fromDouble(t)] = {0, 0, 0, 0.0_deg, 0.0_deg, 0.0_deg};
+
+    // Integrate over keyframe time steps (10 Hz)
+    for (t = KF_PERIOD; t <= T_ACCEL + 1e-6; t += KF_PERIOD)
     {
-        const double t      = 0.3 + 0.1 * i;
-        const auto   stamp  = mrpt::Clock::fromDouble(t);
-        const double dt     = t - 0.2;
-        const double radius = p.linear_speed / p.angular_vel;
-        const double theta  = p.angular_vel * dt;
+        const double dt = t;  // Time elapsed since t=0
 
-        // Center of rotation at (0, radius, 0)
-        const double x = radius * std::sin(theta);
-        const double y = radius * (1 - std::cos(theta));
-        const double z = 0.0;
+        // Linear Motion (Uniformly Accelerated: x = 0.5 * a * t^2)
+        const double v_t = A_LINEAR * dt;
 
-        kfs.insert(
-            stamp, mrpt::poses::CPose3D::FromXYZYawPitchRoll(x, y, z, theta, 0.0_deg, 0.0_deg));
-        kfTwists[stamp] = {p.linear_speed, 0, 0, 0.0_deg, 0.0_deg, p.angular_vel};
+        // Angular Motion (Uniformly Accelerated: yaw = 0.5 * alpha * t^2)
+        const double w_t = ALPHA_ANG * dt;
+
+        // Position in World Frame (Integrate velocity)
+        mrpt::poses::CPose3D new_pose = pose_prev;
+
+        // Velocity at the start of the interval
+        const double v_start = std::max(0.0, A_LINEAR * (t - KF_PERIOD));
+        const double w_start = std::max(0.0, ALPHA_ANG * (t - KF_PERIOD));
+
+        // Average velocity during the interval:
+        // v_avg = 0.5 * (v_start + v_t)
+        // w_avg = 0.5 * (w_start + w_t)
+        const double v_avg = 0.5 * (v_start + v_t);
+        const double w_avg = 0.5 * (w_start + w_t);
+
+        // Delta pose (local frame of pose_prev)
+        const double dx_local   = v_avg * KF_PERIOD;  // Simple linear distance
+        const double dy_local   = 0.0;
+        const double dz_local   = 0.0;
+        const double dyaw_local = w_avg * KF_PERIOD;
+
+        // Create the incremental pose:
+        mrpt::poses::CPose3D delta_pose = mrpt::poses::CPose3D::FromXYZYawPitchRoll(
+            dx_local, dy_local, dz_local, dyaw_local, 0.0_deg, 0.0_deg);
+
+        // Compose poses:
+        new_pose += delta_pose;
+        pose_prev = new_pose;
+
+        // Insert KeyFrame
+        const auto stamp = mrpt::Clock::fromDouble(t);
+        kfs.insert(stamp, new_pose);
+
+        // Twist (in local frame, based on final velocity at time t)
+        kfTwists[stamp] = {v_t, 0, 0, 0.0_deg, 0.0_deg, w_t};
     }
 
-    // Fill imuReadings at 100 Hz (every 0.01s) over the keyframe time range
-    const double t_start = mrpt::Clock::toDouble(kfs.begin()->first);
-    const double t_end   = mrpt::Clock::toDouble(kfs.rbegin()->first);
+    // --- Phase 2: Constant Velocity Motion (3.0s to 4.0s) ---
+    // Start from the last pose of the acceleration phase
+    pose_prev = mrpt::poses::CPose3D(kfs.rbegin()->second);
 
-    for (double t = t_start; t <= t_end + 1e-8; t += 0.01)
+    // The twist is constant at V_FINAL and W_FINAL
+    const mrpt::math::TTwist3D twist_const = {V_FINAL, 0, 0, 0.0_deg, 0.0_deg, W_FINAL};
+
+    // Integrate over keyframe time steps (10 Hz)
+    for (t = T_ACCEL + KF_PERIOD; t <= T_END + 1e-6; t += KF_PERIOD)
     {
-        mrpt::Clock::time_point stamp = mrpt::Clock::fromDouble(t);
+        // Delta pose (local frame of pose_prev) is constant
+        const double dx_local   = V_FINAL * KF_PERIOD;
+        const double dy_local   = 0.0;
+        const double dz_local   = 0.0;
+        const double dyaw_local = W_FINAL * KF_PERIOD;
 
-        // Find the latest keyframe not after t
-        auto it = kfTwists.upper_bound(stamp);
-        if (it == kfTwists.begin())
+        mrpt::poses::CPose3D delta_pose = mrpt::poses::CPose3D::FromXYZYawPitchRoll(
+            dx_local, dy_local, dz_local, dyaw_local, 0.0_deg, 0.0_deg);
+
+        mrpt::poses::CPose3D new_pose = pose_prev;
+        new_pose += delta_pose;
+        pose_prev = new_pose;
+
+        const auto stamp = mrpt::Clock::fromDouble(t);
+        kfs.insert(stamp, new_pose);
+        kfTwists[stamp] = twist_const;
+    }
+
+    // --- IMU Readings Simulation (100 Hz) ---
+
+    // Define the time range for IMU simulation
+    const double t_start = 0.0;
+    const double t_end   = T_END;
+
+    for (double t_imu = t_start; t_imu <= t_end + 1e-8; t_imu += IMU_PERIOD)
+    {
+        const auto            stamp = mrpt::Clock::fromDouble(t_imu);
+        mrpt::math::TTwist3D  twist;
+        mrpt::math::TVector3D acceleration_local(0, 0, 0);
+
+        if (t_imu <= T_ACCEL + 1e-6)  // Acceleration Phase (0.0s to 3.0s)
         {
-            imuReadings[stamp]    = mrpt::math::TTwist3D();  // Default zero twist
-            imuReadingsAcc[stamp] = mrpt::math::TVector3D(0, 0, 9.81);  // Only gravity
+            // Angular velocity (local +Z): w_t = alpha * t
+            const double w_t = ALPHA_ANG * t_imu;
+            twist            = {0, 0, 0, 0.0_deg, 0.0_deg, w_t};
+
+            // Linear acceleration (local +X)
+            acceleration_local.x = A_LINEAR;
+
+            // Centripetal acceleration (local -Y)
+            // Centripetal acceleration: a_c = v * w
+            const double v_t     = A_LINEAR * t_imu;
+            const double a_c     = v_t * w_t;
+            acceleration_local.y = -a_c;  // Towards center of rotation (local -Y)
         }
-        else
+        else  // Constant Velocity Phase (3.0s to 4.0s)
         {
-            --it;
-            imuReadings[stamp] = it->second;
+            twist = twist_const;
 
-            // Compute linear acceleration in world frame
-            // For this simulation, include centripetal acceleration if moving in a circle
-            const auto& twist = it->second;
-            double      vx    = twist.vx;
-            double      wz    = twist.wz;
+            // Linear acceleration is zero (velocity is constant)
+            acceleration_local.x = 0.0;
 
-            mrpt::math::TVector3D acc(0, 0, 9.81);  // gravity
-
-            if (std::abs(wz) > 1e-8)
-            {
-                // Centripetal acceleration: a_c = v^2 / r = v * w
-                // Direction: towards center of rotation (negative y in local frame)
-                double a_c = vx * wz;
-                acc.y -= a_c;  // subtract because center is at +y
-            }
-            imuReadingsAcc[stamp] = acc;
+            // Centripetal acceleration is constant
+            // a_c = V_FINAL * W_FINAL
+            const double a_c     = V_FINAL * W_FINAL;
+            acceleration_local.y = -a_c;
         }
+
+        imuReadings[stamp] = twist;  // Angular velocity (w) is in the last three fields
+
+        // IMU Reading: True Acceleration + Gravity (reaction force)
+        // Gravity in local frame for yaw-only rotation
+        mrpt::math::TVector3D g_local_compensated(0, 0, -9.81);
+
+        // Apply the standard formula: $A_{measured} = A_{true} - G_{local}$
+        // Since $G_{local} = (0, 0, -9.81)$, we get:
+        // $A_{measured, local}.z = 0 - (-9.81) = 9.81$
+        imuReadingsAcc[stamp] = acceleration_local - g_local_compensated;
     }
 
     return s;
@@ -229,6 +302,12 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     {
         std::cout << "Stamp: " << mrpt::Clock::toDouble(stamp) << " | Pose: " << pose.asString()
                   << " | Twist: " << gtTwist.at(stamp).asString() << "\n";
+    }
+
+    for (const auto& [stamp, imu] : imuReadings)
+    {
+        std::cout << "Stamp: " << mrpt::Clock::toDouble(stamp) << " | IMU_W: " << imu.asString()
+                  << " | IMU_ACC: " << imuReadingsAcc.at(stamp).asString() << "\n";
     }
 #endif
 
@@ -589,7 +668,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
                     // Check:
                     const float threshold =
-                        method == mp2p_icp_filters::MotionCompensationMethod::None ? 0.25 : 0.001;
+                        (method == mp2p_icp_filters::MotionCompensationMethod::None
+                             ? 0.20f
+                             : (method == mp2p_icp_filters::MotionCompensationMethod::Linear
+                                    ? 0.005f
+                                    : 0.001f));
                     if (eval.rmse > threshold)
                     {
                         printf("❌ FAILED.\n");
