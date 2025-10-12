@@ -2,6 +2,63 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#9 <https://github.com/MOLAorg/mp2p_icp/issues/9>`_ from MOLAorg/feature/better-lio
+  Better LIO
+* sm2mm cli app: add --profiler flag
+* demo sm2mm pipelines: add deskew method entry
+* CI: Add another pipeline without TBB
+* FIX: bug in non-TBB serial implementation of GN optimizer
+* CI: add running unit tests
+* FIX: potential crash in FilterDeskew
+* Add deskew unit tests
+* Add unit test for cov2cov optimizer
+* Add 'name' property to all generators and filters for disaggregated stats
+* Allow building without the IMU library
+* Update mola_common to 0.5.1
+* clang-tidy fixes
+* Remove dead code
+* Refactor errorTerm for pt2pt for better reusability
+* mm-viewer: add combo box to select intensity colormap
+* Add docs for filters
+* BUGFIX: FilterMerge would lost all point fields except XYZ
+* Remove external libpointmatcher
+* Update formatter script
+* icp log viewer: more options for cov2cov visualization
+* Define virtual API MetricMapMergeCapable
+* fix bug in FilterByIntensity params parser
+* Render cov2cov pairings
+* FilterByRange new parameter: metric_l_infinity
+* FilterDecimateAdaptive now exploits parallelization
+* Progress visualizing cov2cov pairings
+* New cov2cov ICP optimizer
+* Implement a new Cov2Cov matcher
+* Make Matcher_Points_Base::transform_local_to_global() to use TBB, and remove unused parameters
+* Add [[nodiscard]] to estimate_points_eigen()
+* BBox filter: fix target layer must be same type than input
+* Use fractional integers for faster sampling
+* New FPS filter
+* Remove FilterDecimateVoxelsQuadratic
+* Style: public 'params\_' rename as 'params'
+* New interface 'IcpPrepareCapable'
+* Add new virtual interface NearestPointWithCovCapable
+* Refactor mp2p_icp_map into mp2p_icp_common for IMU-related parts
+* Finished integration of new IMU API package
+* Depend on imu external library
+* Move code out to the imu preintegration package
+* Move LocalVelocityBuffer to the IMU repository
+* Add [[nodiscard]] to icp_pipeline_from_yaml()
+* deskew filter: new option 'in_place' to avoid allocating a new cloud whenever possible
+* Finish implementation of higher-order IMU interpolator
+* Implement trajectory reconstruction for deskew
+* cmake files: prefer spaces indentation
+* Add imu preintegration package as dependency
+* FilterNormalizeIntensity can now use a fixed min/max range given by hand
+* Docs: update mp2p_icp_basics for better searchability of simplemaps
+* New option to set pointcloud alpha channel
+* Contributors: Jose Luis Blanco-Claraco
+
 1.8.0 (2025-08-26)
 ------------------
 * Modernize and unify license notes in all files
