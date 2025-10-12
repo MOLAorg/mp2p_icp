@@ -466,9 +466,9 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
 # --------------------------------------------------------
 # 1) Generator (observation -> local frame metric maps)
 # --------------------------------------------------------
-#generators:
-#  - class_name: mp2p_icp_filters::Generator
-#    params: ~
+generators:
+  - class_name: mp2p_icp_filters::Generator
+    params: ~
 
 # --------------------------------------------------------
 # 2) Per local frame filtering
