@@ -22,8 +22,10 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/optional_ref.h>
 #include <mrpt/maps/CSimpleMap.h>
 #include <mrpt/system/COutputLogger.h>
+#include <mrpt/system/CTimeLogger.h>
 
 #include <string>
 #include <utility>
@@ -39,11 +41,12 @@ struct sm2mm_options_t
 {
     sm2mm_options_t() = default;
 
-    mrpt::system::VerbosityLevel                verbosity       = mrpt::system::LVL_INFO;
-    bool                                        showProgressBar = false;
-    std::vector<std::pair<std::string, double>> customVariables = {};
-    std::optional<size_t>                       start_index;
-    std::optional<size_t>                       end_index;
+    mrpt::system::VerbosityLevel                  verbosity       = mrpt::system::LVL_INFO;
+    bool                                          showProgressBar = false;
+    std::vector<std::pair<std::string, double>>   customVariables = {};
+    std::optional<size_t>                         start_index;
+    std::optional<size_t>                         end_index;
+    mrpt::optional_ref<mrpt::system::CTimeLogger> profiler;
 };
 
 /** Utility function to build metric maps ("*.mm") from raw observations

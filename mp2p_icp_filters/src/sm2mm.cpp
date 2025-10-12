@@ -204,7 +204,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             }
 
             // process it:
-            mp2p_icp_filters::apply_filter_pipeline(filters, mm);
+            mp2p_icp_filters::apply_filter_pipeline(filters, mm, options.profiler);
             obs->unload();
         }
 

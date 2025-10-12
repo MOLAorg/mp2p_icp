@@ -67,6 +67,8 @@ static TCLAP::SwitchArg argNoProgressBar(
     "verbosity level.",
     cmd);
 
+static TCLAP::SwitchArg argProfiler("", "profiler", "Enables profiler.", cmd);
+
 static TCLAP::ValueArg<size_t> argIndexFrom(
     "", "from-index",
     "If provided, the simplemap keyframes until this index will be discarded "
@@ -127,6 +129,13 @@ void run_sm_to_mm()
     if (argIndexTo.isSet())
     {
         opts.end_index = argIndexTo.getValue();
+    }
+
+    std::optional<mrpt::system::CTimeLogger> profiler;
+    if (argProfiler.isSet())
+    {
+        profiler.emplace();
+        opts.profiler = *profiler;
     }
 
     // Create the map:
