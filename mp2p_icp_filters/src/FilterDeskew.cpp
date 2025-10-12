@@ -174,8 +174,6 @@ struct CorrectPointsArguments
 template <MotionCompensationMethod method>
 void correctPointsLoop(const CorrectPointsArguments& args)
 {
-    MRPT_TODO("First, build a cache with times -> corrections");
-
     // Capturing these bindings requires C++20.
     auto& [xs, ys, zs, n, n0, outPc, Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist, reconstructed_trajectory, points_already_global, global_robot_pose_t] =
         args;
@@ -187,6 +185,12 @@ void correctPointsLoop(const CorrectPointsArguments& args)
     const bool has_I = Is != nullptr && out_Is != nullptr && !Is->empty();
     const bool has_R = Rs != nullptr && out_Rs != nullptr && !Rs->empty();
     const bool has_T = Ts != nullptr && out_Ts != nullptr && !Ts->empty();
+
+    ASSERT_(Ts != nullptr);
+    ASSERT_EQUAL_(Ts->size(), xs.size());
+
+    // Is it worth to first build a cache with unique point stamps to pose corrections?
+    // From initial benchmarking, it seems it doesn't...
 
 #if defined(MP2P_HAS_TBB)
     tbb::parallel_for(
