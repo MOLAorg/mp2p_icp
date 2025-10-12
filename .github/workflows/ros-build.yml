@@ -20,31 +20,37 @@ jobs:
         # https://ros.org/reps/rep-2000.html
         include:
           # Humble Hawksbill (May 2022 - May 2027)
-          - docker_image: ubuntu:jammy
-            ros_distribution: humble
-            use_ros_testing: false
+          #- docker_image: ubuntu:jammy
+          #  ros_distribution: humble
+          #  use_ros_testing: false
 
           - docker_image: ubuntu:jammy
             ros_distribution: humble
             use_ros_testing: true
 
           # Jazzy (2024 - ??)
-          - docker_image: ubuntu:noble
-            ros_distribution: jazzy
-            use_ros_testing: false
+          #- docker_image: ubuntu:noble
+          #  ros_distribution: jazzy
+          #  use_ros_testing: false
 
           - docker_image: ubuntu:noble
             ros_distribution: jazzy
             use_ros_testing: true
 
           # Rolling Ridley (No End-Of-Life)
-          - docker_image: ubuntu:noble
-            ros_distribution: rolling
-            use_ros_testing: false
+          #- docker_image: ubuntu:noble
+          #  ros_distribution: rolling
+          #  use_ros_testing: false
 
           - docker_image: ubuntu:noble
             ros_distribution: rolling
             use_ros_testing: true
+
+          # Same as above, but disable TBB
+          - docker_image: ubuntu:noble
+            ros_distribution: rolling
+            use_ros_testing: true
+            disable_tbb: true
 
     container:
       image: ${{ matrix.docker_image }}
@@ -74,5 +80,22 @@ jobs:
       - name: Build with colcon
         run: |
           . /opt/ros/*/setup.sh
+          # If disable_tbb is true, add the CMake flag to disable TBB
+          if [ "${{ matrix.disable_tbb }}" = "true" ]; then
+            echo "Disabling TBB..."
+            EXTRA_CMAKE_ARGS="-DMP2PICP_USE_TBB=OFF"
+          else
+            EXTRA_CMAKE_ARGS=""
+          fi
           env
-          MAKEFLAGS="-j2" colcon build --symlink-install --parallel-workers 2 --event-handlers console_direct+
+          MAKEFLAGS="-j2" colcon build \
+            --symlink-install \
+            --parallel-workers 2 \
+            --event-handlers console_direct+ \
+            --cmake-args $EXTRA_CMAKE_ARGS
+
+      - name: Run unit tests
+        run: |
+          . /opt/ros/*/setup.sh
+          colcon test --event-handlers console_direct+
+          colcon test-result --verbose

@@ -1,9 +1,3 @@
-[submodule "3rdparty/libpointmatcher"]
-	path = 3rdparty/libpointmatcher
-	url = https://github.com/ethz-asl/libpointmatcher.git
-[submodule "3rdparty/libnabo"]
-	path = 3rdparty/libnabo
-	url = https://github.com/ethz-asl/libnabo.git
 [submodule "3rdparty/mola_common"]
     path = 3rdparty/mola_common
 	url = https://github.com/MOLAorg/mola_common.git

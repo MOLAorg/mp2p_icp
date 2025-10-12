@@ -22,8 +22,10 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/optional_ref.h>
 #include <mrpt/maps/CSimpleMap.h>
 #include <mrpt/system/COutputLogger.h>
+#include <mrpt/system/CTimeLogger.h>
 
 #include <string>
 #include <utility>
@@ -37,14 +39,14 @@ namespace mp2p_icp_filters
 /// Options for simplemap_to_metricmap()
 struct sm2mm_options_t
 {
-    sm2mm_options_t()  = default;
-    ~sm2mm_options_t() = default;
+    sm2mm_options_t() = default;
 
-    mrpt::system::VerbosityLevel                verbosity       = mrpt::system::LVL_INFO;
-    bool                                        showProgressBar = false;
-    std::vector<std::pair<std::string, double>> customVariables = {};
-    std::optional<size_t>                       start_index;
-    std::optional<size_t>                       end_index;
+    mrpt::system::VerbosityLevel                  verbosity       = mrpt::system::LVL_INFO;
+    bool                                          showProgressBar = false;
+    std::vector<std::pair<std::string, double>>   customVariables = {};
+    std::optional<size_t>                         start_index;
+    std::optional<size_t>                         end_index;
+    mrpt::optional_ref<mrpt::system::CTimeLogger> profiler;
 };
 
 /** Utility function to build metric maps ("*.mm") from raw observations
@@ -53,8 +55,7 @@ struct sm2mm_options_t
  *  see
  * [sm2mm](https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm).
  *
- * The former constents of outMap are cleared.
- *
+ * The former contents of outMap are cleared.
  */
 void simplemap_to_metricmap(
     const mrpt::maps::CSimpleMap& sm, mp2p_icp::metric_map_t& outMap,

@@ -89,22 +89,34 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
                 break;
             case 1:
                 expected = prior.mean;
-                for (int i = 0; i < 3; i++) prior.cov_inv(i, i) = 100.0;
+                for (int i = 0; i < 3; i++)
+                {
+                    prior.cov_inv(i, i) = 100.0;
+                }
                 checkFn = [&]()
                 {
                     for (int i = 0; i < 3; i++)
+                    {
                         ASSERT_NEAR_(result.optimalPose[i], prior.mean[i], 0.05);
+                    }
                 };
                 break;
             case 2:
                 expected = prior.mean;
-                for (int i = 3; i < 6; i++) prior.cov_inv(i, i) = 100.0;
+                for (int i = 3; i < 6; i++)
+                {
+                    prior.cov_inv(i, i) = 100.0;
+                }
                 checkFn = [&]()
                 {
                     for (int i = 3; i < 6; i++)
+                    {
                         ASSERT_NEAR_(result.optimalPose[i], prior.mean[i], 0.05);
+                    }
                 };
                 break;
+            default:
+                THROW_EXCEPTION("Unhandled switch case");
         };
 
         bool solvedOk = solver.optimal_pose(p, result, sc);
@@ -131,7 +143,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     {
         test_opt_prior(CPose3D::FromXYZYawPitchRoll(1.0, 2.0, 3.0, 5.0_deg, 15.0_deg, 20.0_deg));
     }
-    catch (std::exception& e)
+    catch (const std::exception& e)
     {
         std::cerr << mrpt::exception_to_str(e) << "\n";
         return 1;

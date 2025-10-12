@@ -34,18 +34,19 @@ using namespace mp2p_icp;
 using namespace mrpt::math;
 
 mrpt::math::CVectorFixedDouble<3> mp2p_icp::error_point2point(
-    const mrpt::tfest::TMatchingPair& pairing, const mrpt::poses::CPose3D& relativePose,
+    const mrpt::math::TPoint3Df& local_point, const mrpt::math::TPoint3Df& global_point,
+    const mrpt::poses::CPose3D&                                 relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian)
 {
     MRPT_START
-    mrpt::math::CVectorFixedDouble<3> error;
-    const mrpt::math::TPoint3D&       l = pairing.local;
+    const auto l = local_point.cast<double>();
 
     const mrpt::math::TPoint3D g = relativePose.composePoint(l);
 
-    error[0] = g.x - pairing.global.x;
-    error[1] = g.y - pairing.global.y;
-    error[2] = g.z - pairing.global.z;
+    mrpt::math::CVectorFixedDouble<3> error;
+    error[0] = g.x - static_cast<double>(global_point.x);
+    error[1] = g.y - static_cast<double>(global_point.y);
+    error[2] = g.z - static_cast<double>(global_point.z);
 
     // It's possible change the error to scalar with the function
     // g.DistanceTo(l) Eval Jacobian:

@@ -78,7 +78,7 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
     FilterDecimateVoxels();
 
     // See docs in base class.
-    void initialize(const mrpt::containers::yaml& c) override;
+    void initialize_filter(const mrpt::containers::yaml& c) override;
 
     // See docs in FilterBase
     void filter(mp2p_icp::metric_map_t& inOut) const override;
@@ -103,7 +103,9 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
         float voxel_filter_resolution = 1.0f;  // [m]
 
         /** Whether to use as container implementation
-         * tsl::robin_map (true, default), or a std::map (false) */
+         * tsl::robin_map (true, default), or a std::map (false).
+         * For large clouds (>10^6), std::map seems to be faster.
+         */
         bool use_tsl_robin_map = true;
 
         /** If !=0 and there are less input points that this number,
@@ -120,13 +122,13 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
     };
 
     /** Algorithm parameters */
-    Parameters params_;
+    Parameters params;
 
    private:
     mutable std::optional<PointCloudToVoxelGrid>       filter_grid_;
     mutable std::optional<PointCloudToVoxelGridSingle> filter_grid_single_;
 
-    bool useSingleGrid() const { return params_.decimate_method == DecimateMethod::FirstPoint; }
+    bool useSingleGrid() const { return params.decimate_method == DecimateMethod::FirstPoint; }
 };
 
 /** @} */

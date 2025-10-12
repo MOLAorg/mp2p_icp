@@ -51,7 +51,7 @@ class FilterNormalizeIntensity : public mp2p_icp_filters::FilterBase
     FilterNormalizeIntensity();
 
     // See docs in base class.
-    void initialize(const mrpt::containers::yaml& c) override;
+    void initialize_filter(const mrpt::containers::yaml& c) override;
 
     // See docs in FilterBase
     void filter(mp2p_icp::metric_map_t& inOut) const override;
@@ -74,7 +74,7 @@ class FilterNormalizeIntensity : public mp2p_icp_filters::FilterBase
     };
 
     /** Algorithm parameters */
-    Parameters params_;
+    Parameters params;
 
    private:
     mutable std::optional<float> minI_, maxI_;

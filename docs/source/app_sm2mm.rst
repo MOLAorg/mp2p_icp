@@ -49,10 +49,10 @@ CLI Reference
 
     USAGE: 
 
-    sm2mm  [--to-index <0>] [--from-index <0>] [--no-progress-bar]
-            [--externals-dir <<ExternalsDirectory>>] [-v <INFO>] [-p
-            <pipeline.yaml>] [-l <foobar.so>] -o <out.mm> -i <map.simplemap>
-            [--] [--version] [-h]
+    sm2mm  [--to-index <0>] [--from-index <0>] [--profiler]
+            [--no-progress-bar] [--externals-dir <<ExternalsDirectory>>] [-v
+            <INFO>] [-p <pipeline.yaml>] [-l <foobar.so>] -o <out.mm> -i
+            <map.simplemap> [--] [--version] [-h]
 
 
     Where: 
@@ -64,6 +64,9 @@ CLI Reference
     --from-index <0>
         If provided, the simplemap keyframes until this index will be
         discarded and it will start at this point.
+
+    --profiler
+        Enables profiler.
 
     --no-progress-bar
         Disables the progress bar. Useful for cleaner output when using DEBUG
@@ -104,4 +107,7 @@ CLI Reference
 
     -h,  --help
         Displays usage information and exits.
+
+
+
 

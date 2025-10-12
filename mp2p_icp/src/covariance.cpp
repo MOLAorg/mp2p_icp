@@ -48,8 +48,14 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
     xInitial[5] = finalAlignSolution.roll();
 
     mrpt::math::CMatrixDouble61 xIncrs;
-    for (int i = 0; i < 3; i++) xIncrs[i] = param.finDif_xyz;
-    for (int i = 0; i < 3; i++) xIncrs[3 + i] = param.finDif_angles;
+    for (int i = 0; i < 3; i++)
+    {
+        xIncrs[i] = param.finDif_xyz;
+    }
+    for (int i = 0; i < 3; i++)
+    {
+        xIncrs[3 + i] = param.finDif_angles;
+    }
 
     struct LambdaParams
     {
@@ -63,13 +69,14 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         mrpt::poses::CPose3D pose;
         pose.setFromValues(x[0], x[1], x[2], x[3], x[4], x[5]);
 
-        const auto nPt2Pt = in.paired_pt2pt.size();
-        const auto nPt2Ln = in.paired_pt2ln.size();
-        const auto nPt2Pl = in.paired_pt2pl.size();
-        const auto nPl2Pl = in.paired_pl2pl.size();
-        const auto nLn2Ln = in.paired_ln2ln.size();
+        const auto nPt2Pt   = in.paired_pt2pt.size();
+        const auto nPt2Ln   = in.paired_pt2ln.size();
+        const auto nPt2Pl   = in.paired_pt2pl.size();
+        const auto nPl2Pl   = in.paired_pl2pl.size();
+        const auto nLn2Ln   = in.paired_ln2ln.size();
+        const auto nCov2Cov = in.paired_cov2cov.size();
 
-        const auto nErrorTerms = (nPt2Pt + nPl2Pl + nPt2Ln + nPt2Pl) * 3 + nLn2Ln * 4;
+        const auto nErrorTerms = (nPt2Pt + nPl2Pl + nPt2Ln + nPt2Pl + nCov2Cov) * 3 + nLn2Ln * 4;
         ASSERT_(nErrorTerms > 0);
         err.resize(nErrorTerms);
 
@@ -77,9 +84,11 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         for (size_t idx_pt = 0; idx_pt < nPt2Pt; idx_pt++)
         {
             // Error:
-            const auto&                       p   = in.paired_pt2pt[idx_pt];
-            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_point2point(p, pose);
-            err.block<3, 1>(idx_pt * 3, 0)        = ret.asEigen();
+            const auto& p = in.paired_pt2pt[idx_pt];
+
+            mrpt::math::CVectorFixedDouble<3> ret =
+                mp2p_icp::error_point2point(p.local, p.global, pose);
+            err.block<3, 1>(idx_pt * 3, 0) = ret.asEigen();
         }
         auto base_idx = nPt2Pt * 3;
 
@@ -120,6 +129,21 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
             const auto&                       p       = in.paired_pl2pl[idx_pl];
             mrpt::math::CVectorFixedDouble<3> ret     = mp2p_icp::error_plane2plane(p, pose);
             err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
+        }
+
+        // cov-to-cov:
+        for (size_t idx_cov2cov = 0; idx_cov2cov < nCov2Cov; idx_cov2cov++)
+        {
+            // Error:
+            const auto& p = in.paired_cov2cov[idx_cov2cov];
+
+            const mrpt::math::CVectorFixedDouble<3> ret =
+                mp2p_icp::error_point2point(p.local, p.global, pose);
+
+            const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
+
+            // TODO: Add sqrt(COV) term?
+            err.block<3, 1>(idx_cov2cov * 3, 0) = cov_inv * ret.asEigen();
         }
     };
 

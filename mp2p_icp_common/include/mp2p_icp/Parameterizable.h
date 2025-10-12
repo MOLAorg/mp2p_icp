@@ -14,7 +14,10 @@
 
 #pragma once
 
-#include <mp2p_icp/LocalVelocityBuffer.h>
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
+#include <mola_imu_preintegration/LocalVelocityBuffer.h>
+#endif
+
 #include <mrpt/expr/CRuntimeCompiledExpression.h>
 
 #include <cstdint>
@@ -77,7 +80,9 @@ class ParameterSource
     auto getVariableValues() const -> std::map<std::string, double> { return variables_; }
 
     /** Local velocity buffer for this parameter source */
-    mutable LocalVelocityBuffer localVelocityBuffer;
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
+    mutable mola::imu::LocalVelocityBuffer localVelocityBuffer;
+#endif
 
    private:
     // Attached clients.

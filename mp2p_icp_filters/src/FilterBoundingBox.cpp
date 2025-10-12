@@ -61,12 +61,12 @@ FilterBoundingBox::FilterBoundingBox()
     mrpt::system::COutputLogger::setLoggerName("FilterBoundingBox");
 }
 
-void FilterBoundingBox::initialize(const mrpt::containers::yaml& c)
+void FilterBoundingBox::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -76,28 +76,34 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     // In:
-    const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    const auto pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr insidePc = GetOrCreatePointLayer(
-        inOut, params_.inside_pointcloud_layer, true /*allow empty for nullptr*/,
+        inOut, params.inside_pointcloud_layer, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (insidePc) insidePc->reserve(insidePc->size() + pc.size() / 10);
+    if (insidePc)
+    {
+        insidePc->reserve(insidePc->size() + pc.size() / 10);
+    }
 
     mrpt::maps::CPointsMap::Ptr outsidePc = GetOrCreatePointLayer(
-        inOut, params_.outside_pointcloud_layer, true /*allow empty for nullptr*/,
+        inOut, params.outside_pointcloud_layer, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outsidePc) outsidePc->reserve(outsidePc->size() + pc.size() / 10);
+    if (outsidePc)
+    {
+        outsidePc->reserve(outsidePc->size() + pc.size() / 10);
+    }
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
@@ -105,11 +111,14 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
 
     for (size_t i = 0; i < xs.size(); i++)
     {
-        const bool isInside = params_.bounding_box.containsPoint({xs[i], ys[i], zs[i]});
+        const bool isInside = params.bounding_box.containsPoint({xs[i], ys[i], zs[i]});
 
         auto* targetPc = isInside ? insidePc.get() : outsidePc.get();
 
-        if (targetPc) targetPc->insertPointFrom(pc, i);
+        if (targetPc)
+        {
+            targetPc->insertPointFrom(pc, i);
+        }
     }
 
     MRPT_END

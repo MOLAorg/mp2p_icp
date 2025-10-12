@@ -42,18 +42,20 @@ void FilterMerge::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Fi
         auto cc = c["robot_pose"].asSequence();
 
         for (int i = 0; i < 6; i++)
+        {
             parent.parseAndDeclareParameter(cc.at(i).as<std::string>(), robot_pose[i]);
+        }
     }
 }
 
 FilterMerge::FilterMerge() { mrpt::system::COutputLogger::setLoggerName("FilterMerge"); }
 
-void FilterMerge::initialize(const mrpt::containers::yaml& c)
+void FilterMerge::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -66,36 +68,42 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
 
     // In:
     ASSERTMSG_(
-        inOut.layers.count(params_.input_pointcloud_layer) != 0,
-        mrpt::format("Input layer '%s' not found.", params_.input_pointcloud_layer.c_str()));
+        inOut.layers.count(params.input_pointcloud_layer) != 0,
+        mrpt::format("Input layer '%s' not found.", params.input_pointcloud_layer.c_str()));
 
-    const auto mapPtr = inOut.layers.at(params_.input_pointcloud_layer);
+    const auto mapPtr = inOut.layers.at(params.input_pointcloud_layer);
     ASSERT_(mapPtr);
 
+    // This may seem as an (unnecessary?) copy for layers actually being point clouds, but it's
+    // safer to make a copy to prevent modifying the original observation pointcloud.
     const auto pcPtr = mp2p_icp::MapToPointsMap(*mapPtr);
     ASSERTMSG_(
         pcPtr, mrpt::format(
                    "Input point cloud layer '%s' could not be converted into a "
                    "point cloud (class='%s')",
-                   params_.input_pointcloud_layer.c_str(), mapPtr->GetRuntimeClass()->className));
+                   params.input_pointcloud_layer.c_str(), mapPtr->GetRuntimeClass()->className));
 
     // Out:
-    ASSERT_(!params_.target_layer.empty());
+    ASSERT_(!params.target_layer.empty());
     ASSERTMSG_(
-        inOut.layers.count(params_.target_layer) != 0,
-        mrpt::format("Target map layer '%s' not found.", params_.target_layer.c_str()));
+        inOut.layers.count(params.target_layer) != 0,
+        mrpt::format("Target map layer '%s' not found.", params.target_layer.c_str()));
 
-    mrpt::maps::CMetricMap::Ptr out = inOut.layers.at(params_.target_layer);
+    mrpt::maps::CMetricMap::Ptr out = inOut.layers.at(params.target_layer);
 
     // Create fake observation for insertion:
     mrpt::obs::CObservationPointCloud obs;
-    auto                              pts = mrpt::maps::CSimplePointsMap::Create();
-    obs.pointcloud                        = pts;
+    // Create cloud of the same type than the input to avoid losing point fields:
+    auto newCloudObj = pcPtr->GetRuntimeClass()->createObject();
+    auto pts         = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(newCloudObj);
+    ASSERTMSG_(pts, "Not a pointcloud class as input?");
+
+    obs.pointcloud = pts;
 
     // Copy the input layer here, as seen from the robot (hence the "-"):
-    const auto robotPose = mrpt::poses::CPose3D(params_.robot_pose);
+    const auto robotPose = mrpt::poses::CPose3D(params.robot_pose);
 
-    if (params_.input_layer_in_local_coordinates)
+    if (params.input_layer_in_local_coordinates)
     {
         pts->insertAnotherMap(pcPtr, mrpt::poses::CPose3D::Identity());
     }

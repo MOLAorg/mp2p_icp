@@ -19,9 +19,9 @@
  */
 
 #include <mp2p_icp/ICP.h>
-#include <mp2p_icp/ICP_LibPointmatcher.h>
 #include <mp2p_icp/LogRecord.h>
 #include <mp2p_icp/Matcher_Adaptive.h>
+#include <mp2p_icp/Matcher_Cov2Cov.h>
 #include <mp2p_icp/Matcher_Point2Line.h>
 #include <mp2p_icp/Matcher_Point2Plane.h>
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
@@ -45,19 +45,19 @@ MRPT_INITIALIZER(register_mp2p_icp)
     using mrpt::rtti::registerClass;
 
     registerClass(CLASS_ID(mp2p_icp::ICP));
-    registerClass(CLASS_ID(mp2p_icp::ICP_LibPointmatcher));
 
     registerClass(CLASS_ID(mp2p_icp::Solver));
-    registerClass(CLASS_ID(mp2p_icp::Solver_OLAE));
     registerClass(CLASS_ID(mp2p_icp::Solver_GaussNewton));
     registerClass(CLASS_ID(mp2p_icp::Solver_Horn));
+    registerClass(CLASS_ID(mp2p_icp::Solver_OLAE));
 
     registerClass(CLASS_ID(mp2p_icp::Matcher));
-    registerClass(CLASS_ID(mp2p_icp::Matcher_Points_DistanceThreshold));
-    registerClass(CLASS_ID(mp2p_icp::Matcher_Points_InlierRatio));
+    registerClass(CLASS_ID(mp2p_icp::Matcher_Adaptive));
+    registerClass(CLASS_ID(mp2p_icp::Matcher_Cov2Cov));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Point2Line));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Point2Plane));
-    registerClass(CLASS_ID(mp2p_icp::Matcher_Adaptive));
+    registerClass(CLASS_ID(mp2p_icp::Matcher_Points_DistanceThreshold));
+    registerClass(CLASS_ID(mp2p_icp::Matcher_Points_InlierRatio));
 
     registerClass(CLASS_ID(mp2p_icp::QualityEvaluator));
     registerClass(CLASS_ID(mp2p_icp::QualityEvaluator_PairedRatio));

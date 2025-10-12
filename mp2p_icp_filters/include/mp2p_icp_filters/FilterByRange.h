@@ -42,7 +42,7 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
     FilterByRange();
 
     // See docs in base class.
-    void initialize(const mrpt::containers::yaml& c) override;
+    void initialize_filter(const mrpt::containers::yaml& c) override;
 
     // See docs in FilterBase
     void filter(mp2p_icp::metric_map_t& inOut) const override;
@@ -80,10 +80,14 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
          * \endcode
          */
         mrpt::math::TPoint3Df center = {0, 0, 0};
+
+        /** L2 Euclidean norm is used by default, unless `metric_l_infinity` is `true`, then L-inf
+         * is used (which is much more efficient) */
+        bool metric_l_infinity = false;
     };
 
     /** Algorithm parameters */
-    Parameters params_;
+    Parameters params;
 };
 
 /** @} */

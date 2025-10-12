@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  gcc-u22.04-mrpt-dev:
+  gcc-u2204-mrpt-dev:
     docker:
       - image: mrpt/mrpt-build-env:full-jammy
     steps:
@@ -25,7 +25,7 @@ jobs:
 #      - run: make gcov -C build
 #      - run: make -C build
 #      - run: bash <(curl -s https://codecov.io/bash) -X gcov -y .codecov.yml -s build
-  gcc-u22.04-mrpt-stable:
+  gcc-u2204-mrpt-stable:
     docker:
       - image: mrpt/mrpt-build-env:full-jammy
     steps:
@@ -47,7 +47,7 @@ jobs:
           command: cmake -H. -Bbuild
       - run: make -C build
       - run: make CTEST_OUTPUT_ON_FAILURE=1 test -C build
-  clang-u22.04-mrpt-dev:
+  clang-u2204-mrpt-dev:
     docker:
       - image: mrpt/mrpt-build-env:full-jammy
     steps:
@@ -76,6 +76,6 @@ workflows:
   version: 2
   build:
     jobs:
-      - gcc-u22.04-mrpt-dev
-      - gcc-u22.04-mrpt-stable
-      - clang-u22.04-mrpt-dev
+      - gcc-u2204-mrpt-dev
+      - gcc-u2204-mrpt-stable
+      - clang-u2204-mrpt-dev

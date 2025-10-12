@@ -36,12 +36,17 @@ class NearestPlaneCapable
     NearestPlaneCapable() = default;
     virtual ~NearestPlaneCapable();
 
+    NearestPlaneCapable(const NearestPlaneCapable&)            = default;
+    NearestPlaneCapable& operator=(const NearestPlaneCapable&) = default;
+    NearestPlaneCapable(NearestPlaneCapable&&)                 = default;
+    NearestPlaneCapable& operator=(NearestPlaneCapable&&)      = default;
+
     struct NearestPlaneResult
     {
         NearestPlaneResult() = default;
 
         /// Found pairing:
-        std::optional<point_plane_pair_t> pairing;
+        std::optional<point_plane_pair_t> pairing{};
 
         /// Absolute value of plane-point distance, if a pairing is found:
         float distance = 0;

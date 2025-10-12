@@ -1,6 +1,7 @@
 Checks: >
   -*,
   bugprone-*,
+  -bugprone-easily-swappable-parameters,
   readability-braces-around-statements,
   readability-else-after-return,
   cppcoreguidelines-interfaces-global-init,

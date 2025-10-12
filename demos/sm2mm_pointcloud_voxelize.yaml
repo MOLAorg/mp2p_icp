@@ -4,12 +4,11 @@
 # See: https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm
 #
 # Explanation of this particular pipeline:
-#  - Generators: empty, so the default generator is used (everything in one 
+#  - Generators: empty, so the default generator is used (everything in one
 #                layer named 'raw' with all points).
 #  - Filters: Just one downsampling filter, with an additional removal of close
 #             points (e.g. the robot body)
 # -----------------------------------------------------------------------------
-
 
 # --------------------------------------------------------
 # 1) Generator (observation -> local frame metric maps)
@@ -24,32 +23,39 @@
 filters:
   - class_name: mp2p_icp_filters::FilterAdjustTimestamps
     params:
-      pointcloud_layer: 'raw'
+      pointcloud_layer: "raw"
       silently_ignore_no_timestamps: true
-      method: 'TimestampAdjustMethod::MiddleIsZero'
+      method: "TimestampAdjustMethod::MiddleIsZero"
 
   - class_name: mp2p_icp_filters::FilterDeskew
     params:
-      input_pointcloud_layer: 'raw'
-      output_pointcloud_layer: 'deskewed'
+      input_pointcloud_layer: "raw"
+      output_pointcloud_layer: "deskewed"
+      method: MotionCompensationMethod::Linear
       #silently_ignore_no_timestamps: true # To handle more dataset types
-      output_layer_class: 'mrpt::maps::CPointsMapXYZIRT'  # Keep intensity & ring channels
+      output_layer_class: "mrpt::maps::CPointsMapXYZIRT" # Keep intensity & ring channels
 
       # These (vx,...,wz) are variable names that must be defined via the
       # mp2p_icp::Parameterizable API to update them dynamically.
-      twist: [vx,vy,vz,wx,wy,wz]
+      twist: [vx, vy, vz, wx, wy, wz]
+
+      # IMPORTANT: In the context of sm2mm, de-skew happens with points already in global coordinates
+      # so we need the robot pose to correct points:
+      points_already_global: true
+      robot_pose:
+        [robot_x, robot_y, robot_z, robot_yaw, robot_pitch, robot_roll]
 
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
-      input_pointcloud_layer: 'deskewed'
-      output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: 0.10  # [m]
+      input_pointcloud_layer: "deskewed"
+      output_pointcloud_layer: "decimated"
+      voxel_filter_resolution: 0.10 # [m]
       decimate_method: DecimateMethod::FirstPoint
 
   - class_name: mp2p_icp_filters::FilterByRange
     params:
-      input_pointcloud_layer: 'decimated'
-      output_layer_outside: 'filtered'
+      input_pointcloud_layer: "decimated"
+      output_layer_outside: "filtered"
       range_min: 0.0
       range_max: 5.0
       # Measure distances from the moving robot pose:
@@ -58,8 +64,7 @@ filters:
   - class_name: mp2p_icp_filters::FilterDeleteLayer
     params:
       # one or more layers to remove
-      pointcloud_layer_to_remove: ['raw', 'deskewed', 'decimated']
-
+      pointcloud_layer_to_remove: ["raw", "deskewed", "decimated"]
 # -------------------------------------------------------------------
 # 3) Final, overall filter pipeline to apply to the whole metric map
 # -------------------------------------------------------------------

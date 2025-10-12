@@ -18,6 +18,10 @@
  * @date   Jun 10, 2019
  */
 
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
+#include <mola_imu_preintegration/ImuTransformer.h>
+#endif
+
 #include <mp2p_icp/load_plugin.h>
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/Generator.h>
@@ -53,6 +57,12 @@ void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Gene
     MCP_LOAD_OPT(c, process_class_names_regex);
     MCP_LOAD_OPT(c, process_sensor_labels_regex);
     MCP_LOAD_OPT(c, throw_on_unhandled_observation_class);
+
+    MCP_LOAD_OPT(c, name);
+    if (!name.empty())
+    {
+        parent.mrpt::system::COutputLogger::setLoggerName(name);
+    }
 
     if (c.has("metric_map_definition"))
     {
@@ -125,10 +135,10 @@ void Generator::initialize(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
-    process_class_names_regex_   = std::regex(params_.process_class_names_regex);
-    process_sensor_labels_regex_ = std::regex(params_.process_sensor_labels_regex);
+    process_class_names_regex_   = std::regex(params.process_class_names_regex);
+    process_sensor_labels_regex_ = std::regex(params.process_sensor_labels_regex);
 
     initialized_ = true;
     MRPT_END
@@ -147,10 +157,11 @@ bool Generator::process(
     const auto obsClassName = o.GetRuntimeClass()->className;
 
     MRPT_LOG_DEBUG_FMT(
-        "Processing observation type='%s' label='%s'", obsClassName, o.sensorLabel.c_str());
+        "Processing observation type='%s' label='%s' stamp=%.04f", obsClassName,
+        o.sensorLabel.c_str(), mrpt::Clock::toDouble(o.timestamp));
 
     // default: use point clouds:
-    if (params_.metric_map_definition_ini_file.empty() && params_.metric_map_definition.empty())
+    if (params.metric_map_definition_ini_file.empty() && params.metric_map_definition.empty())
     {
         return implProcessDefault(o, out, robotPose);
     }
@@ -172,7 +183,7 @@ bool Generator::filterVelodyneScan(  //
     const std::optional<mrpt::poses::CPose3D>& robotPose) const
 {
     mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
-        out, params_.target_layer, false /*does not allow empty name*/,
+        out, params.target_layer, false /*does not allow empty name*/,
         "mrpt::maps::CPointsMapXYZIRT" /* creation class if not existing */);
     ASSERT_(outPc);
 
@@ -187,7 +198,30 @@ bool Generator::filterVelodyneScan(  //
     return true;  // implemented
 }
 
-bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu) const
+class ImuTransformerManager
+{
+   public:
+    static mola::imu::ImuTransformer& getInstance(const std::string& sensorLabel)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto                        it = transformers_.find(sensorLabel);
+        if (it == transformers_.end())
+        {
+            auto [newIt, _] = transformers_.emplace(sensorLabel, mola::imu::ImuTransformer());
+            return newIt->second;
+        }
+        return it->second;
+    }
+
+   private:
+    static std::mutex                                       mutex_;
+    static std::map<std::string, mola::imu::ImuTransformer> transformers_;
+};
+
+std::mutex                                       ImuTransformerManager::mutex_;
+std::map<std::string, mola::imu::ImuTransformer> ImuTransformerManager::transformers_;
+
+bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu_raw) const
 {
     auto* parameterSource = const_cast<mp2p_icp::ParameterSource*>(attachedSource());
     if (!parameterSource)
@@ -195,21 +229,28 @@ bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu) const
         return false;  // No parameter source attached, nothing to do.
     }
 
-    if (!imu.has(mrpt::obs::IMU_WX) || !imu.has(mrpt::obs::IMU_WY) || !imu.has(mrpt::obs::IMU_WZ))
-    {
-        // No gyroscope data:
-        return false;
-    }
+    const double t = mrpt::Clock::toDouble(imu_raw.timestamp);
+
+    auto& imu_transformer = ImuTransformerManager::getInstance(imu_raw.sensorLabel);
 
     // Convert IMU readings to vehicle frame of reference:
-    const double t = mrpt::Clock::toDouble(imu.timestamp);
+    const auto imu = imu_transformer.process(imu_raw);
 
-    const mp2p_icp::LocalVelocityBuffer::AngularVelocity ang_vel_sensor = {
-        imu.get(mrpt::obs::IMU_WX), imu.get(mrpt::obs::IMU_WY), imu.get(mrpt::obs::IMU_WZ)};
-
-    const auto ang_vel_vehicle = imu.sensorPose.rotateVector(ang_vel_sensor);
-
-    parameterSource->localVelocityBuffer.add_angular_velocity(t, ang_vel_vehicle);
+    // gyroscope data:
+    if (imu.has(mrpt::obs::IMU_WX) && imu.has(mrpt::obs::IMU_WY) && imu.has(mrpt::obs::IMU_WZ))
+    {
+        parameterSource->localVelocityBuffer.add_angular_velocity(
+            t,
+            {imu.get(mrpt::obs::IMU_WX), imu.get(mrpt::obs::IMU_WY), imu.get(mrpt::obs::IMU_WZ)});
+    }
+    // accelerometer data:
+    if (imu.has(mrpt::obs::IMU_X_ACC) && imu.has(mrpt::obs::IMU_Y_ACC) &&
+        imu.has(mrpt::obs::IMU_Z_ACC))
+    {
+        parameterSource->localVelocityBuffer.add_linear_acceleration(
+            t, {imu.get(mrpt::obs::IMU_X_ACC), imu.get(mrpt::obs::IMU_Y_ACC),
+                imu.get(mrpt::obs::IMU_Z_ACC)});
+    }
 
     return true;  // implemented
 }
@@ -228,13 +269,13 @@ bool Generator::filterPointCloud(  //
 {
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc;
-    if (auto itLy = out.layers.find(params_.target_layer); itLy != out.layers.end())
+    if (auto itLy = out.layers.find(params.target_layer); itLy != out.layers.end())
     {
         outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
         if (!outPc)
         {
             THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.", params_.target_layer.c_str());
+                "Layer '%s' must be of point cloud type.", params.target_layer.c_str());
         }
     }
     else
@@ -245,10 +286,10 @@ bool Generator::filterPointCloud(  //
         ASSERT_(outPc);
 
         MRPT_LOG_DEBUG_FMT(
-            "[filterPointCloud] Created new layer '%s' of type '%s'", params_.target_layer.c_str(),
+            "[filterPointCloud] Created new layer '%s' of type '%s'", params.target_layer.c_str(),
             outPc->GetRuntimeClass()->className);
 
-        out.layers[params_.target_layer] = outPc;
+        out.layers[params.target_layer] = outPc;
     }
 
     const mrpt::poses::CPose3D p = robotPose ? robotPose.value() + sensorPose : sensorPose;
@@ -432,8 +473,11 @@ bool Generator::implProcessDefault(
 
     if (auto ps = this->attachedSource(); ps != nullptr && pointcloud_obs_timestamp)
     {
-        ps->localVelocityBuffer.set_reference_zero_time(
-            mrpt::Clock::toDouble(*pointcloud_obs_timestamp));
+        const auto refStamp = mrpt::Clock::toDouble(*pointcloud_obs_timestamp);
+        MRPT_LOG_DEBUG_FMT(
+            "Setting localVelocityBuffer.set_reference_zero_time() to %.04f", refStamp);
+
+        ps->localVelocityBuffer.set_reference_zero_time(refStamp);
     }
 
     // done?
@@ -445,13 +489,13 @@ bool Generator::implProcessDefault(
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
-        out, params_.target_layer, false /*does not allow empty name*/,
+        out, params.target_layer, false /*does not allow empty name*/,
         "mrpt::maps::CSimplePointsMap" /* creation class if not existing */);
 
     ASSERT_(outPc);
 
     MRPT_LOG_DEBUG_FMT(
-        "Using output layer '%s' of type '%s'", params_.target_layer.c_str(),
+        "Using output layer '%s' of type '%s'", params.target_layer.c_str(),
         outPc->GetRuntimeClass()->className);
 
     // Observation format:
@@ -476,7 +520,7 @@ bool Generator::implProcessDefault(
     // General case:
     const bool insertDone = o.insertObservationInto(*outPc, robotPose);
 
-    if (!insertDone && params_.throw_on_unhandled_observation_class)
+    if (!insertDone && params.throw_on_unhandled_observation_class)
     {
         THROW_EXCEPTION_FMT(
             "Observation of type '%s' could not be converted into a "
@@ -500,7 +544,7 @@ bool Generator::implProcessCustomMap(
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CMetricMap::Ptr outMap;
 
-    if (auto itLy = out.layers.find(params_.target_layer); itLy != out.layers.end())
+    if (auto itLy = out.layers.find(params.target_layer); itLy != out.layers.end())
     {
         outMap = itLy->second;
     }
@@ -512,20 +556,20 @@ bool Generator::implProcessCustomMap(
         const std::string cfgPrefix = "map"s;
 
         // Create from either a INI file or the YAML version of it:
-        if (!params_.metric_map_definition_ini_file.empty())
+        if (!params.metric_map_definition_ini_file.empty())
         {
             // Load from INI file
             // ------------------------------
-            ASSERT_FILE_EXISTS_(params_.metric_map_definition_ini_file);
-            mrpt::config::CConfigFile cfg(params_.metric_map_definition_ini_file);
+            ASSERT_FILE_EXISTS_(params.metric_map_definition_ini_file);
+            mrpt::config::CConfigFile cfg(params.metric_map_definition_ini_file);
             mapInits.loadFromConfigFile(cfg, cfgPrefix);
         }
         else
         {
             // Load from YAML file (with parameterizable values)
             // ------------------------------------------------------
-            ASSERT_(!params_.metric_map_definition.empty());
-            const auto& c = params_.metric_map_definition;
+            ASSERT_(!params.metric_map_definition.empty());
+            const auto& c = params.metric_map_definition;
 
             // Build an in-memory INI file with the structure expected by
             // loadFromConfigFile():
@@ -562,7 +606,7 @@ bool Generator::implProcessCustomMap(
             }
 
             MRPT_LOG_DEBUG_STREAM(
-                "Built INI-like block for layer '" << params_.target_layer << "':\n"
+                "Built INI-like block for layer '" << params.target_layer << "':\n"
                                                    << cfg.getContent());
 
             // parse it:
@@ -576,7 +620,7 @@ bool Generator::implProcessCustomMap(
         ASSERT_(theMap.maps.size() >= 1);
         outMap = theMap.maps.at(0);
 
-        out.layers[params_.target_layer] = outMap;
+        out.layers[params.target_layer] = outMap;
     }
 
     ASSERT_(outMap);
@@ -598,7 +642,7 @@ bool Generator::implProcessCustomMap(
     // Use virtual insert method:
     const bool insertDone = o.insertObservationInto(*outMap, robotPose);
 
-    if (!insertDone && params_.throw_on_unhandled_observation_class)
+    if (!insertDone && params.throw_on_unhandled_observation_class)
     {
         THROW_EXCEPTION_FMT(
             "Observation of type '%s' could not be converted inserted into "

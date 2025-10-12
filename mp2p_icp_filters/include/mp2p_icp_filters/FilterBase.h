@@ -60,18 +60,36 @@ class FilterBase : public mrpt::rtti::CObject,  // RTTI support
     FilterBase();
     virtual ~FilterBase();
 
+    // Delete copy and move constructors and assignment operators
+    FilterBase(const FilterBase&)            = default;
+    FilterBase& operator=(const FilterBase&) = default;
+    FilterBase(FilterBase&&)                 = default;
+    FilterBase& operator=(FilterBase&&)      = default;
+
     /** \name API for all filtering/segmentation algorithms
      *  @{ */
 
     /** Loads, from a YAML configuration block, all the common, and
      * implementation-specific parameters. */
-    virtual void initialize(const mrpt::containers::yaml& cfg_block) = 0;
+    void initialize(const mrpt::containers::yaml& cfg_block);
 
+   protected:
+    virtual void initialize_filter(const mrpt::containers::yaml& cfg_block) = 0;
+
+   public:
     /** See docs above for FilterBase.
      */
     virtual void filter(mp2p_icp::metric_map_t& inOut) const = 0;
 
     /** @} */
+
+    // Loads common parameters for all filters. Must be called from initialize.
+    void initializeFilterBase(const mrpt::containers::yaml& cfg_block);
+
+    /** If not empty, it will be used instead of class name in Logger and Profiler.
+     *  This is loaded from the `name` key in the YAML configuration block.
+     */
+    std::string name;
 };
 
 /** A sequence of filters */

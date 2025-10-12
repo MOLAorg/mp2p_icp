@@ -23,35 +23,47 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/round.h>
 
+#if defined(MP2P_HAS_TBB)
+#include <tbb/enumerable_thread_specific.h>
+#include <tbb/parallel_for.h>
+#endif
+
 IMPLEMENTS_MRPT_OBJECT(FilterDecimateAdaptive, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
 void FilterDecimateAdaptive::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
-    MCP_LOAD_OPT(c, enabled);
-
-    MCP_LOAD_OPT(c, input_pointcloud_layer);
+    MCP_LOAD_REQ(c, input_pointcloud_layer);
     MCP_LOAD_REQ(c, output_pointcloud_layer);
 
     MCP_LOAD_REQ(c, desired_output_point_count);
 
-    MCP_LOAD_OPT(c, assumed_minimum_pointcloud_bbox);
-    MCP_LOAD_OPT(c, maximum_voxel_count_per_dimension);
+    MCP_LOAD_OPT(c, voxel_size);
     MCP_LOAD_OPT(c, minimum_input_points_per_voxel);
+    MCP_LOAD_OPT(c, parallelization_grain_size);
 }
 
-FilterDecimateAdaptive::FilterDecimateAdaptive()
+struct FilterDecimateAdaptive::Impl
+{
+#if defined(MP2P_HAS_TBB)
+    tbb::enumerable_thread_specific<PointCloudToVoxelGrid> tls;
+#else
+    PointCloudToVoxelGrid filter_grid;
+#endif
+};
+
+FilterDecimateAdaptive::FilterDecimateAdaptive() : impl_(mrpt::make_impl<Impl>())
 {
     mrpt::system::COutputLogger::setLoggerName("FilterDecimateAdaptive");
 }
 
-void FilterDecimateAdaptive::initialize(const mrpt::containers::yaml& c)
+void FilterDecimateAdaptive::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params.load_from_yaml(c);
 
     MRPT_END
 }
@@ -60,41 +72,34 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
 
-    if (!params_.enabled) return;
+    checkAllParametersAreRealized();
 
     // In:
-    const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
     ASSERTMSG_(
-        pcPtr,
+        inOut.layers.count(params.input_pointcloud_layer) != 0,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
+
+    auto pcPtr = mp2p_icp::MapToPointsMap(*inOut.layers.at(params.input_pointcloud_layer));
+    if (!pcPtr)
+    {
+        THROW_EXCEPTION_FMT(
+            "Layer '%s' must be of point cloud type.", params.input_pointcloud_layer.c_str());
+    }
 
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap::Ptr outPc =
-        GetOrCreatePointLayer(inOut, params_.output_pointcloud_layer);
+    mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
+        inOut, params.output_pointcloud_layer,
+        /*do not allow empty*/
+        false,
+        /* create cloud of the same type */
+        pcPtr->GetRuntimeClass()->className);
 
-    const auto& _ = params_;  // shortcut
+    const auto& _ = params;  // shortcut
 
     outPc->reserve(outPc->size() + _.desired_output_point_count);
-
-    // Estimate voxel size dynamically from the input cloud:
-    filter_grid_.clear();
-
-    auto inputBbox = pc.boundingBox();
-    auto bboxSize  = mrpt::math::TVector3Df(inputBbox.max - inputBbox.min);
-    mrpt::keep_max(bboxSize.x, _.assumed_minimum_pointcloud_bbox);
-    mrpt::keep_max(bboxSize.y, _.assumed_minimum_pointcloud_bbox);
-    mrpt::keep_max(bboxSize.z, _.assumed_minimum_pointcloud_bbox);
-
-    const float largest_dim = bboxSize.norm();  // diagonal
-
-    const float voxel_size = largest_dim / _.maximum_voxel_count_per_dimension;
-
-    // Parse input cloud thru voxelization:
-    filter_grid_.setConfiguration(voxel_size, true);
-    filter_grid_.processPointCloud(pc);
 
     struct DataPerVoxel
     {
@@ -105,47 +110,96 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     // A list of all "valid" voxels:
     std::vector<DataPerVoxel> voxels;
-    voxels.reserve(filter_grid_.size());
 
     std::size_t nTotalVoxels = 0;
-    filter_grid_.visit_voxels(
-        [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& data)
-        {
-            if (!data.indices.empty()) nTotalVoxels++;
-            if (data.indices.size() < _.minimum_input_points_per_voxel) return;
 
-            voxels.emplace_back().voxel = &data;
+    const auto lambdaVisitVoxel =
+        [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& data)
+    {
+        if (!data.indices.empty())
+        {
+            nTotalVoxels++;
+        }
+        if (data.indices.size() < _.minimum_input_points_per_voxel)
+        {
+            return;
+        }
+
+        voxels.emplace_back().voxel = &data;
+    };
+
+    // Parse input cloud through subsampling:
+#if defined(MP2P_HAS_TBB)
+
+    // Clear from past runs:
+    for (auto& grid : impl_->tls)
+    {
+        grid.setConfiguration(params.voxel_size, true);
+    }
+
+    const auto pointCount = pc.size();
+
+    const size_t grainsize = params.parallelization_grain_size;  // minimum block size hint
+
+    tbb::parallel_for(
+        tbb::blocked_range<size_t>(0, pointCount, grainsize),
+        [&](const tbb::blocked_range<size_t>& r)
+        {
+            const auto start  = r.begin();
+            const auto length = r.end() - r.begin();
+
+            bool  tls_exists;
+            auto& grid = impl_->tls.local(tls_exists);
+            if (!tls_exists)
+            {
+                // Configure for first time:
+                grid.setConfiguration(params.voxel_size, true);
+            }
+            grid.processPointCloud(pc, start, length);
         });
+
+    for (auto& grid : impl_->tls)
+    {
+        grid.visit_voxels(lambdaVisitVoxel);
+    }
+
+#else
+    impl_->filter_grid.clear();
+    impl_->filter_grid.setConfiguration(params.voxel_size, true);
+    impl_->filter_grid.processPointCloud(pc);
+
+    voxels.reserve(impl_->filter_grid.size());
+
+    impl_->filter_grid.visit_voxels(lambdaVisitVoxel);
+
+#endif
 
     // Perform resampling:
     // -------------------
+    constexpr int FRACTIONARY_BIT_COUNT = 12;
+
     const size_t nVoxels           = voxels.size();
-    size_t       voxelIdxIncrement = 1;
-    if (params_.desired_output_point_count < nVoxels)
+    float        voxelIdxIncrement = 1.0f;
+    if (nVoxels > params.desired_output_point_count)
     {
-        voxelIdxIncrement = std::max<size_t>(
-            1, mrpt::round(nVoxels / static_cast<float>(params_.desired_output_point_count)));
+        voxelIdxIncrement =
+            static_cast<float>(nVoxels) / static_cast<float>(params.desired_output_point_count);
     }
+
+    const auto voxelIdxIncrement_frac =
+        static_cast<std::size_t>(voxelIdxIncrement * (1 << FRACTIONARY_BIT_COUNT));
 
     bool anyInsertInTheRound = false;
 
-    for (size_t i = 0; outPc->size() < params_.desired_output_point_count;)
+    std::size_t i_frac = 0;
+    while (outPc->size() < params.desired_output_point_count)
     {
-        auto& ith = voxels[i];
-        if (!ith.exhausted)
-        {
-            auto ptIdx = ith.voxel->indices[ith.nextIdx++];
-            outPc->insertPointFrom(pc, ptIdx);
-            anyInsertInTheRound = true;
+        std::size_t i = i_frac >> FRACTIONARY_BIT_COUNT;
 
-            if (ith.nextIdx >= ith.voxel->indices.size()) ith.exhausted = true;
-        }
-
-        i += voxelIdxIncrement;
         if (i >= nVoxels)
         {
-            // one round done.
-            i = (i + 123653 /*a large arbitrary prime*/) % nVoxels;
+            i_frac = i_frac % (nVoxels << FRACTIONARY_BIT_COUNT);
+            i      = i_frac >> FRACTIONARY_BIT_COUNT;
 
             if (!anyInsertInTheRound)
             {
@@ -157,11 +211,24 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
             anyInsertInTheRound = false;
         }
+
+        auto& ith = voxels[i];
+        if (!ith.exhausted)
+        {
+            auto ptIdx = ith.voxel->indices[ith.nextIdx++];
+            outPc->insertPointFrom(pc, ptIdx);
+            anyInsertInTheRound = true;
+
+            if (ith.nextIdx >= ith.voxel->indices.size())
+            {
+                ith.exhausted = true;
+            }
+        }
+
+        i_frac += voxelIdxIncrement_frac;
     }
 
-    MRPT_LOG_DEBUG_STREAM(
-        "voxel_size=" << voxel_size <<  //
-        ", used voxels=" << nTotalVoxels);
+    MRPT_LOG_DEBUG_STREAM("used voxels=" << nTotalVoxels);
 
     MRPT_END
 }

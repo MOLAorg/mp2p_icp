@@ -82,12 +82,12 @@ FilterDecimateVoxels::FilterDecimateVoxels()
     mrpt::system::COutputLogger::setLoggerName("FilterDecimateVoxels");
 }
 
-void FilterDecimateVoxels::initialize(const mrpt::containers::yaml& c)
+void FilterDecimateVoxels::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     filter_grid_single_.reset();
     filter_grid_.reset();
@@ -113,7 +113,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     // In:
     std::vector<mrpt::maps::CPointsMap*> pcPtrs;
     size_t                               reserveSize = 0;
-    for (const auto& inputLayer : params_.input_pointcloud_layer)
+    for (const auto& inputLayer : params.input_pointcloud_layer)
     {
         if (auto itLy = inOut.layers.find(inputLayer); itLy != inOut.layers.end())
         {
@@ -129,7 +129,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         else
         {
             // Input layer doesn't exist:
-            if (params_.error_on_missing_input_layer)
+            if (params.error_on_missing_input_layer)
             {
                 THROW_EXCEPTION_FMT("Input layer '%s' not found on input map.", inputLayer.c_str());
             }
@@ -142,11 +142,11 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(!pcPtrs.empty());
 
     // Out:
-    ASSERT_(!params_.output_pointcloud_layer.empty());
+    ASSERT_(!params.output_pointcloud_layer.empty());
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
-        inOut, params_.output_pointcloud_layer,
+        inOut, params.output_pointcloud_layer,
         /*do not allow empty*/
         false,
         /* create cloud of the same type */
@@ -156,12 +156,12 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Skip filtering for layers with less than
     // "minimum_input_points_to_filter":
-    if (params_.minimum_input_points_to_filter > 0)
+    if (params.minimum_input_points_to_filter > 0)
     {
         std::vector<size_t> idxsToRemove;
         for (size_t mapIdx = 0; mapIdx < pcPtrs.size(); mapIdx++)
         {
-            if (pcPtrs[mapIdx]->size() > params_.minimum_input_points_to_filter)
+            if (pcPtrs[mapIdx]->size() > params.minimum_input_points_to_filter)
             {  // just proceed as standard with this large map:
                 continue;
             }
@@ -174,9 +174,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
             for (size_t i = 0; i < xs.size(); i++)
             {
-                if (params_.flatten_to.has_value())
+                if (params.flatten_to.has_value())
                 {
-                    outPc->insertPointFast(xs[i], ys[i], *params_.flatten_to);
+                    outPc->insertPointFast(xs[i], ys[i], *params.flatten_to);
                 }
                 else
                 {
@@ -201,7 +201,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             "Has you called initialize() after updating/loading parameters?");
 
         auto& grid = filter_grid_single_.value();
-        grid.setConfiguration(params_.voxel_filter_resolution, params_.use_tsl_robin_map);
+        grid.setConfiguration(params.voxel_filter_resolution, params.use_tsl_robin_map);
         grid.clear();
 
         // 1st) go thru all the input layers:
@@ -229,7 +229,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
                 nonEmptyVoxels++;
 
-                if (params_.flatten_to.has_value())
+                if (params.flatten_to.has_value())
                 {
                     const PointCloudToVoxelGridSingle::indices_t flattenIdx = {idx.cx_, idx.cy_, 0};
 
@@ -242,7 +242,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     // First time we see this (x,y) cell:
                     flattenUsedBins.insert(flattenIdx);
 
-                    outPc->insertPointFast(vxl.point->x, vxl.point->y, *params_.flatten_to);
+                    outPc->insertPointFast(vxl.point->x, vxl.point->y, *params.flatten_to);
                 }
                 else
                 {
@@ -264,7 +264,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             "Has you called initialize() after updating/loading parameters?");
 
         auto& grid = filter_grid_.value();
-        grid.setConfiguration(params_.voxel_filter_resolution, params_.use_tsl_robin_map);
+        grid.setConfiguration(params.voxel_filter_resolution, params.use_tsl_robin_map);
         grid.clear();
 
         grid.processPointCloud(pc);
@@ -289,8 +289,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 std::optional<mrpt::math::TPoint3Df> insertPt;
                 size_t insertPtIdx;  // valid only if insertPt is empty
 
-                if (params_.decimate_method == DecimateMethod::VoxelAverage ||
-                    params_.decimate_method == DecimateMethod::ClosestToAverage)
+                if (params.decimate_method == DecimateMethod::VoxelAverage ||
+                    params.decimate_method == DecimateMethod::ClosestToAverage)
                 {
                     // Analyze the voxel contents:
                     auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
@@ -304,7 +304,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     }
                     mean *= inv_n;
 
-                    if (params_.decimate_method == DecimateMethod::ClosestToAverage)
+                    if (params.decimate_method == DecimateMethod::ClosestToAverage)
                     {
                         std::optional<float>  minSqrErr;
                         std::optional<size_t> bestIdx;
@@ -334,7 +334,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 else
                 {
                     // Insert a randomly-picked point:
-                    const auto idxInVoxel = (params_.decimate_method == DecimateMethod::RandomPoint)
+                    const auto idxInVoxel = (params.decimate_method == DecimateMethod::RandomPoint)
                                                 ? (rng.drawUniform64bit() % vxl.indices.size())
                                                 : 0UL;
 
@@ -343,7 +343,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 }
 
                 // insert it, if passed the flatten filter:
-                if (params_.flatten_to.has_value())
+                if (params.flatten_to.has_value())
                 {
                     const PointCloudToVoxelGrid::indices_t flattenIdx = {idx.cx_, idx.cy_, 0};
 
@@ -355,7 +355,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
                     if (!insertPt)
                         insertPt.emplace(xs[insertPtIdx], ys[insertPtIdx], zs[insertPtIdx]);
-                    outPc->insertPointFast(insertPt->x, insertPt->y, *params_.flatten_to);
+                    outPc->insertPointFast(insertPt->x, insertPt->y, *params.flatten_to);
                 }
                 else
                 {
@@ -373,7 +373,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
     outPc->mark_as_modified();
 
     MRPT_LOG_DEBUG_STREAM(
-        "Voxel count=" << nonEmptyVoxels << ", output_layer=" << params_.output_pointcloud_layer
+        "Voxel count=" << nonEmptyVoxels << ", output_layer=" << params.output_pointcloud_layer
                        << " type=" << outPc->GetRuntimeClass()->className
                        << " useSingleGrid=" << (useSingleGrid() ? "Yes" : "No"));
 

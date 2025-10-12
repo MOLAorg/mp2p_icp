@@ -58,29 +58,36 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     ASSERT_GT_(threshold, .0);
     ASSERT_GE_(thresholdAngularDeg, .0);
 
+    const auto threshold_f = static_cast<float>(threshold);
+
     const mrpt::maps::NearestNeighborsCapable& nnGlobal =
         *mp2p_icp::MapToNN(pcGlobalMap, true /*throw if cannot convert*/);
 
     out.potential_pairings += pcLocal.size() * pairingsPerPoint;
 
     // Empty maps?  Nothing to do
-    if (pcGlobalMap.isEmpty() || pcLocal.empty()) return;
+    if (pcGlobalMap.isEmpty() || pcLocal.empty())
+    {
+        return;
+    }
 
-    const TransformedLocalPointCloud tl = transform_local_to_global(
-        pcLocal, localPose, maxLocalPointsPerLayer_, localPointsSampleSeed_);
+    const TransformedLocalPointCloud tl = transform_local_to_global(pcLocal, localPose);
 
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(
-            {tl.localMin, tl.localMax}, threshold + bounding_box_intersection_check_epsilon_))
+            {tl.localMin, tl.localMax}, threshold_f + bounding_box_intersection_check_epsilon_))
+    {
         return;
+    }
 
     // Prepare output: no correspondences initially:
     out.paired_pt2pt.reserve(out.paired_pt2pt.size() + pcLocal.size());
 
     // Loop for each point in local map:
     // --------------------------------------------------
-    const float maxDistForCorrespondenceSquared = mrpt::square(threshold);
-    const float angularThresholdFactorSquared   = mrpt::square(mrpt::DEG2RAD(thresholdAngularDeg));
+    const float maxDistForCorrespondenceSquared = mrpt::square(threshold_f);
+    const float angularThresholdFactorSquared =
+        mrpt::square(mrpt::DEG2RAD(static_cast<float>(thresholdAngularDeg)));
 
     const auto&  lxs       = pcLocal.getPointsBufferRef_x();
     const auto&  lys       = pcLocal.getPointsBufferRef_y();
@@ -96,11 +103,13 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
                                    const mrpt::math::TPoint3Df& globalPt,
                                    const uint64_t globalIdxOrID, const float errSqr)
     {
-        // Filter out if global alread assigned, in another matcher up the
+        // Filter out if global already assigned, in another matcher up the
         // pipeline, for example.
         if (!allowMatchAlreadyMatchedGlobalPoints_ &&
             ms.globalPairedBitField.point_layers.at(globalName)[globalIdxOrID])
+        {
             return;  // skip, global point already paired.
+        }
 
         // Save new correspondence:
         auto& p = outPairs.emplace_back();
@@ -143,7 +152,9 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
 
                 if (!allowMatchAlreadyMatchedPoints_ &&
                     ms.localPairedBitField.point_layers.at(localName)[localIdx])
+                {
                     continue;  // skip, already paired.
+                }
 
                 // For speed-up:
                 const float lx = tl.x_locals[i], ly = tl.y_locals[i], lz = tl.z_locals[i];

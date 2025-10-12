@@ -58,7 +58,7 @@ static void test_Jacob_error_point2point()
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 3, 12> J1;
     // const mrpt::math::CVectorFixed<double, 3> error = // (Ignored here)
-    mp2p_icp::error_point2point(pair, p, J1);
+    mp2p_icp::error_point2point(pair.local, pair.global, p, J1);
 
     // (12x6 Jacobian)
     const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);
@@ -85,7 +85,7 @@ static void test_Jacob_error_point2point()
                     // SE(3) pose increment on the manifold:
                     const CPose3D incr         = Lie::SE<3>::exp(eps);
                     const CPose3D D_expEpsilon = D + incr;
-                    err                        = mp2p_icp::error_point2point(pair, D_expEpsilon);
+                    err = mp2p_icp::error_point2point(pair.local, pair.global, D_expEpsilon);
                 }),
             x_incrs, p, numJacob);
     }

@@ -48,7 +48,6 @@ namespace mp2p_icp
  *   - class: mp2p_icp::Matcher_Points_DistanceThreshold
  *     params:
  *       threshold: 0.20
- *       maxLocalPointsPerLayer: 500
  *
  * quality:
  *   - class: mp2p_icp::QualityEvaluator_PairedRatio
@@ -58,7 +57,7 @@ namespace mp2p_icp
  *
  * \ingroup mp2p_icp_grp
  */
-std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters> icp_pipeline_from_yaml(
+[[nodiscard]] std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters> icp_pipeline_from_yaml(
     const mrpt::containers::yaml&       config,
     const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
 

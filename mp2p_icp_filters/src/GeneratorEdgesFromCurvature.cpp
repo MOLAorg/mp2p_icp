@@ -59,7 +59,7 @@ bool GeneratorEdgesFromCurvature::process(
     const auto obsClassName = o.GetRuntimeClass()->className;
 
     // default: use point clouds:
-    ASSERT_(params_.metric_map_definition_ini_file.empty());
+    ASSERT_(params.metric_map_definition_ini_file.empty());
 
     bool processed = false;
 
@@ -86,19 +86,19 @@ bool GeneratorEdgesFromCurvature::process(
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPc;
-    if (auto itLy = out.layers.find(params_.target_layer); itLy != out.layers.end())
+    if (auto itLy = out.layers.find(params.target_layer); itLy != out.layers.end())
     {
         outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLy->second);
         if (!outPc)
         {
             THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.", params_.target_layer.c_str());
+                "Layer '%s' must be of point cloud type.", params.target_layer.c_str());
         }
     }
     else
     {
-        outPc                            = mrpt::maps::CSimplePointsMap::Create();
-        out.layers[params_.target_layer] = outPc;
+        outPc                           = mrpt::maps::CSimplePointsMap::Create();
+        out.layers[params.target_layer] = outPc;
     }
 
     if (!outPc)
@@ -176,6 +176,6 @@ bool GeneratorEdgesFromCurvature::filterRotatingScan(  //
 
     }  // end for each row
 
-    out.layers[params_.target_layer] = outPc;
+    out.layers[params.target_layer] = outPc;
     return true;  // Yes, it's implemented
 }

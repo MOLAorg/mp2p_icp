@@ -77,8 +77,8 @@ void mp2p_icp_filters::simplemap_to_metricmap(
 
     // Parameters for twist, and possibly other user-provided variables.
     mp2p_icp::ParameterSource ps;
-    mp2p_icp::AttachToParameterSource(generators, ps);
     mp2p_icp::AttachToParameterSource(filters, ps);
+    mp2p_icp::AttachToParameterSource(generators, ps);
 
     // Default values for twist variables:
     ps.updateVariables({{"vx", .0}, {"vy", .0}, {"vz", .0}, {"wx", .0}, {"wy", .0}, {"wz", .0}});
@@ -183,12 +183,17 @@ void mp2p_icp_filters::simplemap_to_metricmap(
              {"robot_roll", robotPose.roll()}});
         ps.realize();
 
+        // First, search for velocity buffer data:
         for (const auto& obs : *sf)
         {
             ASSERT_(obs);
-
             lambdaProcessLocalVelocityBuffer(obs);
+        }
 
+        // Next, do the actual sensor data processing:
+        for (const auto& obs : *sf)
+        {
+            ASSERT_(obs);
             obs->load();
 
             bool handled = mp2p_icp_filters::apply_generators(generators, *obs, mm, robotPose);
@@ -199,7 +204,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             }
 
             // process it:
-            mp2p_icp_filters::apply_filter_pipeline(filters, mm);
+            mp2p_icp_filters::apply_filter_pipeline(filters, mm, options.profiler);
             obs->unload();
         }
 
@@ -221,7 +226,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         if (options.showProgressBar)
         {
             const size_t N  = nKFs;
-            const double pc = (1.0 * curKF) / N;
+            const double pc = static_cast<double>(curKF) / static_cast<double>(N);
 
             const double tNow      = mrpt::Clock::nowDouble();
             const double ETA       = pc > 0 ? (tNow - tStart) * (1.0 / pc - 1) : .0;

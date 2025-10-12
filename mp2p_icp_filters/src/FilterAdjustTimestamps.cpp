@@ -42,12 +42,12 @@ FilterAdjustTimestamps::FilterAdjustTimestamps()
     mrpt::system::COutputLogger::setLoggerName("FilterAdjustTimestamps");
 }
 
-void FilterAdjustTimestamps::initialize(const mrpt::containers::yaml& c)
+void FilterAdjustTimestamps::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -59,18 +59,17 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
     checkAllParametersAreRealized();
 
     // In/out:
-    auto pcPtr = inOut.point_layer(params_.pointcloud_layer);
+    auto pcPtr = inOut.point_layer(params.pointcloud_layer);
     ASSERTMSG_(
-        pcPtr,
-        mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.pointcloud_layer.c_str()));
+        pcPtr, mrpt::format(
+                   "Input point cloud layer '%s' was not found.", params.pointcloud_layer.c_str()));
 
     auto& pc = *pcPtr;
 
     if (pc.empty())
     {
         MRPT_LOG_WARN_STREAM(
-            "Skipping time adjusting in input cloud '" << params_.pointcloud_layer
+            "Skipping time adjusting in input cloud '" << params.pointcloud_layer
                                                        << "' because it is empty.");
         return;
     }
@@ -80,10 +79,10 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
     if (TsPtr == nullptr || (TsPtr->empty() && !pc.empty()))
     {
         // we don't have timestamps:
-        if (params_.silently_ignore_no_timestamps)
+        if (params.silently_ignore_no_timestamps)
         {
             MRPT_LOG_DEBUG_STREAM(
-                "Skipping time adjusting in input cloud '" << params_.pointcloud_layer
+                "Skipping time adjusting in input cloud '" << params.pointcloud_layer
                                                            << "' with contents: " << pc.asString()
                                                            << " due to missing timestamps.");
             return;
@@ -92,7 +91,7 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
         THROW_EXCEPTION_FMT(
             "Cannot do time adjusting for input cloud '%s' "
             "with contents: %s due to missing timestamps.",
-            params_.pointcloud_layer.c_str(), pc.asString().c_str());
+            params.pointcloud_layer.c_str(), pc.asString().c_str());
     }
 
     auto& Ts = *TsPtr;
@@ -117,11 +116,11 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
     auto  ps = this->attachedSource();
     float dt = 0;
 
-    switch (params_.method)
+    switch (params.method)
     {
         case TimestampAdjustMethod::MiddleIsZero:
         {
-            dt = 0.5f * (*maxT + *minT) + static_cast<float>(params_.time_offset);
+            dt = 0.5f * (*maxT + *minT) + static_cast<float>(params.time_offset);
             for (auto& t : Ts)
             {
                 t -= dt;
@@ -130,7 +129,7 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
         break;
         case TimestampAdjustMethod::EarliestIsZero:
         {
-            dt = *minT + static_cast<float>(params_.time_offset);
+            dt = *minT + static_cast<float>(params.time_offset);
             for (auto& t : Ts)
             {
                 t -= dt;
@@ -143,7 +142,7 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
             const float k = *maxT != *minT ? 1.0f / (*maxT - *minT) : 1.0f;
             for (auto& t : Ts)
             {
-                t = (t - m) * k + static_cast<float>(params_.time_offset);
+                t = (t - m) * k + static_cast<float>(params.time_offset);
             }
         }
         break;

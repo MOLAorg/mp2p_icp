@@ -128,12 +128,12 @@ FilterPoleDetector::FilterPoleDetector()
     mrpt::system::COutputLogger::setLoggerName("FilterPoleDetector");
 }
 
-void FilterPoleDetector::initialize(const mrpt::containers::yaml& c)
+void FilterPoleDetector::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -145,17 +145,17 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
     checkAllParametersAreRealized();
 
     // In:
-    const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    const auto pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPoles = GetOrCreatePointLayer(
-        inOut, params_.output_layer_poles, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_poles, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -163,7 +163,7 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Optional output layer:
     mrpt::maps::CPointsMap::Ptr outNoPoles = GetOrCreatePointLayer(
-        inOut, params_.output_layer_no_poles, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_no_poles, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -180,7 +180,7 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
     {
         const auto z = zs[i];
 
-        const auto idxs = xy_to_index(xs[i], ys[i], params_.grid_size);
+        const auto idxs = xy_to_index(xs[i], ys[i], params.grid_size);
         auto&      cell = grid[idxs];
         cell.sumZ += z;
         cell.point_indices.push_back(i);
@@ -197,7 +197,7 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
             idxs + index2d_t<>(+1, 0),  idxs + index2d_t<>(+1, +1)};
 
         // Criteria: my mean must be > than most neighbor:
-        if (cell.point_indices.size() < params_.minimum_pole_points) continue;
+        if (cell.point_indices.size() < params.minimum_pole_points) continue;
         const float my_mean          = cell.mean();
         size_t      check_pass_count = 0;
         for (const auto& neig_idx : neighbors)
@@ -206,12 +206,12 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
             if (it == grid.end()) continue;
             const auto& c        = it->second;
             const float its_mean = c.mean();
-            if (my_mean > its_mean + params_.minimum_relative_height &&
-                my_mean < its_mean + params_.maximum_relative_height)
+            if (my_mean > its_mean + params.minimum_relative_height &&
+                my_mean < its_mean + params.maximum_relative_height)
                 check_pass_count++;
         }
 
-        const bool isPole = check_pass_count >= params_.minimum_neighbors_checks_to_pass;
+        const bool isPole = check_pass_count >= params.minimum_neighbors_checks_to_pass;
 
         auto* targetPc = isPole ? outPoles.get() : outNoPoles.get();
         if (targetPc)

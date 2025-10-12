@@ -55,10 +55,10 @@ void FilterByRing::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 
 FilterByRing::FilterByRing() = default;
 
-void FilterByRing::initialize(const mrpt::containers::yaml& c)
+void FilterByRing::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params.load_from_yaml(c);
 }
 
 void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
@@ -66,18 +66,18 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     // In:
-    const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    const auto& pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
     // Outputs:
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outSelected = GetOrCreatePointLayer(
-        inOut, params_.output_layer_selected, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_selected, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -85,7 +85,7 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outNonSel = GetOrCreatePointLayer(
-        inOut, params_.output_layer_non_selected, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_non_selected, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
@@ -105,7 +105,7 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
         THROW_EXCEPTION_FMT(
             "Error: this filter needs the input layer '%s' to has an "
             "'ring' point channel.",
-            params_.input_pointcloud_layer.c_str());
+            params.input_pointcloud_layer.c_str());
     }
 
     const auto& Rs = *ptrR;
@@ -120,7 +120,7 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
 
         mrpt::maps::CPointsMap* trg = nullptr;
 
-        if (params_.selected_ring_ids.count(R) != 0)
+        if (params.selected_ring_ids.count(R) != 0)
         {
             trg = outSelected.get();
             ++countSel;

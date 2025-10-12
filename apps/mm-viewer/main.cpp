@@ -27,6 +27,7 @@
 #include <mrpt/opengl/CArrow.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/COpenGLScene.h>
+#include <mrpt/opengl/CPointCloudColoured.h>
 #include <mrpt/opengl/stock_objects.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
 #include <mrpt/system/filesystem.h>
@@ -73,6 +74,7 @@ nanogui::CheckBox*               cbViewVoxelsAsPoints      = nullptr;
 nanogui::CheckBox*               cbViewVoxelsFreeSpace     = nullptr;
 nanogui::CheckBox*               cbColorizeMap             = nullptr;
 nanogui::CheckBox*               cbKeepOriginalCloudColors = nullptr;
+nanogui::ComboBox*               cmbColorIntensity         = nullptr;
 nanogui::CheckBox*               cbShowGroundGrid          = nullptr;
 nanogui::Slider*                 slPointSize               = nullptr;
 nanogui::Slider*                 slTrajectoryThickness     = nullptr;
@@ -108,7 +110,7 @@ std::optional<double>            camTravellingCurrentTime;
 
 constexpr float TRAV_ZOOM2ROLL = 1e-4;
 
-static void rebuild_3d_view();
+static void rebuild_3d_view(bool force_rebuild_view = false);
 static void onSaveLayers();
 
 namespace
@@ -128,13 +130,19 @@ void loadMapFile(const std::string& mapFile)
     // Obtain layer info:
     std::cout << "Loaded map: " << theMap.contents_summary() << std::endl;
 
-    for (const auto& [name, map] : theMap.layers) layerNames.push_back(name);
+    for (const auto& [name, map] : theMap.layers)
+    {
+        layerNames.push_back(name);
+    }
 
     // sanity checks:
     for (const auto& [name, map] : theMap.layers)
     {
         const auto* pc = mp2p_icp::MapToPointsMap(*map);
-        if (!pc) continue;  // not a point map
+        if (!pc)
+        {
+            continue;  // not a point map
+        }
         const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*pc);
         ASSERTMSG_(
             sanityPassed, mrpt::format("sanity check did not pass for layer: '%s'", name.c_str()));
@@ -184,7 +192,10 @@ void observeViewOptions()
 void updateMiniCornerView()
 {
     auto gl_view = win->background_scene->getViewport("small-view");
-    if (!gl_view) return;
+    if (!gl_view)
+    {
+        return;
+    }
 
     mrpt::opengl::CCamera& view_cam = gl_view->getCamera();
 
@@ -227,7 +238,10 @@ void rebuildCamTravellingCombo()
     }
     cbTravellingKeys->setItems(lst, lstShort);
 
-    if (!lst.empty()) cbTravellingKeys->setSelectedIndex(lst.size() - 1);
+    if (!lst.empty())
+    {
+        cbTravellingKeys->setSelectedIndex(static_cast<int>(lst.size()) - 1);
+    }
     win->performLayout();
 }
 
@@ -298,6 +312,9 @@ void onKeyboardAction(int key)
             win->camera().setCameraParams(cam);
         }
         break;
+
+        default:  // Do nothing
+            break;
     };
 }
 
@@ -310,7 +327,10 @@ void camTravellingStop()
 
 void processCameraTravelling()
 {
-    if (!camTravellingCurrentTime.has_value()) return;
+    if (!camTravellingCurrentTime.has_value())
+    {
+        return;
+    }
     double& t = camTravellingCurrentTime.value();
 
     // Time range:
@@ -427,7 +447,10 @@ void main_show_gui()
                         {
                             const auto fil =
                                 nanogui::file_dialog({{"mm", "Metric maps (*.mm)"}}, false);
-                            if (fil.empty()) return;
+                            if (fil.empty())
+                            {
+                                return;
+                            }
 
                             loadMapFile(fil);
                             rebuildLayerCheckboxes();
@@ -507,6 +530,21 @@ void main_show_gui()
         cbKeepOriginalCloudColors->setChecked(false);
         cbKeepOriginalCloudColors->setCallback([&](bool) { rebuild_3d_view(); });
 
+        {
+            auto pn = tab2->add<nanogui::Widget>();
+            pn->setLayout(new nanogui::GridLayout(
+                nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+
+            auto lb = pn->add<nanogui::Label>("Intensity-channel:");
+            lb->setFontSize(MID_FONT_SIZE);
+            cmbColorIntensity = pn->add<nanogui::ComboBox>();
+            cmbColorIntensity->setItems(
+                {"cmNONE", "cmHOT", "cmJET", "cmGRAYSCALE"}, {"None", "Hot", "Jet", "Grayscale"});
+            cmbColorIntensity->setFontSize(MID_FONT_SIZE);
+            cmbColorIntensity->setSelectedIndex(2);
+            cmbColorIntensity->setCallback([&](int) { rebuild_3d_view(true); });
+        }
+
         tab2->add<nanogui::Label>(" ");
         {
             auto pn = tab2->add<nanogui::Widget>();
@@ -519,8 +557,10 @@ void main_show_gui()
             btnCheckAll->setCallback(
                 []()
                 {
-                    for (auto& [name, cb] : cbLayersByName) cb->setChecked(true);
-
+                    for (auto& [name, cb] : cbLayersByName)
+                    {
+                        cb->setChecked(true);
+                    }
                     rebuild_3d_view();
                 });
 
@@ -529,7 +569,10 @@ void main_show_gui()
             btnCheckNone->setCallback(
                 []()
                 {
-                    for (auto& [name, cb] : cbLayersByName) cb->setChecked(false);
+                    for (auto& [name, cb] : cbLayersByName)
+                    {
+                        cb->setChecked(false);
+                    }
                     rebuild_3d_view();
                 });
         }
@@ -773,10 +816,11 @@ void main_show_gui()
         win->setKeyboardCallback(
             [&](int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int modifiers)
             {
-                if (action != GLFW_PRESS && action != GLFW_REPEAT) return false;
-
+                if (action != GLFW_PRESS && action != GLFW_REPEAT)
+                {
+                    return false;
+                }
                 onKeyboardAction(key);
-
                 return false;
             });
     }
@@ -884,12 +928,58 @@ void main_show_gui()
     save_UI_state_to_user_config();
 }
 
+void doColorizeByIntensity(
+    const mrpt::img::TColormap& colormap, const mrpt::maps::CPointsMap* org_cloud,
+    mrpt::opengl::CPointCloudColoured& cloud)
+{
+    if (colormap == mrpt::img::TColormap::cmNONE)
+    {
+        return;
+    }
+
+    // Colorize by intensity with custom color map?
+    if (!org_cloud || !org_cloud->hasField_Intensity())
+    {
+        return;
+    }
+
+    const auto* Is = org_cloud->getPointsBufferRef_intensity();
+    ASSERT_(Is);
+
+    // Thread-local cache for max intensity
+    thread_local float max_intensity_cache = 1.0f;
+
+    // Find max intensity in current cloud
+    float current_max = 0.0f;
+    for (const auto& I : *Is)
+    {
+        if (I > current_max)
+        {
+            current_max = I;
+        }
+    }
+
+    // Smooth update of max intensity
+    max_intensity_cache = 0.9f * max_intensity_cache + 0.1f * current_max;
+    const float scale   = (max_intensity_cache > 0.0f) ? (1.0f / max_intensity_cache) : 1.0f;
+
+    for (size_t i = 0; i < Is->size(); i++)
+    {
+        const float I_norm = (*Is)[i] * scale;  // normalize to [0,1] using smoothed max
+        float       r = 0, g = 0, b = 0;
+        mrpt::img::colormap(colormap, I_norm, r, g, b);
+        cloud.setPointColor_fast(i, r, g, b);
+    }
+
+    cloud.markAllPointsAsNew();
+}
+
 }  // namespace
 
 // ==============================
 // rebuild_3d_view
 // ==============================
-void rebuild_3d_view()
+void rebuild_3d_view(bool force_rebuild_view)
 {
     using namespace std::string_literals;
 
@@ -920,7 +1010,9 @@ void rebuild_3d_view()
 
                 const auto bb = pc->boundingBox();
                 if (!mapBbox.has_value())
+                {
                     mapBbox = bb;
+                }
                 else
                 {
                     mapBbox = mapBbox->unionWith(bb);
@@ -933,7 +1025,10 @@ void rebuild_3d_view()
         }
 
         // show/hide:
-        if (!cb->checked()) continue;  // hidden
+        if (!cb->checked())
+        {
+            continue;  // hidden
+        }
         rpMap.points.visible = true;
 
         auto& rpL                       = rpMap.points.perLayer[lyName];
@@ -945,25 +1040,29 @@ void rebuild_3d_view()
 
         if (cbColorizeMap->checked())
         {
-            auto& cm                  = rpL.colorMode.emplace();
-            cm.colorMap               = mrpt::img::TColormap::cmJET;
+            auto& cm    = rpL.colorMode.emplace();
+            cm.colorMap = mrpt::typemeta::str2enum<mrpt::img::TColormap>(
+                cmbColorIntensity->items().at(cmbColorIntensity->selectedIndex()));
             cm.recolorizeByCoordinate = mp2p_icp::Coordinate::Z;
         }
         if (cbKeepOriginalCloudColors->checked())
         {
             auto& cm                     = rpL.colorMode.emplace();
             cm.keep_original_cloud_color = true;
+            rpL.force_alpha_channel      = true;
         }
     }
 
     // Default color:
     for (auto& [layer, rp] : rpMap.points.perLayer)
-        rp.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+    {
+        rp.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0x80);
+    }
 
     // Regenerate points opengl representation only if some parameter changed:
     static std::optional<mp2p_icp::render_params_t> prevRenderParams;
 
-    if (!prevRenderParams.has_value() || prevRenderParams.value() != rpMap)
+    if (!prevRenderParams.has_value() || prevRenderParams.value() != rpMap || force_rebuild_view)
     {
         prevRenderParams = rpMap;
         glVizMap->clear();
@@ -972,6 +1071,20 @@ void rebuild_3d_view()
 
         // Show all or selected layers:
         rpMap.points.allLayers.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+
+        // Re-colorize using a colormap for intensity.
+        mrpt::img::TColormap recolorizeIntensity = mrpt::typemeta::str2enum<mrpt::img::TColormap>(
+            cmbColorIntensity->items().at(cmbColorIntensity->selectedIndex()));
+        if (theMap.layers.size() == 1)
+        {
+            auto org_cloud =
+                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(theMap.layers.begin()->second);
+            if (auto cloud = glPts->getByClass<mrpt::opengl::CPointCloudColoured>(0);
+                cloud && org_cloud)
+            {
+                doColorizeByIntensity(recolorizeIntensity, org_cloud.get(), *cloud);
+            }
+        }
 
         glVizMap->insert(glPts);
         glVizMap->insert(glMapCorner);
@@ -1093,7 +1206,10 @@ void rebuild_3d_view()
 void onSaveLayers()
 {
     const std::string outFile = nanogui::file_dialog({{"txt", "(*.txt)"}}, true /*save*/);
-    if (outFile.empty()) return;
+    if (outFile.empty())
+    {
+        return;
+    }
 
     for (const auto& [lyName, cb] : cbLayersByName)
     {
@@ -1119,7 +1235,10 @@ int main(int argc, char** argv)
     try
     {
         // Parse arguments:
-        if (!cmd.parse(argc, argv)) return 1;  // should exit.
+        if (!cmd.parse(argc, argv))
+        {
+            return 1;  // should exit.
+        }
 
         // Load plugins:
         if (arg_plugins.isSet())

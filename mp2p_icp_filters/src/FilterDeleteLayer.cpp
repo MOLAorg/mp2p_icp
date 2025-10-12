@@ -61,12 +61,12 @@ FilterDeleteLayer::FilterDeleteLayer()
     mrpt::system::COutputLogger::setLoggerName("FilterDeleteLayer");
 }
 
-void FilterDeleteLayer::initialize(const mrpt::containers::yaml& c)
+void FilterDeleteLayer::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params.load_from_yaml(c);
 
     MRPT_END
 }
@@ -75,11 +75,11 @@ void FilterDeleteLayer::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
 
-    for (const auto& layer : params_.pointcloud_layer_to_remove)
+    for (const auto& layer : params.pointcloud_layer_to_remove)
     {
         const auto nRemoved = inOut.layers.erase(layer);
 
-        if (params_.error_on_missing_input_layer)
+        if (params.error_on_missing_input_layer)
         {
             ASSERTMSG_(
                 nRemoved != 0,

@@ -131,6 +131,10 @@ struct render_params_point_layer_t
     /** Fixed color for all points in the layer. Ignored if colorMode is set. */
     mrpt::img::TColor color{0x00, 0x00, 0xff, 0xff};
 
+    /** If set, it will overwrite the alpha (transparency) channel, even if using RGBA data from the
+     * original colored cloud */
+    bool force_alpha_channel = true;
+
     /** If set, it overrides `color` and defines a "recolorize by coordinate"
      * mode. */
     std::optional<color_mode_t> colorMode;
@@ -207,6 +211,18 @@ struct render_params_pairings_pt2pl_t
     double            planePatchSize = 0.2;
 };
 
+struct render_params_pairings_cov2cov_t
+{
+    render_params_pairings_cov2cov_t() = default;
+
+    bool visible = false;
+
+    mrpt::img::TColor segmentColor{0x00, 0xff, 0x00, 0xa0};
+    mrpt::img::TColor covColor{0x00, 0x00, 0xff, 0x20};
+    double            covScale   = 0.1;
+    std::size_t       decimation = 1;
+};
+
 struct render_params_pairings_pt2ln_t
 {
     render_params_pairings_pt2ln_t() = default;
@@ -223,9 +239,10 @@ struct pairings_render_params_t
 {
     pairings_render_params_t() = default;
 
-    render_params_pairings_pt2pt_t pt2pt;
-    render_params_pairings_pt2pl_t pt2pl;
-    render_params_pairings_pt2ln_t pt2ln;
+    render_params_pairings_pt2pt_t   pt2pt;
+    render_params_pairings_pt2pl_t   pt2pl;
+    render_params_pairings_pt2ln_t   pt2ln;
+    render_params_pairings_cov2cov_t cov2cov;
 };
 
 /** @} */

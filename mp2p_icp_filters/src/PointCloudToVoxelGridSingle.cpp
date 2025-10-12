@@ -46,19 +46,22 @@ void PointCloudToVoxelGridSingle::setConfiguration(const float voxel_size, bool 
     MRPT_END
 }
 
-void PointCloudToVoxelGridSingle::processPointCloud(const mrpt::maps::CPointsMap& p)
+void PointCloudToVoxelGridSingle::processPointCloud(
+    const mrpt::maps::CPointsMap& p, const std::size_t first_pt_idx,
+    const std::size_t points_to_process)
 {
     using mrpt::max3;
     using std::abs;
 
-    const auto& xs          = p.getPointsBufferRef_x();
-    const auto& ys          = p.getPointsBufferRef_y();
-    const auto& zs          = p.getPointsBufferRef_z();
-    const auto  point_count = xs.size();
+    const auto& xs = p.getPointsBufferRef_x();
+    const auto& ys = p.getPointsBufferRef_y();
+    const auto& zs = p.getPointsBufferRef_z();
+
+    const auto last_pt_idx = points_to_process ? (first_pt_idx + points_to_process) : xs.size();
 
     const auto lambda_process = [&](auto& pts_voxels)
     {
-        for (std::size_t i = 0; i < point_count; i++)
+        for (std::size_t i = first_pt_idx; i < last_pt_idx; i++)
         {
             const auto x = xs[i];
             const auto y = ys[i];
@@ -92,7 +95,7 @@ void PointCloudToVoxelGridSingle::processPointCloud(const mrpt::maps::CPointsMap
 
     if (use_tsl_robin_map_)
     {
-        impl_->pts_voxels.reserve(impl_->pts_voxels.size() + point_count);
+        impl_->pts_voxels.reserve(impl_->pts_voxels.size() + last_pt_idx);
         lambda_process(impl_->pts_voxels);
     }
     else

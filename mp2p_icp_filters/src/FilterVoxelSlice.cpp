@@ -46,12 +46,12 @@ FilterVoxelSlice::FilterVoxelSlice()
     mrpt::system::COutputLogger::setLoggerName("FilterVoxelSlice");
 }
 
-void FilterVoxelSlice::initialize(const mrpt::containers::yaml& c)
+void FilterVoxelSlice::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -62,15 +62,15 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
 
     checkAllParametersAreRealized();
 
-    ASSERT_GE_(params_.slice_z_max, params_.slice_z_min);
+    ASSERT_GE_(params.slice_z_max, params.slice_z_min);
 
     // In:
-    ASSERT_(!params_.input_layer.empty());
+    ASSERT_(!params.input_layer.empty());
     ASSERTMSG_(
-        inOut.layers.count(params_.input_layer),
-        mrpt::format("Input layer '%s' was not found.", params_.input_layer.c_str()));
+        inOut.layers.count(params.input_layer),
+        mrpt::format("Input layer '%s' was not found.", params.input_layer.c_str()));
 
-    const auto in            = inOut.layers.at(params_.input_layer);
+    const auto in            = inOut.layers.at(params.input_layer);
     auto       inVoxelMap    = std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(in);
     auto       inVoxelMapRGB = std::dynamic_pointer_cast<mrpt::maps::CVoxelMapRGB>(in);
 
@@ -83,13 +83,13 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     // Out:
-    ASSERT_(!params_.output_layer.empty());
+    ASSERT_(!params.output_layer.empty());
 
-    auto occGrid                       = mrpt::maps::COccupancyGridMap2D::Create();
-    inOut.layers[params_.output_layer] = occGrid;
+    auto occGrid                      = mrpt::maps::COccupancyGridMap2D::Create();
+    inOut.layers[params.output_layer] = occGrid;
 
     // Set the grid "height" (z):
-    occGrid->insertionOptions.mapAltitude = 0.5 * (params_.slice_z_max + params_.slice_z_min);
+    occGrid->insertionOptions.mapAltitude = 0.5 * (params.slice_z_max + params.slice_z_min);
 
     // make the conversion:
     if (inVoxelMap)
@@ -102,9 +102,9 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
         occGrid->setSize(bbox.min.x, bbox.max.x, bbox.min.y, bbox.max.y, grid.resolution);
 
         const auto zCoordMin =
-            Bonxai::PosToCoord({0., 0., params_.slice_z_min}, grid.inv_resolution);
+            Bonxai::PosToCoord({0., 0., params.slice_z_min}, grid.inv_resolution);
         const auto zCoordMax =
-            Bonxai::PosToCoord({0., 0., params_.slice_z_max}, grid.inv_resolution);
+            Bonxai::PosToCoord({0., 0., params.slice_z_max}, grid.inv_resolution);
 
         // Go thru all voxels:
         auto lmbdPerVoxel =

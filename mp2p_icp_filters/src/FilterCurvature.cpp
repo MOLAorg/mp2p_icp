@@ -49,10 +49,10 @@ void FilterCurvature::Parameters::load_from_yaml(const mrpt::containers::yaml& c
 
 FilterCurvature::FilterCurvature() = default;
 
-void FilterCurvature::initialize(const mrpt::containers::yaml& c)
+void FilterCurvature::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params.load_from_yaml(c);
 }
 
 void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
@@ -60,34 +60,40 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     // In:
-    const auto& pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    const auto& pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
     // Outputs:
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outPcLarger = GetOrCreatePointLayer(
-        inOut, params_.output_layer_larger_curvature,
+        inOut, params.output_layer_larger_curvature,
         /*allow empty name for nullptr*/
         true,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-    if (outPcLarger) outPcLarger->reserve(outPcLarger->size() + pc.size() / 10);
+    if (outPcLarger)
+    {
+        outPcLarger->reserve(outPcLarger->size() + pc.size() / 10);
+    }
 
     mrpt::maps::CPointsMap::Ptr outPcSmaller = GetOrCreatePointLayer(
-        inOut, params_.output_layer_smaller_curvature,
+        inOut, params.output_layer_smaller_curvature,
         /*allow empty name for nullptr*/
         true,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-    if (outPcSmaller) outPcSmaller->reserve(outPcSmaller->size() + pc.size() / 10);
+    if (outPcSmaller)
+    {
+        outPcSmaller->reserve(outPcSmaller->size() + pc.size() / 10);
+    }
 
     mrpt::maps::CPointsMap::Ptr outPcOther = GetOrCreatePointLayer(
-        inOut, params_.output_layer_other,
+        inOut, params.output_layer_other,
         /*allow empty name for nullptr*/
         true,
         /* create cloud of the same type */
@@ -108,7 +114,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
         THROW_EXCEPTION_FMT(
             "Error: this filter needs the input layer '%s' to has a 'ring' "
             "point channel.",
-            params_.input_pointcloud_layer.c_str());
+            params.input_pointcloud_layer.c_str());
     }
 
     const auto& ringPerPt = *ptrRings;
@@ -152,7 +158,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
             const auto pt     = mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]);
             const auto d      = pt - lastPt;
 
-            if (mrpt::max3(std::abs(d.x), std::abs(d.y), std::abs(d.z)) < params_.min_clearance)
+            if (mrpt::max3(std::abs(d.x), std::abs(d.y), std::abs(d.z)) < params.min_clearance)
                 continue;
         }
 
@@ -174,7 +180,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     }
 #endif
 
-    const float maxGapSqr = mrpt::square(params_.max_gap);
+    const float maxGapSqr = mrpt::square(params.max_gap);
 
     size_t counterLarger = 0, counterLess = 0;
 
@@ -230,7 +236,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
 
             const float score = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 
-            if (std::abs(score) < params_.max_cosine * v1n * v2n)
+            if (std::abs(score) < params.max_cosine * v1n * v2n)
             {
                 counterLarger++;
                 if (outPcLarger) outPcLarger->insertPointFrom(pc, i);

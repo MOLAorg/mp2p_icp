@@ -26,23 +26,41 @@
 
 namespace
 {
+float i2f(const int i) { return static_cast<float>(i); }
+
 mrpt::maps::CSimplePointsMap::Ptr generateGlobalPoints()
 {
     auto pts = mrpt::maps::CSimplePointsMap::Create();
 
     // Plane:
     for (int ix = 0; ix < 10; ix++)
-        for (int iy = 0; iy < 10; iy++) pts->insertPoint(ix * 0.01f, 5.0f + iy * 0.01f, .0f);
+    {
+        for (int iy = 0; iy < 10; iy++)
+        {
+            pts->insertPoint(i2f(ix) * 0.01f, 5.0f + i2f(iy) * 0.01f, .0f);
+        }
+    }
 
     // Plane:
     for (int iy = 0; iy < 10; iy++)
-        for (int iz = 0; iz < 10; iz++) pts->insertPoint(10.0f, iy * 0.01f, iz * 0.01f);
+    {
+        for (int iz = 0; iz < 10; iz++)
+        {
+            pts->insertPoint(10.0f, i2f(iy) * 0.01f, i2f(iz) * 0.01f);
+        }
+    }
 
     // Not a plane:
     for (int ix = 0; ix < 10; ix++)
+    {
         for (int iy = 0; iy < 10; iy++)
+        {
             for (int iz = 0; iz < 10; iz++)
-                pts->insertPoint(20.0f + ix * 0.01f, iy * 0.01f, iz * 0.01f);
+            {
+                pts->insertPoint(20.0f + i2f(ix) * 0.01f, i2f(iy) * 0.01f, i2f(iz) * 0.01f);
+            }
+        }
+    }
 
     return pts;
 }

@@ -39,12 +39,12 @@ FilterNormalizeIntensity::FilterNormalizeIntensity()
     mrpt::system::COutputLogger::setLoggerName("FilterNormalizeIntensity");
 }
 
-void FilterNormalizeIntensity::initialize(const mrpt::containers::yaml& c)
+void FilterNormalizeIntensity::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c);
+    params.load_from_yaml(c);
 
     MRPT_END
 }
@@ -54,11 +54,10 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
     MRPT_START
 
     // In/out:
-    auto pcPtr = inOut.point_layer(params_.pointcloud_layer);
+    auto pcPtr = inOut.point_layer(params.pointcloud_layer);
     ASSERTMSG_(
-        pcPtr,
-        mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.pointcloud_layer.c_str()));
+        pcPtr, mrpt::format(
+                   "Input point cloud layer '%s' was not found.", params.pointcloud_layer.c_str()));
 
     auto& pc = *pcPtr;
 
@@ -69,16 +68,16 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         mrpt::format(
             "Input point cloud layer '%s' (%s) seems not to have an intensity "
             "channel or it is empty.",
-            params_.pointcloud_layer.c_str(), pc.GetRuntimeClass()->className));
+            params.pointcloud_layer.c_str(), pc.GetRuntimeClass()->className));
 
     auto& Is = *IsPtr;
 
     std::optional<float> minI, maxI;
 
-    if (params_.fixed_maximum_intensity > 0)
+    if (params.fixed_maximum_intensity > 0)
     {
-        maxI = params_.fixed_maximum_intensity;
-        minI = params_.fixed_minimum_intensity;
+        maxI = params.fixed_maximum_intensity;
+        minI = params.fixed_minimum_intensity;
     }
     else
     {
@@ -98,7 +97,7 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         ASSERT_(minI && maxI);
 
         // Merge with range memory?
-        if (params_.remember_intensity_range)
+        if (params.remember_intensity_range)
         {
             auto lck = mrpt::lockHelper(minMaxMtx_);
             if (!minI_ || *minI < *minI_)

@@ -149,9 +149,14 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
         std::string process_sensor_labels_regex = ".*";
 
         bool throw_on_unhandled_observation_class = false;
+
+        /** If not empty, it will be used instead of class name in Logger and Profiler.
+         *  This is loaded from the `name` key in the YAML configuration block.
+         */
+        std::string name;
     };
 
-    Parameters params_;
+    Parameters params;
 
     /** @} */
 

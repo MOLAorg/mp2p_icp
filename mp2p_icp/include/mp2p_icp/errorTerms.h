@@ -34,7 +34,8 @@ namespace mp2p_icp
  * @{ */
 
 mrpt::math::CVectorFixedDouble<3> error_point2point(
-    const mrpt::tfest::TMatchingPair& pairing, const mrpt::poses::CPose3D& relativePose,
+    const mrpt::math::TPoint3Df& local_point, const mrpt::math::TPoint3Df& global_point,
+    const mrpt::poses::CPose3D&                                 relativePose,
     mrpt::optional_ref<mrpt::math::CMatrixFixed<double, 3, 12>> jacobian = std::nullopt);
 
 mrpt::math::CVectorFixedDouble<3> error_point2line(

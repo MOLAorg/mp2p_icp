@@ -33,6 +33,7 @@ void FilterByRange::Parameters::load_from_yaml(
     MCP_LOAD_REQ(c, input_pointcloud_layer);
     MCP_LOAD_OPT(c, output_layer_between);
     MCP_LOAD_OPT(c, output_layer_outside);
+    MCP_LOAD_OPT(c, metric_l_infinity);
     DECLARE_PARAMETER_IN_REQ(c, range_min, parent);
     DECLARE_PARAMETER_IN_REQ(c, range_max, parent);
 
@@ -48,18 +49,20 @@ void FilterByRange::Parameters::load_from_yaml(
         auto cc = c["center"].asSequence();
 
         for (int i = 0; i < 3; i++)
+        {
             parent.parseAndDeclareParameter(cc.at(i).as<std::string>(), center[i]);
+        }
     }
 }
 
 FilterByRange::FilterByRange() { mrpt::system::COutputLogger::setLoggerName("FilterByRange"); }
 
-void FilterByRange::initialize(const mrpt::containers::yaml& c)
+void FilterByRange::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params_.load_from_yaml(c, *this);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -71,47 +74,69 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     checkAllParametersAreRealized();
 
     // In:
-    const auto pcPtr = inOut.point_layer(params_.input_pointcloud_layer);
+    const auto pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(
         pcPtr,
         mrpt::format(
-            "Input point cloud layer '%s' was not found.", params_.input_pointcloud_layer.c_str()));
+            "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
     const auto& pc = *pcPtr;
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outBetween = GetOrCreatePointLayer(
-        inOut, params_.output_layer_between, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_between, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outBetween) outBetween->reserve(outBetween->size() + pc.size() / 10);
+    if (outBetween)
+    {
+        outBetween->reserve(outBetween->size() + pc.size() / 10);
+    }
 
     // Optional output layer for deleted points:
     mrpt::maps::CPointsMap::Ptr outOutside = GetOrCreatePointLayer(
-        inOut, params_.output_layer_outside, true /*allow empty for nullptr*/,
+        inOut, params.output_layer_outside, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outOutside) outOutside->reserve(outOutside->size() + pc.size() / 10);
+    if (outOutside)
+    {
+        outOutside->reserve(outOutside->size() + pc.size() / 10);
+    }
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
     const auto& zs = pc.getPointsBufferRef_z();
 
-    const float sqrMin = mrpt::square(params_.range_min);
-    const float sqrMax = mrpt::square(params_.range_max);
+    const float sqrMin = mrpt::square(params.range_min);
+    const float sqrMax = mrpt::square(params.range_max);
 
     for (size_t i = 0; i < xs.size(); i++)
     {
-        const float sqrNorm =
-            (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params_.center).sqrNorm();
+        bool isInside;
 
-        const bool isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
+        if (params.metric_l_infinity)
+        {
+            const float lInfNorm = mrpt::max3(
+                std::abs(xs[i] - params.center.x), std::abs(ys[i] - params.center.y),
+                std::abs(zs[i] - params.center.z));
+
+            isInside = lInfNorm >= params.range_min && lInfNorm <= params.range_max;
+        }
+        else
+        {
+            const float sqrNorm =
+                (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params.center).sqrNorm();
+
+            isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
+        }
 
         auto* targetPc = isInside ? outBetween.get() : outOutside.get();
 
-        if (targetPc) targetPc->insertPointFrom(pc, i);
+        if (targetPc)
+        {
+            targetPc->insertPointFrom(pc, i);
+        }
     }
 
     MRPT_END

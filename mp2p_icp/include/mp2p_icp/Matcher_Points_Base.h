@@ -52,9 +52,6 @@ class Matcher_Points_Base : public Matcher
      */
     std::map<std::string, std::map<std::string, double>> weight_pt2pt_layers;
 
-    uint64_t maxLocalPointsPerLayer_ = 0;
-    uint64_t localPointsSampleSeed_  = 0;
-
     /** Whether to allow matching *local* points that have been already matched
      * by a former Matcher instance in the pipeline. */
     bool allowMatchAlreadyMatchedPoints_ = false;
@@ -68,18 +65,9 @@ class Matcher_Points_Base : public Matcher
 
     /** The additional "margin" in all axes (x,y,z) that bounding box is
      * enlarged for checking the feasibility of pairings to exist. */
-    double bounding_box_intersection_check_epsilon_ = 0.20;
+    float bounding_box_intersection_check_epsilon_ = 0.20f;
 
     /** Common parameters to all derived classes:
-     *
-     * - `maxLocalPointsPerLayer`: Maximum number of local points to consider
-     * for the "local" point cloud, per point layer. "0" means "all" (no
-     * decimation) [Default=0].
-     *
-     * - `localPointsSampleSeed`: Only if `maxLocalPointsPerLayer`!=0, and the
-     * number of points in the local map is larger than that number, a seed for
-     * the RNG used to pick random point indices. `0` (default) means to use a
-     * time-based seed.
      *
      * - `pointLayerMatches`: Optional map of layer names to relative weights.
      *  Refer to example YAML files.
@@ -104,7 +92,7 @@ class Matcher_Points_Base : public Matcher
         /** Reordering indexes, used only if we had to pick random indexes */
         std::optional<std::vector<std::size_t>> idxs;
 
-        /** Transformed local points: all, or a random subset */
+        /** Transformed local points */
         mrpt::aligned_std_vector<float> x_locals, y_locals, z_locals;
 
        private:
@@ -112,8 +100,7 @@ class Matcher_Points_Base : public Matcher
     };
 
     static TransformedLocalPointCloud transform_local_to_global(
-        const mrpt::maps::CPointsMap& pcLocal, const mrpt::poses::CPose3D& localPose,
-        const std::size_t maxLocalPoints = 0, const uint64_t localPointsSampleSeed = 0);
+        const mrpt::maps::CPointsMap& pcLocal, const mrpt::poses::CPose3D& localPose);
 
    protected:
     bool impl_match(

@@ -21,9 +21,9 @@
 #include <mp2p_icp/Matcher_Points_Base.h>
 #include <mrpt/random/random_shuffle.h>
 
-#include <chrono>
-#include <numeric>  // iota
-#include <random>
+#if defined(MP2P_HAS_TBB)
+#include <tbb/parallel_for.h>
+#endif
 
 using namespace mp2p_icp;
 
@@ -160,11 +160,6 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
         }
     }
 
-    maxLocalPointsPerLayer_ =
-        params.getOrDefault("maxLocalPointsPerLayer", maxLocalPointsPerLayer_);
-
-    localPointsSampleSeed_ = params.getOrDefault("localPointsSampleSeed", localPointsSampleSeed_);
-
     allowMatchAlreadyMatchedPoints_ =
         params.getOrDefault("allowMatchAlreadyMatchedPoints", allowMatchAlreadyMatchedPoints_);
 
@@ -181,8 +176,7 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
 }
 
 Matcher_Points_Base::TransformedLocalPointCloud Matcher_Points_Base::transform_local_to_global(
-    const mrpt::maps::CPointsMap& pcLocal, const mrpt::poses::CPose3D& localPose,
-    const std::size_t maxLocalPoints, const uint64_t localPointsSampleSeed)  // NOLINT
+    const mrpt::maps::CPointsMap& pcLocal, const mrpt::poses::CPose3D& localPose)
 {
     MRPT_START
     TransformedLocalPointCloud r;
@@ -204,44 +198,29 @@ Matcher_Points_Base::TransformedLocalPointCloud Matcher_Points_Base::transform_l
 
     const size_t nLocalPoints = pcLocal.size();
 
-    if (maxLocalPoints == 0 || nLocalPoints <= maxLocalPoints)
-    {
-        // All points:
-        r.x_locals.resize(nLocalPoints);
-        r.y_locals.resize(nLocalPoints);
-        r.z_locals.resize(nLocalPoints);
+    r.x_locals.resize(nLocalPoints);
+    r.y_locals.resize(nLocalPoints);
+    r.z_locals.resize(nLocalPoints);
 
-        for (size_t i = 0; i < nLocalPoints; i++)
+#if defined(MP2P_HAS_TBB)
+    tbb::parallel_for(
+        static_cast<size_t>(0), nLocalPoints,
+        [&](size_t i)
         {
+#else
+    for (size_t i = 0; i < nLocalPoints; i++)
+    {
+#endif
             localPose.composePoint(
                 lxs[i], lys[i], lzs[i], r.x_locals[i], r.y_locals[i], r.z_locals[i]);
-            lambdaKeepBBox(r.x_locals[i], r.y_locals[i], r.z_locals[i]);
         }
-    }
-    else
+#if defined(MP2P_HAS_TBB)
+    );
+#endif
+
+    for (size_t i = 0; i < nLocalPoints; i++)
     {
-        // random subset:
-        r.idxs.emplace(maxLocalPoints);
-        std::iota(r.idxs->begin(), r.idxs->end(), 0);
-
-        const unsigned int seed = localPointsSampleSeed != 0
-                                      ? localPointsSampleSeed
-                                      : std::chrono::system_clock::now().time_since_epoch().count();
-
-        mrpt::random::partial_shuffle(
-            r.idxs->begin(), r.idxs->end(), std::default_random_engine(seed), maxLocalPoints);
-
-        r.x_locals.resize(maxLocalPoints);
-        r.y_locals.resize(maxLocalPoints);
-        r.z_locals.resize(maxLocalPoints);
-
-        for (size_t ri = 0; ri < maxLocalPoints; ri++)
-        {
-            const auto i = (*r.idxs)[ri];
-            localPose.composePoint(
-                lxs[i], lys[i], lzs[i], r.x_locals[ri], r.y_locals[ri], r.z_locals[ri]);
-            lambdaKeepBBox(r.x_locals[ri], r.y_locals[ri], r.z_locals[ri]);
-        }
+        lambdaKeepBBox(r.x_locals[i], r.y_locals[i], r.z_locals[i]);
     }
 
     return r;

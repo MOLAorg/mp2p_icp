@@ -46,7 +46,7 @@ class FilterEdgesPlanes : public mp2p_icp_filters::FilterBase
     FilterEdgesPlanes();
 
     // See docs in base class.
-    void initialize(const mrpt::containers::yaml& c) override;
+    void initialize_filter(const mrpt::containers::yaml& c) override;
 
     // See docs in FilterBase
     void filter(mp2p_icp::metric_map_t& inOut) const override;
@@ -72,7 +72,7 @@ class FilterEdgesPlanes : public mp2p_icp_filters::FilterBase
     };
 
     /** Algorithm parameters */
-    Parameters params_;
+    Parameters params;
 
    private:
     mutable PointCloudToVoxelGrid filter_grid_;
