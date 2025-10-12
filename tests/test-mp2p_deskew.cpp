@@ -66,18 +66,21 @@ std::vector<mrpt::math::TPoint3D> create_gt_points(const SimulationParams& p)
     return pts;
 }
 
-std::
-    tuple<
-        mrpt::poses::CPose3DInterpolator, std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>,
-        std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D> /* IMU ang vel */,
-        std::map<mrpt::Clock::time_point, mrpt::math::TVector3D> /**acceleration*/
-        >
-    create_gt_keyframes(const SimulationParams& p)
+struct Scenario
 {
-    mrpt::poses::CPose3DInterpolator                         kfs;
-    std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>  kfTwists;
-    std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>  imuReadings;
-    std::map<mrpt::Clock::time_point, mrpt::math::TVector3D> imuReadingsAcc;
+    mrpt::poses::CPose3DInterpolator                         gtKeyFrames;
+    std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>  gtTwist;
+    std::map<mrpt::Clock::time_point, mrpt::math::TTwist3D>  imuAngVel;
+    std::map<mrpt::Clock::time_point, mrpt::math::TVector3D> imuAccel;
+};
+
+Scenario simulate_scenario(const SimulationParams& p)
+{
+    Scenario s;
+    auto&    kfs            = s.gtKeyFrames;
+    auto&    kfTwists       = s.gtTwist;
+    auto&    imuReadings    = s.imuAngVel;
+    auto&    imuReadingsAcc = s.imuAccel;
 
     // t=0: stopped
     kfs.insert(
@@ -156,7 +159,7 @@ std::
         }
     }
 
-    return {kfs, kfTwists, imuReadings, imuReadingsAcc};
+    return s;
 }
 
 mrpt::maps::CPointsMapXYZIRT::Ptr simulate_skewed_points(
@@ -219,7 +222,7 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     // Generate test data:
     const auto gtPoints = create_gt_points(p);
 
-    const auto [gtKeyframes, gtTwist, imuReadings, imuReadingsAcc] = create_gt_keyframes(p);
+    const auto [gtKeyframes, gtTwist, imuReadings, imuReadingsAcc] = simulate_scenario(p);
 
 #if 0
     for (const auto& [stamp, pose] : gtKeyframes)
@@ -338,7 +341,7 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     // Generate test data:
     const auto gtPoints = create_gt_points(p);
 
-    const auto [gtKeyframes, gtTwist, imuReadings, imuReadingsAcc] = create_gt_keyframes(p);
+    const auto [gtKeyframes, gtTwist, imuReadings, imuReadingsAcc] = simulate_scenario(p);
 
 #if 0
     for (const auto& [stamp, pose] : gtKeyframes)
