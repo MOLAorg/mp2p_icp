@@ -323,7 +323,6 @@ Filter: `FilterDeleteLayer`
 |
 
 ---
-
 Filter: `FilterDeskew`
 ----------------------
 
@@ -331,69 +330,93 @@ Filter: `FilterDeskew`
 
 **Parameters**:
 
-* **input\_pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): The input point cloud layer name.
-* **output\_pointcloud\_layer** (:cpp:type:`std::string`, optional): The output layer name. Required unless `in\_place` is `true`.
-* **in\_place** (:cpp:type:`bool`, default: `false`): If `true`, the deskewed points replace the input layer (most efficient).
-* **output\_layer\_class** (:cpp:type:`std::string`, default: `mrpt::maps::CPointsMapXYZI`): The class name for the output layer if it needs to be created.
-* **silently\_ignore\_no\_timestamps** (:cpp:type:`bool`, default: `false`): If `true`, no exception is thrown if the input layer lacks timestamps.
-* **method** (:cpp:enum:`MotionCompensationMethod`, default: `Linear`): The motion compensation method:
-    * **`None`**
-    * **`Linear`**: Uses the constant `twist` field.
-    * **`IMU`**: Retrieves the precise twist trajectory from the `LocalVelocityBuffer`.
-* **twist** (:cpp:type:`std::optional<mrpt::math::TTwist3D>`): The velocity (linear and angular) of the vehicle in the local vehicle frame. Only used for `method=Linear`.
+* **input_pointcloud_layer** (:cpp:type:`std::string`, default: `raw`):  
+  The input point cloud layer name.
+
+* **output_pointcloud_layer** (:cpp:type:`std::string`, optional):  
+  The output layer name. Required unless `in_place` is `true`.
+
+* **in_place** (:cpp:type:`bool`, default: `false`):  
+  If `true`, the deskewed points replace the input layer (most efficient).
+
+* **output_layer_class** (:cpp:type:`std::string`, default: `mrpt::maps::CPointsMapXYZI`):  
+  The class name for the output layer if it needs to be created.
+
+* **silently_ignore_no_timestamps** (:cpp:type:`bool`, default: `false`):  
+  If `true`, no exception is thrown if the input layer lacks timestamps.
+
+* **method** (:cpp:enum:`MotionCompensationMethod`, default: `Linear`):  
+  The motion compensation method used to interpolate or integrate point positions:
+  
+  * **`None`** – No compensation; all points are assumed to be acquired at the same vehicle pose.  
+  * **`Linear`** – Constant velocity (linear and angular) model using the provided `twist`.  
+  * **`IMU`** – Integration using IMU data with constant linear acceleration and angular velocity.  
+  * **`IMUh`** – Higher-order IMU integration assuming constant jerk and angular acceleration.  
+  * **`IMUt`** – Trapezoidal IMU integration using constant linear acceleration and angular velocity.
+
+* **twist** (:cpp:type:`std::optional<mrpt::math::TTwist3D>`):  
+  The velocity (linear and angular) of the vehicle in the local frame.  
+  Only used when `method=Linear`.  
+  May be dynamically bound via the `mp2p_icp::Parameterizable` API.
+
+* **points_already_global** (:cpp:type:`bool`, default: `false`):  
+  If `true`, the input points are already expressed in global coordinates (e.g. in sm2mm pipelines).  
+  When enabled, `robot_pose` must be provided to reference the global transformation.
+
+* **robot_pose** (:cpp:type:`mrpt::math::TPose3D`, optional):  
+  The robot’s pose in global coordinates.  
+  Only used when `points_already_global=true`.
+
+* **bias_acc** (:cpp:type:`mrpt::math::TVector3D`, default: `[0, 0, 0]`):  
+  Accelerometer bias in **sensor frame** coordinates.  
+  Used for IMU-based motion compensation methods.
+
+* **bias_gyro** (:cpp:type:`mrpt::math::TVector3D`, default: `[0, 0, 0]`):  
+  Gyroscope bias in **sensor frame** coordinates.
+
+* **gravity_vector** (:cpp:type:`mrpt::math::TVector3D`, default: `[0, 0, -9.81]`):  
+  Gravity vector in **global frame** coordinates.  
+  Used when integrating IMU data to maintain alignment with world gravity.
+
+---
+
+**YAML Example**
 
 .. code-block:: yaml
 
     filters:
-      #...
+      # ...
       - class_name: mp2p_icp_filters::FilterDeskew
         params:
           input_pointcloud_layer: 'raw'
           output_pointcloud_layer: 'deskewed'
           method: 'IMU'
+          twist: [vx, vy, vz, wx, wy, wz]
+          #bias_acc: [0.00, 0.0, 0.0]
+          #bias_gyro: [0.0, 0.0, 0.0]
+          #gravity_vector: [0, 0, -9.81]
+          # IMPORTANT: In the context of sm2mm, set this to 'true' since 
+          # de-skew happens with points already in global coordinates
+          # so we need the robot pose to correct points:
+          #points_already_global: true
+          robot_pose:
+            [robot_x, robot_y, robot_z, robot_yaw, robot_pitch, robot_roll]
+
+---
+
+**Notes**:
+
+* The input layer must contain timestamps (`mrpt::maps::CPointsMapXYZIRT`).
+* Timestamps are assumed to be in seconds relative to a reference time (e.g., scan start).  
+  Use `FilterAdjustTimestamps` to adjust this if necessary.
+* If timestamps are missing and `silently_ignore_no_timestamps=false`, an exception is thrown.
+
+---
 
 .. rubric:: Before → After Screenshot
 
 .. image:: deskew_example.png
    :alt: Screenshot showing point cloud before and after applying FilterDeskew
-
-|
-
----
-
-Filter: `FilterEdgesPlanes`
----------------------------
-
-**Description**: Classifies point cloud voxels into planes and "edges" based on an eigenvalue analysis of local neighborhood covariance, inspired by the LOAM paper.
-
-**Parameters**:
-
-* **input\_pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): The input point cloud layer name.
-* **output\_layer\_edges** (:cpp:type:`std::string`, default: `edges`): Output layer for edge points.
-* **output\_layer\_planes** (:cpp:type:`std::string`, default: `planes`): Output layer for planar points.
-* **voxel\_filter\_resolution** (:cpp:type:`float`, default: `0.5f`): Size of each voxel edge (m).
-* **full\_pointcloud\_decimation** (:cpp:type:`unsigned int`, default: `20`): Decimation factor applied to the original input cloud before analysis.
-* **voxel\_filter\_decimation** (:cpp:type:`unsigned int`, default: `1`).
-* **voxel\_filter\_max\_e2\_e0** (:cpp:type:`float`, default: `30.f`): Threshold parameter for edge classification (ratio of eigenvalues).
-* **voxel\_filter\_max\_e1\_e0** (:cpp:type:`float`, default: `30.f`): Threshold parameter for planar classification (ratio of eigenvalues).
-* **voxel\_filter\_min\_npts** (:cpp:type:`unsigned int`, default: `5`): Minimum number of points in a voxel to perform the classification.
-* **use\_tsl\_robin\_map** (:cpp:type:`bool`, default: `true`).
-
-.. code-block:: yaml
-
-    filters:
-      #...
-      - class_name: mp2p_icp_filters::FilterEdgesPlanes
-        params:
-          input_pointcloud_layer: 'raw_down'
-          output_layer_edges: 'edges'
-          output_layer_planes: 'planes'
-          voxel_filter_resolution: 0.5
-
-.. rubric:: Before → After Screenshot
-
-.. image:: edges_planes_example.png
-   :alt: Screenshot showing point cloud before and after applying FilterEdgesPlanes
 
 |
 
