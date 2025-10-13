@@ -1,4 +1,7 @@
-[![CircleCI](https://img.shields.io/circleci/build/gh/MOLAorg/mp2p_icp/develop.svg)](https://circleci.com/gh/MOLAorg/mp2p_icp) [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://docs.mola-slam.org/mp2p_icp/)
+[![CI ROS](https://github.com/MOLAorg/mp2p_icp/actions/workflows/ros-build.yml/badge.svg)](https://github.com/MOLAorg/mp2p_icp/actions/workflows/ros-build.yml)
+[![CI Check clang-format](https://github.com/MOLAorg/mp2p_icp/actions/workflows/check-clang-format.yml/badge.svg)](https://github.com/MOLAorg/mp2p_icp/actions/workflows/check-clang-format.yml)
+[![CircleCI](https://img.shields.io/circleci/build/gh/MOLAorg/mp2p_icp/develop.svg)](https://circleci.com/gh/MOLAorg/mp2p_icp) 
+[![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://docs.mola-slam.org/mp2p_icp/)
 
 
 | Distro | Build dev | Build releases | Stable version |
