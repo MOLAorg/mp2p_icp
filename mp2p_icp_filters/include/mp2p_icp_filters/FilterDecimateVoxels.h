@@ -113,6 +113,11 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
          */
         uint32_t minimum_input_points_to_filter = 0;
 
+        /** Minimum number of points in each voxel to use that voxel output.
+         * It applies to all `decimate_method` options, except DecimateMethod::FirstPoint
+         */
+        uint32_t minimum_points_per_voxel = 0;
+
         /// See description on top of this page.
         std::optional<double> flatten_to;
 

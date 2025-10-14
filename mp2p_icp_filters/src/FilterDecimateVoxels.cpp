@@ -67,6 +67,7 @@ void FilterDecimateVoxels::Parameters::load_from_yaml(
 
     MCP_LOAD_REQ(c, output_pointcloud_layer);
     MCP_LOAD_OPT(c, minimum_input_points_to_filter);
+    MCP_LOAD_OPT(c, minimum_points_per_voxel);
 
     DECLARE_PARAMETER_IN_REQ(c, voxel_filter_resolution, parent);
     MCP_LOAD_OPT(c, use_tsl_robin_map);
@@ -283,7 +284,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             [&](const PointCloudToVoxelGrid::indices_t& idx,
                 const PointCloudToVoxelGrid::voxel_t&   vxl)
             {
-                if (vxl.indices.empty()) return;
+                if (vxl.indices.size() > params.minimum_points_per_voxel)
+                {
+                    return;
+                }
 
                 nonEmptyVoxels++;
                 std::optional<mrpt::math::TPoint3Df> insertPt;
@@ -294,7 +298,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 {
                     // Analyze the voxel contents:
                     auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
-                    const float inv_n = (1.0f / vxl.indices.size());
+                    const float inv_n = (1.0f / static_cast<float>(vxl.indices.size()));
                     for (size_t i = 0; i < vxl.indices.size(); i++)
                     {
                         const auto pt_idx = vxl.indices[i];
@@ -348,19 +352,26 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     const PointCloudToVoxelGrid::indices_t flattenIdx = {idx.cx_, idx.cy_, 0};
 
                     // first time?
-                    if (flattenUsedBins.count(flattenIdx) != 0) return;  // nope. Skip this point.
+                    if (flattenUsedBins.count(flattenIdx) != 0)
+                    {
+                        return;  // nope. Skip this point.
+                    }
 
                     // First time we see this (x,y) cell:
                     flattenUsedBins.insert(flattenIdx);
 
                     if (!insertPt)
+                    {
                         insertPt.emplace(xs[insertPtIdx], ys[insertPtIdx], zs[insertPtIdx]);
+                    }
                     outPc->insertPointFast(insertPt->x, insertPt->y, *params.flatten_to);
                 }
                 else
                 {
                     if (insertPt)
+                    {
                         outPc->insertPointFast(insertPt->x, insertPt->y, insertPt->z);
+                    }
                     else
                     {
                         outPc->insertPointFrom(pc, insertPtIdx);

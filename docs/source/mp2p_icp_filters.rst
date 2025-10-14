@@ -264,17 +264,28 @@ Filter: `FilterDecimateVoxels`
 **Parameters**:
 
 * **input\_pointcloud\_layer** (:cpp:type:`std::vector<std::string>`, default: `[raw]`): One or more input layers to read and merge points from.
+
 * **error\_on\_missing\_input\_layer** (:cpp:type:`bool`, default: `true`): If `true`, an exception is thrown if an input layer is missing. Otherwise, it's silently ignored.
+
 * **output\_pointcloud\_layer** (:cpp:type:`std::string`): The output point cloud layer name. New points are appended if the layer already exists.
+
 * **voxel\_filter\_resolution** (:cpp:type:`float`, default: `1.0f`): Size of each voxel edge (m).
+
 * **use\_tsl\_robin\_map** (:cpp:type:`bool`, default: `true`): Whether to use `tsl::robin_map` (faster for smaller clouds) or `std::map` (faster for large clouds) as the container implementation.
+
 * **minimum\_input\_points\_to\_filter** (:cpp:type:`uint32\_t`, default: `0`): If the total number of input points is less than this, all points are passed through without decimation.
+
 * **flatten\_to** (:cpp:type:`std::optional<double>`): If defined, the 3D points are "flattened" into a 2D planar cloud at a constant height :math:`z`. Additional point fields (ring, intensity, timestamp) are **NOT** copied in this mode.
+
 * **decimate\_method** (:cpp:enum:`DecimateMethod`, default: `FirstPoint`): The method to pick the representative point for each voxel:
     * **DecimateMethod::FirstPoint**: Picks the first point inserted into the voxel (the fastest method).
     * **DecimateMethod::ClosestToAverage**: Picks the point closest to the average position of all voxel points.
     * **DecimateMethod::VoxelAverage**: Calculates and uses the average position of all voxel points (a new point).
     * **DecimateMethod::RandomPoint**: Picks one of the voxel points at random.
+  
+* **minimum_points_per_voxel** (:cpp:enum:`uint32_t`, default: `0`): Minimum number of points in each voxel to use that voxel output.
+  It applies to all `decimate_method` options, except `DecimateMethod::FirstPoint`.
+
 
 .. code-block:: yaml
 
