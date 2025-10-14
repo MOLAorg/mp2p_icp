@@ -349,11 +349,11 @@ Filter: `FilterDeskew`
 * **method** (:cpp:enum:`MotionCompensationMethod`, default: `Linear`):  
   The motion compensation method used to interpolate or integrate point positions:
   
-  * **`None`** – No compensation; all points are assumed to be acquired at the same vehicle pose.  
-  * **`Linear`** – Constant velocity (linear and angular) model using the provided `twist`.  
-  * **`IMU`** – Integration using IMU data with constant linear acceleration and angular velocity.  
-  * **`IMUh`** – Higher-order IMU integration assuming constant jerk and angular acceleration.  
-  * **`IMUt`** – Trapezoidal IMU integration using constant linear acceleration and angular velocity.
+  * **`MotionCompensationMethod::None`** – No compensation; all points are assumed to be acquired at the same vehicle pose.  
+  * **`MotionCompensationMethod::Linear`** – Constant velocity (linear and angular) model using the provided `twist`.  
+  * **`MotionCompensationMethod::IMU`** – Integration using IMU data with constant linear acceleration and angular velocity.  
+  * **`MotionCompensationMethod::IMUh`** – Higher-order IMU integration assuming constant jerk and angular acceleration.  
+  * **`MotionCompensationMethod::IMUt`** – Trapezoidal IMU integration using constant linear acceleration and angular velocity.
 
 * **twist** (:cpp:type:`std::optional<mrpt::math::TTwist3D>`):  
   The velocity (linear and angular) of the vehicle in the local frame.  
@@ -391,7 +391,7 @@ Filter: `FilterDeskew`
         params:
           input_pointcloud_layer: 'raw'
           output_pointcloud_layer: 'deskewed'
-          method: 'IMU'
+          method: 'MotionCompensationMethod::Linear'   # Normally, use `IMU` if you have an IMU, or `Linear` otherwise
           twist: [vx, vy, vz, wx, wy, wz]
           #bias_acc: [0.00, 0.0, 0.0]
           #bias_gyro: [0.0, 0.0, 0.0]
