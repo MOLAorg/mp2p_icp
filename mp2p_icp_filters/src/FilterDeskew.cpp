@@ -250,7 +250,7 @@ void correctPointsLoop(const CorrectPointsArguments& args)
                         fprintf(
                             stderr,
                             "[FilterDeskew|WARN]: Excessive time between point stamp and "
-                            "trajectory point (dt=%.03f s)",
+                            "trajectory point (dt=%.03f s)\n",
                             dt);
                     }
                 }
