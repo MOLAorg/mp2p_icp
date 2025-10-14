@@ -271,10 +271,10 @@ Filter: `FilterDecimateVoxels`
 * **minimum\_input\_points\_to\_filter** (:cpp:type:`uint32\_t`, default: `0`): If the total number of input points is less than this, all points are passed through without decimation.
 * **flatten\_to** (:cpp:type:`std::optional<double>`): If defined, the 3D points are "flattened" into a 2D planar cloud at a constant height :math:`z`. Additional point fields (ring, intensity, timestamp) are **NOT** copied in this mode.
 * **decimate\_method** (:cpp:enum:`DecimateMethod`, default: `FirstPoint`): The method to pick the representative point for each voxel:
-    * **FirstPoint**: Picks the first point inserted into the voxel (most efficient).
-    * **ClosestToAverage**: Picks the point closest to the average position of all voxel points.
-    * **VoxelAverage**: Calculates and uses the average position of all voxel points (a new point).
-    * **RandomPoint**: Picks one of the voxel points at random.
+    * **DecimateMethod::FirstPoint**: Picks the first point inserted into the voxel (the fastest method).
+    * **DecimateMethod::ClosestToAverage**: Picks the point closest to the average position of all voxel points.
+    * **DecimateMethod::VoxelAverage**: Calculates and uses the average position of all voxel points (a new point).
+    * **DecimateMethod::RandomPoint**: Picks one of the voxel points at random.
 
 .. code-block:: yaml
 
@@ -285,7 +285,7 @@ Filter: `FilterDecimateVoxels`
           input_pointcloud_layer: [ 'raw', 'intensity_low' ]
           output_pointcloud_layer: 'decimated'
           voxel_filter_resolution: 0.1
-          decimate_method: 'VoxelAverage'
+          decimate_method: 'DecimateMethod::VoxelAverage'
 
 .. rubric:: Before → After Screenshot
 
