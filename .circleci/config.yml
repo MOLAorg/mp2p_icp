@@ -63,10 +63,11 @@ jobs:
             export DEBIAN_FRONTEND=noninteractive
             export TZ=Etc/UTC
             apt-get update
-            apt-get install build-essential cmake git -y
+            apt-get install build-essential cmake clang++ git -y
             apt-get install software-properties-common -y
             add-apt-repository ppa:joseluisblancoc/mrpt -y
             apt-get install libmrpt-dev -y
+            apt-get install clang -y
       - checkout
       - run:
           name: "Pull Submodules"
