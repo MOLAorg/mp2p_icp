@@ -94,6 +94,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
 
     const auto lambdaProcessLocalVelocityBuffer = [&](const mrpt::obs::CObservation::Ptr& obs)
     {
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
         auto obsComment = std::dynamic_pointer_cast<mrpt::obs::CObservationComment>(obs);
         if (!obsComment)
         {
@@ -134,6 +135,9 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             std::cerr << "Error parsing 'local_velocity_buffer': " << e.what() << std::endl;
             return;
         }
+#else
+        (void)obs;
+#endif
     };
 
     // progress bar:

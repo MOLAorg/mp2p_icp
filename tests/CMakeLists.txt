@@ -41,8 +41,12 @@ function(mp2p_add_test NAME)
   endif()
 endfunction()
 
-#mp2p_add_test(mp2p_matcher_pt2pl)  # TODO: This now requires a NP metric map to run the test
+
+if (mola_imu_preintegration_FOUND)
 mp2p_add_test(mp2p_deskew EXTRA_LIBS mp2p_icp_filters)
+endif()
+
+#mp2p_add_test(mp2p_matcher_pt2pl)  # TODO: This now requires a NP metric map to run the test
 mp2p_add_test(mp2p_error_terms_jacobians)
 mp2p_add_test(mp2p_georef_yaml)
 mp2p_add_test(mp2p_icp_algos)

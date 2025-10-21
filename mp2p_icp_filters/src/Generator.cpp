@@ -198,6 +198,7 @@ bool Generator::filterVelodyneScan(  //
     return true;  // implemented
 }
 
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
 class ImuTransformerManager
 {
    public:
@@ -220,9 +221,11 @@ class ImuTransformerManager
 
 std::mutex                                       ImuTransformerManager::mutex_;
 std::map<std::string, mola::imu::ImuTransformer> ImuTransformerManager::transformers_;
+#endif
 
 bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu_raw) const
 {
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
     auto* parameterSource = const_cast<mp2p_icp::ParameterSource*>(attachedSource());
     if (!parameterSource)
     {
@@ -253,6 +256,10 @@ bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu_raw) const
     }
 
     return true;  // implemented
+#else
+    (void)imu_raw;
+    return false;  // Not implemented
+#endif
 }
 
 bool Generator::filterScan3D(  //
