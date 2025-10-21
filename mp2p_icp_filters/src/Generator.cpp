@@ -471,6 +471,7 @@ bool Generator::implProcessDefault(
         processed = processIMU(*oIMU);
     }
 
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
     if (auto ps = this->attachedSource(); ps != nullptr && pointcloud_obs_timestamp)
     {
         const auto refStamp = mrpt::Clock::toDouble(*pointcloud_obs_timestamp);
@@ -479,6 +480,7 @@ bool Generator::implProcessDefault(
 
         ps->localVelocityBuffer.set_reference_zero_time(refStamp);
     }
+#endif
 
     // done?
     if (processed)

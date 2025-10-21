@@ -153,8 +153,10 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
 
     if (ps)
     {
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
         ps->localVelocityBuffer.set_reference_zero_time(
             ps->localVelocityBuffer.get_reference_zero_time() + dt);
+#endif
     }
 
     MRPT_END
