@@ -23,10 +23,12 @@ mola_add_library(
   TARGET ${PROJECT_NAME}
   SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
   PUBLIC_LINK_LIBRARIES
+    mrpt::expr
     mrpt::system
     ${imu_pub_link_}
   CMAKE_DEPENDENCIES
     mrpt-system
+    mrpt-expr
     ${imu_cmake_dep_}
 )
 
