@@ -41,6 +41,7 @@
 #include <mrpt/obs/CObservationVelodyneScan.h>
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
@@ -301,7 +302,9 @@ bool Generator::filterPointCloud(  //
 
     const mrpt::poses::CPose3D p = robotPose ? robotPose.value() + sensorPose : sensorPose;
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
     outPc->registerPointFieldsFrom(pc);
+#endif
     outPc->insertAnotherMap(&pc, p);
 
     const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*outPc);
