@@ -21,6 +21,7 @@
 #include <mp2p_icp_filters/FilterByRing.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(FilterByRing, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -81,7 +82,10 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outSelected) outSelected->reserve(outSelected->size() + pc.size() / 10);
+    if (outSelected)
+    {
+        outSelected->reserve(outSelected->size() + pc.size() / 10);
+    }
 
     // Create if new: Append to existing layer, if already existed.
     mrpt::maps::CPointsMap::Ptr outNonSel = GetOrCreatePointLayer(
@@ -89,7 +93,10 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outNonSel) outNonSel->reserve(outNonSel->size() + pc.size() / 10);
+    if (outNonSel)
+    {
+        outNonSel->reserve(outNonSel->size() + pc.size() / 10);
+    }
 
     ASSERTMSG_(
         outSelected || outNonSel,
@@ -97,9 +104,13 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
         "'output_layer_non_selected' must be provided.");
 
     const auto& xs = pc.getPointsBufferRef_x();
-    // const auto& ys   = pc.getPointsBufferRef_y();
-    // const auto& zs   = pc.getPointsBufferRef_z();
+
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    const auto* ptrR = pc.getPointsBufferRef_float_field("ring");
+#else
     const auto* ptrR = pc.getPointsBufferRef_ring();
+#endif
+
     if (!ptrR || ptrR->empty())
     {
         THROW_EXCEPTION_FMT(
@@ -131,7 +142,10 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
             ++countNon;
         }
 
-        if (trg) trg->insertPointFrom(pc, i);
+        if (trg)
+        {
+            trg->insertPointFrom(pc, i);
+        }
     }
 
     MRPT_LOG_DEBUG_STREAM(

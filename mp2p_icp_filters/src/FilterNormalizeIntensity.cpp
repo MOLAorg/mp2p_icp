@@ -21,6 +21,7 @@
 #include <mp2p_icp_filters/FilterNormalizeIntensity.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/lock_helper.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(FilterNormalizeIntensity, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -61,7 +62,11 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     auto& pc = *pcPtr;
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    auto* IsPtr = pc.getPointsBufferRef_float_field("intensity");
+#else
     auto* IsPtr = pc.getPointsBufferRef_intensity();
+#endif
 
     ASSERTMSG_(
         IsPtr != nullptr && !IsPtr->empty(),

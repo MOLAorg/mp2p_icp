@@ -33,6 +33,7 @@
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>  // loadPluginModules()
 #include <mrpt/system/string_utils.h>  // unitsFormat()
+#include <mrpt/version.h>
 
 #include <iostream>
 
@@ -175,9 +176,10 @@ void updateMouseCoordinates()
 
 void updateCameraLookCoordinates()
 {
-    lbCameraPointing->setCaption(mrpt::format(
-        "Looking at: X=%6.03f Y=%6.03f Z=%6.03f", win->camera().getCameraPointingX(),
-        win->camera().getCameraPointingY(), win->camera().getCameraPointingZ()));
+    lbCameraPointing->setCaption(
+        mrpt::format(
+            "Looking at: X=%6.03f Y=%6.03f Z=%6.03f", win->camera().getCameraPointingX(),
+            win->camera().getCameraPointingY(), win->camera().getCameraPointingZ()));
 }
 
 void observeViewOptions()
@@ -232,9 +234,10 @@ void rebuildCamTravellingCombo()
         std::advance(it, i);
 
         lstShort.push_back(std::to_string(i));
-        lst.push_back(mrpt::format(
-            "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
-            mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
+        lst.push_back(
+            mrpt::format(
+                "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
+                mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
     }
     cbTravellingKeys->setItems(lst, lstShort);
 
@@ -762,7 +765,10 @@ void main_show_gui()
             btnAnimate->setCallback(
                 []()
                 {
-                    if (camTravelling.empty()) return;
+                    if (camTravelling.empty())
+                    {
+                        return;
+                    }
                     camTravellingCurrentTime.emplace(
                         mrpt::Clock::toDouble(camTravelling.begin()->first));
                     btnAnimate->setEnabled(false);
@@ -938,12 +944,20 @@ void doColorizeByIntensity(
     }
 
     // Colorize by intensity with custom color map?
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    if (!org_cloud || !org_cloud->hasPointField("intensity"))
+#else
     if (!org_cloud || !org_cloud->hasField_Intensity())
+#endif
     {
         return;
     }
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    const auto* Is = org_cloud->getPointsBufferRef_float_field("intensity");
+#else
     const auto* Is = org_cloud->getPointsBufferRef_intensity();
+#endif
     ASSERT_(Is);
 
     // Thread-local cache for max intensity
@@ -1181,16 +1195,17 @@ void rebuild_3d_view(bool force_rebuild_view)
         const auto depthFieldMid       = std::pow(10.0, slMidDepthField->value());
         const auto depthFieldThickness = std::pow(10.0, slThicknessDepthField->value());
 
-        const auto clipNear = std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
-        const auto clipFar  = depthFieldMid + 0.5 * depthFieldThickness;
+        const auto clipNear =
+            static_cast<float>(std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness));
+        const auto clipFar = static_cast<float>(depthFieldMid + 0.5 * depthFieldThickness);
 
         const float cameraFOV = slCameraFOV->value();
         win->camera().setCameraFOV(cameraFOV);
-        win->camera().setMaximumZoom(std::max<double>(1000, 3.0 * clipFar));
+        win->camera().setMaximumZoom(std::max<float>(1000.0f, 3.0f * clipFar));
 
         lbDepthFieldValues->setCaption(
             mrpt::format("Depth field: near=%g far=%g", clipNear, clipFar));
-        lbDepthFieldMid->setCaption(mrpt::format("Frustrum center: %.03g", depthFieldMid));
+        lbDepthFieldMid->setCaption(mrpt::format("Frustum center: %.03g", depthFieldMid));
         lbDepthFieldThickness->setCaption(
             mrpt::format("Frustum thickness: %.03g", depthFieldThickness));
 

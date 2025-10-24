@@ -301,6 +301,7 @@ bool Generator::filterPointCloud(  //
 
     const mrpt::poses::CPose3D p = robotPose ? robotPose.value() + sensorPose : sensorPose;
 
+    outPc->registerPointFieldsFrom(pc);
     outPc->insertAnotherMap(&pc, p);
 
     const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*outPc);

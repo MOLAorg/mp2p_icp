@@ -30,6 +30,7 @@
 #include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/Lie/SO.h>
+#include <mrpt/version.h>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/parallel_for.h>
@@ -426,6 +427,17 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     const size_t n  = xs.size();
 
     // optional fields:
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    MRPT_TODO("Do a better generic re-factorization of this");
+    const auto* Is = inPc->getPointsBufferRef_float_field("intensity");
+    const auto* Ts = inPc->getPointsBufferRef_float_field("t");
+    const auto* Rs = inPc->getPointsBufferRef_uint_field("ring");
+
+    auto* out_Is = outPc ? outPc->getPointsBufferRef_float_field("intensity") : nullptr;
+    auto* out_Ts = outPc ? outPc->getPointsBufferRef_float_field("t") : nullptr;
+    auto* out_Rs = outPc ? outPc->getPointsBufferRef_uint_field("ring") : nullptr;
+
+#else
     const auto* Is = inPc->getPointsBufferRef_intensity();
     const auto* Ts = inPc->getPointsBufferRef_timestamp();
     const auto* Rs = inPc->getPointsBufferRef_ring();
@@ -433,10 +445,14 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     auto* out_Is = outPc ? outPc->getPointsBufferRef_intensity() : nullptr;
     auto* out_Rs = outPc ? outPc->getPointsBufferRef_ring() : nullptr;
     auto* out_Ts = outPc ? outPc->getPointsBufferRef_timestamp() : nullptr;
+#endif
 
     // Helper lambda: copy all points (with optional attributes)
     auto copyAllPoints = [&]()
     {
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+        outPc->registerPointFieldsFrom(*inPc);
+#endif
         for (size_t i = 0; i < n; i++)
         {
             outPc->insertPointFrom(*inPc, i);

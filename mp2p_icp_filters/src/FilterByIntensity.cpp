@@ -21,6 +21,7 @@
 #include <mp2p_icp_filters/FilterByIntensity.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(FilterByIntensity, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -107,15 +108,16 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         "provided.");
 
     const auto& xs = pc.getPointsBufferRef_x();
-    // const auto& ys   = pc.getPointsBufferRef_y();
-    // const auto& zs   = pc.getPointsBufferRef_z();
+
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    const auto* ptrI = pc.getPointsBufferRef_float_field("intensity");
+#else
     const auto* ptrI = pc.getPointsBufferRef_intensity();
+#endif
     if (!ptrI || ptrI->empty())
     {
         THROW_EXCEPTION_FMT(
-            "Error: this filter needs the input layer '%s' to has an "
-            "'intensity' "
-            "point channel.",
+            "Error: this filter needs the input layer '%s' to has an 'intensity' point channel.",
             params.input_pointcloud_layer.c_str());
     }
 

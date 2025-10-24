@@ -21,13 +21,19 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
-#include <mrpt/maps/CColouredPointsMap.h>
-#include <mrpt/maps/CPointsMapXYZI.h>
-#include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/CMatrixDynamic.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/version.h>
+
+#if MRPT_VERSION >= 0x20f00  // 2.15.0
+#include <mrpt/maps/CGenericPointsMap.h>
+#else
+#include <mrpt/maps/CColouredPointsMap.h>
+#include <mrpt/maps/CPointsMapXYZI.h>
+#include <mrpt/maps/CPointsMapXYZIRT.h>
+#endif
 
 const char* VALID_FORMATS = "(xyz|xyzi|xyzirt|xyzrgb|xyzrgb_normalized)";
 
@@ -110,7 +116,10 @@ int main(int argc, char** argv)
         Cli cli;
 
         // Parse arguments:
-        if (!cli.cmd.parse(argc, argv)) return 1;  // should exit.
+        if (!cli.cmd.parse(argc, argv))
+        {
+            return 1;  // should exit.
+        }
 
         const auto& f = cli.argInput.getValue();
         ASSERT_FILE_EXISTS_(f);
@@ -138,27 +147,42 @@ int main(int argc, char** argv)
             pc = mrpt::maps::CSimplePointsMap::Create();
             pc->reserve(nRows);
             if (nCols > 3)
+            {
                 std::cout << "Warning: Only the first 3 columns from the file "
                              "will be used for the output format 'xyz'"
                           << std::endl;
+            }
 
             for (size_t i = 0; i < nRows; i++)
+            {
                 pc->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
+            }
         }
         else if (format == "xyzi")
         {
             ASSERT_GE_(nCols, 4U);
+#if MRPT_VERSION >= 0x20f00  // 2.15.0
+            auto pts = mrpt::maps::CGenericPointsMap::Create();
+            pts->registerField_float("intensity");
+#else
             auto pts = mrpt::maps::CPointsMapXYZI::Create();
+#endif
             pts->reserve(nRows);
             if (nCols > 4)
+            {
                 std::cout << "Warning: Only the first 4 columns from the file "
                              "will be used for the output format 'xyzi'"
                           << std::endl;
+            }
 
             for (size_t i = 0; i < nRows; i++)
             {
                 pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
+#if MRPT_VERSION >= 0x20f00  // 2.15.0
+                pts->insertPointField_float("intensity", data(i, idxI));
+#else
                 pts->insertPointField_Intensity(data(i, idxI));
+#endif
             }
 
             pc = pts;
@@ -166,19 +190,34 @@ int main(int argc, char** argv)
         else if (format == "xyzirt")
         {
             ASSERT_GE_(nCols, 6U);
+#if MRPT_VERSION >= 0x20f00  // 2.15.0
+            auto pts = mrpt::maps::CGenericPointsMap::Create();
+            pts->registerField_float("intensity");
+            pts->registerField_uint16("ring");
+            pts->registerField_float("timestamp");
+#else
             auto pts = mrpt::maps::CPointsMapXYZI::Create();
+#endif
             pts->reserve(nRows);
             if (nCols > 6)
+            {
                 std::cout << "Warning: Only the first 6 columns from the file "
                              "will be used for the output format 'xyzirt'"
                           << std::endl;
+            }
 
             for (size_t i = 0; i < nRows; i++)
             {
                 pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
+#if MRPT_VERSION >= 0x20f00  // 2.15.0
+                pts->insertPointField_float("intensity", data(i, idxI));
+                pts->insertPointField_uint16("ring", static_cast<uint16_t>(data(i, idxR)));
+                pts->insertPointField_float("timestamp", data(i, idxT));
+#else
                 pts->insertPointField_Intensity(data(i, idxI));
                 pts->insertPointField_Ring(data(i, idxR));
                 pts->insertPointField_Timestamp(data(i, idxT));
+#endif
             }
 
             pc = pts;
@@ -187,7 +226,14 @@ int main(int argc, char** argv)
         {
             ASSERT_GE_(nCols, 6U);
             const bool rgb_normalized = (format == "xyzrgb_normalized");
-            auto       pts            = mrpt::maps::CColouredPointsMap::Create();
+#if MRPT_VERSION >= 0x20f00  // 2.15.0
+            auto pts = mrpt::maps::CGenericPointsMap::Create();
+            pts->registerField_float("color_r");
+            pts->registerField_float("color_g");
+            pts->registerField_float("color_b");
+#else
+            auto pts = mrpt::maps::CColouredPointsMap::Create();
+#endif
             pts->reserve(nRows);
             if (nCols > 6)
             {
@@ -201,20 +247,30 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < nRows; i++)
             {
                 pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
+                // Compute RGB values first (normalized floats in [0,1]):
+                float r_val, g_val, b_val;
                 if (rgb_normalized)
                 {
-                    // RGBD is already in [0,1] range:
-                    pts->insertPointField_color_R(data(i, idxRed));
-                    pts->insertPointField_color_G(data(i, idxGreen));
-                    pts->insertPointField_color_B(data(i, idxBlue));
+                    r_val = data(i, idxRed);
+                    g_val = data(i, idxGreen);
+                    b_val = data(i, idxBlue);
                 }
                 else
                 {
-                    // Convert RGB values from [0,255] to [0,1] range:
-                    pts->insertPointField_color_R(mrpt::u8tof(data(i, idxRed)));
-                    pts->insertPointField_color_G(mrpt::u8tof(data(i, idxGreen)));
-                    pts->insertPointField_color_B(mrpt::u8tof(data(i, idxBlue)));
+                    r_val = mrpt::u8tof(static_cast<uint8_t>(data(i, idxRed)));
+                    g_val = mrpt::u8tof(static_cast<uint8_t>(data(i, idxGreen)));
+                    b_val = mrpt::u8tof(static_cast<uint8_t>(data(i, idxBlue)));
                 }
+
+#if MRPT_VERSION >= 0x20f00  // 2.15.0
+                pts->insertPointField_float("color_r", r_val);
+                pts->insertPointField_float("color_g", g_val);
+                pts->insertPointField_float("color_b", b_val);
+#else
+                pts->insertPointField_color_R(r_val);
+                pts->insertPointField_color_G(g_val);
+                pts->insertPointField_color_B(b_val);
+#endif
             }
 
             pc = pts;
@@ -229,15 +285,23 @@ int main(int argc, char** argv)
         mp2p_icp::metric_map_t mm;
         mm.layers["raw"] = std::move(pc);
 
-        if (cli.argID.isSet()) mm.id = cli.argID.getValue();
-        if (cli.argLabel.isSet()) mm.label = cli.argLabel.getValue();
+        if (cli.argID.isSet())
+        {
+            mm.id = cli.argID.getValue();
+        }
+        if (cli.argLabel.isSet())
+        {
+            mm.label = cli.argLabel.getValue();
+        }
 
         std::cout << "Map contents: " << mm.contents_summary() << std::endl;
         std::cout << "Saving map to: " << cli.argOutput.getValue() << std::endl;
 
         if (!mm.save_to_file(cli.argOutput.getValue()))
+        {
             THROW_EXCEPTION_FMT(
                 "Error writing to target file '%s'", cli.argOutput.getValue().c_str());
+        }
     }
     catch (const std::exception& e)
     {

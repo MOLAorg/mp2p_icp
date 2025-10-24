@@ -21,14 +21,50 @@
 
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/version.h>
+
+#if MRPT_VERSION >= 0x20f00  // 2.15.0
+#include <mrpt/maps/CPointsMap.h>
+#else
 #include <mrpt/maps/CPointsMapXYZI.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
+#endif
 
 bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool printWarnings)
 {
     bool         ok = true;
     const size_t n  = pc.size();
 
+#if MRPT_VERSION >= 0x20f00  // 2.15.0
+    for (const auto& field : pc.getPointFieldNames_float())
+    {
+        const auto& vec = pc.getPointsBufferRef_float_field(field);
+        if (vec && vec->size() != n)
+        {
+            ok = false;
+            if (printWarnings)
+            {
+                std::cerr << "[mp2p_icp] CPointsMap WARNING: Float field '" << field
+                          << "' has incorrect length=" << vec->size() << " expected=" << n
+                          << std::endl;
+            }
+        }
+    }
+    for (const auto& field : pc.getPointFieldNames_uint16())
+    {
+        const auto& vec = pc.getPointsBufferRef_uint_field(field);
+        if (vec && vec->size() != n)
+        {
+            ok = false;
+            if (printWarnings)
+            {
+                std::cerr << "[mp2p_icp] CPointsMap WARNING: uint16 field '" << field
+                          << "' has incorrect length=" << vec->size() << " expected=" << n
+                          << std::endl;
+            }
+        }
+    }
+#else
     if (auto* pcIRT = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(&pc); pcIRT)
     {
         if (pcIRT->hasIntensityField() && pcIRT->getPointsBufferRef_intensity()->size() != n)
@@ -71,5 +107,6 @@ bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool pr
                           << std::endl;
         }
     }
+#endif
     return ok;
 }

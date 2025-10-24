@@ -31,7 +31,7 @@ filters:
     params:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "deskewed"
-      method: MotionCompensationMethod::Linear
+      method: MotionCompensationMethod::IMU
       #silently_ignore_no_timestamps: true # To handle more dataset types
       output_layer_class: "mrpt::maps::CPointsMapXYZIRT" # Keep intensity & ring channels
 
@@ -49,7 +49,7 @@ filters:
     params:
       input_pointcloud_layer: "deskewed"
       output_pointcloud_layer: "decimated"
-      voxel_filter_resolution: 0.10 # [m]
+      voxel_filter_resolution: 0.02 # [m]
       decimate_method: DecimateMethod::FirstPoint
 
   - class_name: mp2p_icp_filters::FilterByRange

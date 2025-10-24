@@ -29,6 +29,7 @@
 #include <mrpt/obs/CObservationComment.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
+#include <mrpt/version.h>
 
 #include <random>
 
@@ -265,7 +266,12 @@ mrpt::maps::CPointsMapXYZIRT::Ptr simulate_skewed_points(
 
         // Add to map, with time offset
         pts->insertPointFast(pt_local.x, pt_local.y, pt_local.z);
+
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+        pts->insertPointField_float("t", static_cast<float>(rel_time));
+#else
         pts->insertPointField_Timestamp(static_cast<float>(rel_time));
+#endif
 
 #if 0
         std::cout << "PT[" << i << "] x: " << pt_local.x << ", y: " << pt_local.y
@@ -542,8 +548,9 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     }  // end for each timestep
 
     // Now, reconstruct the points within the SM:
-    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(mrpt::format(
-        R"yaml(
+    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(
+        mrpt::format(
+            R"yaml(
 # --------------------------------------------------------
 # 1) Generator (observation -> local frame metric maps)
 # --------------------------------------------------------
@@ -580,7 +587,7 @@ filters:
       # one or more layers to remove
       pointcloud_layer_to_remove: ["raw"]
     )yaml",
-        mrpt::typemeta::enum2str(p.deskew_method).c_str()));
+            mrpt::typemeta::enum2str(p.deskew_method).c_str()));
 
     mp2p_icp::metric_map_t            mm;
     mp2p_icp_filters::sm2mm_options_t sm2mm_opts;
@@ -638,7 +645,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         {
             std::cout
                 << (use_sm2mm != 0 ? "\n######### Using FilterDesk directly\n"
-                                   : "\n######### Using ms2mm() function\n");
+                                   : "\n######### Using sm2mm() function\n");
 
             for (const auto& [lin, ang] : test_velocities)
             {
