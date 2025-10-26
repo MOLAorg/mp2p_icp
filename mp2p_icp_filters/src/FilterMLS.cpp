@@ -453,6 +453,7 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
         return;
     }
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
     // Register the normal fields in the output map.
     outPc->registerField_float("normal_x");  //
     outPc->registerField_float("normal_y");  //
@@ -462,6 +463,7 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     outPc->registerPointFieldsFrom(input_pc);
 
     const auto ctx = outPc->prepareForInsertPointsFrom(input_pc);
+#endif
 
     const size_t firstIdx = outPc->size();
     outPc->reserve(firstIdx + nNewPoints);
@@ -473,17 +475,22 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     for (size_t i = 0; i < nNewPoints; ++i)
     {
         // add point: this copies all existing fields:
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
         outPc->insertPointFrom(input_pc, impl_->new_points_source_index[i], ctx);
-
+#else
+        outPc->insertPointFrom(input_pc, impl_->new_points_source_index[i]);
+#endif
         // Overwrite XYZ with new projected version:
         xs.back() = impl_->new_points[i].x;
         ys.back() = impl_->new_points[i].y;
         zs.back() = impl_->new_points[i].z;
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
         // Set normals
         outPc->insertPointField_float("normal_x", impl_->new_normals[i].x);
         outPc->insertPointField_float("normal_y", impl_->new_normals[i].y);
         outPc->insertPointField_float("normal_z", impl_->new_normals[i].z);
+#endif
     }
 
     outPc->mark_as_modified();  //
