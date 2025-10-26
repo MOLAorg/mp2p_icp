@@ -22,6 +22,7 @@
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/TPoint3D.h>
+#include <mrpt/version.h>
 
 #include <unordered_map>
 
@@ -83,7 +84,10 @@ struct index2d_hash
     bool operator()(
         const index2d_t<cell_coord_t>& k1, const index2d_t<cell_coord_t>& k2) const noexcept
     {
-        if (k1.cx != k2.cx) return k1.cx < k2.cx;
+        if (k1.cx != k2.cx)
+        {
+            return k1.cx < k2.cx;
+        }
         return k1.cy < k2.cy;
     }
 };
@@ -159,7 +163,10 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outPoles) outPoles->reserve(outPoles->size() + pc.size() / 10);
+    if (outPoles)
+    {
+        outPoles->reserve(outPoles->size() + pc.size() / 10);
+    }
 
     // Optional output layer:
     mrpt::maps::CPointsMap::Ptr outNoPoles = GetOrCreatePointLayer(
@@ -167,7 +174,23 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outNoPoles) outNoPoles->reserve(outNoPoles->size() + pc.size() / 10);
+    if (outNoPoles)
+    {
+        outNoPoles->reserve(outNoPoles->size() + pc.size() / 10);
+    }
+
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    mrpt::maps::CPointsMap::InsertCtx ctxPoles;
+    if (outPoles)
+    {
+        ctxPoles = outPoles->prepareForInsertPointsFrom(pc);
+    }
+    mrpt::maps::CPointsMap::InsertCtx ctxNoPoles;
+    if (outNoPoles)
+    {
+        ctxNoPoles = outNoPoles->prepareForInsertPointsFrom(pc);
+    }
+#endif
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
@@ -184,8 +207,14 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
         auto&      cell = grid[idxs];
         cell.sumZ += z;
         cell.point_indices.push_back(i);
-        if (!cell.maxZ || z > *cell.maxZ) cell.maxZ = z;
-        if (!cell.minZ || z < *cell.minZ) cell.minZ = z;
+        if (!cell.maxZ || z > *cell.maxZ)
+        {
+            cell.maxZ = z;
+        }
+        if (!cell.minZ || z < *cell.minZ)
+        {
+            cell.minZ = z;
+        }
     }
 
     // 2nd pass: classify pts
@@ -197,26 +226,44 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
             idxs + index2d_t<>(+1, 0),  idxs + index2d_t<>(+1, +1)};
 
         // Criteria: my mean must be > than most neighbor:
-        if (cell.point_indices.size() < params.minimum_pole_points) continue;
+        if (cell.point_indices.size() < params.minimum_pole_points)
+        {
+            continue;
+        }
         const float my_mean          = cell.mean();
         size_t      check_pass_count = 0;
         for (const auto& neig_idx : neighbors)
         {
             const auto it = grid.find(neig_idx);
-            if (it == grid.end()) continue;
+            if (it == grid.end())
+            {
+                continue;
+            }
             const auto& c        = it->second;
             const float its_mean = c.mean();
             if (my_mean > its_mean + params.minimum_relative_height &&
                 my_mean < its_mean + params.maximum_relative_height)
+            {
                 check_pass_count++;
+            }
         }
 
         const bool isPole = check_pass_count >= params.minimum_neighbors_checks_to_pass;
 
         auto* targetPc = isPole ? outPoles.get() : outNoPoles.get();
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+        auto* ctx = isPole ? &ctxPoles : &ctxNoPoles;
+#endif
         if (targetPc)
         {
-            for (const auto ptIdx : cell.point_indices) targetPc->insertPointFrom(pc, ptIdx);
+            for (const auto ptIdx : cell.point_indices)
+            {
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+                targetPc->insertPointFrom(pc, ptIdx, *ctx);
+#else
+                targetPc->insertPointFrom(pc, ptIdx);
+#endif
+            }
         }
     }
 

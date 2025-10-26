@@ -23,6 +23,7 @@
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CVoxelMap.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(FilterRemoveByVoxelOccupancy, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -101,7 +102,10 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         true,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-    if (outPcStatic) outPcStatic->reserve(outPcStatic->size() + pcPtr->size() / 2);
+    if (outPcStatic)
+    {
+        outPcStatic->reserve(outPcStatic->size() + pcPtr->size() / 2);
+    }
 
     mrpt::maps::CPointsMap::Ptr outPcDynamic = GetOrCreatePointLayer(
         inOut, params.output_layer_dynamic_objects,
@@ -109,12 +113,28 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         true,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-    if (outPcDynamic) outPcDynamic->reserve(outPcDynamic->size() + pcPtr->size() / 2);
+    if (outPcDynamic)
+    {
+        outPcDynamic->reserve(outPcDynamic->size() + pcPtr->size() / 2);
+    }
 
     ASSERTMSG_(
         outPcStatic || outPcDynamic,
         "At least one 'output_layer_static_objects' or "
         "'output_layer_dynamic_objects' output layers must be provided.");
+
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    mrpt::maps::CPointsMap::InsertCtx ctxStatic;
+    if (outPcStatic)
+    {
+        ctxStatic = outPcStatic->prepareForInsertPointsFrom(*pcPtr);
+    }
+    mrpt::maps::CPointsMap::InsertCtx ctxDynamic;
+    if (outPcDynamic)
+    {
+        ctxDynamic = outPcDynamic->prepareForInsertPointsFrom(*pcPtr);
+    }
+#endif
 
     // Process occupancy input value so it lies within [0,0.5]:
     const double occFree  = params.occupancy_threshold > 0.5 ? (1.0 - params.occupancy_threshold)
@@ -133,24 +153,42 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
     {
         double prob_occupancy = 0.5;
         bool   withinMap      = voxelPtr->getPointOccupancy(xs[i], ys[i], zs[i], prob_occupancy);
-        if (!withinMap) continue;  // undefined! pt out of voxelmap
+        if (!withinMap)
+        {
+            continue;  // undefined! pt out of voxelmap
+        }
 
         mrpt::maps::CPointsMap* trgMap = nullptr;
-
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+        mrpt::maps::CPointsMap::InsertCtx* ctx = nullptr;
+#endif
         if (prob_occupancy > occThres)
         {
             trgMap = outPcStatic.get();
-            nDynamic++;
+            nStatic++;
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+            ctx = &ctxStatic;
+#endif
         }
         else if (prob_occupancy < occFree)
         {
             trgMap = outPcDynamic.get();
-            nStatic++;
+            nDynamic++;
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+            ctx = &ctxDynamic;
+#endif
         }
 
-        if (!trgMap) continue;
+        if (!trgMap)
+        {
+            continue;
+        }
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+        trgMap->insertPointFrom(*pcPtr, i, *ctx);
+#else
         trgMap->insertPointFrom(*pcPtr, i);
+#endif
     }
 
     MRPT_LOG_DEBUG_STREAM(
