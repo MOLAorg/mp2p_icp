@@ -263,8 +263,8 @@ struct FilterMLS::Impl
     using TThreadSafeIndexVec  = tbb::concurrent_vector<std::size_t>;
 #else
     // Use standard vectors if TBB is not available
-    using TThreadSafePointVec  = std::vector<mrpt::math::TPoint3f>;
-    using TThreadSafeNormalVec = std::vector<mrpt::math::TPoint3f>;
+    using TThreadSafePointVec  = std::vector<mrpt::math::TPoint3Df>;
+    using TThreadSafeNormalVec = std::vector<mrpt::math::TPoint3Df>;
     using TThreadSafeIndexVec  = std::vector<std::size_t>;
 #endif
 
