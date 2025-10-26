@@ -22,6 +22,7 @@
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/math/TPoint3D.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(FilterByRange, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -111,6 +112,19 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     const float sqrMin = mrpt::square(params.range_min);
     const float sqrMax = mrpt::square(params.range_max);
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxBetween;
+    std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxOutside;
+    if (outBetween)
+    {
+        ctxBetween = outBetween->prepareForInsertPointsFrom(pc);
+    }
+    if (outOutside)
+    {
+        ctxOutside = outOutside->prepareForInsertPointsFrom(pc);
+    }
+#endif
+
     for (size_t i = 0; i < xs.size(); i++)
     {
         bool isInside;
@@ -135,7 +149,12 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
         if (targetPc)
         {
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+            const auto& ctx = isInside ? ctxBetween : ctxOutside;
+            targetPc->insertPointFrom(pc, i, ctx.value());
+#else
             targetPc->insertPointFrom(pc, i);
+#endif
         }
     }
 

@@ -447,18 +447,6 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     auto* out_Ts = outPc ? outPc->getPointsBufferRef_timestamp() : nullptr;
 #endif
 
-    // Helper lambda: copy all points (with optional attributes)
-    auto copyAllPoints = [&]()
-    {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
-        outPc->registerPointFieldsFrom(*inPc);
-#endif
-        for (size_t i = 0; i < n; i++)
-        {
-            outPc->insertPointFrom(*inPc, i);
-        }
-    };
-
     // No timestamps available or deskewing disabled:
     const bool noTimestamps   = !Ts || Ts->empty();
     const bool deskewDisabled = (method == MotionCompensationMethod::None);
@@ -469,7 +457,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         {
             if (!in_place)
             {
-                copyAllPoints();
+                outPc->insertAnotherMap(inPc, mrpt::poses::CPose3D::Identity());
             }
 
             if (!deskewDisabled)

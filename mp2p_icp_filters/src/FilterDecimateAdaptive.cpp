@@ -22,6 +22,7 @@
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/round.h>
+#include <mrpt/version.h>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/enumerable_thread_specific.h>
@@ -174,6 +175,10 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
 #endif
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    mrpt::maps::CPointsMap::InsertCtx ctx = outPc->prepareForInsertPointsFrom(pc);
+#endif
+
     // Perform resampling:
     // -------------------
     constexpr int FRACTIONARY_BIT_COUNT = 12;
@@ -216,7 +221,11 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         if (!ith.exhausted)
         {
             auto ptIdx = ith.voxel->indices[ith.nextIdx++];
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+            outPc->insertPointFrom(pc, ptIdx, ctx);
+#else
             outPc->insertPointFrom(pc, ptIdx);
+#endif
             anyInsertInTheRound = true;
 
             if (ith.nextIdx >= ith.voxel->indices.size())

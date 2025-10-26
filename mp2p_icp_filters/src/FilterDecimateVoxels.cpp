@@ -28,6 +28,7 @@
 //
 #include <mrpt/maps/CPointsMapXYZI.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(FilterDecimateVoxels, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -173,15 +174,24 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             const auto& xs = pcPtrs[mapIdx]->getPointsBufferRef_x();
             const auto& ys = pcPtrs[mapIdx]->getPointsBufferRef_y();
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+            mrpt::maps::CPointsMap::InsertCtx ctxOut =
+                outPc->prepareForInsertPointsFrom(*pcPtrs[mapIdx]);
+#endif
+
             for (size_t i = 0; i < xs.size(); i++)
             {
                 if (params.flatten_to.has_value())
                 {
-                    outPc->insertPointFast(xs[i], ys[i], *params.flatten_to);
+                    outPc->insertPointFast(xs[i], ys[i], static_cast<float>(*params.flatten_to));
                 }
                 else
                 {
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+                    outPc->insertPointFrom(*pcPtrs[mapIdx], i, ctxOut);
+#else
                     outPc->insertPointFrom(*pcPtrs[mapIdx], i);
+#endif
                 }
             }
         }
@@ -219,6 +229,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         std::set<PointCloudToVoxelGridSingle::indices_t, PointCloudToVoxelGridSingle::IndicesHash>
             flattenUsedBins;
 
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+        std::map<const mrpt::maps::CPointsMap*, mrpt::maps::CPointsMap::InsertCtx> ctxs;
+#endif
+
         grid.visit_voxels(
             [&](const PointCloudToVoxelGridSingle::indices_t& idx,
                 const PointCloudToVoxelGridSingle::voxel_t&   vxl)
@@ -243,11 +257,23 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     // First time we see this (x,y) cell:
                     flattenUsedBins.insert(flattenIdx);
 
-                    outPc->insertPointFast(vxl.point->x, vxl.point->y, *params.flatten_to);
+                    outPc->insertPointFast(
+                        vxl.point->x, vxl.point->y, static_cast<float>(*params.flatten_to));
                 }
                 else
                 {
-                    outPc->insertPointFrom(*vxl.source.value(), *vxl.pointIdx);
+                    const auto* pc = vxl.source.value();
+
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+                    auto& ctx = ctxs[pc];
+                    if (!ctx.xs_src)
+                    {
+                        ctx = outPc->prepareForInsertPointsFrom(*pc);
+                    }
+                    outPc->insertPointFrom(*pc, *vxl.pointIdx, ctx);
+#else
+                    outPc->insertPointFrom(*pc, *vxl.pointIdx);
+#endif
                 }
             });
     }
@@ -279,6 +305,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
         std::set<PointCloudToVoxelGrid::indices_t, PointCloudToVoxelGrid::IndicesHash>
             flattenUsedBins;
+
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+        auto ctx = outPc->prepareForInsertPointsFrom(pc);
+#endif
 
         grid.visit_voxels(
             [&](const PointCloudToVoxelGrid::indices_t& idx,
@@ -374,7 +404,11 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     }
                     else
                     {
+#if MRPT_VERSION >= 0x020f00  // 2.15.0
+                        outPc->insertPointFrom(pc, insertPtIdx, ctx);
+#else
                         outPc->insertPointFrom(pc, insertPtIdx);
+#endif
                     }
                 }
             });
