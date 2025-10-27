@@ -176,9 +176,10 @@ void updateMouseCoordinates()
 
 void updateCameraLookCoordinates()
 {
-    lbCameraPointing->setCaption(mrpt::format(
-        "Looking at: X=%6.03f Y=%6.03f Z=%6.03f", win->camera().getCameraPointingX(),
-        win->camera().getCameraPointingY(), win->camera().getCameraPointingZ()));
+    lbCameraPointing->setCaption(
+        mrpt::format(
+            "Looking at: X=%6.03f Y=%6.03f Z=%6.03f", win->camera().getCameraPointingX(),
+            win->camera().getCameraPointingY(), win->camera().getCameraPointingZ()));
 }
 
 void observeViewOptions()
@@ -233,9 +234,10 @@ void rebuildCamTravellingCombo()
         std::advance(it, i);
 
         lstShort.push_back(std::to_string(i));
-        lst.push_back(mrpt::format(
-            "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
-            mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
+        lst.push_back(
+            mrpt::format(
+                "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
+                mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
     }
     cbTravellingKeys->setItems(lst, lstShort);
 
@@ -1276,6 +1278,16 @@ int main(int argc, char** argv)
         }
 
         main_show_gui();
+
+        // Clean up OpenGL objects before closing the window:
+        glVizMap.reset();
+        glGrid.reset();
+        glENUCorner.reset();
+        glMapCorner.reset();
+        glTrajectory.reset();
+        // then, the window:
+        win.reset();
+
         return 0;
     }
     catch (std::exception& e)
