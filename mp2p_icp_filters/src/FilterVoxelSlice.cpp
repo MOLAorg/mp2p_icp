@@ -89,7 +89,8 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
     inOut.layers[params.output_layer] = occGrid;
 
     // Set the grid "height" (z):
-    occGrid->insertionOptions.mapAltitude = 0.5 * (params.slice_z_max + params.slice_z_min);
+    occGrid->insertionOptions.mapAltitude =
+        static_cast<float>(0.5 * (params.slice_z_max + params.slice_z_min));
 
     // make the conversion:
     if (inVoxelMap)
@@ -97,9 +98,19 @@ void FilterVoxelSlice::filter(mp2p_icp::metric_map_t& inOut) const
         auto& grid =
             const_cast<Bonxai::VoxelGrid<mrpt::maps::CVoxelMap::voxel_node_t>&>(inVoxelMap->grid());
 
-        const mrpt::math::TBoundingBoxf bbox = inVoxelMap->boundingBox();
+        mrpt::math::TBoundingBoxf bbox = inVoxelMap->boundingBox();
 
-        occGrid->setSize(bbox.min.x, bbox.max.x, bbox.min.y, bbox.max.y, grid.resolution);
+        // Avoid degenerated bbox corners:
+        {
+            const auto oneCell =
+                mrpt::math::TPoint3D(grid.resolution, grid.resolution, grid.resolution)
+                    .cast<float>();
+            bbox.min -= oneCell;
+            bbox.max += oneCell;
+        }
+
+        occGrid->setSize(
+            bbox.min.x, bbox.max.x, bbox.min.y, bbox.max.y, static_cast<float>(grid.resolution));
 
         const auto zCoordMin =
             Bonxai::PosToCoord({0., 0., params.slice_z_min}, grid.inv_resolution);
