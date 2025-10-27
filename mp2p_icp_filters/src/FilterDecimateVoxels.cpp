@@ -197,7 +197,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         }
         for (auto it = idxsToRemove.rbegin(); it != idxsToRemove.rend(); ++it)
         {
-            pcPtrs.erase(pcPtrs.begin() + *it);
+            pcPtrs.erase(
+                pcPtrs.begin() + static_cast<std::vector<std::size_t>::difference_type>(*it));
         }
 
     }  // end handle special case minimum_input_points_to_filter
@@ -277,12 +278,13 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 }
             });
     }
-    else
+    else if (!pcPtrs.empty())
     {
         ASSERTMSG_(
-            pcPtrs.size() == 1,
-            "Only one input layer allowed when requiring the non-single "
-            "decimating grid");
+            pcPtrs.size() == 1, mrpt::format(
+                                    "Only one input layer allowed when requiring the non-single "
+                                    "decimating grid, found %zu",
+                                    pcPtrs.size()));
 
         const auto& pc = *pcPtrs.at(0);
 
@@ -314,12 +316,13 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             [&](const PointCloudToVoxelGrid::indices_t& idx,
                 const PointCloudToVoxelGrid::voxel_t&   vxl)
             {
-                if (vxl.indices.size() > params.minimum_points_per_voxel)
+                if (vxl.indices.size() < params.minimum_points_per_voxel)
                 {
                     return;
                 }
 
                 nonEmptyVoxels++;
+
                 std::optional<mrpt::math::TPoint3Df> insertPt;
                 size_t insertPtIdx;  // valid only if insertPt is empty
 
@@ -394,7 +397,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     {
                         insertPt.emplace(xs[insertPtIdx], ys[insertPtIdx], zs[insertPtIdx]);
                     }
-                    outPc->insertPointFast(insertPt->x, insertPt->y, *params.flatten_to);
+                    outPc->insertPointFast(
+                        insertPt->x, insertPt->y, static_cast<float>(*params.flatten_to));
                 }
                 else
                 {
