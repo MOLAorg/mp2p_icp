@@ -420,6 +420,8 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         return;
     }
 
+    MRPT_LOG_DEBUG_STREAM("Running on input layer: " << inPc->asString());
+
     // mandatory fields:
     auto&        xs = const_cast<mrpt::aligned_std_vector<float>&>(inPc->getPointsBufferRef_x());
     auto&        ys = const_cast<mrpt::aligned_std_vector<float>&>(inPc->getPointsBufferRef_y());

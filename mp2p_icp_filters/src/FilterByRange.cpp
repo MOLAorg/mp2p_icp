@@ -158,5 +158,11 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
         }
     }
 
+    MRPT_LOG_DEBUG_STREAM(
+        "Have run on input layer: "
+        << pc.asString()
+        << " outputBetween: " << (outBetween ? outBetween->asString().c_str() : "(none)")
+        << " outputOutside: " << (outOutside ? outOutside->asString().c_str() : "(none)"));
+
     MRPT_END
 }
