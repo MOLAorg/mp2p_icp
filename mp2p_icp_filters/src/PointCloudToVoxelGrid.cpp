@@ -60,16 +60,32 @@ void PointCloudToVoxelGrid::processPointCloud(
 
     const auto last_pt_idx = points_to_process ? (first_pt_idx + points_to_process) : xs.size();
 
-    // Previous point:
-    auto& pts_voxels = impl_->pts_voxels;
-    pts_voxels.reserve(pts_voxels.size() + last_pt_idx - first_pt_idx);
-
-    for (std::size_t i = first_pt_idx; i < last_pt_idx; i++)
+    // Duplicated code in the two if() branches for low-level efficiency.
+    if (use_tsl_robin_map_)
     {
-        const indices_t vxl_idx = {coord2idx(xs[i]), coord2idx(ys[i]), coord2idx(zs[i])};
+        auto& pts_voxels = impl_->pts_voxels;
+        // Previous point:
+        pts_voxels.reserve(pts_voxels.size() + last_pt_idx - first_pt_idx);
 
-        auto& cell = pts_voxels[vxl_idx];
-        cell.indices.push_back(i);
+        for (std::size_t i = first_pt_idx; i < last_pt_idx; i++)
+        {
+            const indices_t vxl_idx = {coord2idx(xs[i]), coord2idx(ys[i]), coord2idx(zs[i])};
+
+            auto& cell = pts_voxels[vxl_idx];
+            cell.indices.push_back(i);
+        }
+    }
+    else
+    {
+        auto& pts_voxels = impl_->pts_voxels_std_map;
+
+        for (std::size_t i = first_pt_idx; i < last_pt_idx; i++)
+        {
+            const indices_t vxl_idx = {coord2idx(xs[i]), coord2idx(ys[i]), coord2idx(zs[i])};
+
+            auto& cell = pts_voxels[vxl_idx];
+            cell.indices.push_back(i);
+        }
     }
 }
 
