@@ -310,6 +310,10 @@ bool Generator::filterPointCloud(  //
     const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*outPc);
     ASSERT_(sanityPassed);
 
+    MRPT_LOG_DEBUG_FMT(
+        "[filterPointCloud] Ended with layer '%s' having: %s", params.target_layer.c_str(),
+        outPc->asString().c_str());
+
     return true;
 }
 
