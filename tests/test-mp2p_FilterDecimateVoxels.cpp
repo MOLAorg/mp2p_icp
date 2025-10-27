@@ -23,6 +23,7 @@
 #include <mrpt/maps/CPointsMapXYZI.h>
 #include <mrpt/math/ops_containers.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/version.h>
 
 using namespace mp2p_icp_filters;
 using namespace mp2p_icp;
@@ -42,8 +43,12 @@ mrpt::maps::CPointsMap::Ptr createTestPoints(size_t n_x, size_t n_y)
             float intensity = static_cast<float>(i * n_y + j);
 
             pc->insertPointFast(x, y, z);
+#if MRPT_VERSION >= 0x020f00
             pc->insertPointField_float(
                 mrpt::maps::CPointsMapXYZI::POINT_FIELD_INTENSITY, intensity);
+#else
+            pc->insertPointField_Intensity(intensity);
+#endif
         }
     }
     return pc;
@@ -192,8 +197,9 @@ void test_decimate_method(
     }
 
     // Since we created CPointsMapXYZI, the output should also have intensity.
+#if MRPT_VERSION >= 0x020f00
     ASSERT_(output_pc->hasPointField(mrpt::maps::CPointsMapXYZI::POINT_FIELD_INTENSITY));
-
+#endif
     std::cout << " Success ✅." << std::endl;
 }
 
