@@ -2,6 +2,30 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#13 <https://github.com/MOLAorg/mp2p_icp/issues/13>`_ from MOLAorg/fix/filterdecimate-bug
+* Add unit test for FilterDecimateVoxel
+* mm-viewer: ensure proper order of opengl object destruction
+* Add more debug traces for Filters
+* Generator: Add more info on layer contents in debug traces
+* FIX: Avoid crash in FilterVoxelSlice if there are no points in the ROI
+* Merge pull request `#12 <https://github.com/MOLAorg/mp2p_icp/issues/12>`_ from MOLAorg/feat/mls
+  Implemented MLS filter
+* Merge pull request `#11 <https://github.com/MOLAorg/mp2p_icp/issues/11>`_ from MOLAorg/feat/use-faster-insertion
+  Use the faster insertion-with-context in MRPT 2.15.0
+* Update to build using CGenericPointsMap in upcoming MRPT >=2.15
+* Merge pull request `#10 <https://github.com/MOLAorg/mp2p_icp/issues/10>`_ from MOLAorg/fix/ci
+* Upgrade CircleCI images to u24.04
+* Fix build out of ROS and w/o IMU preintegration
+* Update mola_common version
+* Fix: Warning message missing new line
+* FilterDecimateVoxels: add new parameter 'minimum_points_per_voxel'
+* Fix docs typo
+* Update docs for Deskew filter
+* Update README.md badges
+* Contributors: Jose Luis Blanco-Claraco
+
 2.0.0 (2025-10-13)
 ------------------
 * Merge pull request `#9 <https://github.com/MOLAorg/mp2p_icp/issues/9>`_ from MOLAorg/feature/better-lio
