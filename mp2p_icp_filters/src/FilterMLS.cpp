@@ -423,7 +423,7 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     // 4. Build KD-Tree for the *input* cloud for fast neighbor search
     MRPT_LOG_INFO_STREAM("Building KD-Tree for " << input_pc.size() << " points...");
     input_pc.nn_prepare_for_3d_queries();  //
-    MRPT_LOG_DEBUG("KD-Tree built.");
+    MRPT_LOG_INFO("KD-Tree built.");
 
     // 5. Run parallel processing
 #if defined(MP2P_HAS_TBB)

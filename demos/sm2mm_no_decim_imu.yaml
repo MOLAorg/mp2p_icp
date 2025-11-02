@@ -1,0 +1,72 @@
+# -----------------------------------------------------------------------------
+# Pipeline definition file for sm2mm (simplemap-to-metricmap)
+#
+# See: https://github.com/MOLAorg/mp2p_icp/tree/master/apps/sm2mm
+#
+# Explanation of this particular pipeline:
+#  - Generators: empty, so the default generator is used (everything in one
+#                layer named 'raw' with all points).
+#  - Filters: Deskew using IMU, remove close points.
+#  - Final filters: intensity normalization.
+# -----------------------------------------------------------------------------
+
+# --------------------------------------------------------
+# 1) Generator (observation -> local frame metric maps)
+# --------------------------------------------------------
+#generators:
+#  - class_name: mp2p_icp_filters::Generator
+#    params: ~
+
+# --------------------------------------------------------
+# 2) Per local frame filtering
+# --------------------------------------------------------
+filters:
+  - class_name: mp2p_icp_filters::FilterAdjustTimestamps
+    params:
+      pointcloud_layer: "raw"
+      silently_ignore_no_timestamps: false
+      method: "TimestampAdjustMethod::MiddleIsZero"
+
+  - class_name: mp2p_icp_filters::FilterDeskew
+    params:
+      input_pointcloud_layer: "raw"
+      output_pointcloud_layer: "deskewed"
+      method: MotionCompensationMethod::IMU
+      silently_ignore_no_timestamps: false
+
+      output_layer_class: "mrpt::maps::CPointsMapXYZIRT" # Keep intensity & ring channels
+
+      # These (vx,...,wz) are variable names that must be defined via the
+      # mp2p_icp::Parameterizable API to update them dynamically.
+      twist: [vx, vy, vz, wx, wy, wz]
+
+      # IMPORTANT: In the context of sm2mm, de-skew happens with points already in global coordinates
+      # so we need the robot pose to correct points:
+      points_already_global: true
+      robot_pose:
+        [robot_x, robot_y, robot_z, robot_yaw, robot_pitch, robot_roll]
+
+  - class_name: mp2p_icp_filters::FilterByRange
+    params:
+      input_pointcloud_layer: "deskewed"
+      output_layer_outside: "filtered"
+      range_min: 0.0
+      range_max: 3.0
+      metric_l_infinity: true # Faster
+      # Measure distances from the moving robot pose:
+      center: [robot_x, robot_y, robot_z]
+
+  - class_name: mp2p_icp_filters::FilterDeleteLayer
+    params:
+      # one or more layers to remove
+      pointcloud_layer_to_remove: ["raw", "deskewed"]
+
+# -------------------------------------------------------------------
+# 3) Final, overall filter pipeline to apply to the whole metric map
+# -------------------------------------------------------------------
+final_filters:
+  - class_name: mp2p_icp_filters::FilterNormalizeIntensity
+    params:
+      pointcloud_layer: "filtered"
+      #remember_intensity_range: true
+      #fixed_maximum_intensity: 2000.0
