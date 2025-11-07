@@ -27,6 +27,7 @@
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/Lie/SO.h>
@@ -189,6 +190,13 @@ void correctPointsLoop(const CorrectPointsArguments& args)
 
     ASSERT_(Ts != nullptr);
     ASSERT_EQUAL_(Ts->size(), xs.size());
+
+    if constexpr (method != MotionCompensationMethod::Linear)
+    {
+        ASSERTMSG_(
+            !reconstructed_trajectory.empty(),
+            "FilterDeskew: It seems the local velocity buffer is empty, cannot do deskew!");
+    }
 
     // Is it worth to first build a cache with unique point stamps to pose corrections?
     // From initial benchmarking, it seems it doesn't...
@@ -522,8 +530,11 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             const bool use_higher_order = (method == MotionCompensationMethod::IMUh);
 
-            reconstructed_trajectory =
-                mola::imu::trajectory_from_buffer(sample_history, imu_params, use_higher_order);
+            if (!sample_history.by_time.empty())
+            {
+                reconstructed_trajectory =
+                    mola::imu::trajectory_from_buffer(sample_history, imu_params, use_higher_order);
+            }
 
 #if 0  // For *really* in-depth debugging
             std::cout << "\n\n ==== INPUT BUFFER:\n" << ps->localVelocityBuffer.toYAML();
