@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.1 (2025-11-08)
+------------------
 * FIX: SanityCheck was triggering as errors optional pointcloud fields in XYZIRT clouds
 * FIX: Throw exception instead of crashing if FilterDeskew is invoked with an empty local velocity buffer
 * Fix yaml file for not using mola_yaml extensions
