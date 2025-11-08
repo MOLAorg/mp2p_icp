@@ -39,7 +39,7 @@ bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool pr
     for (const auto& field : pc.getPointFieldNames_float())
     {
         const auto& vec = pc.getPointsBufferRef_float_field(field);
-        if (vec && vec->size() != n)
+        if (vec && !vec->empty() && vec->size() != n)
         {
             ok = false;
             if (printWarnings)
@@ -53,7 +53,7 @@ bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool pr
     for (const auto& field : pc.getPointFieldNames_uint16())
     {
         const auto& vec = pc.getPointsBufferRef_uint_field(field);
-        if (vec && vec->size() != n)
+        if (vec && !vec->empty() && vec->size() != n)
         {
             ok = false;
             if (printWarnings)

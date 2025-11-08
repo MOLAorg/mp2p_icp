@@ -548,8 +548,9 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     }  // end for each timestep
 
     // Now, reconstruct the points within the SM:
-    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(mrpt::format(
-        R"yaml(
+    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(
+        mrpt::format(
+            R"yaml(
 # --------------------------------------------------------
 # 1) Generator (observation -> local frame metric maps)
 # --------------------------------------------------------
@@ -586,7 +587,7 @@ filters:
       # one or more layers to remove
       pointcloud_layer_to_remove: ["raw"]
     )yaml",
-        mrpt::typemeta::enum2str(p.deskew_method).c_str()));
+            mrpt::typemeta::enum2str(p.deskew_method).c_str()));
 
     mp2p_icp::metric_map_t            mm;
     mp2p_icp_filters::sm2mm_options_t sm2mm_opts;
@@ -643,7 +644,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         for (int use_sm2mm = 0; use_sm2mm <= 1; use_sm2mm++)
         {
             std::cout
-                << (use_sm2mm != 0 ? "\n######### Using FilterDesk directly\n"
+                << (use_sm2mm != 0 ? "\n######### Using FilterDeskew directly\n"
                                    : "\n######### Using sm2mm() function\n");
 
             for (const auto& [lin, ang] : test_velocities)
