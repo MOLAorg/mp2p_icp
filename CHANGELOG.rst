@@ -2,6 +2,14 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* FIX: SanityCheck was triggering as errors optional pointcloud fields in XYZIRT clouds
+* FIX: Throw exception instead of crashing if FilterDeskew is invoked with an empty local velocity buffer
+* Fix yaml file for not using mola_yaml extensions
+* Add more sm2mm demo pipelines
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.0 (2025-10-28)
 ------------------
 * Merge pull request `#13 <https://github.com/MOLAorg/mp2p_icp/issues/13>`_ from MOLAorg/fix/filterdecimate-bug
