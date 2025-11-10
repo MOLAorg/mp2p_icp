@@ -21,6 +21,7 @@
 
 #include <mp2p_icp_filters/FilterMLS.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
+#include <mrpt/containers/NonCopiableData.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CPointsMap.h>
@@ -55,6 +56,8 @@ void FilterMLS::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
     MCP_LOAD_OPT(c, upsampling_method);
 
     MCP_LOAD_OPT(c, parallelization_grain_size);
+
+    MCP_LOAD_OPT(c, percent_print_progress);
 }
 
 /**
@@ -256,6 +259,8 @@ struct MLSResult
 // --- Main PIMPL struct ---
 struct FilterMLS::Impl
 {
+    Impl() = default;
+
 #if defined(MP2P_HAS_TBB)
     // Thread-safe vectors for collecting results
     using TThreadSafePointVec  = tbb::concurrent_vector<mrpt::math::TPoint3Df>;
@@ -271,6 +276,14 @@ struct FilterMLS::Impl
     TThreadSafePointVec  new_points;
     TThreadSafeIndexVec  new_points_source_index;
     TThreadSafeNormalVec new_normals;
+
+    mrpt::containers::NonCopiableData<std::mutex> progress_mutex;
+
+    size_t processed_points       = 0;
+    size_t next_log_count         = 0;
+    size_t total_points           = 0;
+    size_t progress_step_count    = 0;
+    double percent_print_progress = 0;  // Copy from params
 
     // Main processing function, to be called in parallel
     void process_point(
@@ -420,6 +433,17 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     impl_->new_normals.reserve(nQueryPoints);
 #endif
 
+    // Prepare stats for printing progress:
+    impl_->processed_points = 0;
+    impl_->next_log_count   = 0;
+    impl_->total_points     = nQueryPoints;
+
+    // Compute how many points correspond to one progress step
+    impl_->progress_step_count    = static_cast<size_t>(std::max<size_t>(
+        1, static_cast<std::size_t>(
+               std::round(params.percent_print_progress * static_cast<double>(nQueryPoints)))));
+    impl_->percent_print_progress = params.percent_print_progress;
+
     // 4. Build KD-Tree for the *input* cloud for fast neighbor search
     MRPT_LOG_INFO_STREAM("Building KD-Tree for " << input_pc.size() << " points...");
     input_pc.nn_prepare_for_3d_queries();  //
@@ -432,9 +456,32 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
         tbb::blocked_range<size_t>(0, nQueryPoints, grainsize),
         [&](const tbb::blocked_range<size_t>& r)
         {
+            size_t local_processed = 0;
+
             for (size_t i = r.begin(); i < r.end(); ++i)
             {
                 impl_->process_point(i, input_pc, *query_pc, params);
+                local_processed++;
+            }
+
+            // Update global progress once per grain
+            {
+                std::lock_guard<std::mutex> lock(impl_->progress_mutex.data);
+                impl_->processed_points += local_processed;
+
+                size_t step = impl_->processed_points / impl_->progress_step_count;
+                if (step > impl_->next_log_count)
+                {
+                    impl_->next_log_count = step;
+
+                    const double pct = std::clamp(
+                        100.0 * static_cast<double>(step) * params.percent_print_progress, .0,
+                        100.0);
+
+                    MRPT_LOG_INFO_FMT(
+                        "Progress: %.01f%% (%zu/%zu)", pct, impl_->processed_points,
+                        impl_->total_points);
+                }
             }
         });
 #else
@@ -442,6 +489,18 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     for (size_t i = 0; i < nQueryPoints; ++i)
     {
         impl_->process_point(i, input_pc, *query_pc, params);
+
+        impl_->processed_points++;
+        size_t step = impl_->processed_points / impl_->progress_step_count;
+        if (step > impl_->next_log_count)
+        {
+            impl_->next_log_count = step;
+            const double pct      = std::clamp(
+                     100.0 * static_cast<double>(step) * params.percent_print_progress, .0, 100.0);
+
+            MRPT_LOG_INFO_FMT(
+                "Progress: %.01f%% (%zu/%zu)", pct, impl_->processed_points, impl_->total_points);
+        }
     }
 #endif
 

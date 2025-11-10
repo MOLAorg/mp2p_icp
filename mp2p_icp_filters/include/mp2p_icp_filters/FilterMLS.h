@@ -106,6 +106,9 @@ class FilterMLS : public mp2p_icp_filters::FilterBase
 
         /// When TBB is enabled, the grainsize for splitting the input clouds
         size_t parallelization_grain_size = 1024UL;
+
+        /// Print progress (INFO verbosity level) every this percent. Set to >1 to disable.
+        double percent_print_progress = 0.01;
     };
 
     /** Algorithm parameters */
