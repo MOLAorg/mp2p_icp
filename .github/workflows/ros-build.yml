@@ -145,7 +145,7 @@ jobs:
         if: matrix.coverage_run == true
         uses: codecov/codecov-action@v4
         with:
-          #token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage_filtered.info
           name: codecov-mp2p-icp-colcon
           flags: colcon,rolling,gcc
