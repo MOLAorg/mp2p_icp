@@ -129,12 +129,12 @@ jobs:
             --ignore-errors mismatch --rc geninfo_unexecuted_blocks=1
 
           # 2. Filter the report: Remove all files outside of your source code
-          lcov --remove coverage.info '*/3rdparty/*' --output-file coverage_filtered.info
-          lcov --remove coverage_filtered.info '*/tests/*' --output-file coverage_filtered.info
-          lcov --remove coverage_filtered.info '*/apps/*' --output-file coverage_filtered.info
-          lcov --remove coverage_filtered.info '*/mola_common/*' --output-file coverage_filtered.info
-          lcov --remove coverage_filtered.info '/opt/ros/*' --output-file coverage_filtered.info
-          lcov --remove coverage_filtered.info '/usr/*' --output-file coverage_filtered.info
+          lcov --remove coverage.info '*/3rdparty/*' --ignore-errors unused --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '*/tests/*' --ignore-errors unused --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '*/apps/*' --ignore-errors unused --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '*/mola_common/*' --ignore-errors unused --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '/opt/ros/*' --ignore-errors unused --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '/usr/*' --ignore-errors unused --output-file coverage_filtered.info
 
           # 3. Print a summary to the log
           echo "--- Coverage Summary for MP2P-ICP Core ---"
