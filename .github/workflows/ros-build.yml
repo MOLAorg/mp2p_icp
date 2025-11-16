@@ -22,39 +22,39 @@ jobs:
           # Humble Hawksbill (May 2022 - May 2027)
           - docker_image: ubuntu:jammy
             ros_distribution: humble
-            use_ros_testing: false
+            use_ros2-testing: false
 
           - docker_image: ubuntu:jammy
             ros_distribution: humble
-            use_ros_testing: true
+            use_ros2-testing: true
 
           # Jazzy (2024 - ??)
           - docker_image: ubuntu:noble
             ros_distribution: jazzy
-            use_ros_testing: false
+            use_ros2-testing: false
 
           - docker_image: ubuntu:noble
             ros_distribution: jazzy
-            use_ros_testing: true
+            use_ros2-testing: true
 
           # Rolling Ridley (No End-Of-Life)
           - docker_image: ubuntu:noble
             ros_distribution: rolling
-            use_ros_testing: false
+            use_ros2-testing: false
 
           - docker_image: ubuntu:noble
             ros_distribution: rolling
-            use_ros_testing: true
+            use_ros2-testing: true
 
           # Same as above, but disable TBB
           - docker_image: ubuntu:noble
             ros_distribution: rolling
-            use_ros_testing: true
+            use_ros2-testing: true
             disable_tbb: true
 
           - docker_image: ubuntu:noble
             ros_distribution: rolling
-            use_ros_testing: true
+            use_ros2-testing: true
             coverage_run: true
 
     container:
@@ -74,7 +74,7 @@ jobs:
         uses: ros-tooling/setup-ros@v0.7
         with:
           required-ros-distributions: ${{ matrix.ros_distribution }}
-          use-ros2-testing: ${{ matrix.use_ros_testing }}
+          use-ros2-testing: ${{ matrix.use_ros2-testing }}
 
       - name: Install rosdep dependencies
         run: |
@@ -86,23 +86,22 @@ jobs:
         if: matrix.coverage_run == true
         run: |
           apt-get update
-          # gcov is already installed with build-essential, but we need lcov
           apt-get install -y lcov
 
       - name: Build with colcon
         run: |
           . /opt/ros/*/setup.sh
-          # If disable_tbb is true, add the CMake flag to disable TBB
+          EXTRA_CMAKE_ARGS=""
+          # 1. Check for TBB flag
           if [ "${{ matrix.disable_tbb }}" = "true" ]; then
             echo "Disabling TBB..."
-            EXTRA_CMAKE_ARGS="-DMP2PICP_USE_TBB=OFF"
-          else
-            EXTRA_CMAKE_ARGS=""
+            EXTRA_CMAKE_ARGS="$EXTRA_CMAKE_ARGS -DMP2PICP_USE_TBB=OFF"
           fi
 
-
+          # 2. Inject Coverage Build Type
           if [ "${{ matrix.coverage_run }}" = "true" ]; then
             echo "Enabling Coverage build type..."
+            # This flag forces the use of the gcov flags defined in CMakeLists.txt
             EXTRA_CMAKE_ARGS="$EXTRA_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Coverage"
           fi
 
@@ -116,6 +115,7 @@ jobs:
       - name: Run unit tests
         run: |
           . /opt/ros/*/setup.sh
+          # Run tests regardless of coverage setting, as they are required to generate the .gcda files
           colcon test --event-handlers console_direct+
           colcon test-result --verbose
 
@@ -123,11 +123,12 @@ jobs:
         if: matrix.coverage_run == true
         run: |
           # 1. Capture coverage data across the entire workspace.
-          #    --ignore-errors mismatch fixes common gcov/geninfo parsing errors
-          lcov --capture --directory . --output-file coverage.info --ignore-errors mismatch
+          #    --ignore-errors mismatch fixes geninfo parsing errors
+          #    --rc geninfo_unexecuted_blocks=1 fixes warnings about unexecuted blocks
+          lcov --capture --directory . --output-file coverage.info \
+            --ignore-errors mismatch --rc geninfo_unexecuted_blocks=1
 
-          # 2. Filter the report to only include your source files.
-          #    We assume the core library files are NOT in 3rdparty, tests, apps, or external folders.
+          # 2. Filter the report: Remove all files outside of your source code
           lcov --remove coverage.info '*/3rdparty/*' --output-file coverage_filtered.info
           lcov --remove coverage_filtered.info '*/tests/*' --output-file coverage_filtered.info
           lcov --remove coverage_filtered.info '*/apps/*' --output-file coverage_filtered.info
@@ -147,4 +148,4 @@ jobs:
           #token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage_filtered.info
           name: codecov-mp2p-icp-colcon
-          fail_ci_if_error: true
+          flags: colcon,rolling,gcc
