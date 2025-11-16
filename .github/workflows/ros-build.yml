@@ -20,27 +20,27 @@ jobs:
         # https://ros.org/reps/rep-2000.html
         include:
           # Humble Hawksbill (May 2022 - May 2027)
-          #- docker_image: ubuntu:jammy
-          #  ros_distribution: humble
-          #  use_ros_testing: false
+          - docker_image: ubuntu:jammy
+            ros_distribution: humble
+            use_ros_testing: false
 
           - docker_image: ubuntu:jammy
             ros_distribution: humble
             use_ros_testing: true
 
           # Jazzy (2024 - ??)
-          #- docker_image: ubuntu:noble
-          #  ros_distribution: jazzy
-          #  use_ros_testing: false
+          - docker_image: ubuntu:noble
+            ros_distribution: jazzy
+            use_ros_testing: false
 
           - docker_image: ubuntu:noble
             ros_distribution: jazzy
             use_ros_testing: true
 
           # Rolling Ridley (No End-Of-Life)
-          #- docker_image: ubuntu:noble
-          #  ros_distribution: rolling
-          #  use_ros_testing: false
+          - docker_image: ubuntu:noble
+            ros_distribution: rolling
+            use_ros_testing: false
 
           - docker_image: ubuntu:noble
             ros_distribution: rolling
@@ -51,6 +51,11 @@ jobs:
             ros_distribution: rolling
             use_ros_testing: true
             disable_tbb: true
+
+          - docker_image: ubuntu:noble
+            ros_distribution: rolling
+            use_ros_testing: true
+            coverage_run: true
 
     container:
       image: ${{ matrix.docker_image }}
@@ -77,6 +82,13 @@ jobs:
           rosdep update
           rosdep install --from-paths . --ignore-src -r -y
 
+      - name: Install lcov for coverage analysis
+        if: matrix.coverage_run == true
+        run: |
+          apt-get update
+          # gcov is already installed with build-essential, but we need lcov
+          apt-get install -y lcov
+
       - name: Build with colcon
         run: |
           . /opt/ros/*/setup.sh
@@ -87,6 +99,13 @@ jobs:
           else
             EXTRA_CMAKE_ARGS=""
           fi
+
+
+          if [ "${{ matrix.coverage_run }}" = "true" ]; then
+            echo "Enabling Coverage build type..."
+            EXTRA_CMAKE_ARGS="$EXTRA_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Coverage"
+          fi
+
           env
           MAKEFLAGS="-j2" colcon build \
             --symlink-install \
@@ -99,3 +118,33 @@ jobs:
           . /opt/ros/*/setup.sh
           colcon test --event-handlers console_direct+
           colcon test-result --verbose
+
+      - name: Generate coverage report
+        if: matrix.coverage_run == true
+        run: |
+          # 1. Capture coverage data across the entire workspace.
+          #    --ignore-errors mismatch fixes common gcov/geninfo parsing errors
+          lcov --capture --directory . --output-file coverage.info --ignore-errors mismatch
+
+          # 2. Filter the report to only include your source files.
+          #    We assume the core library files are NOT in 3rdparty, tests, apps, or external folders.
+          lcov --remove coverage.info '*/3rdparty/*' --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '*/tests/*' --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '*/apps/*' --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '*/mola_common/*' --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '/opt/ros/*' --output-file coverage_filtered.info
+          lcov --remove coverage_filtered.info '/usr/*' --output-file coverage_filtered.info
+
+          # 3. Print a summary to the log
+          echo "--- Coverage Summary for MP2P-ICP Core ---"
+          lcov --list coverage_filtered.info
+          echo "------------------------------------------"
+
+      - name: Upload coverage to Codecov
+        if: matrix.coverage_run == true
+        uses: codecov/codecov-action@v4
+        with:
+          #token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage_filtered.info
+          name: codecov-mp2p-icp-colcon
+          fail_ci_if_error: true

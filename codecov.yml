@@ -1,0 +1,11 @@
+ignore:
+  - "3rdparty/"
+  - "apps/"
+  - "demos/"
+
+# Pull Request Comment Configuration (Optional)
+# This controls the comment that Codecov posts on your pull requests.
+comment:
+  layout: "reach, diff, files"
+  behavior: default # "default" will update an existing comment or post a new one.
+  require_changes: false # Post a comment even if coverage did not change.
