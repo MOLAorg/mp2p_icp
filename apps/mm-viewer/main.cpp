@@ -246,7 +246,7 @@ void rebuildCamTravellingCombo()
     win->performLayout();
 }
 
-void onKeyboardAction(int key)
+void onKeyboardAction(int key, int modifiers)
 {
     using mrpt::DEG2RAD;
 
@@ -255,6 +255,62 @@ void onKeyboardAction(int key)
 
     auto cam = win->camera().cameraParams();
 
+    auto doStrideSides = [&](bool toTheRight)
+    {
+        const float dx = std::cos(DEG2RAD(cam.cameraAzimuthDeg + 90.f));
+        const float dy = std::sin(DEG2RAD(cam.cameraAzimuthDeg + 90.f));
+        const float d  = toTheRight ? 1.0f : -1.0f;
+        cam.cameraPointingX += d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
+        cam.cameraPointingY += d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
+        win->camera().setCameraParams(cam);
+    };
+
+    auto doRotateEyeYaw = [&](bool toTheRight)
+    {
+        int cmd_rot  = toTheRight ? 1 : -1;
+        int cmd_elev = 0;
+
+        const float dis   = std::max(0.01f, (cam.cameraZoomDistance));
+        float       eye_x = cam.cameraPointingX + dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) *
+                                                cos(DEG2RAD(cam.cameraElevationDeg));
+        float eye_y = cam.cameraPointingY + dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) *
+                                                cos(DEG2RAD(cam.cameraElevationDeg));
+        float eye_z = cam.cameraPointingZ + dis * sin(DEG2RAD(cam.cameraElevationDeg));
+
+        // Orbit camera:
+        float A_AzimuthDeg = -SENSIBILITY_ROTATE * cmd_rot;
+        cam.cameraAzimuthDeg += A_AzimuthDeg;
+
+        float A_ElevationDeg = SENSIBILITY_ROTATE * cmd_elev;
+        cam.setElevationDeg(cam.cameraElevationDeg + A_ElevationDeg);
+
+        // Move cameraPointing pos:
+        cam.cameraPointingX =
+            eye_x - dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) * cos(DEG2RAD(cam.cameraElevationDeg));
+        cam.cameraPointingY =
+            eye_y - dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) * cos(DEG2RAD(cam.cameraElevationDeg));
+        cam.cameraPointingZ = eye_z - dis * sin(DEG2RAD(cam.cameraElevationDeg));
+
+        win->camera().setCameraParams(cam);
+    };
+
+    auto doRotateEyeUpDown = [&](bool toUp)
+    {
+        const float dx = std::cos(DEG2RAD(cam.cameraAzimuthDeg));
+        const float dy = std::sin(DEG2RAD(cam.cameraAzimuthDeg));
+        const float d  = toUp ? -1.0f : 1.0f;
+        cam.cameraPointingX += d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
+        cam.cameraPointingY += d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
+        win->camera().setCameraParams(cam);
+    };
+
+    auto doMoveVertically = [&](bool toUp)
+    {
+        const float d = toUp ? 1.0f : -1.0f;
+        cam.cameraPointingZ += d * cam.cameraZoomDistance * SLIDE_VELOCITY;
+        win->camera().setCameraParams(cam);
+    };
+
     switch (key)
     {
         case GLFW_KEY_UP:
@@ -262,55 +318,39 @@ void onKeyboardAction(int key)
         case GLFW_KEY_S:
         case GLFW_KEY_W:
         {
-            const float dx = std::cos(DEG2RAD(cam.cameraAzimuthDeg));
-            const float dy = std::sin(DEG2RAD(cam.cameraAzimuthDeg));
-            const float d  = (key == GLFW_KEY_UP || key == GLFW_KEY_W) ? -1.0f : 1.0f;
-            cam.cameraPointingX += d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
-            cam.cameraPointingY += d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
-            win->camera().setCameraParams(cam);
+            if (modifiers & GLFW_MOD_SHIFT)
+            {
+                // Move vertically:
+                doMoveVertically(key == GLFW_KEY_UP || key == GLFW_KEY_W);
+            }
+            else
+            {
+                // Rotate:
+                doRotateEyeUpDown(key == GLFW_KEY_UP || key == GLFW_KEY_W);
+            }
         }
         break;
 
         case GLFW_KEY_A:
         case GLFW_KEY_D:
         {
-            const float dx = std::cos(DEG2RAD(cam.cameraAzimuthDeg + 90.f));
-            const float dy = std::sin(DEG2RAD(cam.cameraAzimuthDeg + 90.f));
-            const float d  = key == GLFW_KEY_A ? -1.0f : 1.0f;
-            cam.cameraPointingX += d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
-            cam.cameraPointingY += d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
-            win->camera().setCameraParams(cam);
+            doStrideSides(key == GLFW_KEY_D);
         }
         break;
 
         case GLFW_KEY_RIGHT:
         case GLFW_KEY_LEFT:
         {
-            int cmd_rot  = key == GLFW_KEY_LEFT ? -1 : 1;
-            int cmd_elev = 0;
-
-            const float dis   = std::max(0.01f, (cam.cameraZoomDistance));
-            float       eye_x = cam.cameraPointingX + dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) *
-                                                    cos(DEG2RAD(cam.cameraElevationDeg));
-            float eye_y = cam.cameraPointingY + dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) *
-                                                    cos(DEG2RAD(cam.cameraElevationDeg));
-            float eye_z = cam.cameraPointingZ + dis * sin(DEG2RAD(cam.cameraElevationDeg));
-
-            // Orbit camera:
-            float A_AzimuthDeg = -SENSIBILITY_ROTATE * cmd_rot;
-            cam.cameraAzimuthDeg += A_AzimuthDeg;
-
-            float A_ElevationDeg = SENSIBILITY_ROTATE * cmd_elev;
-            cam.setElevationDeg(cam.cameraElevationDeg + A_ElevationDeg);
-
-            // Move cameraPointing pos:
-            cam.cameraPointingX = eye_x - dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) *
-                                              cos(DEG2RAD(cam.cameraElevationDeg));
-            cam.cameraPointingY = eye_y - dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) *
-                                              cos(DEG2RAD(cam.cameraElevationDeg));
-            cam.cameraPointingZ = eye_z - dis * sin(DEG2RAD(cam.cameraElevationDeg));
-
-            win->camera().setCameraParams(cam);
+            if (modifiers & GLFW_MOD_SHIFT)
+            {
+                // Strafe:
+                doStrideSides(key == GLFW_KEY_RIGHT);
+            }
+            else
+            {
+                // Rotate:
+                doRotateEyeYaw(key == GLFW_KEY_RIGHT);
+            }
         }
         break;
 
@@ -818,13 +858,13 @@ void main_show_gui()
             ->setCallback([]() { win->setVisible(false); });
 
         win->setKeyboardCallback(
-            [&](int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int modifiers)
+            [&](int key, [[maybe_unused]] int scancode, int action, int modifiers)
             {
                 if (action != GLFW_PRESS && action != GLFW_REPEAT)
                 {
                     return false;
                 }
-                onKeyboardAction(key);
+                onKeyboardAction(key, modifiers);
                 return false;
             });
     }
