@@ -102,9 +102,10 @@ void FilterDeskew::initialize_filter(const mrpt::containers::yaml& c)
 #if !defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
 namespace mola::imu
 {
-struct Trajectory
+struct TrajectoryPoint
 {
 };
+using Trajectory = std::map<double, TrajectoryPoint>;
 }  // namespace mola::imu
 #endif
 
