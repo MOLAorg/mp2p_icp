@@ -61,6 +61,12 @@ jobs:
       image: ${{ matrix.docker_image }}
 
     steps:
+      - name: Install Git
+        run: |
+          apt-get update
+          apt-get install -y git
+          git --version  # should be >= 2.18
+
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
