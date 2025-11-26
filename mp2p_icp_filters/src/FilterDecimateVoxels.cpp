@@ -187,7 +187,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 }
                 else
                 {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    outPc->insertPointFrom(i, ctxOut);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
                     outPc->insertPointFrom(*pcPtrs[mapIdx], i, ctxOut);
 #else
                     outPc->insertPointFrom(*pcPtrs[mapIdx], i);
@@ -271,7 +273,11 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     {
                         ctx = outPc->prepareForInsertPointsFrom(*pc);
                     }
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    outPc->insertPointFrom(*vxl.pointIdx, ctx);
+#else
                     outPc->insertPointFrom(*pc, *vxl.pointIdx, ctx);
+#endif
 #else
                     outPc->insertPointFrom(*pc, *vxl.pointIdx);
 #endif
@@ -421,7 +427,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     }
                     else
                     {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                        outPc->insertPointFrom(insertPtIdx, ctx);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
                         outPc->insertPointFrom(pc, insertPtIdx, ctx);
 #else
                         outPc->insertPointFrom(pc, insertPtIdx);

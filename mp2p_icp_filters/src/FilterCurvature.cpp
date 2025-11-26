@@ -227,7 +227,9 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
                 counterLarger++;
                 if (outPcLarger)
                 {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    outPcLarger->insertPointFrom(i, ctxLarger);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
                     outPcLarger->insertPointFrom(pc, i, ctxLarger);
 #else
                     outPcLarger->insertPointFrom(pc, i);
@@ -258,7 +260,9 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
                     counterLarger++;
                     if (outPcLarger)
                     {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                        outPcLarger->insertPointFrom(i, ctxLarger);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
                         outPcLarger->insertPointFrom(pc, i, ctxLarger);
 #else
                         outPcLarger->insertPointFrom(pc, i);
@@ -269,7 +273,9 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
                 {
                     if (outPcOther)
                     {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                        outPcOther->insertPointFrom(i, ctxOther);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
                         outPcOther->insertPointFrom(pc, i, ctxOther);
 #else
                         outPcOther->insertPointFrom(pc, i);
@@ -291,7 +297,9 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
                 counterLarger++;
                 if (outPcLarger)
                 {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    outPcLarger->insertPointFrom(i, ctxLarger);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
                     outPcLarger->insertPointFrom(pc, i, ctxLarger);
 #else
                     outPcLarger->insertPointFrom(pc, i);
@@ -303,7 +311,9 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
                 counterLess++;
                 if (outPcSmaller)
                 {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    outPcSmaller->insertPointFrom(i, ctxSmaller);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
                     outPcSmaller->insertPointFrom(pc, i, ctxSmaller);
 #else
                     outPcSmaller->insertPointFrom(pc, i);

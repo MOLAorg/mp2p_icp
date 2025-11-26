@@ -132,7 +132,9 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
 #endif
         if (targetPc)
         {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+            targetPc->insertPointFrom(i, *ctx);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
             targetPc->insertPointFrom(pc, i, *ctx);
 #else
             targetPc->insertPointFrom(pc, i);

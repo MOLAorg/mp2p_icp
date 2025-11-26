@@ -183,8 +183,9 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         {
             continue;
         }
-
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+        trgMap->insertPointFrom(i, *ctx);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
         trgMap->insertPointFrom(*pcPtr, i, *ctx);
 #else
         trgMap->insertPointFrom(*pcPtr, i);
