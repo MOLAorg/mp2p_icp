@@ -439,6 +439,11 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     // optional fields:
 #if MRPT_VERSION >= 0x020f00  // 2.15.0
+    if (outPc)
+    {
+        outPc->prepareForInsertPointsFrom(*inPc);
+    }
+
     MRPT_TODO("Do a better generic re-factorization of this");
     const auto* Is = inPc->getPointsBufferRef_float_field("intensity");
     const auto* Ts = inPc->getPointsBufferRef_float_field("t");
