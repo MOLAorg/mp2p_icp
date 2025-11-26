@@ -153,24 +153,24 @@ auto findBeforeAfter(const mola::imu::Trajectory& trajectory, const double t)
 }
 #endif  // MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION
 
+#if MRPT_VERSION < 0x020f00  // 2.15.0
+#error "MRPT >= 2.15.0 is required to compile FilterDeskew"
+#endif
+
 struct CorrectPointsArguments
 {
-    mrpt::aligned_std_vector<float>&          xs;
-    mrpt::aligned_std_vector<float>&          ys;
-    mrpt::aligned_std_vector<float>&          zs;
-    size_t                                    n;
-    size_t                                    n0;
-    mrpt::maps::CPointsMap*                   outPc;
-    const mrpt::aligned_std_vector<float>*    Is;
-    mrpt::aligned_std_vector<float>*          out_Is;
-    const mrpt::aligned_std_vector<uint16_t>* Rs;
-    mrpt::aligned_std_vector<uint16_t>*       out_Rs;
-    const mrpt::aligned_std_vector<float>*    Ts;
-    mrpt::aligned_std_vector<float>*          out_Ts;
-    const mrpt::math::TTwist3D*               constant_twist;
-    const mola::imu::Trajectory&              reconstructed_trajectory;
-    bool                                      points_already_global;
-    const mrpt::math::TPose3D&                global_robot_pose;
+    mrpt::aligned_std_vector<float>&       xs;
+    mrpt::aligned_std_vector<float>&       ys;
+    mrpt::aligned_std_vector<float>&       zs;
+    size_t                                 n;
+    size_t                                 n0;
+    const mrpt::aligned_std_vector<float>* Ts;
+    mrpt::maps::CPointsMap*                outPc              = nullptr;
+    mrpt::maps::CPointsMap::InsertCtx*     ctxCopyPointFields = nullptr;
+    const mrpt::math::TTwist3D*            constant_twist;
+    const mola::imu::Trajectory&           reconstructed_trajectory;
+    bool                                   points_already_global;
+    const mrpt::math::TPose3D&             global_robot_pose;
 };
 
 // Optimized templated version for compile-time optimization for each method
@@ -178,16 +178,17 @@ template <MotionCompensationMethod method>
 void correctPointsLoop(const CorrectPointsArguments& args)
 {
     // Capturing these bindings requires C++20.
-    auto& [xs, ys, zs, n, n0, outPc, Is, out_Is, Rs, out_Rs, Ts, out_Ts, constant_twist, reconstructed_trajectory, points_already_global, global_robot_pose_t] =
+    auto& [xs, ys, zs, n, n0, Ts, outPc, ctxCopyPointFields, constant_twist, reconstructed_trajectory, points_already_global, global_robot_pose_t] =
         args;
 
     const auto global_robot_pose = mrpt::poses::CPose3D(global_robot_pose_t);
 
     const bool in_place = (outPc == nullptr);
 
-    const bool has_I = Is != nullptr && out_Is != nullptr && !Is->empty();
-    const bool has_R = Rs != nullptr && out_Rs != nullptr && !Rs->empty();
-    const bool has_T = Ts != nullptr && out_Ts != nullptr && !Ts->empty();
+    if (!in_place)
+    {
+        ASSERT_(ctxCopyPointFields != nullptr);
+    }
 
     ASSERT_(Ts != nullptr);
     ASSERT_EQUAL_(Ts->size(), xs.size());
@@ -358,18 +359,20 @@ void correctPointsLoop(const CorrectPointsArguments& args)
             {
                 outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
 
-                // Copy additional fields
-                if (has_I)
+            // Copy additional fields using the insertion context:
+#if MRPT_VERSION >= 0x020f02  // >=2.15.2
+                for (auto& [src, dst] : ctxCopyPointFields->double_fields)
                 {
-                    (*out_Is)[n0 + i] = (*Is)[i];
+                    (*dst)[n0 + i] = (*src)[i];
                 }
-                if (has_R)
+#endif
+                for (auto& [src, dst] : ctxCopyPointFields->float_fields)
                 {
-                    (*out_Rs)[n0 + i] = (*Rs)[i];
+                    (*dst)[n0 + i] = (*src)[i];
                 }
-                if (has_T)
+                for (auto& [src, dst] : ctxCopyPointFields->uint16_fields)
                 {
-                    (*out_Ts)[n0 + i] = (*Ts)[i];
+                    (*dst)[n0 + i] = (*src)[i];
                 }
             }
         }
@@ -437,31 +440,14 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     auto&        zs = const_cast<mrpt::aligned_std_vector<float>&>(inPc->getPointsBufferRef_z());
     const size_t n  = xs.size();
 
-    // optional fields:
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+    // optional fields: get insertion context only if we are not doing in-place correction:
+    std::optional<mrpt::maps::CPointsMap::InsertCtx> insert_ctx;
     if (outPc)
     {
-        outPc->prepareForInsertPointsFrom(*inPc);
+        insert_ctx = outPc->prepareForInsertPointsFrom(*inPc);
     }
 
-    MRPT_TODO("Do a better generic re-factorization of this");
-    const auto* Is = inPc->getPointsBufferRef_float_field("intensity");
     const auto* Ts = inPc->getPointsBufferRef_float_field("t");
-    const auto* Rs = inPc->getPointsBufferRef_uint_field("ring");
-
-    auto* out_Is = outPc ? outPc->getPointsBufferRef_float_field("intensity") : nullptr;
-    auto* out_Ts = outPc ? outPc->getPointsBufferRef_float_field("t") : nullptr;
-    auto* out_Rs = outPc ? outPc->getPointsBufferRef_uint_field("ring") : nullptr;
-
-#else
-    const auto* Is = inPc->getPointsBufferRef_intensity();
-    const auto* Ts = inPc->getPointsBufferRef_timestamp();
-    const auto* Rs = inPc->getPointsBufferRef_ring();
-
-    auto* out_Is = outPc ? outPc->getPointsBufferRef_intensity() : nullptr;
-    auto* out_Rs = outPc ? outPc->getPointsBufferRef_ring() : nullptr;
-    auto* out_Ts = outPc ? outPc->getPointsBufferRef_timestamp() : nullptr;
-#endif
 
     // No timestamps available or deskewing disabled:
     const bool noTimestamps   = !Ts || Ts->empty();
@@ -584,13 +570,9 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
         zs,
         n,
         n0,
-        outPc.get(),
-        Is,
-        out_Is,
-        Rs,
-        out_Rs,
         Ts,
-        out_Ts,
+        outPc.get(),
+        insert_ctx ? &(*insert_ctx) : nullptr,
         constant_twist,
         reconstructed_trajectory,
         points_already_global,
