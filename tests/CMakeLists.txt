@@ -60,6 +60,7 @@ mp2p_add_test(mp2p_optimize_pt2pl)
 mp2p_add_test(mp2p_optimize_with_prior)
 mp2p_add_test(mp2p_quality_reproject_ranges)
 mp2p_add_test(mp2p_FilterDecimateVoxels EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_Filters EXTRA_LIBS mp2p_icp_filters)
 
 if (mola_test_datasets_FOUND)
   mp2p_add_test(mp2p_quality_voxels)
