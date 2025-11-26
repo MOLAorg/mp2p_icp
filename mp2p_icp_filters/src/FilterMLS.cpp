@@ -496,7 +496,7 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
         {
             impl_->next_log_count = step;
             const double pct      = std::clamp(
-                100.0 * static_cast<double>(step) * params.percent_print_progress, .0, 100.0);
+                     100.0 * static_cast<double>(step) * params.percent_print_progress, .0, 100.0);
 
             MRPT_LOG_INFO_FMT(
                 "Progress: %.01f%% (%zu/%zu)", pct, impl_->processed_points, impl_->total_points);
