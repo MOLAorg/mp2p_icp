@@ -65,30 +65,38 @@ QualityEvaluator::Result QualityEvaluator_Voxels::evaluate(
     // Take both voxel maps from each map:
     // ------------------------------------
     if (pcGlobal.layers.count(voxel_layer_name) == 0)
+    {
         THROW_EXCEPTION_FMT(
             "Input global map was expected to contain a layer named '%s'",
             voxel_layer_name.c_str());
+    }
 
     if (pcLocal.layers.count(voxel_layer_name) == 0)
+    {
         THROW_EXCEPTION_FMT(
             "Input local map was expected to contain a layer named '%s'", voxel_layer_name.c_str());
+    }
 
     const mrpt::maps::CVoxelMap::Ptr globalVoxels =
         std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(pcGlobal.layers.at(voxel_layer_name));
     if (!globalVoxels)
+    {
         THROW_EXCEPTION_FMT(
             "Input global map was expected to contain a layer named '%s' of "
             "type 'CVoxelMap'",
             voxel_layer_name.c_str());
+    }
 
     const mrpt::maps::CVoxelMap::Ptr localVoxels =
         std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(pcLocal.layers.at(voxel_layer_name));
 
     if (!localVoxels)
+    {
         THROW_EXCEPTION_FMT(
             "Input local map was expected to contain a layer named '%s' of "
             "type 'CVoxelMap'",
             voxel_layer_name.c_str());
+    }
 
     // Compare them:
     // ----------------------------------
@@ -115,13 +123,19 @@ QualityEvaluator::Result QualityEvaluator_Voxels::evaluate(
 
         auto* cell = gAccessor.value(
             Bonxai::PosToCoord({ptGlobal.x, ptGlobal.y, ptGlobal.z}, g.inv_resolution));
-        if (!cell) return;  // cell not observed in global grid
+        if (!cell)
+        {
+            return;  // cell not observed in global grid
+        }
 
         const float localOcc  = localVoxels->l2p(data.occupancy);
         const float globalOcc = globalVoxels->l2p(cell->occupancy);
 
         // barely observed cells?
-        if (std::abs(globalOcc - 0.5f) < 0.01f || std::abs(localOcc - 0.5f) < 0.01f) return;
+        if (std::abs(globalOcc - 0.5f) < 0.01f || std::abs(localOcc - 0.5f) < 0.01f)
+        {
+            return;
+        }
 
         const double d = loss(localOcc, globalOcc);
         dist += d;
@@ -140,13 +154,19 @@ QualityEvaluator::Result QualityEvaluator_Voxels::evaluate(
 
         auto* cell = lAccessor.value(
             Bonxai::PosToCoord({ptLocal.x, ptLocal.y, ptLocal.z}, l.inv_resolution));
-        if (!cell) return;  // cell not observed in global grid
+        if (!cell)
+        {
+            return;  // cell not observed in global grid
+        }
 
         const float localOcc  = localVoxels->l2p(cell->occupancy);
         const float globalOcc = globalVoxels->l2p(data.occupancy);
 
         // barely observed cells?
-        if (std::abs(globalOcc - 0.5f) < 0.01f || std::abs(localOcc - 0.5f) < 0.01f) return;
+        if (std::abs(globalOcc - 0.5f) < 0.01f || std::abs(localOcc - 0.5f) < 0.01f)
+        {
+            return;
+        }
 
         const double d = loss(localOcc, globalOcc);
         dist += d;
@@ -160,7 +180,7 @@ QualityEvaluator::Result QualityEvaluator_Voxels::evaluate(
     r.quality = 0;
     if (dist_cells)
     {
-        dist /= dist_cells;
+        dist /= static_cast<double>(dist_cells);
         r.quality = 1.0 / (1.0 + std::exp(-dist2quality_scale * dist));
     }
     MRPT_LOG_DEBUG_STREAM(

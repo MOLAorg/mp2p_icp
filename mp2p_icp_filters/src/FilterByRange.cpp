@@ -149,7 +149,10 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
         if (targetPc)
         {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+            const auto& ctx = isInside ? ctxBetween : ctxOutside;
+            targetPc->insertPointFrom(i, ctx.value());
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
             const auto& ctx = isInside ? ctxBetween : ctxOutside;
             targetPc->insertPointFrom(pc, i, ctx.value());
 #else

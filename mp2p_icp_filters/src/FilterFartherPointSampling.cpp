@@ -123,7 +123,9 @@ void FilterFartherPointSampling::filter(mp2p_icp::metric_map_t& inOut) const
     srand((unsigned)time(NULL));
     std::size_t idx = rand() % input_size;
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+    outPc->insertPointFrom(idx, ctx);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
     outPc->insertPointFrom(pc, idx, ctx);
 #else
     outPc->insertPointFrom(pc, idx);
@@ -159,7 +161,9 @@ void FilterFartherPointSampling::filter(mp2p_icp::metric_map_t& inOut) const
         } while (top.dist != minDist[top.idx] && !heap.empty());
 
         const auto farthestIdx = top.idx;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+        outPc->insertPointFrom(farthestIdx, ctx);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
         outPc->insertPointFrom(pc, farthestIdx, ctx);
 #else
         outPc->insertPointFrom(pc, farthestIdx);

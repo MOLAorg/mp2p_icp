@@ -221,7 +221,10 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         if (!ith.exhausted)
         {
             auto ptIdx = ith.voxel->indices[ith.nextIdx++];
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+            outPc->insertPointFrom(ptIdx, ctx);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
             outPc->insertPointFrom(pc, ptIdx, ctx);
 #else
             outPc->insertPointFrom(pc, ptIdx);

@@ -38,9 +38,9 @@ jobs:
             use_ros2-testing: true
 
           # Rolling Ridley (No End-Of-Life)
-          - docker_image: ubuntu:noble
-            ros_distribution: rolling
-            use_ros2-testing: false
+          #- docker_image: ubuntu:noble
+          #  ros_distribution: rolling
+          #  use_ros2-testing: false
 
           - docker_image: ubuntu:noble
             ros_distribution: rolling
@@ -52,10 +52,10 @@ jobs:
             use_ros2-testing: true
             disable_tbb: true
 
-          - docker_image: ubuntu:noble
-            ros_distribution: rolling
-            use_ros2-testing: true
-            coverage_run: true
+          #- docker_image: ubuntu:noble
+          #  ros_distribution: rolling
+          #  use_ros2-testing: true
+          #  coverage_run: true
 
     container:
       image: ${{ matrix.docker_image }}

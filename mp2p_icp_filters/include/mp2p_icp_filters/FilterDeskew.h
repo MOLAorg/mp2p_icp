@@ -57,14 +57,14 @@ enum class MotionCompensationMethod : uint8_t
  *  input pointcloud from a moving LIDAR, where points are time-stamped.
  *
  * Important notes:
- * - The `time` field of each point is assumed to be in seconds since the
+ * - The relative timestamp `t` field of each point is assumed to be in seconds since the
  *   reference time point, which can be the start or middle point of the scan. This can be
  *   controlled by adding a FilterAdjustTimestamps before this block.
  *
  * - The input layer must contain a point cloud in the format
- *   mrpt::maps::CPointsMapXYZIRT so timestamps are present.
+ *   mrpt::maps::CPointsMapXYZIRT or mrpt::maps::CGenericPointsMap so timestamps are present.
  *
- * - If the input layer is of a different type, or the `time` field is missing,
+ * - If the input layer is of a different type, or the `t` field is missing,
  *   an exception will be thrown by default, unless the option
  *   `silently_ignore_no_timestamps` is set to `true`, in which case the input
  *   cloud will be just moved forward to the output.

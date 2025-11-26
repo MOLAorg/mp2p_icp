@@ -187,7 +187,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 }
                 else
                 {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    outPc->insertPointFrom(i, ctxOut);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
                     outPc->insertPointFrom(*pcPtrs[mapIdx], i, ctxOut);
 #else
                     outPc->insertPointFrom(*pcPtrs[mapIdx], i);
@@ -271,7 +273,11 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     {
                         ctx = outPc->prepareForInsertPointsFrom(*pc);
                     }
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    outPc->insertPointFrom(*vxl.pointIdx, ctx);
+#else
                     outPc->insertPointFrom(*pc, *vxl.pointIdx, ctx);
+#endif
 #else
                     outPc->insertPointFrom(*pc, *vxl.pointIdx);
 #endif
@@ -326,58 +332,71 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 std::optional<mrpt::math::TPoint3Df> insertPt;
                 size_t insertPtIdx;  // valid only if insertPt is empty
 
-                if (params.decimate_method == DecimateMethod::VoxelAverage ||
-                    params.decimate_method == DecimateMethod::ClosestToAverage)
+                switch (params.decimate_method)
                 {
-                    // Analyze the voxel contents:
-                    auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
-                    const float inv_n = (1.0f / static_cast<float>(vxl.indices.size()));
-                    for (size_t i = 0; i < vxl.indices.size(); i++)
+                    case DecimateMethod::FirstPoint:
+                    default:
                     {
-                        const auto pt_idx = vxl.indices[i];
-                        mean.x += xs[pt_idx];
-                        mean.y += ys[pt_idx];
-                        mean.z += zs[pt_idx];
+                        THROW_EXCEPTION("Should not reach here!");
                     }
-                    mean *= inv_n;
 
-                    if (params.decimate_method == DecimateMethod::ClosestToAverage)
+                    case DecimateMethod::VoxelAverage:
+                    case DecimateMethod::ClosestToAverage:
                     {
-                        std::optional<float>  minSqrErr;
-                        std::optional<size_t> bestIdx;
-
+                        // Analyze the voxel contents:
+                        auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
+                        const float inv_n = (1.0f / static_cast<float>(vxl.indices.size()));
                         for (size_t i = 0; i < vxl.indices.size(); i++)
                         {
-                            const auto  pt_idx = vxl.indices[i];
-                            const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
-                                                 mrpt::square(ys[pt_idx] - mean.y) +
-                                                 mrpt::square(zs[pt_idx] - mean.z);
-
-                            if (!minSqrErr.has_value() || sqrErr < *minSqrErr)
-                            {
-                                minSqrErr = sqrErr;
-                                bestIdx   = pt_idx;
-                            }
+                            const auto pt_idx = vxl.indices[i];
+                            mean.x += xs[pt_idx];
+                            mean.y += ys[pt_idx];
+                            mean.z += zs[pt_idx];
                         }
-                        // Insert the closest to the mean:
-                        insertPtIdx = *bestIdx;
-                    }
-                    else
-                    {
-                        // Insert the mean:
-                        insertPt = {mean.x, mean.y, mean.z};
-                    }
-                }
-                else
-                {
-                    // Insert a randomly-picked point:
-                    const auto idxInVoxel = (params.decimate_method == DecimateMethod::RandomPoint)
-                                                ? (rng.drawUniform64bit() % vxl.indices.size())
-                                                : 0UL;
+                        mean *= inv_n;
 
-                    const auto pt_idx = vxl.indices.at(idxInVoxel);
-                    insertPtIdx       = pt_idx;
-                }
+                        if (params.decimate_method == DecimateMethod::ClosestToAverage)
+                        {
+                            std::optional<float>  minSqrErr;
+                            std::optional<size_t> bestIdx;
+
+                            for (size_t i = 0; i < vxl.indices.size(); i++)
+                            {
+                                const auto  pt_idx = vxl.indices[i];
+                                const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
+                                                     mrpt::square(ys[pt_idx] - mean.y) +
+                                                     mrpt::square(zs[pt_idx] - mean.z);
+
+                                if (!minSqrErr.has_value() || sqrErr < *minSqrErr)
+                                {
+                                    minSqrErr = sqrErr;
+                                    bestIdx   = pt_idx;
+                                }
+                            }
+                            // Insert the closest to the mean:
+                            insertPtIdx = *bestIdx;
+                        }
+                        else
+                        {
+                            // Insert the mean:
+                            insertPt = {mean.x, mean.y, mean.z};
+                        }
+                    }
+                    break;
+
+                    case DecimateMethod::RandomPoint:
+                    {
+                        // Insert a randomly-picked point:
+                        const auto idxInVoxel =
+                            (params.decimate_method == DecimateMethod::RandomPoint)
+                                ? (rng.drawUniform64bit() % vxl.indices.size())
+                                : 0UL;
+
+                        const auto pt_idx = vxl.indices.at(idxInVoxel);
+                        insertPtIdx       = pt_idx;
+                    }
+                    break;
+                }  // end switch decimation method
 
                 // insert it, if passed the flatten filter:
                 if (params.flatten_to.has_value())
@@ -408,7 +427,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     }
                     else
                     {
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                        outPc->insertPointFrom(insertPtIdx, ctx);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
                         outPc->insertPointFrom(pc, insertPtIdx, ctx);
 #else
                         outPc->insertPointFrom(pc, insertPtIdx);

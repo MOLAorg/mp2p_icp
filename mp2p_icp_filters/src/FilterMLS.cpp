@@ -534,7 +534,9 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     for (size_t i = 0; i < nNewPoints; ++i)
     {
         // add point: this copies all existing fields:
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+        outPc->insertPointFrom(impl_->new_points_source_index[i], ctx);
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
         outPc->insertPointFrom(input_pc, impl_->new_points_source_index[i], ctx);
 #else
         outPc->insertPointFrom(input_pc, impl_->new_points_source_index[i]);
