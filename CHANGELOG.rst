@@ -2,6 +2,21 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mm-viewer: Automatic retry to load maps if missing plugins, trying to reload with libmola_metric_maps.so
+* Enable coverage run for noble docker image
+* Add new unit tests
+* docs: fix broken formatting of filters page
+* Merge pull request `#14 <https://github.com/MOLAorg/mp2p_icp/issues/14>`_ 
+  deskew filter: refactoring to handle arbitrary point fields
+* get code ready for API update in MRPT 2.15.3
+* Fix build w/o imu library
+* mm-viewer: add keystrokes shift+cursor arrows to move up/down
+* Add Codecov badge to README
+* MLS filter: add progress report logging
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.1 (2025-11-08)
 ------------------
 * FIX: SanityCheck was triggering as errors optional pointcloud fields in XYZIRT clouds
