@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.2 (2025-11-28)
+------------------
 * mm-viewer: Automatic retry to load maps if missing plugins, trying to reload with libmola_metric_maps.so
 * Enable coverage run for noble docker image
 * Add new unit tests
