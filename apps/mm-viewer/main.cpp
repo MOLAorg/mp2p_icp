@@ -116,16 +116,53 @@ static void onSaveLayers();
 
 namespace
 {
-void loadMapFile(const std::string& mapFile)
+static bool load_plugins(const std::string& plugins)
+{
+    std::string errMsg;
+    if (!mrpt::system::loadPluginModules(plugins, errMsg))
+    {
+        std::cerr << errMsg << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool loadMapFile(const std::string& mapFile)
 {
     // Load one single file:
     std::cout << "Loading map file: " << mapFile << std::endl;
 
-    if (!theMap.load_from_file(mapFile))
+    std::string loadErrorMsg;
+
+    if (!theMap.load_from_file(mapFile, loadErrorMsg))
     {
-        std::cerr << "Error loading metric map from file!" << std::endl;
-        return;
+        bool retry_was_successful = false;
+
+        // If it fails and it's because of a missing plugin, try to load plugins to make life of
+        // users easier:
+        if (loadErrorMsg.find("which is not registered") != std::string::npos &&
+            !arg_plugins.isSet())
+        {
+            std::cout << "The map file requires plugins for missing C++ classes.\n"
+                         "Trying to load 'libmola_metric_maps.so' and retrying.\n"
+                         "Note that you can directly use '-l libmola_metric_maps.so' or any other "
+                         "custom plugin next time.\n";
+
+            if (!load_plugins("libmola_metric_maps.so"))
+            {
+                return false;
+            }
+            // Retry:
+            retry_was_successful = theMap.load_from_file(mapFile, loadErrorMsg);
+        }
+
+        if (!retry_was_successful)
+        {
+            std::cerr << "Error loading metric map from file!:\n" << loadErrorMsg << std::endl;
+            return false;
+        }
     }
+
     theMapFileName = mapFile;
 
     // Obtain layer info:
@@ -148,6 +185,7 @@ void loadMapFile(const std::string& mapFile)
         ASSERTMSG_(
             sanityPassed, mrpt::format("sanity check did not pass for layer: '%s'", name.c_str()));
     }
+    return true;
 }
 
 void updateMouseCoordinates()
@@ -416,7 +454,10 @@ void main_show_gui()
 
     if (argMapFile.isSet())
     {
-        loadMapFile(argMapFile.getValue());
+        if (!loadMapFile(argMapFile.getValue()))
+        {
+            return;
+        }
     }
 
     // Get user app config file
@@ -1296,12 +1337,8 @@ int main(int argc, char** argv)
         // Load plugins:
         if (arg_plugins.isSet())
         {
-            std::string errMsg;
-            const auto  plugins = arg_plugins.getValue();
-            std::cout << "Loading plugin(s): " << plugins << std::endl;
-            if (!mrpt::system::loadPluginModules(plugins, errMsg))
+            if (!load_plugins(arg_plugins.getValue()))
             {
-                std::cerr << errMsg << std::endl;
                 return 1;
             }
         }

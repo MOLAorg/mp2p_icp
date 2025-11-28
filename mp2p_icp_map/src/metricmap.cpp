@@ -695,16 +695,40 @@ bool metric_map_t::save_to_file(const std::string& fileName) const
     return true;
 }
 
-bool metric_map_t::load_from_file(const std::string& fileName)
+bool metric_map_t::load_from_file(
+    const std::string& fileName, const mrpt::optional_ref<std::string>& outErrorMsg)
 {
+    using namespace std::string_literals;
+
     auto f = mrpt::io::CFileGZInputStream(fileName);
     if (!f.is_open())
     {
+        if (outErrorMsg)
+        {
+            outErrorMsg->get() = "Cannot open file: "s + fileName;
+        }
         return false;
     }
 
-    auto arch = mrpt::serialization::archiveFrom(f);
-    arch >> *this;
+    try
+    {
+        auto arch = mrpt::serialization::archiveFrom(f);
+        arch >> *this;
+    }
+    catch (const std::exception& e)
+    {
+        if (outErrorMsg)
+        {
+            outErrorMsg->get() = "Exception loading file '"s + fileName + "':\n"s + e.what();
+        }
+        else
+        {
+            std::cerr << "[mp2p_icp::metric_map_t::load_from_file()] Exception loading file '"s +
+                             fileName + "':\n"s + e.what()
+                      << std::endl;
+        }
+        return false;
+    }
 
     return true;
 }

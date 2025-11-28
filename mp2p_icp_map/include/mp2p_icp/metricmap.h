@@ -24,6 +24,7 @@
 #include <mp2p_icp/plane_patch.h>
 #include <mp2p_icp/render_params.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/optional_ref.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/maps/NearestNeighborsCapable.h>
 #include <mrpt/math/TLine3D.h>
@@ -179,7 +180,9 @@ class metric_map_t : public mrpt::serialization::CSerializable,
     /** Loads the metric_map_t object from a file. See \save_to_file()
      * \return true on success.
      */
-    bool load_from_file(const std::string& fileName);
+    bool load_from_file(
+        const std::string&                     fileName,
+        const mrpt::optional_ref<std::string>& outErrorMsg = std::nullopt);
 
     /** Returns a shared_ptr to the given point cloud layer, or throws if
      *  the layer does not exist or it contains a different type of metric map
