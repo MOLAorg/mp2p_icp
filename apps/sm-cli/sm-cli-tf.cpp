@@ -20,8 +20,14 @@ static int printCommandsTf(bool showErrorMsg);
 int commandTf()
 {
     const auto& lstCmds = cli->argCmd.getValue();
-    if (cli->argHelp.isSet()) return printCommandsTf(false);
-    if (lstCmds.size() != 4) return printCommandsTf(true);
+    if (cli->argHelp.isSet())
+    {
+        return printCommandsTf(false);
+    }
+    if (lstCmds.size() != 4)
+    {
+        return printCommandsTf(true);
+    }
 
     // Take second unlabeled argument:
     const std::string inFile  = lstCmds.at(1);

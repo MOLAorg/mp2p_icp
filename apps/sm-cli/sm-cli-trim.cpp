@@ -17,10 +17,15 @@ static int printCommandsTrim(bool showErrorMsg);
 int commandTrim()
 {
     const auto& lstCmds = cli->argCmd.getValue();
-    if (cli->argHelp.isSet()) return printCommandsTrim(false);
+    if (cli->argHelp.isSet())
+    {
+        return printCommandsTrim(false);
+    }
     if (lstCmds.size() != 2 || !cli->arg_min_corner.isSet() || !cli->arg_max_corner.isSet() ||
         !cli->arg_output.isSet())
+    {
         return printCommandsTrim(true);
+    }
 
     // Take second unlabeled argument:
     const std::string file = lstCmds.at(1);
@@ -39,7 +44,10 @@ int commandTrim()
         ASSERT_(posePDF);
         const auto p = posePDF->getMeanVal();
 
-        if (!bbox.containsPoint(p.translation())) continue;
+        if (!bbox.containsPoint(p.translation()))
+        {
+            continue;
+        }
 
         outSM.insert(posePDF, sf, twist);
     }

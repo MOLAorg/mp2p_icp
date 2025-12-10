@@ -17,10 +17,15 @@ static int printCommandsCut(bool showErrorMsg);
 int commandCut()
 {
     const auto& lstCmds = cli->argCmd.getValue();
-    if (cli->argHelp.isSet()) return printCommandsCut(false);
+    if (cli->argHelp.isSet())
+    {
+        return printCommandsCut(false);
+    }
     if (lstCmds.size() != 2 || !cli->arg_from.isSet() || !cli->arg_to.isSet() ||
         !cli->arg_output.isSet())
+    {
         return printCommandsCut(true);
+    }
 
     // Take second unlabeled argument:
     const std::string file = lstCmds.at(1);
@@ -35,8 +40,10 @@ int commandCut()
 
     mrpt::maps::CSimpleMap outSM;
 
-    for (size_t i = idxFirst; i <= idxLast; i++)  //
+    for (size_t i = idxFirst; i <= idxLast; i++)
+    {
         outSM.insert(sm.get(i));
+    }
 
     const auto outFil = cli->arg_output.getValue();
 

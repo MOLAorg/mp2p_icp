@@ -17,8 +17,14 @@ static int printCommandsJoin(bool showErrorMsg);
 int commandJoin()
 {
     const auto& lstCmds = cli->argCmd.getValue();
-    if (cli->argHelp.isSet()) return printCommandsJoin(false);
-    if (lstCmds.size() < 2 || !cli->arg_output.isSet()) return printCommandsJoin(true);
+    if (cli->argHelp.isSet())
+    {
+        return printCommandsJoin(false);
+    }
+    if (lstCmds.size() < 2 || !cli->arg_output.isSet())
+    {
+        return printCommandsJoin(true);
+    }
 
     // Take second unlabeled argument:
     mrpt::maps::CSimpleMap outSM;

@@ -20,8 +20,14 @@ static int printCommandsExportKF(bool showErrorMsg);
 int commandExportKF()
 {
     const auto& lstCmds = cli->argCmd.getValue();
-    if (cli->argHelp.isSet()) return printCommandsExportKF(false);
-    if (lstCmds.size() != 2 || !cli->arg_output.isSet()) return printCommandsExportKF(true);
+    if (cli->argHelp.isSet())
+    {
+        return printCommandsExportKF(false);
+    }
+    if (lstCmds.size() != 2 || !cli->arg_output.isSet())
+    {
+        return printCommandsExportKF(true);
+    }
 
     // Take second unlabeled argument:
     const std::string file = lstCmds.at(1);
@@ -49,9 +55,15 @@ int commandExportKF()
         ASSERT_(sf);
         for (const auto& obs : *sf)
         {
-            if (!obs) continue;
+            if (!obs)
+            {
+                continue;
+            }
             auto t = obs->getTimeStamp();
-            if (t == mrpt::system::InvalidTimeStamp()) continue;
+            if (t == mrpt::system::InvalidTimeStamp())
+            {
+                continue;
+            }
             tim = t;
             break;
         }

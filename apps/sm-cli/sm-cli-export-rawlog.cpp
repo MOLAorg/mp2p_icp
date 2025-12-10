@@ -23,8 +23,14 @@ static int printCommandsExportRawlog(bool showErrorMsg);
 int commandExportRawlog()
 {
     const auto& lstCmds = cli->argCmd.getValue();
-    if (cli->argHelp.isSet()) return printCommandsExportRawlog(false);
-    if (lstCmds.size() != 2 || !cli->arg_output.isSet()) return printCommandsExportRawlog(true);
+    if (cli->argHelp.isSet())
+    {
+        return printCommandsExportRawlog(false);
+    }
+    if (lstCmds.size() != 2 || !cli->arg_output.isSet())
+    {
+        return printCommandsExportRawlog(true);
+    }
 
     // Take second unlabeled argument:
     const std::string file = lstCmds.at(1);
@@ -48,7 +54,10 @@ int commandExportRawlog()
 
         for (const auto& o : *sf)
         {
-            if (o->timestamp == mrpt::system::InvalidTimeStamp()) continue;
+            if (o->timestamp == mrpt::system::InvalidTimeStamp())
+            {
+                continue;
+            }
             if (!timestamp)
             {
                 timestamp = o->timestamp;
@@ -61,7 +70,10 @@ int commandExportRawlog()
         // 2) Twist:
         {
             auto obsPose = mrpt::obs::CObservationRobotPose::Create();
-            if (timestamp) obsPose->timestamp = *timestamp;
+            if (timestamp)
+            {
+                obsPose->timestamp = *timestamp;
+            }
             obsPose->sensorLabel = "pose";
             obsPose->pose.copyFrom(*kf);
             outSF.insert(obsPose);
@@ -69,7 +81,10 @@ int commandExportRawlog()
         if (twist.has_value())
         {
             auto obsTwist = mrpt::obs::CObservationComment::Create();
-            if (timestamp) obsTwist->timestamp = *timestamp;
+            if (timestamp)
+            {
+                obsTwist->timestamp = *timestamp;
+            }
             obsTwist->sensorLabel = "twist";
             std::stringstream ss;
             ss << "Twist stored in the simplemap keyframe:\n" << twist->asString();

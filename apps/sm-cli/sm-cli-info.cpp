@@ -19,8 +19,14 @@ static int printCommandsInfo(bool showErrorMsg);
 int commandInfo()
 {
     const auto& lstCmds = cli->argCmd.getValue();
-    if (cli->argHelp.isSet()) return printCommandsInfo(false);
-    if (lstCmds.size() != 2) return printCommandsInfo(true);
+    if (cli->argHelp.isSet())
+    {
+        return printCommandsInfo(false);
+    }
+    if (lstCmds.size() != 2)
+    {
+        return printCommandsInfo(true);
+    }
 
     // Take second unlabeled argument:
     const std::string file = lstCmds.at(1);
@@ -37,19 +43,31 @@ int commandInfo()
 
     for (const auto& [pose, sf, twist] : sm)
     {
-        if (twist.has_value()) hasTwist = true;
+        if (twist.has_value())
+        {
+            hasTwist = true;
+        }
 
         const auto p = pose->getMeanVal().asTPose();
         bbox.updateWithPoint(p.translation());
 
-        if (!sf) continue;
+        if (!sf)
+        {
+            continue;
+        }
 
         for (const auto& o : *sf)
         {
             ASSERT_(o);
             auto t = o->getTimeStamp();
-            if (!timeMin || t < *timeMin) timeMin = t;
-            if (!timeMax || t > *timeMax) timeMax = t;
+            if (!timeMin || t < *timeMin)
+            {
+                timeMin = t;
+            }
+            if (!timeMax || t > *timeMax)
+            {
+                timeMax = t;
+            }
 
             obsTypes[o->sensorLabel] = o->GetRuntimeClass()->className;
             obsCount[o->sensorLabel]++;

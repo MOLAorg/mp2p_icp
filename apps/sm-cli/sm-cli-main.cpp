@@ -78,7 +78,10 @@ int main(int argc, char** argv)
 
         // Take first unlabeled argument:
         std::string command;
-        if (const auto& lst = cli->argCmd.getValue(); !lst.empty()) command = lst.at(0);
+        if (const auto& lst = cli->argCmd.getValue(); !lst.empty())
+        {
+            command = lst.at(0);
+        }
 
         // Look up command in table:
         auto itCmd = cliCommands.find(command);
@@ -139,8 +142,8 @@ mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& inFile)
 
     const auto sizeBytes = mrpt::system::getFileSize(inFile);
 
-    std::cout << "Loading: '" << inFile << "' of " << mrpt::system::unitsFormat(sizeBytes) << "B..."
-              << std::endl;
+    std::cout << "Loading: '" << inFile << "' of "
+              << mrpt::system::unitsFormat(static_cast<double>(sizeBytes)) << "B..." << std::endl;
 
     // register mrpt-obs classes, since we are not using them explicitly and
     // hence they are not auto-loading.

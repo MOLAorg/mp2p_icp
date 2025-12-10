@@ -20,8 +20,14 @@ static int printCommandsLevel(bool showErrorMsg);
 int commandLevel()
 {
     const auto& lstCmds = cli->argCmd.getValue();
-    if (cli->argHelp.isSet()) return printCommandsLevel(false);
-    if (lstCmds.size() != 3) return printCommandsLevel(true);
+    if (cli->argHelp.isSet())
+    {
+        return printCommandsLevel(false);
+    }
+    if (lstCmds.size() != 3)
+    {
+        return printCommandsLevel(true);
+    }
 
     // Take second unlabeled argument:
     const std::string inFile  = lstCmds.at(1);
