@@ -105,6 +105,7 @@ void FilterFartherPointSampling::filter(mp2p_icp::metric_map_t& inOut) const
     outPc->reserve(outPc->size() + params.desired_output_point_count);
 
 #if MRPT_VERSION >= 0x020f00  // 2.15.0
+    outPc->registerPointFieldsFrom(pc);
     mrpt::maps::CPointsMap::InsertCtx ctx = outPc->prepareForInsertPointsFrom(pc);
 #endif
 

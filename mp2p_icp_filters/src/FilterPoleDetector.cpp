@@ -183,11 +183,13 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
     mrpt::maps::CPointsMap::InsertCtx ctxPoles;
     if (outPoles)
     {
+        outPoles->registerPointFieldsFrom(pc);
         ctxPoles = outPoles->prepareForInsertPointsFrom(pc);
     }
     mrpt::maps::CPointsMap::InsertCtx ctxNoPoles;
     if (outNoPoles)
     {
+        outNoPoles->registerPointFieldsFrom(pc);
         ctxNoPoles = outNoPoles->prepareForInsertPointsFrom(pc);
     }
 #endif

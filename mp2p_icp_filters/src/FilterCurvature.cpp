@@ -135,16 +135,19 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     mrpt::maps::CPointsMap::InsertCtx ctxLarger;
     if (outPcLarger)
     {
+        outPcLarger->registerPointFieldsFrom(pc);
         ctxLarger = outPcLarger->prepareForInsertPointsFrom(pc);
     }
     mrpt::maps::CPointsMap::InsertCtx ctxSmaller;
     if (outPcSmaller)
     {
+        outPcSmaller->registerPointFieldsFrom(pc);
         ctxSmaller = outPcSmaller->prepareForInsertPointsFrom(pc);
     }
     mrpt::maps::CPointsMap::InsertCtx ctxOther;
     if (outPcOther)
     {
+        outPcOther->registerPointFieldsFrom(pc);
         ctxOther = outPcOther->prepareForInsertPointsFrom(pc);
     }
 #endif

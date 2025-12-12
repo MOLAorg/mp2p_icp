@@ -175,6 +175,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             const auto& ys = pcPtrs[mapIdx]->getPointsBufferRef_y();
 
 #if MRPT_VERSION >= 0x020f00  // 2.15.0
+            outPc->registerPointFieldsFrom(*pcPtrs[mapIdx]);
             mrpt::maps::CPointsMap::InsertCtx ctxOut =
                 outPc->prepareForInsertPointsFrom(*pcPtrs[mapIdx]);
 #endif
@@ -271,6 +272,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     auto& ctx = ctxs[pc];
                     if (!ctx.xs_src)
                     {
+                        outPc->registerPointFieldsFrom(*pc);
                         ctx = outPc->prepareForInsertPointsFrom(*pc);
                     }
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
@@ -315,6 +317,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             flattenUsedBins;
 
 #if MRPT_VERSION >= 0x020f00  // 2.15.0
+        outPc->registerPointFieldsFrom(pc);
         auto ctx = outPc->prepareForInsertPointsFrom(pc);
 #endif
 

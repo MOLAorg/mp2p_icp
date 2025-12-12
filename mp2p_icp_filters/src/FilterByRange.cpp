@@ -117,10 +117,12 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxOutside;
     if (outBetween)
     {
+        outBetween->registerPointFieldsFrom(pc);
         ctxBetween = outBetween->prepareForInsertPointsFrom(pc);
     }
     if (outOutside)
     {
+        outOutside->registerPointFieldsFrom(pc);
         ctxOutside = outOutside->prepareForInsertPointsFrom(pc);
     }
 #endif
