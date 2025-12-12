@@ -59,7 +59,7 @@ filters:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "deskewed"
       #silently_ignore_no_timestamps: true # To handle more dataset types
-      output_layer_class: "mrpt::maps::CPointsMapXYZIRT" # Keep intensity & ring channels
+      output_layer_class: "mrpt::maps::CGenericPointsMap" # Keep all channels: intensity, ring, ...
 
       # These (vx,...,wz) are variable names that must be defined via the
       # mp2p_icp::Parameterizable API to update them dynamically.

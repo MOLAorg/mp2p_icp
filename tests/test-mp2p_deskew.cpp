@@ -46,6 +46,8 @@ struct SimulationParams
 
     mp2p_icp_filters::MotionCompensationMethod deskew_method =
         mp2p_icp_filters::MotionCompensationMethod::None;
+
+    std::string outputMapClass = "mrpt::maps::CPointsMapXYZIRT";
 };
 
 struct SimulationResult
@@ -548,8 +550,9 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     }  // end for each timestep
 
     // Now, reconstruct the points within the SM:
-    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(mrpt::format(
-        R"yaml(
+    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(
+        mrpt::format(
+            R"yaml(
 # --------------------------------------------------------
 # 1) Generator (observation -> local frame metric maps)
 # --------------------------------------------------------
@@ -575,7 +578,7 @@ filters:
       method: %s
       silently_ignore_no_timestamps: false
 
-      output_layer_class: "mrpt::maps::CPointsMapXYZIRT" # Keep intensity & ring channels
+      output_layer_class: "%s" # Keep intensity & ring channels
 
       # These (vx,...,wz) are variable names that must be defined via the
       # mp2p_icp::Parameterizable API to update them dynamically.
@@ -586,7 +589,7 @@ filters:
       # one or more layers to remove
       pointcloud_layer_to_remove: ["raw"]
     )yaml",
-        mrpt::typemeta::enum2str(p.deskew_method).c_str()));
+            mrpt::typemeta::enum2str(p.deskew_method).c_str(), p.outputMapClass.c_str()));
 
     mp2p_icp::metric_map_t            mm;
     mp2p_icp_filters::sm2mm_options_t sm2mm_opts;
@@ -599,6 +602,21 @@ filters:
     // Compare points:
     const auto deskewedPts = mm.point_layer("deskewed");
     ASSERT_EQUAL_(deskewedPts->size(), gtGlobalPointsAggregated.size());
+
+    // Make sure we have all fields:
+    const auto outFields = [&]()
+    {
+        std::set<std::string> fields;
+        for (const auto& f : deskewedPts->getPointFieldNames_float())
+        {
+            fields.insert(std::string(f));
+        }
+        return fields;
+    }();
+
+    ASSERT_EQUAL_(outFields.count("intensity"), 1);
+    ASSERT_EQUAL_(outFields.count("t"), 1);
+
     for (size_t i = 0; i < deskewedPts->size(); i++)
     {
         mrpt::math::TPoint3Df pt;
@@ -630,6 +648,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         methods.push_back(mp2p_icp_filters::MotionCompensationMethod::IMUh);
 #endif
 
+        const std::vector<std::string> outputMapClasses = {
+            "mrpt::maps::CPointsMapXYZIRT", "mrpt::maps::CGenericPointsMap"};
+
         const std::vector<std::pair<float, float>> test_velocities = {
             {0.0f, 1e-6f},  // stationary
             {1.0f, 1e-6f},  // linear only
@@ -657,35 +678,42 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 {
                     p.deskew_method = method;
 
-                    // Run one of two possible tests:
-                    const auto eval = use_sm2mm ? run_deskew_in_sm2mm_test(p) : run_deskew_test(p);
-
-                    printf(
-                        " %-32s | rmse: %10.6f | errs: ", mrpt::typemeta::enum2str(method).c_str(),
-                        eval.rmse);
-
-                    for (std::size_t i = 0;
-                         i < std::min<std::size_t>(eval.individual_frame_rmse.size(), 6U); i++)
+                    for (const auto& className : outputMapClasses)
                     {
-                        printf("%6.02f ", eval.individual_frame_rmse[i] * 1e3);
-                    }
-                    printf("... [mm] ");
+                        p.outputMapClass = className;
 
-                    // Check:
-                    const float threshold =
-                        (method == mp2p_icp_filters::MotionCompensationMethod::None
-                             ? 0.20f
-                             : (method == mp2p_icp_filters::MotionCompensationMethod::Linear
-                                    ? 0.005f
-                                    : 0.001f));
-                    if (eval.rmse > threshold)
-                    {
-                        printf("❌ FAILED.\n");
-                        num_errors++;
-                    }
-                    else
-                    {
-                        printf("✅ Passed.\n");
+                        // Run one of two possible tests:
+                        const auto eval =
+                            use_sm2mm ? run_deskew_in_sm2mm_test(p) : run_deskew_test(p);
+
+                        printf(
+                            " %-32s | %-30s | rmse: %10.6f | errs: ",
+                            mrpt::typemeta::enum2str(method).c_str(), p.outputMapClass.c_str(),
+                            eval.rmse);
+
+                        for (std::size_t i = 0;
+                             i < std::min<std::size_t>(eval.individual_frame_rmse.size(), 6U); i++)
+                        {
+                            printf("%6.02f ", eval.individual_frame_rmse[i] * 1e3);
+                        }
+                        printf("... [mm] ");
+
+                        // Check:
+                        const float threshold =
+                            (method == mp2p_icp_filters::MotionCompensationMethod::None
+                                 ? 0.20f
+                                 : (method == mp2p_icp_filters::MotionCompensationMethod::Linear
+                                        ? 0.005f
+                                        : 0.001f));
+                        if (eval.rmse > threshold)
+                        {
+                            printf("❌ FAILED.\n");
+                            num_errors++;
+                        }
+                        else
+                        {
+                            printf("✅ Passed.\n");
+                        }
                     }
                 }
             }
