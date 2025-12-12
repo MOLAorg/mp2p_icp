@@ -127,11 +127,13 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
     mrpt::maps::CPointsMap::InsertCtx ctxStatic;
     if (outPcStatic)
     {
+        outPcStatic->registerPointFieldsFrom(*pcPtr);
         ctxStatic = outPcStatic->prepareForInsertPointsFrom(*pcPtr);
     }
     mrpt::maps::CPointsMap::InsertCtx ctxDynamic;
     if (outPcDynamic)
     {
+        outPcDynamic->registerPointFieldsFrom(*pcPtr);
         ctxDynamic = outPcDynamic->prepareForInsertPointsFrom(*pcPtr);
     }
 #endif

@@ -327,6 +327,7 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     deskew.input_pointcloud_layer        = "raw";
     deskew.output_pointcloud_layer       = "deskewed";
     deskew.method                        = p.deskew_method;
+    deskew.output_layer_class            = p.outputMapClass;
 
     deskew.attachToParameterSource(ps);
 
@@ -398,6 +399,21 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
         // Compare points:
         const auto deskewedPts = m.point_layer("deskewed");
         ASSERT_EQUAL_(deskewedPts->size(), gtLocalPoints.size());
+
+        // Make sure we have all fields:
+        const auto outFields = [&]()
+        {
+            std::set<std::string> fields;
+            for (const auto& f : deskewedPts->getPointFieldNames_float())
+            {
+                fields.insert(std::string(f));
+            }
+            return fields;
+        }();
+
+        ASSERT_EQUAL_(outFields.count("intensity"), 1);
+        ASSERT_EQUAL_(outFields.count("t"), 1);
+
         for (size_t i = 0; i < deskewedPts->size(); i++)
         {
             mrpt::math::TPoint3Df pt;

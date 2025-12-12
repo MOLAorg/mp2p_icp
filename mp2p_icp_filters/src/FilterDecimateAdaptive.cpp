@@ -176,6 +176,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 #endif
 
 #if MRPT_VERSION >= 0x020f00  // 2.15.0
+    outPc->registerPointFieldsFrom(pc);
     mrpt::maps::CPointsMap::InsertCtx ctx = outPc->prepareForInsertPointsFrom(pc);
 #endif
 

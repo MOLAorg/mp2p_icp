@@ -49,7 +49,10 @@ void FilterByRing::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
             "YAML configuration must have an entry `selected_ring_ids` "
             "with a scalar or sequence.");
 
-        for (const auto& n : cfgIn.asSequenceRange()) selected_ring_ids.insert(n.as<int>());
+        for (const auto& n : cfgIn.asSequenceRange())
+        {
+            selected_ring_ids.insert(n.as<int>());
+        }
     }
     ASSERT_(!selected_ring_ids.empty());
 }
@@ -106,7 +109,7 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& xs = pc.getPointsBufferRef_x();
 
 #if MRPT_VERSION >= 0x020f00  // 2.15.0
-    const auto* ptrR = pc.getPointsBufferRef_float_field("ring");
+    const auto* ptrR = pc.getPointsBufferRef_uint_field("ring");
 #else
     const auto* ptrR = pc.getPointsBufferRef_ring();
 #endif
@@ -123,11 +126,13 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
     mrpt::maps::CPointsMap::InsertCtx ctxSelected;
     if (outSelected)
     {
+        outSelected->registerPointFieldsFrom(pc);
         ctxSelected = outSelected->prepareForInsertPointsFrom(pc);
     }
     mrpt::maps::CPointsMap::InsertCtx ctxNotSelected;
     if (outNonSel)
     {
+        outNonSel->registerPointFieldsFrom(pc);
         ctxNotSelected = outNonSel->prepareForInsertPointsFrom(pc);
     }
 #endif

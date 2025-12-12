@@ -129,14 +129,17 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
     mrpt::maps::CPointsMap::InsertCtx ctxLow, ctxHigh, ctxMid;
     if (outLow)
     {
+        outLow->registerPointFieldsFrom(pc);
         ctxLow = outLow->prepareForInsertPointsFrom(pc);
     }
     if (outHigh)
     {
+        outHigh->registerPointFieldsFrom(pc);
         ctxHigh = outHigh->prepareForInsertPointsFrom(pc);
     }
     if (outMid)
     {
+        outMid->registerPointFieldsFrom(pc);
         ctxMid = outMid->prepareForInsertPointsFrom(pc);
     }
 #endif

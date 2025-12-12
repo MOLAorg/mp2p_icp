@@ -444,6 +444,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     std::optional<mrpt::maps::CPointsMap::InsertCtx> insert_ctx;
     if (outPc)
     {
+        // Copy all point fields from the source:
+        outPc->registerPointFieldsFrom(*inPc);
+
+        // and then, prepare structures for fast copying:
         insert_ctx = outPc->prepareForInsertPointsFrom(*inPc);
     }
 

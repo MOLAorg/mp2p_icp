@@ -110,10 +110,12 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
     mrpt::maps::CPointsMap::InsertCtx ctxOutside, ctxInside;
     if (insidePc)
     {
+        insidePc->registerPointFieldsFrom(pc);
         ctxInside = insidePc->prepareForInsertPointsFrom(pc);
     }
     if (outsidePc)
     {
+        outsidePc->registerPointFieldsFrom(pc);
         ctxOutside = outsidePc->prepareForInsertPointsFrom(pc);
     }
 #endif
