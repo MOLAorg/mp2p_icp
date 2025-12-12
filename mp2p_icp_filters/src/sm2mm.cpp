@@ -250,10 +250,16 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     // Final optional filtering:
     if (!finalFilters.empty())
     {
-        std::cout << "Applying 'final_filters'..." << std::endl;
+        if (options.verbosity <= mrpt::system::LVL_INFO)
+        {
+            std::cout << "Applying 'final_filters'..." << std::endl;
+        }
 
         mp2p_icp_filters::apply_filter_pipeline(finalFilters, mm);
 
-        std::cout << "Done with 'final_filters'." << std::endl;
+        if (options.verbosity <= mrpt::system::LVL_INFO)
+        {
+            std::cout << "Done with 'final_filters'." << std::endl;
+        }
     }
 }
