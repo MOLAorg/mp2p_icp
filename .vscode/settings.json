@@ -48,6 +48,10 @@
         "XYZIRT"
     ],
     "cSpell.ignoreWords": [
-        "Bonxai"
+        "Bonxai",
+        "ENTYPO",
+        "GLFW",
+        "TBoundingBoxf",
+        "imLinear2Neig"
     ]
 }

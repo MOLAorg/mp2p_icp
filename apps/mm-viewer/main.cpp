@@ -87,11 +87,11 @@ nanogui::Label*                  lbMousePos                = nullptr;
 nanogui::Label*                  lbCameraPointing          = nullptr;
 nanogui::Label *                 lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr, *lbPointSize = nullptr;
-nanogui::Label*    lbTrajThick      = nullptr;
-nanogui::Widget*   panelLayers      = nullptr;
-nanogui::ComboBox* cbTravellingKeys = nullptr;
-nanogui::TextBox*  edAnimFPS        = nullptr;
-nanogui::Slider*   slAnimProgress   = nullptr;
+nanogui::Label*    lbTrajectoryThick = nullptr;
+nanogui::Widget*   panelLayers       = nullptr;
+nanogui::ComboBox* cbTravellingKeys  = nullptr;
+nanogui::TextBox*  edAnimFPS         = nullptr;
+nanogui::Slider*   slAnimProgress    = nullptr;
 nanogui::Button *  btnAnimate = nullptr, *btnAnimStop = nullptr;
 nanogui::ComboBox* cbTravellingInterp = nullptr;
 
@@ -109,7 +109,7 @@ mrpt::poses::CPose3DInterpolator trajectory;
 mrpt::poses::CPose3DInterpolator camTravelling;
 std::optional<double>            camTravellingCurrentTime;
 
-constexpr float TRAV_ZOOM2ROLL = 1e-4;
+constexpr float TRAVELING_ZOOM2ROLL = 1e-4;
 
 static void rebuild_3d_view(bool force_rebuild_view = false);
 static void onSaveLayers();
@@ -190,11 +190,11 @@ bool loadMapFile(const std::string& mapFile)
 
 void updateMouseCoordinates()
 {
-    const auto mousexY = win->mousePos();
+    const auto mouse_xy = win->mousePos();
 
     mrpt::math::TLine3D mouse_ray;
     win->background_scene->getViewport("main")->get3DRayForPixelCoord(
-        mousexY.x(), mousexY.y(), mouse_ray);
+        mouse_xy.x(), mouse_xy.y(), mouse_ray);
 
     // Create a 3D plane, e.g. Z=0
     using mrpt::math::TPoint3D;
@@ -309,25 +309,28 @@ void onKeyboardAction(int key, int modifiers)
         int cmd_elev = 0;
 
         const float dis   = std::max(0.01f, (cam.cameraZoomDistance));
-        float       eye_x = cam.cameraPointingX + dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) *
-                                                cos(DEG2RAD(cam.cameraElevationDeg));
-        float eye_y = cam.cameraPointingY + dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) *
-                                                cos(DEG2RAD(cam.cameraElevationDeg));
-        float eye_z = cam.cameraPointingZ + dis * sin(DEG2RAD(cam.cameraElevationDeg));
+        const auto  eye_x = cam.cameraPointingX + dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) *
+                                                     cos(DEG2RAD(cam.cameraElevationDeg));
+        const auto eye_y = cam.cameraPointingY + dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) *
+                                                     cos(DEG2RAD(cam.cameraElevationDeg));
+        const auto eye_z = cam.cameraPointingZ + dis * sin(DEG2RAD(cam.cameraElevationDeg));
 
         // Orbit camera:
-        float A_AzimuthDeg = -SENSIBILITY_ROTATE * cmd_rot;
+        float A_AzimuthDeg = -SENSIBILITY_ROTATE * static_cast<float>(cmd_rot);
         cam.cameraAzimuthDeg += A_AzimuthDeg;
 
-        float A_ElevationDeg = SENSIBILITY_ROTATE * cmd_elev;
+        float A_ElevationDeg = SENSIBILITY_ROTATE * static_cast<float>(cmd_elev);
         cam.setElevationDeg(cam.cameraElevationDeg + A_ElevationDeg);
 
         // Move cameraPointing pos:
-        cam.cameraPointingX =
-            eye_x - dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) * cos(DEG2RAD(cam.cameraElevationDeg));
-        cam.cameraPointingY =
-            eye_y - dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) * cos(DEG2RAD(cam.cameraElevationDeg));
-        cam.cameraPointingZ = eye_z - dis * sin(DEG2RAD(cam.cameraElevationDeg));
+        cam.cameraPointingX = static_cast<float>(
+            eye_x -
+            dis * cos(DEG2RAD(cam.cameraAzimuthDeg)) * cos(DEG2RAD(cam.cameraElevationDeg)));
+        cam.cameraPointingY = static_cast<float>(
+            eye_y -
+            dis * sin(DEG2RAD(cam.cameraAzimuthDeg)) * cos(DEG2RAD(cam.cameraElevationDeg)));
+        cam.cameraPointingZ =
+            static_cast<float>(eye_z - dis * sin(DEG2RAD(cam.cameraElevationDeg)));
 
         win->camera().setCameraParams(cam);
     };
@@ -415,8 +418,8 @@ void processCameraTravelling()
     // Time range:
     const double t0 = mrpt::Clock::toDouble(camTravelling.begin()->first);
     const double t1 = mrpt::Clock::toDouble(camTravelling.rbegin()->first);
-    slAnimProgress->setRange(std::make_pair<float>(t0, t1));
-    slAnimProgress->setValue(t);
+    slAnimProgress->setRange(std::make_pair<float>(static_cast<float>(t0), static_cast<float>(t1)));
+    slAnimProgress->setValue(static_cast<float>(t));
 
     if (t >= t1)
     {
@@ -435,10 +438,11 @@ void processCameraTravelling()
     camTravelling.interpolate(mrpt::Clock::fromDouble(t), p, valid);
     if (valid)
     {
-        win->camera().setCameraPointing(p.x, p.y, p.z);
-        win->camera().setAzimuthDegrees(mrpt::RAD2DEG(p.yaw));
-        win->camera().setElevationDegrees(mrpt::RAD2DEG(p.pitch));
-        win->camera().setZoomDistance(p.roll / TRAV_ZOOM2ROLL);
+        const auto pt = p.translation().cast<float>();
+        win->camera().setCameraPointing(pt.x, pt.y, pt.z);
+        win->camera().setAzimuthDegrees(static_cast<float>(mrpt::RAD2DEG(p.yaw)));
+        win->camera().setElevationDegrees(static_cast<float>(mrpt::RAD2DEG(p.pitch)));
+        win->camera().setZoomDistance(static_cast<float>(p.roll / TRAVELING_ZOOM2ROLL));
     }
 
     // Move to next time step:
@@ -680,8 +684,8 @@ void main_show_gui()
             pn->setLayout(new nanogui::GridLayout(
                 nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
-            lbTrajThick = pn->add<nanogui::Label>("Trajectory thickness:");
-            lbTrajThick->setFontSize(MID_FONT_SIZE);
+            lbTrajectoryThick = pn->add<nanogui::Label>("Trajectory thickness:");
+            lbTrajectoryThick->setFontSize(MID_FONT_SIZE);
 
             slTrajectoryThickness = pn->add<nanogui::Slider>();
             slTrajectoryThickness->setEnabled(trajectory.size() >= 2);
@@ -823,7 +827,7 @@ void main_show_gui()
                         win->camera().cameraParams().cameraPointingZ,
                         mrpt::DEG2RAD(win->camera().cameraParams().cameraAzimuthDeg),
                         mrpt::DEG2RAD(win->camera().cameraParams().cameraElevationDeg),
-                        win->camera().cameraParams().cameraZoomDistance * TRAV_ZOOM2ROLL);
+                        win->camera().cameraParams().cameraZoomDistance * TRAVELING_ZOOM2ROLL);
                     camTravelling.insert(mrpt::Clock::fromDouble(std::stod(edTime->value())), p);
                     rebuildCamTravellingCombo();
 
@@ -921,10 +925,10 @@ void main_show_gui()
 
     // save and load UI state:
 #define LOAD_CB_STATE(CB_NAME__) do_cb(CB_NAME__, #CB_NAME__)
-#define SAVE_CB_STATE(CB_NAME__) appCfg.write("", #CB_NAME__, CB_NAME__->checked())
+#define SAVE_CB_STATE(CB_NAME__) appCfg.write("", #CB_NAME__, (CB_NAME__)->checked())
 
 #define LOAD_SL_STATE(SL_NAME__) do_sl(SL_NAME__, #SL_NAME__)
-#define SAVE_SL_STATE(SL_NAME__) appCfg.write("", #SL_NAME__, SL_NAME__->value())
+#define SAVE_SL_STATE(SL_NAME__) appCfg.write("", #SL_NAME__, (SL_NAME__)->value())
 
     auto load_UI_state_from_user_config = [&]()
     {
@@ -1218,8 +1222,9 @@ void rebuild_3d_view(bool force_rebuild_view)
     // glTrajectory:
     if (glTrajectory->empty() && trajectory.size() >= 2)
     {
-        const float trajCylRadius = std::exp(slTrajectoryThickness->value());
-        lbTrajThick->setCaption("Traj. thickness: " + std::to_string(trajCylRadius));
+        const float trajectoryCylRadius = std::exp(slTrajectoryThickness->value());
+        lbTrajectoryThick->setCaption(
+            "Trajectory thickness: " + std::to_string(trajectoryCylRadius));
 
         std::optional<mrpt::math::TPose3D> prevPose;
         for (const auto& [t, p] : trajectory)
@@ -1231,8 +1236,8 @@ void rebuild_3d_view(bool force_rebuild_view)
                 auto glSegment = mrpt::opengl::CArrow::Create();
                 glSegment->setArrowEnds(p0.translation(), p.translation());
                 glSegment->setHeadRatio(.0);
-                glSegment->setLargeRadius(trajCylRadius);
-                glSegment->setSmallRadius(trajCylRadius);
+                glSegment->setLargeRadius(trajectoryCylRadius);
+                glSegment->setSmallRadius(trajectoryCylRadius);
                 glSegment->setColor_u8(0x30, 0x30, 0x30, 0xff);
 
                 glTrajectory->insert(glSegment);
