@@ -55,7 +55,7 @@ bool saveToTxt(
     // Data:
     const auto& floatFields = pts.float_fields();
     const auto& uintFields  = pts.uint16_fields();
-#if MRPT_VERSION >= 0x020f02  // 2.15.2
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
     const auto& doubleFields = pts.double_fields();
 #endif
 
@@ -73,7 +73,7 @@ bool saveToTxt(
         {
             mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
         }
-#if MRPT_VERSION >= 0x020f02  // 2.15.2
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
         for (const auto& [name, _] : doubleFields)
         {
             mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
@@ -107,7 +107,7 @@ bool saveToTxt(
         {
             mrpt::system::os::fprintf(f, "%u ", values.at(i));
         }
-#if MRPT_VERSION >= 0x020f02  // 2.15.2
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
         for (const auto& [_, values] : doubleFields)
         {
             mrpt::system::os::fprintf(f, "%lf ", values.at(i));
