@@ -81,6 +81,10 @@ class FilterMLS : public mp2p_icp_filters::FilterBase
 
         std::string output_pointcloud_layer = "mls";
 
+        /** The class name for output layer if it does not exist and needs to be
+         * created. Empty means same class than input. */
+        std::string output_layer_class = "";
+
         /** (Optional) If `upsampling_method` is `DISTINCT_CLOUD`,
          * this layer's points will be projected onto the MLS surface
          * built from `input_pointcloud_layer`.

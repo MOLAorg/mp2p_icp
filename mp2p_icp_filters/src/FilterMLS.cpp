@@ -47,6 +47,7 @@ void FilterMLS::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
     MCP_LOAD_REQ(c, output_pointcloud_layer);
+    MCP_LOAD_OPT(c, output_layer_class);
     MCP_LOAD_OPT(c, distinct_cloud_layer);
     MCP_LOAD_REQ(c, search_radius);
     MCP_LOAD_REQ(c, polynomial_order);
@@ -420,7 +421,8 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
         inOut, params.output_pointcloud_layer,
         /*do not allow empty*/ false,
         /* create cloud of the same type as input */
-        pcPtr->GetRuntimeClass()->className);
+        params.output_layer_class.empty() ? pcPtr->GetRuntimeClass()->className
+                                          : params.output_layer_class.c_str());
 
     // Clear pimpl state from previous runs
     impl_->new_points.clear();
@@ -479,8 +481,11 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
                         100.0);
 
                     MRPT_LOG_INFO_FMT(
-                        "Progress: %.01f%% (%zu/%zu)", pct, impl_->processed_points,
-                        impl_->total_points);
+                        "Progress: %.01f%% (%s/%s)", pct,
+                        mrpt::system::unitsFormat(static_cast<double>(impl_->processed_points))
+                            .c_str(),
+                        mrpt::system::unitsFormat(static_cast<double>(impl_->total_points))
+                            .c_str());
                 }
             }
         });
