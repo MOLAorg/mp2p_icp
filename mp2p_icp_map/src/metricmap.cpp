@@ -25,8 +25,7 @@
 #include <mrpt/io/CFileGZOutputStream.h>
 #include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/maps/CVoxelMapRGB.h>
-#include <mrpt/math/CHistogram.h>
-#include <mrpt/math/distributions.h>  // confidenceIntervals()
+#include <mrpt/obs/customizable_obs_viz.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/opengl/CPointCloudColoured.h>
@@ -366,78 +365,16 @@ void metric_map_t::get_visualization_map_layer(
         }
 #endif
 
-        mrpt::math::TBoundingBoxf bb;
+        ASSERT_(p.colorMode->recolorizeByField.has_value());
 
-        const bool hasToAutoFindBB =
-            (!p.colorMode->colorMapMinCoord.has_value() ||
-             !p.colorMode->colorMapMaxCoord.has_value());
+        mrpt::obs::VisualizationParameters vizParams;
+        vizParams.colorizeByField = p.colorMode->recolorizeByField.value();
+        vizParams.colorMap        = p.colorMode->colorMap;
 
-        if (hasToAutoFindBB)
-        {
-            bb = pts->boundingBox();
-        }
+        // TODO: Impl in MRPT this:
+        // vizParams.xxx = p.colorMode->colorMapMinCoord.value();
 
-        ASSERT_(p.colorMode->recolorizeByCoordinate.has_value());
-
-        const unsigned int coordIdx =
-            static_cast<unsigned int>(p.colorMode->recolorizeByCoordinate.value());
-        ASSERT_(coordIdx < 3);
-
-        float min = bb.min[coordIdx], max = bb.max[coordIdx];
-
-        if (hasToAutoFindBB && p.colorMode->autoBoundingBoxOutliersPercentile.has_value())
-        {
-            const float confidenceInterval = *p.colorMode->autoBoundingBoxOutliersPercentile;
-
-            // handle planar maps (avoids error in histogram below):
-            for (int i = 0; i < 3; i++)
-            {
-                if (bb.max[i] == bb.min[i])
-                {
-                    bb.max[i] = bb.min[i] + 0.1f;
-                }
-            }
-
-            // Use a histogram to discard outliers from the colormap extremes:
-            constexpr size_t nBins = 100;
-            // for x,y,z
-            std::array<mrpt::math::CHistogram, 3> hists = {
-                mrpt::math::CHistogram(bb.min.x, bb.max.x, nBins),
-                mrpt::math::CHistogram(bb.min.y, bb.max.y, nBins),
-                mrpt::math::CHistogram(bb.min.z, bb.max.z, nBins)};
-
-            const auto lambdaVisitPoints = [&hists](const mrpt::math::TPoint3Df& pt)
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    hists[i].add(pt[i]);
-                }
-            };
-
-            for (size_t i = 0; i < pts->size(); i++)
-            {
-                mrpt::math::TPoint3Df pt;
-                pts->getPoint(i, pt.x, pt.y, pt.z);
-                lambdaVisitPoints(pt);
-            }
-
-            // Analyze the histograms and get confidence intervals:
-            std::vector<double> coords;
-            std::vector<double> hits;
-
-            hists[coordIdx].getHistogramNormalized(coords, hits);
-            mrpt::math::confidenceIntervalsFromHistogram(
-                coords, hits, min, max, confidenceInterval);
-
-        }  // end compute outlier limits
-
-        const float coordMin =
-            p.colorMode->colorMapMinCoord.has_value() ? *p.colorMode->colorMapMinCoord : min;
-
-        const float coordMax =
-            p.colorMode->colorMapMaxCoord.has_value() ? *p.colorMode->colorMapMaxCoord : max;
-
-        glPts->recolorizeByCoordinate(coordMin, coordMax, coordIdx, p.colorMode->colorMap);
+        mrpt::obs::recolorize3Dpc(glPts, pts.get(), vizParams);
 
         o.insert(glPts);
     }

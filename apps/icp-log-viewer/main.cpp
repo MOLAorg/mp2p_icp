@@ -1019,7 +1019,10 @@ void rebuild_3d_view(bool regenerateMaps)
         }
 
         // show/hide:
-        if (!cb->checked()) continue;  // hidden
+        if (!cb->checked())
+        {
+            continue;  // hidden
+        }
         rpGlobal.points.visible = true;
 
         auto& rpL                       = rpGlobal.points.perLayer[lyName];
@@ -1029,9 +1032,9 @@ void rebuild_3d_view(bool regenerateMaps)
 
         if (cbColorizeGlobalMap->checked())
         {
-            auto& cm                  = rpL.colorMode.emplace();
-            cm.colorMap               = mrpt::img::TColormap::cmHOT;
-            cm.recolorizeByCoordinate = mp2p_icp::Coordinate::Z;
+            auto& cm             = rpL.colorMode.emplace();
+            cm.colorMap          = mrpt::img::TColormap::cmHOT;
+            cm.recolorizeByField = "z";
         }
     }
 
@@ -1093,9 +1096,9 @@ void rebuild_3d_view(bool regenerateMaps)
         rpL.render_voxelmaps_free_space = cbViewVoxelsFreeSpace->checked();
         if (cbColorizeLocalMap->checked())
         {
-            auto& cm                  = rpL.colorMode.emplace();
-            cm.colorMap               = mrpt::img::TColormap::cmHOT;
-            cm.recolorizeByCoordinate = mp2p_icp::Coordinate::Z;
+            auto& cm             = rpL.colorMode.emplace();
+            cm.colorMap          = mrpt::img::TColormap::cmHOT;
+            cm.recolorizeByField = "z";
         }
     }
 
