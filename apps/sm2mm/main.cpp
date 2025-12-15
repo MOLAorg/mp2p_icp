@@ -117,6 +117,16 @@ void run_sm_to_mm()
     {
         mrpt::io::setLazyLoadPathBase(arg_lazy_load_base_dir.getValue());
     }
+    else
+    {
+        // Try to set a base dir according to the input file, appending "_Images" to the base name:
+        const auto lazyBaseDir = mrpt::system::fileNameChangeExtension(filSM, "") + "_Images";
+        if (mrpt::system::directoryExists(lazyBaseDir))
+        {
+            mrpt::io::setLazyLoadPathBase(lazyBaseDir);
+            std::cout << "[sm2mm] Using lazy-load base dir: " << lazyBaseDir << std::endl;
+        }
+    }
 
     mp2p_icp_filters::sm2mm_options_t opts;
     opts.showProgressBar = !argNoProgressBar.isSet();
