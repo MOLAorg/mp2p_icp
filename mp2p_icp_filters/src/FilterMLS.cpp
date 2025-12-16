@@ -323,7 +323,6 @@ struct FilterMLS::Impl
         // 3. Project point and compute normal
         Eigen::Vector3d projected_pt_eig, projected_normal_eig;
 
-        // Only SIMPLE is implemented as requested
         result.projectPointSimple(
             Eigen::Vector3d(p_query.x, p_query.y, p_query.z), projected_pt_eig,
             projected_normal_eig);

@@ -1068,60 +1068,6 @@ void main_show_gui()
     save_UI_state_to_user_config();
 }
 
-void doColorizeByIntensity(
-    const mrpt::img::TColormap& colormap, const mrpt::maps::CPointsMap* org_cloud,
-    mrpt::opengl::CPointCloudColoured& cloud)
-{
-    if (colormap == mrpt::img::TColormap::cmNONE)
-    {
-        return;
-    }
-
-    // Colorize by intensity with custom color map?
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
-    if (!org_cloud || !org_cloud->hasPointField("intensity"))
-#else
-    if (!org_cloud || !org_cloud->hasField_Intensity())
-#endif
-    {
-        return;
-    }
-
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
-    const auto* Is = org_cloud->getPointsBufferRef_float_field("intensity");
-#else
-    const auto* Is = org_cloud->getPointsBufferRef_intensity();
-#endif
-    ASSERT_(Is);
-
-    // Thread-local cache for max intensity
-    thread_local float max_intensity_cache = 1.0f;
-
-    // Find max intensity in current cloud
-    float current_max = 0.0f;
-    for (const auto& I : *Is)
-    {
-        if (I > current_max)
-        {
-            current_max = I;
-        }
-    }
-
-    // Smooth update of max intensity
-    max_intensity_cache = 0.9f * max_intensity_cache + 0.1f * current_max;
-    const float scale   = (max_intensity_cache > 0.0f) ? (1.0f / max_intensity_cache) : 1.0f;
-
-    for (size_t i = 0; i < Is->size(); i++)
-    {
-        const float I_norm = (*Is)[i] * scale;  // normalize to [0,1] using smoothed max
-        float       r = 0, g = 0, b = 0;
-        mrpt::img::colormap(colormap, I_norm, r, g, b);
-        cloud.setPointColor_fast(i, r, g, b);
-    }
-
-    cloud.markAllPointsAsNew();
-}
-
 }  // namespace
 
 // ==============================
@@ -1221,20 +1167,6 @@ void rebuild_3d_view(bool force_rebuild_view)
 
         // Show all or selected layers:
         rpMap.points.allLayers.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
-
-        // Re-colorize using a colormap for intensity.
-        mrpt::img::TColormap recolorizeIntensity = mrpt::typemeta::str2enum<mrpt::img::TColormap>(
-            cmbColorIntensity->items().at(cmbColorIntensity->selectedIndex()));
-        if (theMap.layers.size() == 1)
-        {
-            auto org_cloud =
-                std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(theMap.layers.begin()->second);
-            if (auto cloud = glPts->getByClass<mrpt::opengl::CPointCloudColoured>(0);
-                cloud && org_cloud)
-            {
-                doColorizeByIntensity(recolorizeIntensity, org_cloud.get(), *cloud);
-            }
-        }
 
         glVizMap->insert(glPts);
         glVizMap->insert(glMapCorner);
