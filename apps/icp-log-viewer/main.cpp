@@ -168,10 +168,16 @@ void rebuild_3d_view_fast() { rebuild_3d_view(false); }
 
 void processAutoPlay()
 {
-    if (!isAutoPlayActive) return;
+    if (!isAutoPlayActive)
+    {
+        return;
+    }
 
     const double tNow = mrpt::Clock::nowDouble();
-    if (tNow - lastAutoPlayTime < argAutoPlayPeriod.getValue()) return;
+    if (tNow - lastAutoPlayTime < argAutoPlayPeriod.getValue())
+    {
+        return;
+    }
 
     lastAutoPlayTime = tNow;
 
@@ -185,7 +191,10 @@ void processAutoPlay()
 void updateMiniCornerView()
 {
     auto gl_view = win->background_scene->getViewport("small-view");
-    if (!gl_view) return;
+    if (!gl_view)
+    {
+        return;
+    }
 
     mrpt::opengl::CCamera& view_cam = gl_view->getCamera();
 
@@ -224,7 +233,10 @@ void main_show_gui()
     }
 
     // load files:
-    for (const auto& file : files) logRecords.emplace_back(file.wholePath, file.name);
+    for (const auto& file : files)
+    {
+        logRecords.emplace_back(file.wholePath, file.name);
+    }
 
     ASSERT_(!logRecords.empty());
 
@@ -454,7 +466,10 @@ void main_show_gui()
     {
         const std::string outFile = nanogui::file_dialog(
             {{"mm", "mp2p_icp::metric_map_t binary serialized object (*.mm)"}}, true /*save*/);
-        if (outFile.empty()) return;
+        if (outFile.empty())
+        {
+            return;
+        }
         m.save_to_file(outFile);
     };
 
@@ -667,7 +682,10 @@ void main_show_gui()
     win->setKeyboardCallback(
         [&](int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int modifiers)
         {
-            if (action != GLFW_PRESS && action != GLFW_REPEAT) return false;
+            if (action != GLFW_PRESS && action != GLFW_REPEAT)
+            {
+                return false;
+            }
 
             int increment = 0;
             switch (key)
@@ -693,14 +711,23 @@ void main_show_gui()
                     cbShowInitialPose->setChecked(!cbShowInitialPose->checked());
                     cbShowInitialPose->callback()(cbShowInitialPose->checked());
                     break;
+                default:
+                    // do nothing
+                    break;
             };
 
             if (increment != 0)
             {
                 nanogui::Slider* sl = slSelectorICP;  // shortcut
-                sl->setValue(sl->value() + increment);
-                if (sl->value() < 0) sl->setValue(0);
-                if (sl->value() > sl->range().second) sl->setValue(sl->range().second);
+                sl->setValue(sl->value() + static_cast<float>(increment));
+                if (sl->value() < 0)
+                {
+                    sl->setValue(0);
+                }
+                if (sl->value() > sl->range().second)
+                {
+                    sl->setValue(sl->range().second);
+                }
                 rebuild_3d_view();
             }
 
@@ -715,10 +742,10 @@ void main_show_gui()
 
     // save and load UI state:
 #define LOAD_CB_STATE(CB_NAME__) do_cb(CB_NAME__, #CB_NAME__)
-#define SAVE_CB_STATE(CB_NAME__) appCfg.write("", #CB_NAME__, CB_NAME__->checked())
+#define SAVE_CB_STATE(CB_NAME__) appCfg.write("", #CB_NAME__, (CB_NAME__)->checked())
 
 #define LOAD_SL_STATE(SL_NAME__) do_sl(SL_NAME__, #SL_NAME__)
-#define SAVE_SL_STATE(SL_NAME__) appCfg.write("", #SL_NAME__, SL_NAME__->value())
+#define SAVE_SL_STATE(SL_NAME__) appCfg.write("", #SL_NAME__, (SL_NAME__)->value())
 
     auto load_UI_state_from_user_config = [&]()
     {
@@ -836,7 +863,10 @@ void rebuild_3d_view(bool regenerateMaps)
     btnSelectorBack->setEnabled(!logRecords.empty() && idx > 0);
     btnSelectorForw->setEnabled(!logRecords.empty() && idx < logRecords.size() - 1);
 
-    if (idx >= logRecords.size()) return;
+    if (idx >= logRecords.size())
+    {
+        return;
+    }
 
     glVizICP->clear();
 
@@ -847,7 +877,10 @@ void rebuild_3d_view(bool regenerateMaps)
     if (!lastIdx || (lastIdx && idx != *lastIdx))
     {
         // free memory:
-        if (lastIdx) logRecords.at(*lastIdx).dispose();
+        if (lastIdx)
+        {
+            logRecords.at(*lastIdx).dispose();
+        }
 
         // and note that we should show the first/last ICP iteration:
         mustResetIterationSlider = true;
@@ -859,17 +892,19 @@ void rebuild_3d_view(bool regenerateMaps)
 
     lbICPStats[0]->setValue(logRecords.at(idx).shortFileName());
 
-    lbICPStats[1]->setValue(mrpt::format(
-        "ICP log #%zu | Local: ID:%u%s | Global: ID:%u%s", idx,
-        static_cast<unsigned int>(lr.pcLocal->id ? lr.pcLocal->id.value() : 0),
-        lr.pcLocal->label ? lr.pcLocal->label.value().c_str() : "",
-        static_cast<unsigned int>(lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
-        lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : ""));
+    lbICPStats[1]->setValue(
+        mrpt::format(
+            "ICP log #%zu | Local: ID:%u%s | Global: ID:%u%s", idx,
+            static_cast<unsigned int>(lr.pcLocal->id ? lr.pcLocal->id.value() : 0),
+            lr.pcLocal->label ? lr.pcLocal->label.value().c_str() : "",
+            static_cast<unsigned int>(lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
+            lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : ""));
 
-    lbICPStats[2]->setValue(mrpt::format(
-        "Quality: %.02f%% | Iters: %u | Term.Reason: %s", 100.0 * lr.icpResult.quality,
-        static_cast<unsigned int>(lr.icpResult.nIterations),
-        mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str()));
+    lbICPStats[2]->setValue(
+        mrpt::format(
+            "Quality: %.02f%% | Iters: %u | Term.Reason: %s", 100.0 * lr.icpResult.quality,
+            static_cast<unsigned int>(lr.icpResult.nIterations),
+            mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str()));
 
     lbICPStats[3]->setValue("Global: "s + lr.pcGlobal->contents_summary());
     lbICPStats[4]->setValue("Local: "s + lr.pcLocal->contents_summary());
@@ -880,13 +915,19 @@ void rebuild_3d_view(bool regenerateMaps)
 
     // dyn variables:
     {
-        for (auto* lb : lbDynVariables) lb->setValue("");
+        for (auto* lb : lbDynVariables)
+        {
+            lb->setValue("");
+        }
 
         size_t lbIdx = 0;
         for (const auto& [name, value] : lr.dynamicVariables)
         {
             lbDynVariables[lbIdx++]->setValue(mrpt::format("%s = %g", name.c_str(), value));
-            if (lbIdx >= MAX_VARIABLE_LIST) break;
+            if (lbIdx >= MAX_VARIABLE_LIST)
+            {
+                break;
+            }
         }
     }
 
@@ -894,9 +935,11 @@ void rebuild_3d_view(bool regenerateMaps)
         const auto poseChange =
             lr.icpResult.optimal_tf.mean - mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
 
-        tbInit2Final->setValue(mrpt::format(
-            "|T|=%.03f [m]  |R|=%.03f [deg]", poseChange.norm(),
-            mrpt::RAD2DEG(mrpt::poses::Lie::SO<3>::log(poseChange.getRotationMatrix()).norm())));
+        tbInit2Final->setValue(
+            mrpt::format(
+                "|T|=%.03f [m]  |R|=%.03f [deg]", poseChange.norm(),
+                mrpt::RAD2DEG(
+                    mrpt::poses::Lie::SO<3>::log(poseChange.getRotationMatrix()).norm())));
     }
 
     const auto                      poseFromCorner = mrpt::poses::CPose3D::Identity();
@@ -956,7 +999,10 @@ void rebuild_3d_view(bool regenerateMaps)
 
     {
         std::string s;
-        for (int i = 0; i < 6; i++) s += mrpt::format("%.02f ", std::sqrt(relativePose.cov(i, i)));
+        for (int i = 0; i < 6; i++)
+        {
+            s += mrpt::format("%.02f ", std::sqrt(relativePose.cov(i, i)));
+        }
 
         s += mrpt::format(
             " det(XYZ)=%.02e det(rot)=%.02e", relativePose.cov.blockCopy<3, 3>(0, 0).det(),
@@ -969,12 +1015,13 @@ void rebuild_3d_view(bool regenerateMaps)
     const mrpt::poses::CPosePDFGaussian pose2D(relativePose);
 
     // Condition numbers:
-    tbConditionNumber->setValue(mrpt::format(
-        " cn{XYZ}=%.02f cn{SO(3)}=%.02f cn{SE(2)}=%.02f "
-        "cn{SE(3)}=%.02f",
-        conditionNumber(relativePose.cov.blockCopy<3, 3>(0, 0)),
-        conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)), conditionNumber(pose2D.cov),
-        conditionNumber(relativePose.cov)));
+    tbConditionNumber->setValue(
+        mrpt::format(
+            " cn{XYZ}=%.02f cn{SO(3)}=%.02f cn{SE(2)}=%.02f "
+            "cn{SE(3)}=%.02f",
+            conditionNumber(relativePose.cov.blockCopy<3, 3>(0, 0)),
+            conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)), conditionNumber(pose2D.cov),
+            conditionNumber(relativePose.cov)));
 
     // 3D objects -------------------
     auto glCornerFrom = mrpt::opengl::stock_objects::CornerXYZSimple(0.75f, 3.0f);
@@ -1044,7 +1091,9 @@ void rebuild_3d_view(bool regenerateMaps)
     {
         // Show all or selected layers:
         for (auto& rpL : rpGlobal.points.perLayer)
+        {
             rpL.second.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+        }
 
         auto glPts    = lr.pcGlobal->get_visualization(rpGlobal);
         lastGlobalPts = glPts;
@@ -1131,8 +1180,8 @@ void rebuild_3d_view(bool regenerateMaps)
 
         if (cbCameraFollowsLocal->checked())
         {
-            win->camera().setCameraPointing(
-                relativePose.mean.x(), relativePose.mean.y(), relativePose.mean.z());
+            const auto camLoc = relativePose.mean.translation().cast<float>();
+            win->camera().setCameraPointing(camLoc.x, camLoc.y, camLoc.z);
         }
 
         // clip planes:
@@ -1148,8 +1197,9 @@ void rebuild_3d_view(bool regenerateMaps)
         lbDepthFieldValues->setCaption(
             mrpt::format("Frustum: near=%.02f far=%.02f", clipNear, clipFar));
 
-        win->background_scene->getViewport()->setViewportClipDistances(clipNear, clipFar);
-        win->camera().setMaximumZoom(std::max<double>(1000, 3.0 * clipFar));
+        win->background_scene->getViewport()->setViewportClipDistances(
+            static_cast<float>(clipNear), static_cast<float>(clipFar));
+        win->camera().setMaximumZoom(std::max<float>(1000, static_cast<float>(3.0 * clipFar)));
     }
 
     // Pairings ------------------
