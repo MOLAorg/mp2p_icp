@@ -367,12 +367,15 @@ void metric_map_t::get_visualization_map_layer(
 
         ASSERT_(p.colorMode->recolorizeByField.has_value());
 
+#if MRPT_VERSION >= 0x20d03  // v2.15.3
+        mrpt::obs::PointCloudRecoloringParameters vizParams;
+        vizParams.colorMapMinCoord = p.colorMode->colorMapMinCoord;
+        vizParams.colorMapMaxCoord = p.colorMode->colorMapMaxCoord;
+#else
         mrpt::obs::VisualizationParameters vizParams;
+#endif
         vizParams.colorizeByField = p.colorMode->recolorizeByField.value();
         vizParams.colorMap        = p.colorMode->colorMap;
-
-        // TODO: Impl in MRPT this:
-        // vizParams.xxx = p.colorMode->colorMapMinCoord.value();
 
         mrpt::obs::recolorize3Dpc(glPts, pts.get(), vizParams);
 
