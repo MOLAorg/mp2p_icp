@@ -202,9 +202,33 @@ bool loadMapFile(const std::string& mapFile)
             {
                 fields.insert(std::string(f));
             }
+            for (const auto& f : pts->getPointFieldNames_uint8())
+            {
+                fields.insert(std::string(f));
+            }
 #endif
         }
 
+        // Handle special color channels:
+        // See reference: mrpt::obs::PointCloudRecoloringParameters
+        // - `rgb` for `{color_r,color_g,color_b}` (uint8_t, in range 0-255)
+        // - `rgbf` for `{color_rf,color_gf,color_bf}` (float, in range 0-1)
+        if (fields.count("color_r") && fields.count("color_g") && fields.count("color_b"))
+        {
+            fields.erase("color_r");
+            fields.erase("color_g");
+            fields.erase("color_b");
+            fields.insert("rgb");
+        }
+        if (fields.count("color_rf") && fields.count("color_gf") && fields.count("color_bf"))
+        {
+            fields.erase("color_rf");
+            fields.erase("color_gf");
+            fields.erase("color_bf");
+            fields.insert("rgbf");
+        }
+
+        // Now convert the set into a vector:
         knownPointFields.clear();
         for (const auto& f : fields)
         {
