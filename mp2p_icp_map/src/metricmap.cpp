@@ -367,7 +367,7 @@ void metric_map_t::get_visualization_map_layer(
 
         ASSERT_(p.colorMode->recolorizeByField.has_value());
 
-#if MRPT_VERSION >= 0x20d03  // v2.15.3
+#if MRPT_VERSION >= 0x020f03  // v2.15.3
         mrpt::obs::PointCloudRecoloringParameters vizParams;
         vizParams.colorMapMinCoord = p.colorMode->colorMapMinCoord;
         vizParams.colorMapMaxCoord = p.colorMode->colorMapMaxCoord;
