@@ -454,16 +454,9 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     }
 #endif
 
-    // Create deskew method:
+    // We define a "mp2p_icp::ParameterSource" only to store its contents
+    // into the keyframes of the SimpleMap, as the sm2mm() function will use them.
     mp2p_icp::ParameterSource ps;
-
-    mp2p_icp_filters::FilterDeskew deskew;
-    deskew.silently_ignore_no_timestamps = false;
-    deskew.input_pointcloud_layer        = "raw";
-    deskew.output_pointcloud_layer       = "deskewed";
-    deskew.method                        = p.deskew_method;
-
-    deskew.attachToParameterSource(ps);
 
     // Run test:
     SimulationResult result;
@@ -493,9 +486,6 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
         // Get the GT deskewed points:
         const auto gtLocalPoints = simulate_gt_local_points(mrpt::poses::CPose3D(pose), gtPoints);
         gtGlobalPointsAggregated.insertAnotherMap(&gtLocalPoints, mrpt::poses::CPose3D(pose));
-
-        // Update deskew params (needed for Linear method only):
-        deskew.twist = kfGtTwist;
 
         // Update local velocity buffer:
         const double stamp_s = mrpt::Clock::toDouble(stamp);
