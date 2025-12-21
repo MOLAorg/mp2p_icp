@@ -271,6 +271,7 @@ std::string transformAndFormatSelectedPoint(const mrpt::math::TPoint3D& pt)
         if (cbMouseUnits->items().size() != 3)
         {
             cbMouseUnits->setItems(std::vector<std::string>({"map", "enu", "lat/lon "}));
+            cbMouseUnits->setEnabled(true);
         }
     }
     else
@@ -278,6 +279,8 @@ std::string transformAndFormatSelectedPoint(const mrpt::math::TPoint3D& pt)
         if (cbMouseUnits->items().size() != 1)
         {
             cbMouseUnits->setItems(std::vector<std::string>({"map"}));
+            cbMouseUnits->setSelectedIndex(0);
+            cbMouseUnits->setEnabled(false);
         }
     }
 
@@ -1389,6 +1392,11 @@ void rebuild_3d_view(bool force_rebuild_view)
     if (mapBbox)
     {
         glGrid->setPlaneLimits(mapBbox->min.x, mapBbox->max.x, mapBbox->min.y, mapBbox->max.y);
+
+        constexpr float MAX_GRID_LINES = 20.0f;
+
+        const auto bboxDiagonal = (mapBbox->max - mapBbox->min).cast<float>().norm();
+        glGrid->setGridFrequency(std::max<float>(1.0f, std::round(bboxDiagonal / MAX_GRID_LINES)));
     }
     glGrid->setVisibility(cbShowGroundGrid->checked());
 
