@@ -33,6 +33,7 @@
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>  // loadPluginModules()
 #include <mrpt/system/string_utils.h>  // unitsFormat()
+#include <mrpt/topography/conversions.h>
 #include <mrpt/version.h>
 
 #include <iostream>
@@ -88,6 +89,8 @@ nanogui::Slider*                 slThicknessDepthField   = nullptr;
 nanogui::Slider*                 slCameraFOV             = nullptr;
 nanogui::Label*                  lbCameraFOV             = nullptr;
 nanogui::Label*                  lbMousePos              = nullptr;
+nanogui::ComboBox*               cbMouseUnits            = nullptr;
+nanogui::Button*                 btnCopyCoords           = nullptr;
 nanogui::Label*                  lbCameraPointing        = nullptr;
 nanogui::Label *                 lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr, *lbPointSize = nullptr;
@@ -251,7 +254,86 @@ bool loadMapFile(const std::string& mapFile)
         ASSERTMSG_(
             sanityPassed, mrpt::format("sanity check did not pass for layer: '%s'", name.c_str()));
     }
+
     return true;
+}
+
+/** Transform to show in the selected frame of reference and units: "enu", "map", or "lat/lon" */
+std::string transformAndFormatSelectedPoint(const mrpt::math::TPoint3D& pt)
+{
+    using namespace std::string_literals;
+    const bool ptIsENU = cbApplyGeoRef->checked() && theMap.georeferencing.has_value();
+
+    ASSERT_(cbMouseUnits);
+
+    if (theMap.georeferencing.has_value())
+    {
+        if (cbMouseUnits->items().size() != 3)
+        {
+            cbMouseUnits->setItems(std::vector<std::string>({"map", "enu", "lat/lon "}));
+        }
+    }
+    else
+    {
+        if (cbMouseUnits->items().size() != 1)
+        {
+            cbMouseUnits->setItems(std::vector<std::string>({"map"}));
+        }
+    }
+
+    switch (cbMouseUnits->selectedIndex())
+    {
+        case 0:  // show in map
+        {
+            mrpt::math::TPoint3D ptViz;
+            if (ptIsENU)
+            {
+                ptViz = theMap.georeferencing->T_enu_to_map.mean.inverseComposePoint(pt);
+            }
+            else  // pt is already map
+            {
+                ptViz = pt;
+            }
+            return mrpt::format("X=%6.03f Y=%6.03f Z=%6.03f", ptViz.x, ptViz.y, ptViz.z);
+        }
+        break;
+
+        case 1:  // show in enu
+        {
+            // ptIsENU must be true here.
+            return mrpt::format("X=%6.03f Y=%6.03f Z=%6.03f", pt.x, pt.y, pt.z);
+        }
+        break;
+
+        case 2:  // show as lat/lon
+        {
+            // pt is ENU.
+            try
+            {
+                mrpt::topography::TGeocentricCoords geocentricPt;
+                mrpt::topography::ENUToGeocentric(
+                    pt, theMap.georeferencing->geo_coord, geocentricPt,
+                    mrpt::topography::TEllipsoid::Ellipsoid_WGS84());
+
+                mrpt::topography::TGeodeticCoords outCoords;
+                mrpt::topography::geocentricToGeodetic(geocentricPt, outCoords);
+
+                return mrpt::format(
+                    "%.06f, %.06f, h=%.03f", outCoords.lat.getDecimalValue(),
+                    outCoords.lon.getDecimalValue(), outCoords.height);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "[transformAndFormatSelectedPoint] " << e.what() << "\n";
+                return {};
+            }
+        }
+        break;
+        default:
+            THROW_EXCEPTION(
+                "Unexpected selection in combo-box for mouse coordinate transformation");
+            break;
+    };
 }
 
 void updateMouseCoordinates()
@@ -274,16 +356,18 @@ void updateMouseCoordinates()
     if (inters.getPoint(inters_pt))
     {
         lbMousePos->setCaption(
-            mrpt::format("Mouse pointing to: X=%6.03f Y=%6.03f", inters_pt.x, inters_pt.y));
+            mrpt::format("Mouse at: %s", transformAndFormatSelectedPoint(inters_pt).c_str()));
     }
 }
 
 void updateCameraLookCoordinates()
 {
+    const auto pt = mrpt::math::TPoint3D(
+        win->camera().getCameraPointingX(), win->camera().getCameraPointingY(),
+        win->camera().getCameraPointingZ());
+
     lbCameraPointing->setCaption(
-        mrpt::format(
-            "Looking at: X=%6.03f Y=%6.03f Z=%6.03f", win->camera().getCameraPointingX(),
-            win->camera().getCameraPointingY(), win->camera().getCameraPointingZ()));
+        mrpt::format("Looking at: %s", transformAndFormatSelectedPoint(pt).c_str()));
 }
 
 void observeViewOptions()
@@ -315,7 +399,7 @@ void updateMiniCornerView()
         view_cam.setZoomDistance(5);
     }
 
-    const bool show_two_corners = cbApplyGeoRef->checked();
+    const bool show_two_corners = cbApplyGeoRef->checked() && theMap.georeferencing.has_value();
 
     gl_view1->addTextMessage(
         static_cast<double>(win->width()) * 0.05 - 35, 5,
@@ -340,14 +424,9 @@ void updateMiniCornerView()
         return;
     }
 
-    if (!theMap.georeferencing.has_value())
-    {
-        return;
-    }
-    glRoot->setPose(
-        mrpt::poses::CPose3D::FromRotationAndTranslation(
-            theMap.georeferencing.value().T_enu_to_map.mean.getRotationMatrix(),
-            mrpt::math::TVector3D(0, 0, 0)));
+    glRoot->setPose(mrpt::poses::CPose3D::FromRotationAndTranslation(
+        theMap.georeferencing.value().T_enu_to_map.mean.getRotationMatrix(),
+        mrpt::math::TVector3D(0, 0, 0)));
 
     {
         mrpt::opengl::CCamera& view_cam = gl_view2->getCamera();
@@ -393,10 +472,9 @@ void rebuildCamTravellingCombo()
         std::advance(it, i);
 
         lstShort.push_back(std::to_string(i));
-        lst.push_back(
-            mrpt::format(
-                "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
-                mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
+        lst.push_back(mrpt::format(
+            "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
+            mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
     }
     cbTravellingKeys->setItems(lst, lstShort);
 
@@ -514,6 +592,17 @@ void onKeyboardAction(int key, int modifiers)
             {
                 // Rotate:
                 doRotateEyeYaw(key == GLFW_KEY_RIGHT);
+            }
+        }
+        break;
+
+        // CTRL+C copies the coordinates
+        case GLFW_KEY_C:
+        {
+            if (btnCopyCoords && (modifiers & GLFW_MOD_CONTROL))
+            {
+                // this seems to need to be done from the nanogui thread.
+                btnCopyCoords->callback()();
             }
         }
         break;
@@ -1016,15 +1105,48 @@ void main_show_gui()
         cbTravellingInterp->setItems({"Linear", "Spline"});
         cbTravellingInterp->setSelectedIndex(0);
     }
-
     slAnimProgress = tab3->add<nanogui::Slider>();
     slAnimProgress->setEnabled(false);
 
     // ---
-    lbMousePos = w->add<nanogui::Label>("Mouse pointing to:");
-    lbMousePos->setFontSize(MID_FONT_SIZE);
-    lbCameraPointing = w->add<nanogui::Label>("Camera looking at:");
-    lbCameraPointing->setFontSize(MID_FONT_SIZE);
+
+    {
+        auto pn = w->add<nanogui::Widget>();
+        pn->setLayout(
+            new nanogui::BoxLayout(nanogui::Orientation::Horizontal, nanogui::Alignment::Fill));
+
+        auto pnLeft = pn->add<nanogui::Widget>();
+        pnLeft->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Vertical, 2, nanogui::Alignment::Middle));
+
+        auto pnRight = pn->add<nanogui::Widget>();
+        pnRight->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Vertical, 2, nanogui::Alignment::Fill));
+
+        lbMousePos = pnLeft->add<nanogui::Label>("Mouse pointing to:");
+        lbMousePos->setFontSize(SMALL_FONT_SIZE);
+        lbMousePos->setFixedWidth(280);
+        lbCameraPointing = pnLeft->add<nanogui::Label>("Camera looking at:");
+        lbCameraPointing->setFontSize(SMALL_FONT_SIZE);
+        lbCameraPointing->setFixedWidth(280);
+
+        cbMouseUnits =
+            pnRight->add<nanogui::ComboBox>(std::vector<std::string>({"map", "ENU", "lat/lon "}));
+        cbMouseUnits->setTooltip("Reference frame and format of coordinates");
+        cbMouseUnits->setFontSize(SMALL_FONT_SIZE);
+        cbMouseUnits->setFixedHeight(30);
+
+        btnCopyCoords = pnRight->add<nanogui::Button>("", ENTYPO_ICON_COPY);
+        btnCopyCoords->setTooltip("Copy coordinates to clipboard (CTRL+C)");
+        btnCopyCoords->setCallback(
+            [&]()
+            {
+                glfwSetClipboardString(
+                    win->glfwWindow(),
+                    (lbMousePos->caption() + std::string("\n") + lbCameraPointing->caption())
+                        .c_str());
+            });
+    }
 
     w->add<nanogui::Button>("Quit", ENTYPO_ICON_ARROW_BOLD_LEFT)
         ->setCallback([]() { win->setVisible(false); });
