@@ -43,6 +43,9 @@ constexpr const char* APP_NAME        = "mm-viewer";
 constexpr int         MID_FONT_SIZE   = 14;
 constexpr int         SMALL_FONT_SIZE = 13;
 
+constexpr const char* FIRST_MINI_VIEW_NAME  = "small-view-1";
+constexpr const char* SECOND_MINI_VIEW_NAME = "small-view-2";
+
 // =========== Declare supported cli switches ===========
 static TCLAP::CmdLine cmd(APP_NAME);
 
@@ -277,9 +280,10 @@ void updateMouseCoordinates()
 
 void updateCameraLookCoordinates()
 {
-    lbCameraPointing->setCaption(mrpt::format(
-        "Looking at: X=%6.03f Y=%6.03f Z=%6.03f", win->camera().getCameraPointingX(),
-        win->camera().getCameraPointingY(), win->camera().getCameraPointingZ()));
+    lbCameraPointing->setCaption(
+        mrpt::format(
+            "Looking at: X=%6.03f Y=%6.03f Z=%6.03f", win->camera().getCameraPointingX(),
+            win->camera().getCameraPointingY(), win->camera().getCameraPointingZ()));
 }
 
 void observeViewOptions()
@@ -293,17 +297,67 @@ void observeViewOptions()
 
 void updateMiniCornerView()
 {
-    auto gl_view = win->background_scene->getViewport("small-view");
-    if (!gl_view)
+    auto gl_view1 = win->background_scene->getViewport(FIRST_MINI_VIEW_NAME);
+    if (!gl_view1)
     {
         return;
     }
 
-    mrpt::opengl::CCamera& view_cam = gl_view->getCamera();
+    mrpt::opengl::TFontParams fp;
+    fp.draw_shadow = true;
+    fp.vfont_scale = 9.0f;
 
-    view_cam.setAzimuthDegrees(win->camera().getAzimuthDegrees());
-    view_cam.setElevationDegrees(win->camera().getElevationDegrees());
-    view_cam.setZoomDistance(5);
+    {
+        mrpt::opengl::CCamera& view_cam = gl_view1->getCamera();
+
+        view_cam.setAzimuthDegrees(win->camera().getAzimuthDegrees());
+        view_cam.setElevationDegrees(win->camera().getElevationDegrees());
+        view_cam.setZoomDistance(5);
+    }
+
+    const bool show_two_corners = cbApplyGeoRef->checked();
+
+    gl_view1->addTextMessage(
+        static_cast<double>(win->width()) * 0.05 - 35, 5,
+        show_two_corners ? "ENU frame" : "Map frame", 0, fp);
+
+    auto gl_view2 = win->background_scene->getViewport(SECOND_MINI_VIEW_NAME);
+    if (!gl_view2 || gl_view2->empty())
+    {
+        return;
+    }
+
+    auto glRoot = *gl_view2->begin();
+    if (!glRoot)
+    {
+        return;
+    }
+    glRoot->setVisibility(show_two_corners);
+
+    if (!show_two_corners)
+    {
+        gl_view2->clearTextMessages();
+        return;
+    }
+
+    if (!theMap.georeferencing.has_value())
+    {
+        return;
+    }
+    glRoot->setPose(
+        mrpt::poses::CPose3D::FromRotationAndTranslation(
+            theMap.georeferencing.value().T_enu_to_map.mean.getRotationMatrix(),
+            mrpt::math::TVector3D(0, 0, 0)));
+
+    {
+        mrpt::opengl::CCamera& view_cam = gl_view2->getCamera();
+
+        view_cam.setAzimuthDegrees(win->camera().getAzimuthDegrees());
+        view_cam.setElevationDegrees(win->camera().getElevationDegrees());
+        view_cam.setZoomDistance(5);
+    }
+
+    gl_view2->addTextMessage(static_cast<double>(win->width()) * 0.05 - 35, 5, "Map frame", 0, fp);
 }
 
 void updateGuiAfterLoadingNewMap()
@@ -339,9 +393,10 @@ void rebuildCamTravellingCombo()
         std::advance(it, i);
 
         lstShort.push_back(std::to_string(i));
-        lst.push_back(mrpt::format(
-            "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
-            mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
+        lst.push_back(
+            mrpt::format(
+                "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
+                mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
     }
     cbTravellingKeys->setItems(lst, lstShort);
 
@@ -1253,9 +1308,10 @@ void rebuild_3d_view(bool force_rebuild_view)
         }
     }
 
-    // XYZ corner overlay viewport:
+    // XYZ corner overlay viewports: one for "Map", another for "ENU"
+    if (!win->background_scene->getViewport(FIRST_MINI_VIEW_NAME))
     {
-        auto gl_view = win->background_scene->createViewport("small-view");
+        auto gl_view = win->background_scene->createViewport(FIRST_MINI_VIEW_NAME);
 
         gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
         gl_view->setTransparent(true);
@@ -1275,6 +1331,33 @@ void rebuild_3d_view(bool force_rebuild_view)
             gl_view->insert(obj);
         }
         gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
+    }
+    if (!win->background_scene->getViewport(SECOND_MINI_VIEW_NAME))
+    {
+        auto gl_view = win->background_scene->createViewport(SECOND_MINI_VIEW_NAME);
+
+        gl_view->setViewportPosition(0.1, 0, 0.1, 0.1 * 16.0 / 9.0);
+        gl_view->setTransparent(true);
+
+        auto glRoot = mrpt::opengl::CSetOfObjects::Create();
+        gl_view->insert(glRoot);
+
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+            obj->setLocation(1.1, 0, 0);
+            glRoot->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+            obj->setLocation(0, 1.1, 0);
+            glRoot->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+            obj->setLocation(0, 0, 1.1);
+            glRoot->insert(obj);
+        }
+        glRoot->insert(mrpt::opengl::stock_objects::CornerXYZ());
     }
 
     // Global view options:
