@@ -108,7 +108,9 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
 
     const auto& xs = pc.getPointsBufferRef_x();
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+#if MRPT_VERSION >= 0x020f04  // 2.15.4
+    const auto* ptrR = pc.getPointsBufferRef_uint16_field("ring");
+#elif MRPT_VERSION >= 0x020f00  // 2.15.0
     const auto* ptrR = pc.getPointsBufferRef_uint_field("ring");
 #else
     const auto* ptrR = pc.getPointsBufferRef_ring();

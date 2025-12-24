@@ -52,7 +52,11 @@ bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool pr
     }
     for (const auto& field : pc.getPointFieldNames_uint16())
     {
+#if MRPT_VERSION >= 0x20f04  // 2.15.4
+        const auto& vec = pc.getPointsBufferRef_uint16_field(field);
+#else
         const auto& vec = pc.getPointsBufferRef_uint_field(field);
+#endif
         if (vec && !vec->empty() && vec->size() != n)
         {
             ok = false;
@@ -64,6 +68,38 @@ bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool pr
             }
         }
     }
+
+#if MRPT_VERSION >= 0x20f03  // 2.15.3
+    for (const auto& field : pc.getPointFieldNames_double())
+    {
+        const auto& vec = pc.getPointsBufferRef_double_field(field);
+        if (vec && !vec->empty() && vec->size() != n)
+        {
+            ok = false;
+            if (printWarnings)
+            {
+                std::cerr << "[mp2p_icp] CPointsMap WARNING: Double field '" << field
+                          << "' has incorrect length=" << vec->size() << " expected=" << n
+                          << std::endl;
+            }
+        }
+    }
+    for (const auto& field : pc.getPointFieldNames_uint8())
+    {
+        const auto& vec = pc.getPointsBufferRef_uint8_field(field);
+        if (vec && !vec->empty() && vec->size() != n)
+        {
+            ok = false;
+            if (printWarnings)
+            {
+                std::cerr << "[mp2p_icp] CPointsMap WARNING: uint8 field '" << field
+                          << "' has incorrect length=" << vec->size() << " expected=" << n
+                          << std::endl;
+            }
+        }
+    }
+#endif
+
 #else
     if (auto* pcIRT = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(&pc); pcIRT)
     {
