@@ -30,9 +30,6 @@
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
 
-#include <cstdint>
-#include <stdexcept>
-
 namespace mrpt::system
 {
 class CTimeLogger;

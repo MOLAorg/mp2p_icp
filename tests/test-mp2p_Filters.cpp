@@ -102,7 +102,7 @@ void test_FilterBoundingBox_InsideOutside()
     ASSERTMSG_(outside_pc, "Outside layer is not a point cloud");
 
     // Count expected inside points: x,y in [2,7] = 6x6 = 36 points
-    const size_t EXPECTED_INSIDE  = 6 * 6;
+    const size_t EXPECTED_INSIDE  = 6UL * 6UL;
     const size_t EXPECTED_OUTSIDE = N_X * N_Y - EXPECTED_INSIDE;
 
     ASSERT_EQUAL_(inside_pc->size(), EXPECTED_INSIDE);

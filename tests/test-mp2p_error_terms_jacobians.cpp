@@ -35,8 +35,11 @@ using namespace mrpt::poses;
 
 auto& rnd = mrpt::random::getRandomGenerator();
 
-static double normald(const double sigma) { return rnd.drawGaussian1D_normalized() * sigma; }
-static float  normalf(const float sigma) { return rnd.drawGaussian1D_normalized() * sigma; }
+static double normal_d(const double sigma) { return rnd.drawGaussian1D_normalized() * sigma; }
+static float  normal_f(const float sigma)
+{
+    return static_cast<float>(rnd.drawGaussian1D_normalized()) * sigma;
+}
 
 // ===========================================================================
 //  Test: error_point2point
@@ -46,14 +49,14 @@ static void test_Jacob_error_point2point()
 {
     const CPose3D p = CPose3D(
         // x y z
-        normald(10), normald(10), normald(10),
+        normal_d(10), normal_d(10), normal_d(10),
         // Yaw pitch roll
         rnd.drawUniform(-M_PI, M_PI), rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5),
         rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5));
 
     mrpt::tfest::TMatchingPair pair;
-    pair.global = {normalf(20), normalf(20), normalf(20)};
-    pair.local  = {normalf(20), normalf(20), normalf(20)};
+    pair.global = {normal_f(20), normal_f(20), normal_f(20)};
+    pair.local  = {normal_f(20), normal_f(20), normal_f(20)};
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 3, 12> J1;
@@ -61,9 +64,9 @@ static void test_Jacob_error_point2point()
     mp2p_icp::error_point2point(pair.local, pair.global, p, J1);
 
     // (12x6 Jacobian)
-    const auto dDexpe_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);
+    const auto d_D_exp_e_de = mrpt::poses::Lie::SE<3>::jacob_dDexpe_de(p);
 
-    const mrpt::math::CMatrixFixed<double, 3, 6> jacob(J1 * dDexpe_de);
+    const mrpt::math::CMatrixFixed<double, 3, 6> jacob(J1 * d_D_exp_e_de);
 
     // Numerical Jacobian:
     CMatrixDouble numJacob;
@@ -109,21 +112,22 @@ static void test_Jacob_error_point2line()
 {
     const CPose3D p = CPose3D(
         // x y z
-        normald(10), normald(10), normald(10),
+        normal_d(10), normal_d(10), normal_d(10),
         // Yaw pitch roll
         rnd.drawUniform(-M_PI, M_PI), rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5),
         rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5));
 
     mp2p_icp::point_line_pair_t pair;
 
-    pair.ln_global.pBase.x  = normalf(20);
-    pair.ln_global.pBase.y  = normalf(20);
-    pair.ln_global.pBase.z  = normalf(20);
-    pair.ln_global.director = mrpt::math::TPoint3D(normald(1), normald(1), normald(1)).unitarize();
+    pair.ln_global.pBase.x = normal_f(20);
+    pair.ln_global.pBase.y = normal_f(20);
+    pair.ln_global.pBase.z = normal_f(20);
+    pair.ln_global.director =
+        mrpt::math::TPoint3D(normal_d(1), normal_d(1), normal_d(1)).unitarize();
 
-    pair.pt_local.x = normalf(10);
-    pair.pt_local.y = normalf(10);
-    pair.pt_local.z = normalf(10);
+    pair.pt_local.x = normal_f(10);
+    pair.pt_local.y = normal_f(10);
+    pair.pt_local.z = normal_f(10);
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 3, 12> J1;
@@ -187,23 +191,23 @@ static void test_Jacob_error_point2plane()
 {
     const CPose3D p = CPose3D(
         // x y z
-        normald(10), normald(10), normald(10),
+        normal_d(10), normal_d(10), normal_d(10),
         // Yaw pitch roll
         rnd.drawUniform(-M_PI, M_PI), rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5),
         rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5));
 
     mp2p_icp::point_plane_pair_t pair;
 
-    pair.pl_global.centroid.x     = normalf(20);
-    pair.pl_global.centroid.y     = normalf(20);
-    pair.pl_global.centroid.z     = normalf(20);
-    pair.pl_global.plane.coefs[0] = normald(20);
-    pair.pl_global.plane.coefs[1] = normald(20);
-    pair.pl_global.plane.coefs[2] = normald(20);
+    pair.pl_global.centroid.x     = normal_f(20);
+    pair.pl_global.centroid.y     = normal_f(20);
+    pair.pl_global.centroid.z     = normal_f(20);
+    pair.pl_global.plane.coefs[0] = normal_d(20);
+    pair.pl_global.plane.coefs[1] = normal_d(20);
+    pair.pl_global.plane.coefs[2] = normal_d(20);
 
-    pair.pt_local.x = normalf(10);
-    pair.pt_local.y = normalf(10);
-    pair.pt_local.z = normalf(10);
+    pair.pt_local.x = normal_f(10);
+    pair.pt_local.y = normal_f(10);
+    pair.pt_local.z = normal_f(10);
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 3, 12> J1;
@@ -336,26 +340,26 @@ static void test_Jacob_error_plane2plane()
 {
     const CPose3D p = CPose3D(
         // x y z
-        normald(10), normald(10), normald(10),
+        normal_d(10), normal_d(10), normal_d(10),
         // Yaw pitch roll
         rnd.drawUniform(-M_PI, M_PI), rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5),
         rnd.drawUniform(-M_PI * 0.5, M_PI * 0.5));
 
     mp2p_icp::matched_plane_t pair;
 
-    pair.p_global.centroid.x     = normalf(20);
-    pair.p_global.centroid.y     = normalf(20);
-    pair.p_global.centroid.z     = normalf(20);
-    pair.p_global.plane.coefs[0] = normald(20);
-    pair.p_global.plane.coefs[1] = normald(20);
-    pair.p_global.plane.coefs[2] = normald(20);
+    pair.p_global.centroid.x     = normal_f(20);
+    pair.p_global.centroid.y     = normal_f(20);
+    pair.p_global.centroid.z     = normal_f(20);
+    pair.p_global.plane.coefs[0] = normal_d(20);
+    pair.p_global.plane.coefs[1] = normal_d(20);
+    pair.p_global.plane.coefs[2] = normal_d(20);
 
-    pair.p_local.centroid.x     = normalf(10);
-    pair.p_local.centroid.y     = normalf(10);
-    pair.p_local.centroid.z     = normalf(10);
-    pair.p_local.plane.coefs[0] = normald(10);
-    pair.p_local.plane.coefs[1] = normald(10);
-    pair.p_local.plane.coefs[2] = normald(10);
+    pair.p_local.centroid.x     = normal_f(10);
+    pair.p_local.centroid.y     = normal_f(10);
+    pair.p_local.centroid.z     = normal_f(10);
+    pair.p_local.plane.coefs[0] = normal_d(10);
+    pair.p_local.plane.coefs[1] = normal_d(10);
+    pair.p_local.plane.coefs[2] = normal_d(10);
 
     // Implemented values:
     mrpt::math::CMatrixFixed<double, 3, 12> J1;

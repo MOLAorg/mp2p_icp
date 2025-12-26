@@ -38,10 +38,12 @@
         "deskewed",
         "eigen",
         "linearization",
+        "Mañas",
         "recolorize",
         "relinearization",
         "reproject",
         "tfest",
+        "unitarize",
         "unrealize",
         "voxelizes",
         "voxelmaps",
@@ -52,6 +54,7 @@
         "ENTYPO",
         "GLFW",
         "TBoundingBoxf",
-        "imLinear2Neig"
+        "imLinear2Neig",
+        "jacob_dDexpe_de"
     ]
 }
