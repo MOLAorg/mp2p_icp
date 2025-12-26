@@ -366,6 +366,12 @@ void correctPointsLoop(const CorrectPointsArguments& args)
                     (*dst)[n0 + i] = (*src)[i];
                 }
 #endif
+#if MRPT_VERSION >= 0x020f03  // >=2.15.3
+                for (auto& [src, dst] : ctxCopyPointFields->uint8_fields)
+                {
+                    (*dst)[n0 + i] = (*src)[i];
+                }
+#endif
                 for (auto& [src, dst] : ctxCopyPointFields->float_fields)
                 {
                     (*dst)[n0 + i] = (*src)[i];
