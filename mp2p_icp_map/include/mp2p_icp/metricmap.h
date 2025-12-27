@@ -188,12 +188,21 @@ class metric_map_t : public mrpt::serialization::CSerializable,
      *  the layer does not exist or it contains a different type of metric map
      * (e.g. if it is a gridmap).
      *
-     * Note that this method is only provided by convenience and
-     * backwards-compatibility: users can always directly access `layers` and
-     * perform a `std::dynamic_pointer_cast<>`.
+     * Note that this method is only provided for convenience: users can always directly access
+     * `layers` and perform a `std::dynamic_pointer_cast<>`.
      *
      */
     mrpt::maps::CPointsMap::Ptr point_layer(const layer_name_t& name) const;
+
+    /** Returns a shared_ptr to the given layer, performing a `std::dynamic_pointer_cast<>` to the
+     *  given map class. It throws if the layer does not exist or it contains a different type of
+     *  metric map.
+     *
+     * Note that this method is only provided for convenience: users can always directly access
+     * `layers` and perform a `std::dynamic_pointer_cast<>`.
+     */
+    template <class MapClass>
+    std::shared_ptr<MapClass> layer(const layer_name_t& name) const;
 
     /** Gets a renderizable view of all geometric entities.
      *
@@ -307,6 +316,32 @@ std::optional<metric_map_t::Georeferencing> FromYAML(const mrpt::containers::yam
 
 /// Serialization of geo-reference information as YAML
 mrpt::containers::yaml ToYAML(const std::optional<metric_map_t::Georeferencing>& gref);
+
+// ---- Template implementations ----
+template <class MapClass>
+std::shared_ptr<MapClass> metric_map_t::layer(const layer_name_t& name) const
+{
+    auto it = layers.find(name);
+    if (it == layers.end())
+    {
+        THROW_EXCEPTION_FMT("Layer '%s' does not exist.", name.c_str());
+    }
+
+    const auto& ptr = it->second;
+    if (!ptr)
+    {
+        return {};  // empty shared_ptr.
+    }
+
+    auto ret = std::dynamic_pointer_cast<MapClass>(ptr);
+    if (!ret)
+    {
+        THROW_EXCEPTION_FMT(
+            "Layer '%s' is not of the expected type (actual class:'%s').", name.c_str(),
+            ptr->GetRuntimeClass()->className);
+    }
+    return ret;
+}
 
 /** @} */
 

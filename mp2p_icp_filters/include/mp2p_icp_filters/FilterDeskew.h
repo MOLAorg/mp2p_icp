@@ -77,6 +77,7 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
    public:
     FilterDeskew();
 
+   protected:
     /** Parameters:
      *
      * \code
@@ -94,6 +95,7 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      */
     void initialize_filter(const mrpt::containers::yaml& c) override;
 
+   public:
     // See docs in FilterBase
     void filter(mp2p_icp::metric_map_t& inOut) const override;
 

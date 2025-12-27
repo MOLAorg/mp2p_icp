@@ -84,7 +84,7 @@ void test_FilterBoundingBox_InsideOutside()
     params["bounding_box_min"]         = mrpt::containers::yaml::Sequence({"2", "2", "-1"});
     params["bounding_box_max"]         = mrpt::containers::yaml::Sequence({"7", "7", "1"});
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     // Execute filter
     metric_map_t map;
@@ -102,7 +102,7 @@ void test_FilterBoundingBox_InsideOutside()
     ASSERTMSG_(outside_pc, "Outside layer is not a point cloud");
 
     // Count expected inside points: x,y in [2,7] = 6x6 = 36 points
-    const size_t EXPECTED_INSIDE  = 6 * 6;
+    const size_t EXPECTED_INSIDE  = 6UL * 6UL;
     const size_t EXPECTED_OUTSIDE = N_X * N_Y - EXPECTED_INSIDE;
 
     ASSERT_EQUAL_(inside_pc->size(), EXPECTED_INSIDE);
@@ -142,7 +142,7 @@ void test_FilterBoundingBox_OnlyInside()
     params["bounding_box_min"]         = mrpt::containers::yaml::Sequence({"3", "3", "-1"});
     params["bounding_box_max"]         = mrpt::containers::yaml::Sequence({"6", "6", "1"});
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     metric_map_t map;
     map.layers["raw"] = input_pc;
@@ -177,7 +177,7 @@ void test_FilterByIntensity_ThreeLayers()
     params["low_threshold"]               = 0.3f;
     params["high_threshold"]              = 0.7f;
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     metric_map_t map;
     map.layers["raw"] = input_pc;
@@ -247,7 +247,7 @@ void test_FilterByIntensity_TwoLayers()
     params["low_threshold"]               = 0.4f;
     params["high_threshold"]              = 0.6f;
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     metric_map_t map;
     map.layers["raw"] = input_pc;
@@ -283,7 +283,7 @@ void test_FilterBoundingBox_EmptyBox()
     params["bounding_box_min"]         = mrpt::containers::yaml::Sequence({"50", "50", "50"});
     params["bounding_box_max"]         = mrpt::containers::yaml::Sequence({"60", "60", "60"});
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     metric_map_t map;
     map.layers["raw"] = input_pc;
@@ -330,7 +330,7 @@ void test_FilterByIntensity_ExactThreshold()
     params["low_threshold"]               = 0.3f;
     params["high_threshold"]              = 0.7f;
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     metric_map_t map;
     map.layers["raw"] = pc;

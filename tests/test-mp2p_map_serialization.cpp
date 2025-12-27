@@ -52,6 +52,22 @@ void unit_test_2()
 
         map_in.metadata["name"] = "Test Map";
         map_in.metadata["spot"] = "Alabama";
+
+        // Test layer<>() function:
+        ASSERT_(map_in.layer<mrpt::maps::CPointsMap>("raw"));
+        bool has_thrown = true;
+        try
+        {
+            map_in.layer<mrpt::maps::CPointsMap>("does_not_exist");
+            // Should throw!
+            has_thrown = false;
+        }
+        catch (const std::exception& e)
+        {
+            has_thrown = true;
+            (void)e;
+        }
+        ASSERT_(has_thrown);
     }
 
     mrpt::io::CMemoryStream memStream;
@@ -65,6 +81,9 @@ void unit_test_2()
     ASSERT_(!map_out.empty());
     ASSERT_(!map_out.metadata.empty());
     ASSERT_EQUAL_(map_in.contents_summary(), map_out.contents_summary());
+    ASSERT_EQUAL_(
+        map_in.layer<mrpt::maps::CPointsMap>("raw")->asString(),
+        map_out.layer<mrpt::maps::CPointsMap>("raw")->asString());
 }
 }  // namespace
 

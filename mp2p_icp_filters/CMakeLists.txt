@@ -6,6 +6,7 @@ set(LIB_SRCS
   src/FilterAdjustTimestamps.cpp
   src/FilterBase.cpp
   src/FilterBoundingBox.cpp
+  src/FilterByExpression.cpp
   src/FilterByIntensity.cpp
   src/FilterByRange.cpp
   src/FilterByRing.cpp
@@ -16,8 +17,8 @@ set(LIB_SRCS
   src/FilterDeskew.cpp
   src/FilterEdgesPlanes.cpp
   src/FilterFartherPointSampling.cpp
-  src/FilterMLS.cpp
   src/FilterMerge.cpp
+  src/FilterMLS.cpp
   src/FilterNormalizeIntensity.cpp
   src/FilterPoleDetector.cpp
   src/FilterRemoveByVoxelOccupancy.cpp
@@ -37,6 +38,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterAdjustTimestamps.h
   include/mp2p_icp_filters/FilterBase.h
   include/mp2p_icp_filters/FilterBoundingBox.h
+  include/mp2p_icp_filters/FilterByExpression.h
   include/mp2p_icp_filters/FilterByIntensity.h
   include/mp2p_icp_filters/FilterByRange.h
   include/mp2p_icp_filters/FilterByRing.h
