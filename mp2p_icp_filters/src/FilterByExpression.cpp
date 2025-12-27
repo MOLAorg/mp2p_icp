@@ -84,6 +84,7 @@ void FilterByExpression::update_expression_bindings(const mrpt::maps::CPointsMap
     expr_.compile(params.expression, var_values_, "FilterByExpression (" + FilterBase::name + ")");
     cached_field_names_ = std::move(current_fields);
 #else
+    (void)pc;
     THROW_EXCEPTION("This class requires MRPT>=2.15.4");
 #endif
 }
@@ -224,6 +225,7 @@ void FilterByExpression::filter(mp2p_icp::metric_map_t& inOut) const
         }
     }
 #else
+    (void)inOut;
     THROW_EXCEPTION("This class requires MRPT>=2.15.4");
 #endif
 }

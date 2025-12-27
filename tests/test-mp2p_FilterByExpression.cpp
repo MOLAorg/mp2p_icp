@@ -22,11 +22,13 @@
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterByExpression.h>
 #include <mrpt/maps/CGenericPointsMap.h>
+#include <mrpt/version.h>
 
 using namespace mp2p_icp_filters;
 
 namespace
 {
+#if MRPT_VERSION >= 0x020f04  // 2.15.4
 
 void FilterByExpression_SpatialFiltering()
 {
@@ -102,17 +104,21 @@ void FilterByExpression_CustomFields()
 
     ASSERT_EQUAL_(map.layer<mrpt::maps::CPointsMap>("ring32")->size(), 1UL);
 }
-
+#endif
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
     {
+#if MRPT_VERSION >= 0x020f04  // 2.15.4
         FilterByExpression_SpatialFiltering();
         FilterByExpression_IntensityAndLogic();
         FilterByExpression_CustomFields();
         std::cout << "Success ✅." << std::endl;
+#else
+        std::cout << "DISABLED TEST: Requires MRPT>=2.15.4" << std::endl;
+#endif
     }
     catch (std::exception& e)
     {
