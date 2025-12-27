@@ -412,7 +412,7 @@ void test_FilterMLS_PlanarCloud()
     params["polynomial_order"]        = 1;  // Planar fit
     params["min_neighbors_for_fit"]   = 4;
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     metric_map_t map;
     map.layers["raw"] = pc;
@@ -504,7 +504,7 @@ void test_FilterMLS_QuadraticSurface()
     params["polynomial_order"]        = 2;  // Quadratic fit
     params["min_neighbors_for_fit"]   = 6;
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     metric_map_t map;
     map.layers["raw"] = pc;
@@ -592,14 +592,12 @@ void test_FilterMLS_DistinctCloudProjection()
     params["upsampling_method"]       = "FilterMLS::UpsamplingMethod::DISTINCT_CLOUD";
     params["min_neighbors_for_fit"]   = 4;
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     metric_map_t map;
     map.layers["main"]     = pc_main;
     map.layers["distinct"] = pc_distinct;
     filter.filter(map);
-
-    map.save_to_file("/tmp/d.mm");
 
     ASSERTMSG_(map.layers.count("mls_output"), "MLS output layer not found");
 
