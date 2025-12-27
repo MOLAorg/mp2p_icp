@@ -95,7 +95,7 @@ void test_decimate_method(
         params["flatten_to"] = flattenTo.value();
     }
 
-    filter.initialize_filter(params);
+    filter.initialize(params);
 
     // --- Execution ---
     metric_map_t map;

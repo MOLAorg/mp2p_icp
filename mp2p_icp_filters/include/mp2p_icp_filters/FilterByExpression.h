@@ -50,7 +50,6 @@ class FilterByExpression : public mp2p_icp_filters::FilterBase
    public:
     FilterByExpression();
 
-    void initialize_filter(const mrpt::containers::yaml& c) override;
     void filter(mp2p_icp::metric_map_t& inOut) const override;
 
     struct Parameters
@@ -63,6 +62,10 @@ class FilterByExpression : public mp2p_icp_filters::FilterBase
         std::string output_layer_not_passed;
     };
     Parameters params;
+
+   protected:
+    // See docs in base class.
+    void initialize_filter(const mrpt::containers::yaml& c) override;
 
    private:
     // Re-compiles the expression if the set of fields has changed

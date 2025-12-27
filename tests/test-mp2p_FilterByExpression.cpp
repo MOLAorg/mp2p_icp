@@ -42,7 +42,7 @@ void FilterByExpression_SpatialFiltering()
     p["expression"]              = "(x^2+y^2+z^2) < 3.0^2";
     p["output_layer_passed"]     = "near";
     p["output_layer_not_passed"] = "far";
-    filter.initialize_filter(p);
+    filter.initialize(p);
 
     mp2p_icp::metric_map_t map;
     map.layers["raw"] = pc;
@@ -67,16 +67,20 @@ void FilterByExpression_IntensityAndLogic()
     pc->insertPoint(1.0, 0, 0);  // High intensity, bad "x"
     pc->insertPointField_float(INTENSITY, 0.9f);
 
-    FilterByExpression     filter;
+    // Instantiate as class factory:
+    auto filter = std::dynamic_pointer_cast<FilterBase>(
+        mrpt::rtti::classFactory("mp2p_icp_filters::FilterByExpression"));
+    ASSERT_(filter);
+
     mrpt::containers::yaml p;
     p["input_pointcloud_layer"] = "raw";
     p["expression"]             = "(intensity > 0.5) and (abs(x)<1e-3)";
     p["output_layer_passed"]    = "high_i";
-    filter.initialize_filter(p);
+    filter->initialize(p);
 
     mp2p_icp::metric_map_t map;
     map.layers["raw"] = pc;
-    filter.filter(map);
+    filter->filter(map);
 
     ASSERT_EQUAL_(map.layer<mrpt::maps::CPointsMap>("high_i")->size(), 1UL);
 }
@@ -85,21 +89,30 @@ void FilterByExpression_CustomFields()
 {
     auto pc = mrpt::maps::CGenericPointsMap::Create();
     pc->registerField_uint16(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID);
-    pc->registerField_uint16("SEMANTICS");
+    pc->registerField_uint8("SEMANTICS");
+    pc->registerField_double("latitude");
 
     pc->insertPoint(0, 0, 0);
     pc->insertPointField_uint16(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID, 32);
-    pc->insertPointField_uint16("SEMANTICS", 12);
+    pc->insertPointField_uint8("SEMANTICS", 12);
+    pc->insertPointField_double("latitude", 3.14);
 
     FilterByExpression     filter;
     mrpt::containers::yaml p;
     p["input_pointcloud_layer"] = "raw";
-    p["expression"]             = "ring == 32";
+    p["expression"]             = "(ring == 32) and (latitude>0)";
     p["output_layer_passed"]    = "ring32";
-    filter.initialize_filter(p);
+    filter.initialize(p);
 
     mp2p_icp::metric_map_t map;
     map.layers["raw"] = pc;
+    filter.filter(map);
+
+    ASSERT_EQUAL_(map.layer<mrpt::maps::CPointsMap>("ring32")->size(), 1UL);
+
+    // Test running twice:
+    map.layers.erase("ring32");
+
     filter.filter(map);
 
     ASSERT_EQUAL_(map.layer<mrpt::maps::CPointsMap>("ring32")->size(), 1UL);

@@ -41,9 +41,6 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
    public:
     FilterByRange();
 
-    // See docs in base class.
-    void initialize_filter(const mrpt::containers::yaml& c) override;
-
     // See docs in FilterBase
     void filter(mp2p_icp::metric_map_t& inOut) const override;
 
@@ -88,6 +85,10 @@ class FilterByRange : public mp2p_icp_filters::FilterBase
 
     /** Algorithm parameters */
     Parameters params;
+
+   protected:
+    // See docs in base class.
+    void initialize_filter(const mrpt::containers::yaml& c) override;
 };
 
 /** @} */
