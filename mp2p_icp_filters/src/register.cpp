@@ -41,6 +41,7 @@
 #include <mp2p_icp_filters/FilterNormalizeIntensity.h>
 #include <mp2p_icp_filters/FilterPoleDetector.h>
 #include <mp2p_icp_filters/FilterRemoveByVoxelOccupancy.h>
+#include <mp2p_icp_filters/FilterSOR.h>
 #include <mp2p_icp_filters/FilterVoxelSlice.h>
 #include <mp2p_icp_filters/Generator.h>
 #include <mp2p_icp_filters/GeneratorEdgesFromCurvature.h>
@@ -76,5 +77,6 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::FilterNormalizeIntensity));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterPoleDetector));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRemoveByVoxelOccupancy));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterSOR));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterVoxelSlice));
 }
