@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.0 (2025-12-28)
+------------------
 * docs: explain FilterSOR
 * Merge pull request `#19 <https://github.com/MOLAorg/mp2p_icp/issues/19>`_ from MOLAorg/feat/mm2ply
   Add mm2ply CLI tool
