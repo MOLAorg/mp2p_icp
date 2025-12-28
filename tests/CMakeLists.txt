@@ -64,6 +64,7 @@ mp2p_add_test(mp2p_FilterDecimateVoxels EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_Filters EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterByExpression EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterSOR EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_generator EXTRA_LIBS mp2p_icp_filters)
 
 if (mola_test_datasets_FOUND)
   mp2p_add_test(mp2p_quality_voxels)
