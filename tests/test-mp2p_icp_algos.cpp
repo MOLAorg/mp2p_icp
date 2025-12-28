@@ -25,6 +25,7 @@
 #include <mp2p_icp/Solver_GaussNewton.h>
 #include <mp2p_icp/Solver_Horn.h>
 #include <mp2p_icp/Solver_OLAE.h>
+#include <mp2p_icp/icp_pipeline_from_yaml.h>
 #include <mp2p_icp/load_xyz_file.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/core/get_env.h>
@@ -34,6 +35,7 @@
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/random.h>
+#include <mrpt/system/CDirectoryExplorer.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>
 
@@ -48,6 +50,61 @@ bool DO_SAVE_STAT_FILES = mrpt::get_env<bool>("DO_SAVE_STAT_FILES", false);
 bool DO_PRINT_ALL       = mrpt::get_env<bool>("DO_PRINT_ALL", false);
 
 const std::string datasetDir = MP2P_DATASET_DIR;
+
+void test_load_icp_from_yaml()
+{
+    constexpr const char* yaml_content = R"(
+# YAML configuration file for use with the CLI tool icp-run or
+# programmatically from function mp2p_icp::icp_pipeline_from_yaml()
+#
+class_name: mp2p_icp::ICP
+
+# See: mp2p_icp::Parameter
+params:
+  maxIterations: 100
+  minAbsStep_trans: 1e-4
+  minAbsStep_rot: 1e-4
+
+  debugPrintIterationProgress: true  # Print progress
+  #generateDebugFiles: true
+  #debugFileNameFormat: "icp-run-$LOCAL_ID$LOCAL_LABEL-to-$GLOBAL_ID$GLOBAL_LABEL.icplog"
+  #saveIterationDetails: true
+  #decimationIterationDetails: 10
+
+solvers:
+  - class: mp2p_icp::Solver_Horn
+    params:
+      ~
+
+# Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
+# instances to pair geometric entities between pointclouds.
+matchers:
+  - class: mp2p_icp::Matcher_Points_DistanceThreshold
+    params:
+      threshold: 0.15
+      thresholdAngularDeg: 0
+      #pairingsPerPoint: 1
+      #
+      # If "pointLayerMatches" is not defined, layers will be matched against
+      # those with the same name in both maps:
+      #pointLayerMatches:
+      #  - {global: "2d_lidar", local: "2d_lidar", weight: 1.0}
+
+quality:
+  - class: mp2p_icp::QualityEvaluator_PairedRatio
+    params:
+      ~  # none required
+    )";
+
+    auto [icp, icpParams] =
+        mp2p_icp::icp_pipeline_from_yaml(mrpt::containers::yaml::FromText(yaml_content));
+
+    ASSERT_EQUAL_(icp->matchers().size(), 1UL);
+    ASSERT_EQUAL_(icp->quality_evaluators().size(), 1UL);
+    ASSERT_EQUAL_(icp->solvers().size(), 1UL);
+
+    ASSERT_EQUAL_(icpParams.maxIterations, 100UL);
+}
 
 void test_icp(
     const std::string& inFile, const std::string& icpClassName, const std::string& solverName,
@@ -197,9 +254,34 @@ void test_icp(
 
         timer.Tic();
 
+        // Stablish a hook to include it in the unit tests:
+        icp->setIterationHook(
+            [](const mp2p_icp::ICP::IterationHook_Input& in)
+            {
+                ASSERT_(in.currentSolution != nullptr);
+                return mp2p_icp::ICP::IterationHook_Output();
+            });
+
+        // To cover log files in unit tests:
+        const auto tmpOutFiles        = mrpt::system::getTempFileName();
+        icp_params.generateDebugFiles = true;
+        icp_params.debugFileNameFormat =
+            tmpOutFiles +
+            "_$UNIQUE_ID-local-$LOCAL_ID$LOCAL_LABEL-global-$GLOBAL_ID$GLOBAL_LABEL.icplog";
+
+        // Run ICP:
         icp->align(pc_mod, pc_ref, init_guess, icp_params, icp_results);
 
         const double dt = timer.Tac();
+
+        // Expect created output debug records:
+        {
+            mrpt::system::CDirectoryExplorer::TFileInfoList icpLogFiles;
+            mrpt::system::CDirectoryExplorer::explore(
+                mrpt::system::extractFileDirectory(tmpOutFiles), FILE_ATTRIB_ARCHIVE, icpLogFiles);
+            mrpt::system::CDirectoryExplorer::filterByExtension(icpLogFiles, "icplog");
+            ASSERT_(!icpLogFiles.empty());
+        }
 
         const auto pos_error = gt_pose - icp_results.optimal_tf.mean;
         const auto err_log_n = SO<3>::log(pos_error.getRotationMatrix()).norm();
@@ -281,6 +363,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                     std::get<3>(algo));
             }
         }
+
+        // test icp from yaml:
+        test_load_icp_from_yaml();
     }
     catch (std::exception& e)
     {

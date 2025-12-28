@@ -40,6 +40,7 @@ And these applications:
  * [mm-filter](apps/mm-filter): CLI tool to apply a pipeline to an input metric map (`*.mm`), saving the result as another metric map file.
  * [mm-info](apps/mm-info): CLI tool to read a metric map (`*.mm`) and describe its contents.
  * [mm-viewer](apps/mm-viewer): GUI tool to visualize .mm (metric map) files.
+ * [mm2ply](apps/mm2ply): CLI tool to export the layers of a metric map (`*.mm`) in PLY format.
  * [mm2txt](apps/mm2txt): CLI tool to export the layers of a metric map (`*.mm`) as CSV/TXT.
  * [icp-log-viewer](apps/icp-log-viewer): GUI to inspect results from ICP runs.
  * [icp-run](apps/icp-run): Standalone program to run ICP pipelines.
