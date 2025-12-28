@@ -2,6 +2,38 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* docs: explain FilterSOR
+* Merge pull request `#19 <https://github.com/MOLAorg/mp2p_icp/issues/19>`_ from MOLAorg/feat/mm2ply
+  Add mm2ply CLI tool
+* Merge pull request `#18 <https://github.com/MOLAorg/mp2p_icp/issues/18>`_ from MOLAorg/feat/new-sor-filter
+  Add FilterSOR: Statistical Outlier Rejection
+* More unit tests: cover MLS
+* Merge pull request `#17 <https://github.com/MOLAorg/mp2p_icp/issues/17>`_ from MOLAorg/feat/filter-by-expr
+  Add new filter: FilterByExpression
+* More code coverage; fix protected-level initialize methods
+* Add new filter: FilterByExpression
+* FIX: missing uint8 fields in Deskew
+* sanityCheck: also check all double/uint8 fields
+* ui: fix case without geo-ref
+* mm-viewer: show lat/lon coordinates for mouse selected points
+* mm-viewer: GUI now shows the ENU & map miniviews for orientation hints
+* mm-viewer: handle special coloring channel groups 'rgb' and 'rgbf'
+* clean non used code in deskew test
+* map viz: use new mrpt 2.15.3 coloring modes
+* sm2mm: auto-guess lazy-load externals directory for .simplemap files
+* mm-viewer: implement colorize clouds by any field
+* MLS filter: add 'output_layer_class' parameter
+* mm2txt: export all fields of CGenericPointsMap layers
+* Merge pull request `#16 <https://github.com/MOLAorg/mp2p_icp/issues/16>`_ from MOLAorg/fix/generic-cloud-deskew-fields
+  Add test for missing fields in generic cloud deskew
+* FIX: correctly register arbitrary pointcloud fields into output clouds
+* Add test for missing fields in generic cloud deskew
+* sm2mm: FIx console message on "FinalFilters" did not obey verbosity level
+* Fix clang-tidy warnings
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.2 (2025-11-28)
 ------------------
 * mm-viewer: Automatic retry to load maps if missing plugins, trying to reload with libmola_metric_maps.so
