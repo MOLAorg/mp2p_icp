@@ -761,6 +761,60 @@ This is typically used to separate **static** (high occupancy) and **dynamic** (
 
 ---
 
+Filter: `FilterSOR`
+-------------------
+
+**Description**: Statistical Outlier Removal (SOR) filter for point cloud denoising.
+For each point, it computes the average distance to its k-nearest neighbors.
+Points are considered outliers if their average distance is greater than
+``(mean + std_dev_multiplier × std_dev)`` of the entire cloud's average distances.
+This filter is effective at removing sparse noise and isolated points while preserving
+the overall structure of the point cloud.
+
+**Parameters**:
+
+* **input_pointcloud_layer** (:cpp:type:`std::string`, default: ``"raw"``): The name of the point cloud layer to process.
+
+* **output_layer_inliers** (:cpp:type:`std::string`, optional): The name of the output layer for points classified as inliers (non-outliers).
+  If empty, inliers are not stored in a separate layer.
+
+* **output_layer_outliers** (:cpp:type:`std::string`, optional): The name of the output layer for points classified as outliers.
+  If empty, outliers are not stored in a separate layer.
+
+* **mean_k** (:cpp:type:`unsigned int`, default: `20`): Number of nearest neighbors to analyze for each point when computing the average distance.
+  Higher values provide more robust statistics but increase computation time.
+
+* **std_dev_mul** (:cpp:type:`double`, default: `1.0`): Standard deviation multiplier threshold.
+  Points with average distances greater than ``(mean + std_dev_mul × std_dev)`` are classified as outliers.
+  Lower values make the filter more aggressive (removes more points), while higher values are more conservative.
+
+* **parallelization_grain_size** (:cpp:type:`size_t`, default: `1024`): When TBB is enabled, the minimum number of points processed per parallel task.
+  Adjust this value to optimize performance for your hardware and point cloud size.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterSOR
+        params:
+          input_pointcloud_layer: 'raw'
+          output_layer_inliers: 'filtered'
+          #output_layer_outliers: 'noise'
+          mean_k: 20
+          std_dev_mul: 1.0
+          parallelization_grain_size: 1024
+
+**Usage tips**:
+
+* For dense point clouds with sparse noise (e.g., from LiDAR), start with ``mean_k=20`` and ``std_dev_mul=1.0``.
+* For point clouds with more uniform noise, try increasing ``std_dev_mul`` to ``2.0`` or ``3.0`` to be more conservative.
+* Adjust ``mean_k`` based on local point density: higher values for denser clouds, lower values for sparser ones.
+* If you only need the cleaned point cloud, specify only ``output_layer_inliers`` and leave ``output_layer_outliers`` empty.
+
+|
+
+---
+
 Filter: `FilterVoxelSlice`
 --------------------------
 
