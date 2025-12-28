@@ -84,8 +84,7 @@ struct Parameters : public mrpt::serialization::CSerializable
 
     /** Generated files format, if generateDebugFiles is true. */
     std::string debugFileNameFormat =
-        "icp-run-$UNIQUE_ID-local-$LOCAL_ID$LOCAL_LABEL-"
-        "global-$GLOBAL_ID$GLOBAL_LABEL.icplog";
+        "icp-run-$UNIQUE_ID-local-$LOCAL_ID$LOCAL_LABEL-global-$GLOBAL_ID$GLOBAL_LABEL.icplog";
 
     /** Function to apply to the local and global maps before saving the map to
      * a log file. Useful to apply deletion filters to save space and time.

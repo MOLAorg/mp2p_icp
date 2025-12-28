@@ -55,10 +55,16 @@ std::tuple<mp2p_icp::ICP::Ptr, mp2p_icp::Parameters> mp2p_icp::icp_pipeline_from
     }
 
     // ICP solver class:
-    if (icpParams.has("solvers")) icp->initialize_solvers(icpParams["solvers"]);
+    if (icpParams.has("solvers"))
+    {
+        icp->initialize_solvers(icpParams["solvers"]);
+    }
 
     // ICP matchers class:
-    if (icpParams.has("matchers")) icp->initialize_matchers(icpParams["matchers"]);
+    if (icpParams.has("matchers"))
+    {
+        icp->initialize_matchers(icpParams["matchers"]);
+    }
 
     // ICP quality class:
     ASSERT_(icpParams.has("quality"));
