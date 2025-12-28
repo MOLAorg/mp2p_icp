@@ -46,10 +46,12 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
     const size_t N = pc.size();
 
     // 1. Discover Fields
-    const auto f_names   = pc.getPointFieldNames_float();
+    const auto f_names = pc.getPointFieldNames_float();
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
     const auto d_names   = pc.getPointFieldNames_double();
     const auto u16_names = pc.getPointFieldNames_uint16();
     const auto u8_names  = pc.getPointFieldNames_uint8();
+#endif
 
     // 2. Write Header
     f << "ply" << std::endl;
@@ -81,6 +83,7 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
             f << "property float " << mapPlyName(n) << "\n";
         }
     }
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
     for (const auto& n : d_names)
     {
         f << "property double " << mapPlyName(n) << "\n";
@@ -93,7 +96,8 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
     {
         f << "property uchar " << mapPlyName(n) << "\n";
     }
-    f << "end_header" << (binary ? "" : "\n");
+#endif
+    f << "end_header\n";
 
     // 3. Prepare Accessors
     const auto &xs = pc.getPointsBufferRef_x(), &ys = pc.getPointsBufferRef_y(),
@@ -108,6 +112,7 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
         }
     }
 
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
     std::vector<const mrpt::aligned_std_vector<double>*> d_bufs;
     for (const auto& n : d_names)
     {
@@ -125,6 +130,7 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
     {
         u8_bufs.push_back(pc.getPointsBufferRef_uint8_field(n));
     }
+#endif
 
     // 4. Data Loop
     auto write_val = [&](auto val)
@@ -148,6 +154,7 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
         {
             write_val((*b)[i]);
         }
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
         for (auto b : d_bufs)
         {
             write_val((*b)[i]);
@@ -160,6 +167,7 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
         {
             write_val((*b)[i]);
         }
+#endif
         if (!binary)
         {
             f << "\n";
