@@ -7,7 +7,7 @@
  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms
  and map building tools. mp2p_icp is part of MOLA.
 
- Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria,
+ Copyright (C) 2018-2026 Jose Luis Blanco, University of Almeria,
                          and individual contributors.
  SPDX-License-Identifier: BSD-3-Clause
 */
@@ -500,7 +500,7 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
         {
             impl_->next_log_count = step;
             const double pct      = std::clamp(
-                     100.0 * static_cast<double>(step) * params.percent_print_progress, .0, 100.0);
+                100.0 * static_cast<double>(step) * params.percent_print_progress, .0, 100.0);
 
             MRPT_LOG_INFO_FMT(
                 "Progress: %.01f%% (%zu/%zu)", pct, impl_->processed_points, impl_->total_points);

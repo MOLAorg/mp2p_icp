@@ -7,7 +7,7 @@
  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms
  and map building tools. mp2p_icp is part of MOLA.
 
- Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria,
+ Copyright (C) 2018-2026 Jose Luis Blanco, University of Almeria,
                          and individual contributors.
  SPDX-License-Identifier: BSD-3-Clause
 */
@@ -81,10 +81,11 @@ static void test_opt_prior(const mrpt::poses::CPose3D& groundTruth)
             case 0:
                 sc.prior.reset();  // no prior. Delete it
                 expected = groundTruth;
-                checkFn  = [&]() {
+                checkFn  = [&]()
+                {
                     ASSERT_NEAR_(
-                         mrpt::poses::Lie::SE<3>::log(result.optimalPose - expected).norm(), 0.0,
-                         1e-3);
+                        mrpt::poses::Lie::SE<3>::log(result.optimalPose - expected).norm(), 0.0,
+                        1e-3);
                 };
                 break;
             case 1:

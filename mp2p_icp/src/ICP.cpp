@@ -7,7 +7,7 @@
  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms
  and map building tools. mp2p_icp is part of MOLA.
 
- Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria,
+ Copyright (C) 2018-2026 Jose Luis Blanco, University of Almeria,
                          and individual contributors.
  SPDX-License-Identifier: BSD-3-Clause
 */
@@ -492,8 +492,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$GLOBAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcGlobal && log.pcGlobal->id.has_value()) ? log.pcGlobal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
@@ -507,8 +507,8 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     {
         const std::string expr  = "\\$LOCAL_ID";
         const auto        value = mrpt::format(
-                   "%05u",
-                   static_cast<unsigned int>(
+            "%05u",
+            static_cast<unsigned int>(
                 (log.pcLocal && log.pcLocal->id.has_value()) ? log.pcLocal->id.value() : 0));
         filename = std::regex_replace(filename, std::regex(expr), value);
     }

@@ -7,7 +7,7 @@
  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms
  and map building tools. mp2p_icp is part of MOLA.
 
- Copyright (C) 2018-2025 Jose Luis Blanco, University of Almeria,
+ Copyright (C) 2018-2026 Jose Luis Blanco, University of Almeria,
                          and individual contributors.
  SPDX-License-Identifier: BSD-3-Clause
 */
@@ -556,8 +556,9 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     }  // end for each timestep
 
     // Now, reconstruct the points within the SM:
-    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(mrpt::format(
-        R"yaml(
+    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(
+        mrpt::format(
+            R"yaml(
 # --------------------------------------------------------
 # 1) Generator (observation -> local frame metric maps)
 # --------------------------------------------------------
@@ -594,7 +595,7 @@ filters:
       # one or more layers to remove
       pointcloud_layer_to_remove: ["raw"]
     )yaml",
-        mrpt::typemeta::enum2str(p.deskew_method).c_str(), p.outputMapClass.c_str()));
+            mrpt::typemeta::enum2str(p.deskew_method).c_str(), p.outputMapClass.c_str()));
 
     mp2p_icp::metric_map_t            mm;
     mp2p_icp_filters::sm2mm_options_t sm2mm_opts;
