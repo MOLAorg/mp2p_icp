@@ -53,10 +53,11 @@ bool saveToTxt(
     }
 
     // Data:
-    const auto& floatFields = pts.float_fields();
-    const auto& uintFields  = pts.uint16_fields();
+    const auto& floatFields  = pts.float_fields();
+    const auto& uint16Fields = pts.uint16_fields();
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
     const auto& doubleFields = pts.double_fields();
+    const auto& uint8Fields  = pts.uint8_fields();
 #endif
 
     // header?
@@ -69,12 +70,16 @@ bool saveToTxt(
         {
             mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
         }
-        for (const auto& [name, _] : uintFields)
+        for (const auto& [name, _] : uint16Fields)
         {
             mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
         }
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
         for (const auto& [name, _] : doubleFields)
+        {
+            mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
+        }
+        for (const auto& [name, _] : uint8Fields)
         {
             mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
         }
@@ -103,7 +108,7 @@ bool saveToTxt(
         {
             mrpt::system::os::fprintf(f, "%f ", values.at(i));
         }
-        for (const auto& [_, values] : uintFields)
+        for (const auto& [_, values] : uint16Fields)
         {
             mrpt::system::os::fprintf(f, "%u ", values.at(i));
         }
@@ -111,6 +116,10 @@ bool saveToTxt(
         for (const auto& [_, values] : doubleFields)
         {
             mrpt::system::os::fprintf(f, "%lf ", values.at(i));
+        }
+        for (const auto& [_, values] : uint8Fields)
+        {
+            mrpt::system::os::fprintf(f, "%i ", static_cast<int>(values.at(i)));
         }
 #endif
         mrpt::system::os::fprintf(f, "\n");
