@@ -2,6 +2,19 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#21 <https://github.com/MOLAorg/mp2p_icp/issues/21>`_ from MOLAorg/feat/abs-stamp-filter
+  Added new filter: FilterAbsoluteTimestamp
+* Fix the logic of the FilterEdgePlane filter parameters
+* Added new filter: FilterAbsoluteTimestamp
+* mm2txt: also export uint8 fields (missing in last release)
+* Merge pull request `#20 <https://github.com/MOLAorg/mp2p_icp/issues/20>`_ from MOLAorg/feat/more-unit-tests
+  More unit tests
+* Add generators unit tests
+* More unit tests
+* Contributors: Jose Luis Blanco-Claraco
+
 2.2.0 (2025-12-28)
 ------------------
 * docs: explain FilterSOR
