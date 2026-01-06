@@ -3,6 +3,7 @@ project(mp2p_icp_filters LANGUAGES CXX)
 # -----------------------
 # define lib:
 set(LIB_SRCS
+  src/FilterAbsoluteTimestamp.cpp
   src/FilterAdjustTimestamps.cpp
   src/FilterBase.cpp
   src/FilterBoundingBox.cpp
@@ -36,6 +37,7 @@ set(LIB_SRCS
 )
 
 set(LIB_PUBLIC_HDRS
+  include/mp2p_icp_filters/FilterAbsoluteTimestamp.h
   include/mp2p_icp_filters/FilterAdjustTimestamps.h
   include/mp2p_icp_filters/FilterBase.h
   include/mp2p_icp_filters/FilterBoundingBox.h
