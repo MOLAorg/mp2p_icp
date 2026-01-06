@@ -32,14 +32,15 @@ void FilterEdgesPlanes::Parameters::load_from_yaml(const mrpt::containers::yaml&
     MCP_LOAD_OPT(c, input_pointcloud_layer);
 
     MCP_LOAD_REQ(c, voxel_filter_resolution);
-    MCP_LOAD_REQ(c, voxel_filter_decimation);
+    MCP_LOAD_REQ(c, decimation);
     MCP_LOAD_OPT(c, use_tsl_robin_map);
     MCP_LOAD_REQ(c, full_pointcloud_decimation);
-    MCP_LOAD_REQ(c, voxel_filter_max_e2_e0);
-    MCP_LOAD_REQ(c, voxel_filter_max_e1_e0);
-    MCP_LOAD_REQ(c, voxel_filter_min_e2_e0);
-    MCP_LOAD_REQ(c, voxel_filter_min_e1_e0);
-    MCP_LOAD_OPT(c, voxel_filter_min_e1);
+    MCP_LOAD_REQ(c, edge_min_e2_e0);
+    MCP_LOAD_REQ(c, edge_min_e2_e1);
+    MCP_LOAD_REQ(c, plane_min_e2_e0);
+    MCP_LOAD_REQ(c, plane_min_e1_e0);
+    MCP_LOAD_OPT(c, plane_min_e1);
+    MCP_LOAD_OPT(c, min_points_per_voxel);
 }
 
 FilterEdgesPlanes::FilterEdgesPlanes() = default;
@@ -92,23 +93,29 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& ys = pc.getPointsBufferRef_y();
     const auto& zs = pc.getPointsBufferRef_z();
 
-    const float max_e20 = params.voxel_filter_max_e2_e0;
-    const float max_e10 = params.voxel_filter_max_e1_e0;
-    const float min_e20 = params.voxel_filter_min_e2_e0;
-    const float min_e10 = params.voxel_filter_min_e1_e0;
-    const float min_e1  = params.voxel_filter_min_e1;
+    const float edge_min_e20  = params.edge_min_e2_e0;
+    const float edge_min_e21  = params.edge_min_e2_e1;
+    const float plane_min_e20 = params.plane_min_e2_e0;
+    const float plane_min_e10 = params.plane_min_e1_e0;
+    const float plane_min_e1  = params.plane_min_e1;
 
     std::size_t nEdgeVoxels = 0, nPlaneVoxels = 0, nTotalVoxels = 0;
 
     filter_grid_.visit_voxels(
         [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& vxl)
         {
-            if (!vxl.indices.empty()) nTotalVoxels++;
-            if (vxl.indices.size() < 5) return;
+            if (!vxl.indices.empty())
+            {
+                nTotalVoxels++;
+            }
+            if (vxl.indices.size() < params.min_points_per_voxel)
+            {
+                return;
+            }
 
             // Analyze the voxel contents:
             mrpt::math::TPoint3Df mean{0, 0, 0};
-            const float           inv_n = (1.0f / vxl.indices.size());
+            const float           inv_n = 1.0f / static_cast<float>(vxl.indices.size());
             for (size_t i = 0; i < vxl.indices.size(); i++)
             {
                 const auto pt_idx = vxl.indices[i];
@@ -142,17 +149,19 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
             std::vector<double>                    eig_vals;
             mat_a.eig_symmetric(eig_vectors, eig_vals);
 
-            const float e0 = eig_vals[0], e1 = eig_vals[1], e2 = eig_vals[2];
+            const auto e0 = static_cast<float>(eig_vals[0]);
+            const auto e1 = static_cast<float>(eig_vals[1]);
+            const auto e2 = static_cast<float>(eig_vals[2]);
 
             mrpt::maps::CPointsMap* dest = nullptr;
-            if (e2 < max_e20 * e0 && e1 < max_e10 * e0)
+            if (e2 > edge_min_e20 * e0 && e2 > edge_min_e21 * e1)
             {
                 // Classified as EDGE
                 // ------------------------
                 nEdgeVoxels++;
                 dest = pc_edges.get();
             }
-            else if (e2 > min_e20 * e0 && e1 > min_e10 * e0 && e1 > min_e1)
+            else if (e2 > plane_min_e20 * e0 && e1 > plane_min_e10 * e0 && e1 > plane_min_e1)
             {
                 // Classified as PLANE
                 // ------------------------
@@ -176,7 +185,10 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
 
                     // It should be <0 if the normal is pointing to the vehicle.
                     // Otherwise, reverse the normal.
-                    if (dot_prod > 0) pl_n = -pl_n;
+                    if (dot_prod > 0)
+                    {
+                        pl_n = -pl_n;
+                    }
                 }
 
                 // Add plane & centroid:
@@ -184,7 +196,8 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
                 inOut.planes.emplace_back(pl, pl_c);
 
                 // Also: add the centroid to this special layer:
-                pc_plane_centroids->insertPointFast(pl_c.x, pl_c.y, pl_c.z);
+                const auto pl_cf = pl_c.cast<float>();
+                pc_plane_centroids->insertPointFast(pl_cf.x, pl_cf.y, pl_cf.z);
 
                 // Filter out horizontal planes, since their uneven density
                 // makes ICP fail to converge.
@@ -194,9 +207,10 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
                     dest = pc_planes.get();
                 }
             }
+
             if (dest != nullptr)
             {
-                for (size_t i = 0; i < vxl.indices.size(); i += params.voxel_filter_decimation)
+                for (size_t i = 0; i < vxl.indices.size(); i += params.decimation)
                 {
                     const auto pt_idx = vxl.indices[i];
                     dest->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
