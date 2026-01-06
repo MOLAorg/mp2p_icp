@@ -255,7 +255,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             std::cout << "Applying 'final_filters'..." << std::endl;
         }
 
-        mp2p_icp_filters::apply_filter_pipeline(finalFilters, mm);
+        mp2p_icp_filters::apply_filter_pipeline(finalFilters, mm, options.profiler);
 
         if (options.verbosity <= mrpt::system::LVL_INFO)
         {
