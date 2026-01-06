@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.1 (2026-01-06)
+------------------
 * Merge pull request `#21 <https://github.com/MOLAorg/mp2p_icp/issues/21>`_ from MOLAorg/feat/abs-stamp-filter
   Added new filter: FilterAbsoluteTimestamp
 * Fix the logic of the FilterEdgePlane filter parameters
