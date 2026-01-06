@@ -446,7 +446,9 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     impl_->percent_print_progress = params.percent_print_progress;
 
     // 4. Build KD-Tree for the *input* cloud for fast neighbor search
-    MRPT_LOG_INFO_STREAM("Building KD-Tree for " << input_pc.size() << " points...");
+    MRPT_LOG_INFO_STREAM(
+        "Building KD-Tree for " << mrpt::system::unitsFormat(static_cast<double>(input_pc.size()))
+                                << " points...");
     input_pc.nn_prepare_for_3d_queries();  //
     MRPT_LOG_INFO("KD-Tree built.");
 
@@ -523,9 +525,9 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     outPc->registerField_float("normal_z");  //
 
     // and the ones at origin cloud:
-    outPc->registerPointFieldsFrom(input_pc);
+    outPc->registerPointFieldsFrom(*query_pc);
 
-    const auto ctx = outPc->prepareForInsertPointsFrom(input_pc);
+    const auto ctx = outPc->prepareForInsertPointsFrom(*query_pc);
 #endif
 
     const size_t firstIdx = outPc->size();
