@@ -21,6 +21,32 @@ ____________________________________________
 
 |
 
+Filter: `FilterAbsoluteTimestamp`
+----------------------------------
+
+**Description**: Creates a new per-point channel containing absolute UNIX timestamps.
+This filter reads the relative timestamp channel ``t`` (float) from each point and adds the reference "zero time" of the cloud (retrieved from the attached processing context's velocity buffer) to compute an absolute UNIX timestamp for every point.
+The absolute timestamps are stored in a new double-precision field (default name: ``timestamp_abs``).
+
+**Parameters**:
+
+* **pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): The point cloud layer to process.
+
+* **output\_field\_name** (:cpp:type:`std::string`, default: `timestamp_abs`): The name of the new output field where absolute timestamps will be stored.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterAbsoluteTimestamp
+        params:
+          pointcloud_layer: 'raw'
+          output_field_name: 'timestamp_abs'
+
+|
+
+---
+
 Filter: `FilterAdjustTimestamps`
 --------------------------------
 
@@ -51,11 +77,6 @@ Filter: `FilterAdjustTimestamps`
           pointcloud_layer: 'raw'
           silently_ignore_no_timestamps: true
           method: 'MiddleIsZero'
-
-.. rubric:: Before → After Screenshot
-
-.. image:: adjust_timestamps_example.png
-   :alt: Screenshot showing point cloud before and after applying FilterAdjustTimestamps
 
 |
 

@@ -45,9 +45,6 @@ class FilterEdgesPlanes : public mp2p_icp_filters::FilterBase
    public:
     FilterEdgesPlanes();
 
-    // See docs in base class.
-    void initialize_filter(const mrpt::containers::yaml& c) override;
-
     // See docs in FilterBase
     void filter(mp2p_icp::metric_map_t& inOut) const override;
 
@@ -63,16 +60,22 @@ class FilterEdgesPlanes : public mp2p_icp_filters::FilterBase
         float voxel_filter_resolution = .5f;  // [m]
         bool  use_tsl_robin_map       = true;
 
-        unsigned int voxel_filter_decimation = 1;
-        float        voxel_filter_max_e2_e0  = 30.f;
-        float        voxel_filter_max_e1_e0  = 30.f;
-        float        voxel_filter_min_e2_e0  = 100.f;
-        float        voxel_filter_min_e1_e0  = 100.f;
-        float        voxel_filter_min_e1     = .0f;
+        unsigned int min_points_per_voxel = 5;
+
+        unsigned int decimation      = 1;
+        float        edge_min_e2_e0  = 30.f;
+        float        edge_min_e2_e1  = 30.f;
+        float        plane_min_e2_e0 = 100.f;
+        float        plane_min_e1_e0 = 100.f;
+        float        plane_min_e1    = .0f;
     };
 
     /** Algorithm parameters */
     Parameters params;
+
+   protected:
+    // See docs in base class.
+    void initialize_filter(const mrpt::containers::yaml& c) override;
 
    private:
     mutable PointCloudToVoxelGrid filter_grid_;
