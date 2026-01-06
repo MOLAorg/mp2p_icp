@@ -77,13 +77,29 @@ void FilterAbsoluteTimestamp::filter(mp2p_icp::metric_map_t& inOut) const
     // 3. Register and populate the new double channel
     const size_t N = pc.size();
 
-    pc.registerField_double(params.output_field_name);
-    auto& absT = *pc.getPointsBufferRef_double_field(params.output_field_name);
+    // Start with the first point without this new field, in the case of a layer accumulating points
+    // over time from several scans.
+    std::optional<size_t> startIdx;
+
+    if (!pc.hasPointField(params.output_field_name))
+    {
+        pc.registerField_double(params.output_field_name);
+        startIdx = 0;
+    }
+
+    auto absT_ptr = pc.getPointsBufferRef_double_field(params.output_field_name);
+    ASSERT_(absT_ptr);
+    auto& absT = *absT_ptr;
+
+    if (!startIdx)
+    {
+        startIdx = absT.size();  // start after the last current point
+    }
 
     absT.resize(N);
 
     const auto& relT = *ptrT;
-    for (size_t i = 0; i < N; i++)
+    for (size_t i = *startIdx; i < N; i++)
     {
         absT[i] = refTimeSec + static_cast<double>(relT[i]);
     }
