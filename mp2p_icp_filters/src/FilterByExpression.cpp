@@ -201,6 +201,8 @@ void FilterByExpression::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     // --- Main Processing Loop ---
+    size_t passCount    = 0;
+    size_t notPassCount = 0;
     for (size_t i = 0; i < N; ++i)
     {
         // Update all discovered fields
@@ -211,6 +213,7 @@ void FilterByExpression::filter(mp2p_icp::metric_map_t& inOut) const
 
         if (expr_.eval() > 0.0)
         {
+            passCount++;
             if (outPassed)
             {
                 outPassed->insertPointFrom(i, *ctxP);
@@ -218,12 +221,16 @@ void FilterByExpression::filter(mp2p_icp::metric_map_t& inOut) const
         }
         else
         {
+            notPassCount++;
             if (outFailed)
             {
                 outFailed->insertPointFrom(i, *ctxF);
             }
         }
     }
+    MRPT_LOG_DEBUG_FMT(
+        "FilterByExpression: %zu points passed filter, %zu points did not pass, for expresion: %s",
+        passCount, notPassCount, params.expression.c_str());
 #else
     (void)inOut;
     THROW_EXCEPTION("This class requires MRPT>=2.15.4");
