@@ -23,6 +23,7 @@ set(LIB_SRCS
   src/FilterNormalizeIntensity.cpp
   src/FilterPoleDetector.cpp
   src/FilterRemoveByVoxelOccupancy.cpp
+  src/FilterRenameLayer.cpp
   src/FilterSOR.cpp
   src/FilterVoxelSlice.cpp
   src/Generator.cpp
@@ -57,6 +58,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterNormalizeIntensity.h
   include/mp2p_icp_filters/FilterPoleDetector.h
   include/mp2p_icp_filters/FilterRemoveByVoxelOccupancy.h
+  include/mp2p_icp_filters/FilterRenameLayer.h
   include/mp2p_icp_filters/FilterSOR.h
   include/mp2p_icp_filters/FilterVoxelSlice.h
   include/mp2p_icp_filters/Generator.h
