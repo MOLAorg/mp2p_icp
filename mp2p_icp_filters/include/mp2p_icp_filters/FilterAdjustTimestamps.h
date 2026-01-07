@@ -41,6 +41,8 @@ enum class TimestampAdjustMethod : uint8_t
     MiddleIsZero,
     /** Normalize all timestamps such as they are in the range [0,1] */
     Normalize,
+    /** Do not modify the per-point timestamps, leave them as is */
+    None,
 };
 
 /** Modifies the per-point timestamps of a map layer according to one of a set
@@ -93,4 +95,5 @@ MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp_filters, mp2p_icp_filters::TimestampAdju
 MRPT_FILL_ENUM(TimestampAdjustMethod::EarliestIsZero);
 MRPT_FILL_ENUM(TimestampAdjustMethod::MiddleIsZero);
 MRPT_FILL_ENUM(TimestampAdjustMethod::Normalize);
+MRPT_FILL_ENUM(TimestampAdjustMethod::None);
 MRPT_ENUM_TYPE_END()
