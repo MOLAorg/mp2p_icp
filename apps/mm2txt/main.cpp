@@ -23,11 +23,14 @@
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CGenericPointsMap.h>
-#include <mrpt/maps/CPointsMapXYZI.h>
-#include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
 #include <mrpt/version.h>
+
+#if MRPT_VERSION < 0x030000  // <3.0.0
+#include <mrpt/maps/CPointsMapXYZI.h>
+#include <mrpt/maps/CPointsMapXYZIRT.h>
+#endif
 
 namespace
 {
@@ -189,6 +192,7 @@ void run_mm2txt()
             bool printHeader = true;
             saveToTxt(*genxyz, filName, printHeader);
         }
+#if MRPT_VERSION < 0x030000  // <3.0.0
         else if (auto* xyzirt = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(pts); xyzirt)
         {
             xyzirt->saveXYZIRT_to_text_file(filName);
@@ -197,6 +201,7 @@ void run_mm2txt()
         {
             xyzi->saveXYZI_to_text_file(filName);
         }
+#endif
         else
         {
             pts->save3D_to_text_file(filName);

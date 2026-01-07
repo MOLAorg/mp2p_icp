@@ -59,6 +59,13 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
 
     checkAllParametersAreRealized();
 
+    if (params.method == TimestampAdjustMethod::None)
+    {
+        // Do nothing. Also, there is no need to
+        // call "ps->localVelocityBuffer.set_reference_zero_time()" since dt would be 0.
+        return;
+    }
+
     // In/out:
     auto pcPtr = inOut.point_layer(params.pointcloud_layer);
     ASSERTMSG_(
