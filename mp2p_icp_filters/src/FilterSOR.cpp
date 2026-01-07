@@ -55,18 +55,54 @@ void FilterSOR::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
         "FilterSOR: At least one output layer must be specified.");
 }
 
-void FilterSOR::initialize_filter(const mrpt::containers::yaml& c) { params.load_from_yaml(c); }
+void FilterSOR::initialize_filter(const mrpt::containers::yaml& c)
+{  // Load params:
+    params.load_from_yaml(c);
+}
 
 void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
 {
     auto pcPtr = inOut.layer<mrpt::maps::CPointsMap>(params.input_pointcloud_layer);
-    if (!pcPtr || pcPtr->empty())
+    ASSERT_(pcPtr);
+    const auto& pc = *pcPtr;
+
+    // Define the output layers:
+    mrpt::maps::CPointsMap::Ptr outInliers = GetOrCreatePointLayer(
+        inOut, params.output_layer_inliers,
+        /*do allow empty*/
+        true,
+        /* create cloud of the same type */
+        pcPtr->GetRuntimeClass()->className);
+
+    mrpt::maps::CPointsMap::Ptr outOutliers = GetOrCreatePointLayer(
+        inOut, params.output_layer_outliers,
+        /*do allow empty*/
+        true,
+        /* create cloud of the same type */
+        pcPtr->GetRuntimeClass()->className);
+
+    ASSERTMSG_(
+        outInliers || outOutliers,
+        "At least one of 'output_layer_inliers' or 'output_layer_outliers' must be provided.");
+
+    std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxI, ctxO;
+    if (outInliers)
+    {
+        outInliers->registerPointFieldsFrom(pc);
+        ctxI = outInliers->prepareForInsertPointsFrom(pc);
+    }
+    if (outOutliers)
+    {
+        outOutliers->registerPointFieldsFrom(pc);
+        ctxO = outOutliers->prepareForInsertPointsFrom(pc);
+    }
+
+    if (pcPtr->empty())
     {
         return;
     }
 
-    const auto&  pc = *pcPtr;
-    const size_t N  = pc.size();
+    const size_t N = pc.size();
 
     // 1. Prepare KD-Tree for neighbor search
     pc.nn_prepare_for_3d_queries();
@@ -124,36 +160,6 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
     const double threshold = mean_dist + params.std_dev_mul * std_dev;
 
     // 4. Pass 2: Dispatch points to output layers
-    mrpt::maps::CPointsMap::Ptr outInliers = GetOrCreatePointLayer(
-        inOut, params.output_layer_inliers,
-        /*do allow empty*/
-        true,
-        /* create cloud of the same type */
-        pcPtr->GetRuntimeClass()->className);
-
-    mrpt::maps::CPointsMap::Ptr outOutliers = GetOrCreatePointLayer(
-        inOut, params.output_layer_outliers,
-        /*do allow empty*/
-        true,
-        /* create cloud of the same type */
-        pcPtr->GetRuntimeClass()->className);
-
-    ASSERTMSG_(
-        outInliers || outOutliers,
-        "At least one of 'output_layer_inliers' or 'output_layer_outliers' must be provided.");
-
-    std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxI, ctxO;
-    if (outInliers)
-    {
-        outInliers->registerPointFieldsFrom(pc);
-        ctxI = outInliers->prepareForInsertPointsFrom(pc);
-    }
-    if (outOutliers)
-    {
-        outOutliers->registerPointFieldsFrom(pc);
-        ctxO = outOutliers->prepareForInsertPointsFrom(pc);
-    }
-
     for (size_t i = 0; i < N; ++i)
     {
         const bool isInlier = (avg_distances[i] <= threshold);
