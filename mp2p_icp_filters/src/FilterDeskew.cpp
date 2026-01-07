@@ -430,6 +430,17 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             "Input layer '%s' not found on input map.", input_pointcloud_layer.c_str());
     }
 
+    // optional fields: get insertion context only if we are not doing in-place correction:
+    std::optional<mrpt::maps::CPointsMap::InsertCtx> insert_ctx;
+    if (outPc)
+    {
+        // Copy all point fields from the source:
+        outPc->registerPointFieldsFrom(*inPc);
+
+        // and then, prepare structures for fast copying:
+        insert_ctx = outPc->prepareForInsertPointsFrom(*inPc);
+    }
+
     // If the input is empty, just move on:
     if (inPc->empty())
     {
@@ -445,17 +456,6 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     auto&        ys = const_cast<mrpt::aligned_std_vector<float>&>(inPc->getPointsBufferRef_y());
     auto&        zs = const_cast<mrpt::aligned_std_vector<float>&>(inPc->getPointsBufferRef_z());
     const size_t n  = xs.size();
-
-    // optional fields: get insertion context only if we are not doing in-place correction:
-    std::optional<mrpt::maps::CPointsMap::InsertCtx> insert_ctx;
-    if (outPc)
-    {
-        // Copy all point fields from the source:
-        outPc->registerPointFieldsFrom(*inPc);
-
-        // and then, prepare structures for fast copying:
-        insert_ctx = outPc->prepareForInsertPointsFrom(*inPc);
-    }
 
     const auto* Ts = inPc->getPointsBufferRef_float_field("t");
 
