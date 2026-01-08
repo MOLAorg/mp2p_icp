@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.3.0 (2026-01-08)
+------------------
 * Merge pull request `#24 <https://github.com/MOLAorg/mp2p_icp/issues/24>`_ from MOLAorg/feat/mm2txt-select-fields
   mm2txt and mm2ply now have a --export-fields flag
 * mm2txt and mm2ply now have a --export-fields flag
