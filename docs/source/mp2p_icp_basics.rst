@@ -13,7 +13,7 @@ Metric maps: point clouds, and more
 
 The basic data class is ``metric_map_t``. It comprises:
 
-  - A set of **map layers**, each one an instance of a generic `mrpt::maps::CMetricMap <https://docs.mrpt.org/reference/latest/class_mrpt_maps_CMetricMap.html>`_, typically point clouds (`mrpt::maps::CSimplePointsMap <https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimplePointsMap.html>`_) but may hold also 2D grid maps (`mrpt::maps::COccupancyGridMap2D <https://docs.mrpt.org/reference/latest/class_mrpt_maps_COccupancyGridMap2D.html>`_) or 3D octomaps (`mrpt::maps::COctoMap <https://docs.mrpt.org/reference/latest/class_mrpt_maps_COctoMap.html>`_). Layers are indexed by a **name** (``std::string``).
+  - A set of **map layers**, each one an instance of a generic `mrpt::maps::CMetricMap <https://docs.mrpt.org/reference/latest/class_mrpt_maps_CMetricMap.html>`_, typically point clouds (`mrpt::maps::CGenericPointsMap <https://docs.mrpt.org/reference/latest/class_mrpt_maps_CGenericPointsMap.html>` or `mrpt::maps::CSimplePointsMap <https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimplePointsMap.html>`_) but may hold also 2D grid maps (`mrpt::maps::COccupancyGridMap2D <https://docs.mrpt.org/reference/latest/class_mrpt_maps_COccupancyGridMap2D.html>`_) or 3D octomaps (`mrpt::maps::COctoMap <https://docs.mrpt.org/reference/latest/class_mrpt_maps_COctoMap.html>`_). Layers are indexed by a **name** (``std::string``).
 
   - Other geometric entities: lines, planes.
 
@@ -30,7 +30,7 @@ Simple-maps
 ---------------------------------------
 Simplemaps are key frame-based maps. Each key-frame contains a SE(3) pose (optionally, including uncertainty)
 along with raw sensor observations gathered from that pose, and optional metadata. An example of standardized metadata
-is the local frame velocity at the moment of recording the sensor data, essential to perform motion compensation.
+is the local frame velocity at the moment of recording the sensor data, including a small window of IMU raw readings, essential to perform accurate motion compensation.
 
 Although the corresponding C++ class 
 (`mrpt::maps::CSimpleMap <https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html>`_) 
