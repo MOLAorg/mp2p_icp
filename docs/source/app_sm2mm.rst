@@ -17,29 +17,11 @@ The `sm2mm` command-line tool is a utility from the `mp2p_icp` project designed 
 into a "metric map" file (`.mm` extension). Recall that metric maps in mp2p_icp can have :ref:`multiple map layers <mp2p_icp_basics>`.
 This conversion is performed by applying a user-defined processing pipeline, specified in a configuration file, to the simple map data.
 
-This tool is  for post-processing SLAM outputs, enabling the generation of detailed and structured metric representations of the environment suitable for various applications, such as navigation, visualization, or further geometric analysis.
+This tool is for post-processing SLAM outputs, enabling the generation of detailed and structured metric representations of the environment suitable for various applications, such as navigation, visualization, or further geometric analysis.
 
+.. note::
 
-Pipeline file specification
------------------------------
-Pipeline configuration files are written in YAML format and define the sequence of operations to be applied to the raw sensor observations stored as map keyframes.
-
-The pipeline can include various filters and generators that process the observations, such as downsampling, noise reduction, or feature extraction.
-The pipeline file can also specify custom plugins to be loaded, which can define new metric map classes or custom filter algorithms.
-
-Each pipeline file can contain these sections:
-
-- `generators:`: A list of generators to create maps from each raw observations in each key-frame. If none is provided, the default :ref:`mp2p_icp::Generator <doxid-classmp2p__icp__filters_1_1_generator>` is used, which generates a point cloud from the observation.
-- `filters:`: A list of filters to apply to each key-frame observations, after generators have been applied. For example, here one typically removes the robot body, de-skew the scan, downsamples the point cloud, and merges the result into one or several final metric map layers used to accumulate the result.
-- `final_filters:`: An optional list of filters to apply to the final map layers, after all key-frames have been processed.
-
-Refer to example pipeline files `sm2mm_*.yaml` under the `demos directory <https://github.com/MOLAorg/mp2p_icp/tree/master/demos>`_.
-
-.. dropdown:: Example pipeline
-    :icon: list-unordered
-
-    .. literalinclude:: ../../../mp2p_icp/demos/sm2mm_pointcloud_voxelize.yaml
-       :language: yaml
+    Pipeline files are explained in :ref:`this page <sm2mm_pipelines>`, together with examples.
 
 
 CLI Reference

@@ -21,7 +21,7 @@ generators:
       process_class_names_regex: ""
       metric_map_definition:
         # Any class derived from mrpt::maps::CMetricMap https://docs.mrpt.org/reference/latest/group_mrpt_maps_grp.html
-        class: mrpt::maps::CPointsMapXYZIRT
+        class: mrpt::maps::CGenericPointsMap
         #plugin: 'libmola_metric_maps.so' # Import additional custom user-defined map classes (search in LD_LIBRARY_PATH)
         #creationOpts:
         # none required for this class
@@ -71,7 +71,7 @@ generators:
       process_sensor_labels_regex: ".*"
       metric_map_definition:
         # Any class derived from mrpt::maps::CMetricMap https://docs.mrpt.org/reference/latest/group_mrpt_maps_grp.html
-        class: mrpt::maps::CPointsMapXYZIRT
+        class: mrpt::maps::CGenericPointsMap
 
 # --------------------------------------------------------
 # 2) Per local frame filtering
