@@ -193,19 +193,30 @@ void run_mm2txt()
             saveToTxt(*genxyz, filName, printHeader);
         }
 #if MRPT_VERSION < 0x030000  // <3.0.0
-        else if (auto* xyzirt = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(pts); xyzirt)
+        else
         {
-            xyzirt->saveXYZIRT_to_text_file(filName);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+            if (auto* xyzirt = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(pts); xyzirt)
+            {
+                xyzirt->saveXYZIRT_to_text_file(filName);
+            }
+            else if (auto* xyzi = dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(pts); xyzi)
+            {
+                xyzi->saveXYZI_to_text_file(filName);
+            }
+            else
+            {
+                pts->save3D_to_text_file(filName);
+            }
+#pragma GCC diagnostic pop
         }
-        else if (auto* xyzi = dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(pts); xyzi)
-        {
-            xyzi->saveXYZI_to_text_file(filName);
-        }
-#endif
+#else
         else
         {
             pts->save3D_to_text_file(filName);
         }
+#endif
     }
 }
 

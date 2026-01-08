@@ -411,8 +411,10 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
             return fields;
         }();
 
-        ASSERT_EQUAL_(outFields.count("intensity"), 1);
-        ASSERT_EQUAL_(outFields.count("t"), 1);
+        ASSERT_EQUAL_(
+            outFields.count(std::string(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY)), 1);
+        ASSERT_EQUAL_(
+            outFields.count(std::string(mrpt::maps::CPointsMap::POINT_FIELD_TIMESTAMP)), 1);
 
         for (size_t i = 0; i < deskewedPts->size(); i++)
         {
@@ -556,9 +558,8 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     }  // end for each timestep
 
     // Now, reconstruct the points within the SM:
-    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(
-        mrpt::format(
-            R"yaml(
+    const auto sm2mmPipeline = mrpt::containers::yaml::FromText(mrpt::format(
+        R"yaml(
 # --------------------------------------------------------
 # 1) Generator (observation -> local frame metric maps)
 # --------------------------------------------------------
@@ -595,7 +596,7 @@ filters:
       # one or more layers to remove
       pointcloud_layer_to_remove: ["raw"]
     )yaml",
-            mrpt::typemeta::enum2str(p.deskew_method).c_str(), p.outputMapClass.c_str()));
+        mrpt::typemeta::enum2str(p.deskew_method).c_str(), p.outputMapClass.c_str()));
 
     mp2p_icp::metric_map_t            mm;
     mp2p_icp_filters::sm2mm_options_t sm2mm_opts;
@@ -655,7 +656,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 #endif
 
         const std::vector<std::string> outputMapClasses = {
-            "mrpt::maps::CPointsMapXYZIRT", "mrpt::maps::CGenericPointsMap"};
+#if MRPT_VERSION < 0x030000
+            "mrpt::maps::CPointsMapXYZIRT",
+#endif
+            "mrpt::maps::CGenericPointsMap"
+        };
 
         const std::vector<std::pair<float, float>> test_velocities = {
             {0.0f, 1e-6f},  // stationary

@@ -62,11 +62,7 @@ void FilterNormalizeIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     auto& pc = *pcPtr;
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
-    auto* IsPtr = pc.getPointsBufferRef_float_field("intensity");
-#else
-    auto* IsPtr = pc.getPointsBufferRef_intensity();
-#endif
+    auto* IsPtr = pc.getPointsBufferRef_float_field(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
 
     ASSERTMSG_(
         IsPtr != nullptr,
