@@ -38,7 +38,7 @@ using namespace mp2p_icp;
 namespace
 {
 
-constexpr std::string_view INTENSITY = "intensity";
+constexpr std::string_view INTENSITY = POINT_FIELD_INTENSITY;
 
 // Helper to create a test point cloud with known positions and intensities
 mrpt::maps::CPointsMap::Ptr createTestPointsWithIntensity(
@@ -204,10 +204,9 @@ void test_FilterByIntensity_ThreeLayers()
     ASSERT_EQUAL_(low_pc->size() + mid_pc->size() + high_pc->size(), input_pc->size());
 
     // Verify intensity ranges
-#if MRPT_VERSION >= 0x020f00
-    const auto* ptrI_low  = low_pc->getPointsBufferRef_float_field("intensity");
-    const auto* ptrI_mid  = mid_pc->getPointsBufferRef_float_field("intensity");
-    const auto* ptrI_high = high_pc->getPointsBufferRef_float_field("intensity");
+    const auto* ptrI_low  = low_pc->getPointsBufferRef_float_field(POINT_FIELD_INTENSITY);
+    const auto* ptrI_mid  = mid_pc->getPointsBufferRef_float_field(POINT_FIELD_INTENSITY);
+    const auto* ptrI_high = high_pc->getPointsBufferRef_float_field(POINT_FIELD_INTENSITY);
 
     if (ptrI_low)
     {
@@ -233,7 +232,6 @@ void test_FilterByIntensity_ThreeLayers()
             ASSERT_GT_(I, 0.7f);
         }
     }
-#endif
 
     std::cout << "Success ✅" << std::endl;
 }
@@ -614,7 +612,7 @@ void test_FilterMLS_DistinctCloudProjection()
     {
         avg_z += z;
     }
-    avg_z /= mls_pc->size();
+    avg_z /= static_cast<double>(mls_pc->size());
 
     // Average z should be closer to 2.0 than the distinct cloud's z=3.0
     ASSERT_LT_(std::abs(avg_z - 2.0f), 0.5f);

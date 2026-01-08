@@ -37,6 +37,11 @@
 
 const char* VALID_FORMATS = "(xyz|xyzi|xyzirt|xyzrgb|xyzrgb_normalized)";
 
+// Replicated here from CGenericPointsMap until MRPT 2.15.3 is minimum required version:
+constexpr static std::string_view POINT_FIELD_INTENSITY = "intensity";
+constexpr static std::string_view POINT_FIELD_RING_ID   = "ring";
+constexpr static std::string_view POINT_FIELD_TIMESTAMP = "t";
+
 using namespace std::string_literals;
 
 // CLI flags:
@@ -161,12 +166,8 @@ int main(int argc, char** argv)
         else if (format == "xyzi")
         {
             ASSERT_GE_(nCols, 4U);
-#if MRPT_VERSION >= 0x20f00  // 2.15.0
             auto pts = mrpt::maps::CGenericPointsMap::Create();
-            pts->registerField_float("intensity");
-#else
-            auto pts = mrpt::maps::CPointsMapXYZI::Create();
-#endif
+            pts->registerField_float(POINT_FIELD_INTENSITY);
             pts->reserve(nRows);
             if (nCols > 4)
             {
@@ -178,11 +179,7 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < nRows; i++)
             {
                 pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
-#if MRPT_VERSION >= 0x20f00  // 2.15.0
-                pts->insertPointField_float("intensity", data(i, idxI));
-#else
-                pts->insertPointField_Intensity(data(i, idxI));
-#endif
+                pts->insertPointField_float(POINT_FIELD_INTENSITY, data(i, idxI));
             }
 
             pc = pts;
@@ -190,14 +187,10 @@ int main(int argc, char** argv)
         else if (format == "xyzirt")
         {
             ASSERT_GE_(nCols, 6U);
-#if MRPT_VERSION >= 0x20f00  // 2.15.0
             auto pts = mrpt::maps::CGenericPointsMap::Create();
-            pts->registerField_float("intensity");
-            pts->registerField_uint16("ring");
-            pts->registerField_float("timestamp");
-#else
-            auto pts = mrpt::maps::CPointsMapXYZI::Create();
-#endif
+            pts->registerField_float(POINT_FIELD_INTENSITY);
+            pts->registerField_uint16(POINT_FIELD_RING_ID);
+            pts->registerField_float(POINT_FIELD_TIMESTAMP);
             pts->reserve(nRows);
             if (nCols > 6)
             {
@@ -209,15 +202,10 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < nRows; i++)
             {
                 pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
-#if MRPT_VERSION >= 0x20f00  // 2.15.0
-                pts->insertPointField_float("intensity", data(i, idxI));
-                pts->insertPointField_uint16("ring", static_cast<uint16_t>(data(i, idxR)));
-                pts->insertPointField_float("timestamp", data(i, idxT));
-#else
-                pts->insertPointField_Intensity(data(i, idxI));
-                pts->insertPointField_Ring(data(i, idxR));
-                pts->insertPointField_Timestamp(data(i, idxT));
-#endif
+                pts->insertPointField_float(POINT_FIELD_INTENSITY, data(i, idxI));
+                pts->insertPointField_uint16(
+                    POINT_FIELD_RING_ID, static_cast<uint16_t>(data(i, idxR)));
+                pts->insertPointField_float(POINT_FIELD_TIMESTAMP, data(i, idxT));
             }
 
             pc = pts;

@@ -29,6 +29,7 @@
 #include <mrpt/obs/obs_frwds.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
+#include <mrpt/version.h>
 
 namespace mrpt::system
 {
@@ -116,6 +117,18 @@ void apply_filter_pipeline(
 [[nodiscard]] FilterPipeline filter_pipeline_from_yaml_file(
     const std::string&                  filename,
     const mrpt::system::VerbosityLevel& vLevel = mrpt::system::LVL_INFO);
+
+// For convenience, define shortcut names for common point cloud field names:
+#if MRPT_VERSION >= 0x20f03  // 2.15.3
+constexpr auto POINT_FIELD_INTENSITY = mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY;
+constexpr auto POINT_FIELD_RING_ID   = mrpt::maps::CPointsMap::POINT_FIELD_RING_ID;
+constexpr auto POINT_FIELD_TIMESTAMP = mrpt::maps::CPointsMap::POINT_FIELD_TIMESTAMP;
+#else
+// Define here locally, until MRPT 2.15.3 is the minimum required version:
+constexpr static std::string_view POINT_FIELD_INTENSITY = "intensity";
+constexpr static std::string_view POINT_FIELD_RING_ID   = "ring";
+constexpr static std::string_view POINT_FIELD_TIMESTAMP = "t";
+#endif
 
 /** @} */
 

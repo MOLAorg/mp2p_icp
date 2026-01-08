@@ -30,8 +30,8 @@
 #include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/get_env.h>
+#include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/maps/CMultiMetricMap.h>
-#include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservation3DRangeScan.h>
@@ -185,13 +185,13 @@ bool Generator::filterVelodyneScan(  //
 {
     mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
         out, params.target_layer, false /*does not allow empty name*/,
-        "mrpt::maps::CPointsMapXYZIRT" /* creation class if not existing */);
+        "mrpt::maps::CGenericPointsMap" /* creation class if not existing */);
     ASSERT_(outPc);
 
-    auto m = std::dynamic_pointer_cast<mrpt::maps::CPointsMapXYZIRT>(outPc);
+    auto m = std::dynamic_pointer_cast<mrpt::maps::CGenericPointsMap>(outPc);
     ASSERTMSG_(
         m,
-        "Output layer must be of type mrpt::maps::CPointsMapXYZIRT for the "
+        "Output layer must be of type mrpt::maps::CGenericPointsMap for the "
         "specialized filterVelodyneScan() generator.");
 
     m->insertObservation(pc, robotPose);

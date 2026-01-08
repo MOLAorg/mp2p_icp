@@ -20,7 +20,7 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
-#include <mrpt/maps/CPointsMapXYZI.h>
+#include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/math/ops_containers.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/version.h>
@@ -31,7 +31,9 @@ using namespace mp2p_icp;
 // Helper to create a consistent point map for testing
 mrpt::maps::CPointsMap::Ptr createTestPoints(size_t n_x, size_t n_y)
 {
-    auto pc = mrpt::maps::CPointsMapXYZI::Create();
+    auto pc = mrpt::maps::CGenericPointsMap::Create();
+    pc->registerField_float(POINT_FIELD_INTENSITY);
+
     // Create a 2D grid of points, 10x10. Each point has a small, known Z-offset.
     for (size_t i = 0; i < n_x; ++i)
     {
@@ -43,12 +45,7 @@ mrpt::maps::CPointsMap::Ptr createTestPoints(size_t n_x, size_t n_y)
             float intensity = static_cast<float>(i * n_y + j);
 
             pc->insertPointFast(x, y, z);
-#if MRPT_VERSION >= 0x020f00
-            pc->insertPointField_float(
-                mrpt::maps::CPointsMapXYZI::POINT_FIELD_INTENSITY, intensity);
-#else
-            pc->insertPointField_Intensity(intensity);
-#endif
+            pc->insertPointField_float(POINT_FIELD_INTENSITY, intensity);
         }
     }
     return pc;
@@ -196,10 +193,8 @@ void test_decimate_method(
         ASSERT_NEAR_(bb.min.z, 0.0f, 0.2f);
     }
 
-    // Since we created CPointsMapXYZI, the output should also have intensity.
-#if MRPT_VERSION >= 0x020f00
-    ASSERT_(output_pc->hasPointField(mrpt::maps::CPointsMapXYZI::POINT_FIELD_INTENSITY));
-#endif
+    // The output should also have intensity.
+    ASSERT_(output_pc->hasPointField(POINT_FIELD_INTENSITY));
     std::cout << " Success ✅." << std::endl;
 }
 

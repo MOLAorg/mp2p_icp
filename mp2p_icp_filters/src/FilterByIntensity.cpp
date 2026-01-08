@@ -109,11 +109,8 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     const auto& xs = pc.getPointsBufferRef_x();
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
-    const auto* ptrI = pc.getPointsBufferRef_float_field("intensity");
-#else
-    const auto* ptrI = pc.getPointsBufferRef_intensity();
-#endif
+    const auto* ptrI = pc.getPointsBufferRef_float_field(POINT_FIELD_INTENSITY);
+
     if (!ptrI || ptrI->empty())
     {
         THROW_EXCEPTION_FMT(
