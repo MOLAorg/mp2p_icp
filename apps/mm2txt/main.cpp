@@ -25,6 +25,7 @@
 #include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
+#include <mrpt/system/string_utils.h>
 #include <mrpt/version.h>
 
 #if MRPT_VERSION < 0x030000  // <3.0.0
@@ -46,8 +47,16 @@ TCLAP::MultiArg<std::string> argLayers(
     "appear several times.",
     false, "layerName", cmd);
 
+TCLAP::ValueArg<std::string> argExportFields(
+    "", "export-fields",
+    "Comma-separated list of fields to export (e.g., 'x,y,z,intensity'). If not "
+    "provided, all available fields will be exported. Fields will be exported in "
+    "the specified order.",
+    false, "", "field1,field2,...", cmd);
+
 bool saveToTxt(
-    const mrpt::maps::CGenericPointsMap& pts, const std::string& fileName, bool printHeader)
+    const mrpt::maps::CGenericPointsMap& pts, const std::string& fileName, bool printHeader,
+    const std::vector<std::string>& selectedFields = {})
 {
     FILE* f = mrpt::system::os::fopen(fileName.c_str(), "wt");
     if (!f)
@@ -63,30 +72,51 @@ bool saveToTxt(
     const auto& uint8Fields  = pts.uint8_fields();
 #endif
 
-    // header?
-    if (printHeader)
+    // Determine which fields to export and in what order
+    std::vector<std::string> fieldsToExport;
+
+    if (selectedFields.empty())
     {
-        // xyz are mandatory:
-        mrpt::system::os::fprintf(f, "x y z ");
+        // Export all fields in default order
+        fieldsToExport.push_back("x");
+        fieldsToExport.push_back("y");
+        fieldsToExport.push_back("z");
 
         for (const auto& [name, _] : floatFields)
         {
-            mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
+            fieldsToExport.push_back(std::string(name));
         }
         for (const auto& [name, _] : uint16Fields)
         {
-            mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
+            fieldsToExport.push_back(std::string(name));
         }
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
         for (const auto& [name, _] : doubleFields)
         {
-            mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
+            fieldsToExport.push_back(std::string(name));
         }
         for (const auto& [name, _] : uint8Fields)
         {
-            mrpt::system::os::fprintf(f, "%.*s ", static_cast<int>(name.length()), name.data());
+            fieldsToExport.push_back(std::string(name));
         }
 #endif
+    }
+    else
+    {
+        // Use selected fields in specified order
+        fieldsToExport = selectedFields;
+    }
+
+    // header?
+    if (printHeader)
+    {
+        for (size_t i = 0; i < fieldsToExport.size(); i++)
+        {
+            const auto& fieldName = fieldsToExport[i];
+            mrpt::system::os::fprintf(
+                f, "%.*s%s", static_cast<int>(fieldName.length()), fieldName.data(),
+                (i + 1 < fieldsToExport.size()) ? " " : "");
+        }
         mrpt::system::os::fprintf(f, "\n");
     }
 
@@ -100,31 +130,59 @@ bool saveToTxt(
         return true;
     }
 
-    const std::size_t n = floatFields.begin()->second.size();
+    const std::size_t n = xs.size();
 
     for (size_t i = 0; i < n; i++)
     {
-        // X Y Z are mandatory fields:
-        mrpt::system::os::fprintf(f, "%f %f %f ", xs.at(i), ys.at(i), zs.at(i));
+        for (size_t fieldIdx = 0; fieldIdx < fieldsToExport.size(); fieldIdx++)
+        {
+            const auto& fieldName = fieldsToExport[fieldIdx];
 
-        for (const auto& [_, values] : floatFields)
-        {
-            mrpt::system::os::fprintf(f, "%f ", values.at(i));
-        }
-        for (const auto& [_, values] : uint16Fields)
-        {
-            mrpt::system::os::fprintf(f, "%u ", values.at(i));
-        }
+            // Check coordinate fields
+            if (fieldName == "x")
+            {
+                mrpt::system::os::fprintf(f, "%f", xs.at(i));
+            }
+            else if (fieldName == "y")
+            {
+                mrpt::system::os::fprintf(f, "%f", ys.at(i));
+            }
+            else if (fieldName == "z")
+            {
+                mrpt::system::os::fprintf(f, "%f", zs.at(i));
+            }
+            // Check float fields
+            else if (floatFields.count(fieldName))
+            {
+                mrpt::system::os::fprintf(f, "%f", floatFields.at(fieldName).at(i));
+            }
+            // Check uint16 fields
+            else if (uint16Fields.count(fieldName))
+            {
+                mrpt::system::os::fprintf(f, "%u", uint16Fields.at(fieldName).at(i));
+            }
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
-        for (const auto& [_, values] : doubleFields)
-        {
-            mrpt::system::os::fprintf(f, "%lf ", values.at(i));
-        }
-        for (const auto& [_, values] : uint8Fields)
-        {
-            mrpt::system::os::fprintf(f, "%i ", static_cast<int>(values.at(i)));
-        }
+            // Check double fields
+            else if (doubleFields.count(fieldName))
+            {
+                mrpt::system::os::fprintf(f, "%lf", doubleFields.at(fieldName).at(i));
+            }
+            // Check uint8 fields
+            else if (uint8Fields.count(fieldName))
+            {
+                mrpt::system::os::fprintf(
+                    f, "%i", static_cast<int>(uint8Fields.at(fieldName).at(i)));
+            }
 #endif
+            else
+            {
+                // Field not found - this should have been caught earlier
+                mrpt::system::os::fprintf(f, "0");
+            }
+
+            // Add separator or newline
+            mrpt::system::os::fprintf(f, "%s", (fieldIdx + 1 < fieldsToExport.size()) ? " " : "");
+        }
         mrpt::system::os::fprintf(f, "\n");
     }
 
@@ -166,6 +224,49 @@ void run_mm2txt()
         }
     }
 
+    // Parse export fields if specified
+    std::vector<std::string> selectedFields;
+    if (argExportFields.isSet())
+    {
+        const auto&              fieldsStr = argExportFields.getValue();
+        std::vector<std::string> tokens;
+        mrpt::system::tokenize(fieldsStr, ", \t", tokens);
+
+        // Remove empty tokens and trim
+        for (auto& token : tokens)
+        {
+            if (!token.empty())
+            {
+                selectedFields.push_back(token);
+            }
+        }
+
+        if (selectedFields.empty())
+        {
+            THROW_EXCEPTION("--export-fields specified but no valid fields found!");
+        }
+
+        std::cout << "Exporting only selected fields: ";
+        for (size_t i = 0; i < selectedFields.size(); i++)
+        {
+            std::cout << selectedFields[i];
+            if (i + 1 < selectedFields.size())
+            {
+                std::cout << ", ";
+            }
+        }
+        std::cout << std::endl;
+    }
+
+    const auto printSelectedFieldsWarning = [&selectedFields]()
+    {
+        if (!selectedFields.empty())
+        {
+            std::cerr << "Warning: --export-fields not supported for legacy point map types, "
+                         "exporting all fields.\n";
+        }
+    };
+
     const auto baseFilName = mrpt::system::extractFileName(filInput);
 
     // Export them:
@@ -189,8 +290,57 @@ void run_mm2txt()
 
         if (auto* genxyz = dynamic_cast<const mrpt::maps::CGenericPointsMap*>(pts); genxyz)
         {
+            // Validate selected fields exist in this point cloud
+            if (!selectedFields.empty())
+            {
+                const auto& floatFields  = genxyz->float_fields();
+                const auto& uint16Fields = genxyz->uint16_fields();
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                const auto& doubleFields = genxyz->double_fields();
+                const auto& uint8Fields  = genxyz->uint8_fields();
+#endif
+
+                for (const auto& field : selectedFields)
+                {
+                    bool found =
+                        (field == "x" || field == "y" || field == "z" || floatFields.count(field) ||
+                         uint16Fields.count(field));
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    found = found || doubleFields.count(field) || uint8Fields.count(field);
+#endif
+
+                    if (!found)
+                    {
+                        std::cerr << "Warning: Field '" << field << "' not found in layer '" << name
+                                  << "'. Available fields: x, y, z";
+                        for (const auto& [fname, _] : floatFields)
+                        {
+                            std::cerr << ", " << fname;
+                        }
+                        for (const auto& [fname, _] : uint16Fields)
+                        {
+                            std::cerr << ", " << fname;
+                        }
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                        for (const auto& [fname, _] : doubleFields)
+                        {
+                            std::cerr << ", " << fname;
+                        }
+                        for (const auto& [fname, _] : uint8Fields)
+                        {
+                            std::cerr << ", " << fname;
+                        }
+#endif
+                        std::cerr << std::endl;
+                        THROW_EXCEPTION_FMT(
+                            "Field '%s' specified in --export-fields not found in layer '%s'",
+                            field.c_str(), name.c_str());
+                    }
+                }
+            }
+
             bool printHeader = true;
-            saveToTxt(*genxyz, filName, printHeader);
+            saveToTxt(*genxyz, filName, printHeader, selectedFields);
         }
 #if MRPT_VERSION < 0x030000  // <3.0.0
         else
@@ -199,14 +349,18 @@ void run_mm2txt()
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
             if (auto* xyzirt = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(pts); xyzirt)
             {
+                printSelectedFieldsWarning();
                 xyzirt->saveXYZIRT_to_text_file(filName);
             }
             else if (auto* xyzi = dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(pts); xyzi)
             {
+                printSelectedFieldsWarning();
+
                 xyzi->saveXYZI_to_text_file(filName);
             }
             else
             {
+                printSelectedFieldsWarning();
                 pts->save3D_to_text_file(filName);
             }
 #pragma GCC diagnostic pop
@@ -214,6 +368,7 @@ void run_mm2txt()
 #else
         else
         {
+            printSelectedFieldsWarning();
             pts->save3D_to_text_file(filName);
         }
 #endif

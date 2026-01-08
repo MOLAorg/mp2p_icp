@@ -16,6 +16,7 @@
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/string_utils.h>
 #include <mrpt/version.h>
 
 #include <fstream>
@@ -31,10 +32,19 @@ TCLAP::ValueArg<std::string> arg_out_prefix(
 
 TCLAP::SwitchArg arg_binary("b", "binary", "Export in binary format (default: ASCII)", cmd, false);
 
+TCLAP::ValueArg<std::string> argExportFields(
+    "", "export-fields",
+    "Comma-separated list of fields to export (e.g., 'x,y,z,intensity'). If not "
+    "provided, all available fields will be exported. Fields will be exported in "
+    "the specified order.",
+    false, "", "field1,field2,...", cmd);
+
 // ----------------------------------------------------------------
 // PLY Export Logic using CPointsMap field-generic API
 // ----------------------------------------------------------------
-void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bool binary)
+void saveToPly(
+    const mrpt::maps::CPointsMap& pc, const std::string& filename, bool binary,
+    const std::vector<std::string>& selectedFields = {})
 {
     std::ofstream f;
     f.open(filename, binary ? std::ios::binary : std::ios::out);
@@ -53,11 +63,48 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
     const auto u8_names  = pc.getPointFieldNames_uint8();
 #endif
 
+    // Determine which fields to export and in what order
+    std::vector<std::string> fieldsToExport;
+
+    if (selectedFields.empty())
+    {
+        // Export all fields in default order
+        fieldsToExport.push_back("x");
+        fieldsToExport.push_back("y");
+        fieldsToExport.push_back("z");
+
+        for (const auto& n : f_names)
+        {
+            if (n != "x" && n != "y" && n != "z")
+            {
+                fieldsToExport.push_back(std::string(n));
+            }
+        }
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+        for (const auto& n : d_names)
+        {
+            fieldsToExport.push_back(std::string(n));
+        }
+        for (const auto& n : u16_names)
+        {
+            fieldsToExport.push_back(std::string(n));
+        }
+        for (const auto& n : u8_names)
+        {
+            fieldsToExport.push_back(std::string(n));
+        }
+#endif
+    }
+    else
+    {
+        // Use selected fields in specified order
+        fieldsToExport = selectedFields;
+    }
+
     // 2. Write Header
     f << "ply" << std::endl;
     f << "format " << (binary ? "binary_little_endian" : "ascii") << " 1.0" << std::endl;
     f << "element vertex " << N << std::endl;
-    f << "property float x\nproperty float y\nproperty float z" << std::endl;
 
     auto mapPlyName = [](std::string_view n) -> std::string
     {
@@ -76,61 +123,145 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
         return std::string(n);
     };
 
-    for (const auto& n : f_names)
+    auto getFieldType = [&](const std::string& fieldName) -> std::string
     {
-        if (n != "x" && n != "y" && n != "z")
+        if (fieldName == "x" || fieldName == "y" || fieldName == "z")
         {
-            f << "property float " << mapPlyName(n) << "\n";
+            return "float";
         }
-    }
+        for (const auto& n : f_names)
+        {
+            if (n == fieldName)
+            {
+                return "float";
+            }
+        }
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
-    for (const auto& n : d_names)
-    {
-        f << "property double " << mapPlyName(n) << "\n";
-    }
-    for (const auto& n : u16_names)
-    {
-        f << "property ushort " << mapPlyName(n) << "\n";
-    }
-    for (const auto& n : u8_names)
-    {
-        f << "property uchar " << mapPlyName(n) << "\n";
-    }
+        for (const auto& n : d_names)
+        {
+            if (n == fieldName)
+            {
+                return "double";
+            }
+        }
+        for (const auto& n : u16_names)
+        {
+            if (n == fieldName)
+            {
+                return "ushort";
+            }
+        }
+        for (const auto& n : u8_names)
+        {
+            if (n == fieldName)
+            {
+                return "uchar";
+            }
+        }
 #endif
+        return "float";  // default
+    };
+
+    for (const auto& fieldName : fieldsToExport)
+    {
+        f << "property " << getFieldType(fieldName) << " " << mapPlyName(fieldName) << "\n";
+    }
+
     f << "end_header\n";
 
     // 3. Prepare Accessors
     const auto &xs = pc.getPointsBufferRef_x(), &ys = pc.getPointsBufferRef_y(),
                &zs = pc.getPointsBufferRef_z();
 
-    std::vector<const mrpt::aligned_std_vector<float>*> f_bufs;
-    for (const auto& n : f_names)
+    struct FieldAccessor
     {
-        if (n != "x" && n != "y" && n != "z")
+        std::string name;
+        enum
         {
-            f_bufs.push_back(pc.getPointsBufferRef_float_field(n));
+            FLOAT,
+            DOUBLE,
+            UINT16,
+            UINT8
+        } type = FLOAT;
+
+        const void* bufPtr = nullptr;
+    };
+
+    std::vector<FieldAccessor> accessors;
+
+    for (const auto& fieldName : fieldsToExport)
+    {
+        FieldAccessor acc;
+        acc.name = fieldName;
+
+        if (fieldName == "x" || fieldName == "y" || fieldName == "z")
+        {
+            acc.type   = FieldAccessor::FLOAT;
+            acc.bufPtr = (fieldName == "x")   ? (const void*)&xs
+                         : (fieldName == "y") ? (const void*)&ys
+                                              : (const void*)&zs;
         }
-    }
-
+        else
+        {
+            bool found = false;
+            for (const auto& n : f_names)
+            {
+                if (n == fieldName)
+                {
+                    acc.type   = FieldAccessor::FLOAT;
+                    acc.bufPtr = pc.getPointsBufferRef_float_field(n);
+                    found      = true;
+                    break;
+                }
+            }
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
-    std::vector<const mrpt::aligned_std_vector<double>*> d_bufs;
-    for (const auto& n : d_names)
-    {
-        d_bufs.push_back(pc.getPointsBufferRef_double_field(n));
-    }
-
-    std::vector<const mrpt::aligned_std_vector<uint16_t>*> u16_bufs;
-    for (const auto& n : u16_names)
-    {
-        u16_bufs.push_back(pc.getPointsBufferRef_uint16_field(n));
-    }
-
-    std::vector<const mrpt::aligned_std_vector<uint8_t>*> u8_bufs;
-    for (const auto& n : u8_names)
-    {
-        u8_bufs.push_back(pc.getPointsBufferRef_uint8_field(n));
-    }
+            if (!found)
+            {
+                for (const auto& n : d_names)
+                {
+                    if (n == fieldName)
+                    {
+                        acc.type   = FieldAccessor::DOUBLE;
+                        acc.bufPtr = pc.getPointsBufferRef_double_field(n);
+                        found      = true;
+                        break;
+                    }
+                }
+            }
+            if (!found)
+            {
+                for (const auto& n : u16_names)
+                {
+                    if (n == fieldName)
+                    {
+                        acc.type   = FieldAccessor::UINT16;
+                        acc.bufPtr = pc.getPointsBufferRef_uint16_field(n);
+                        found      = true;
+                        break;
+                    }
+                }
+            }
+            if (!found)
+            {
+                for (const auto& n : u8_names)
+                {
+                    if (n == fieldName)
+                    {
+                        acc.type   = FieldAccessor::UINT8;
+                        acc.bufPtr = pc.getPointsBufferRef_uint8_field(n);
+                        found      = true;
+                        break;
+                    }
+                }
+            }
 #endif
+            if (!found)
+            {
+                throw std::runtime_error("Field not found: " + fieldName);
+            }
+        }
+        accessors.push_back(acc);
+    }
 
     // 4. Data Loop
     auto write_val = [&](auto val)
@@ -147,27 +278,45 @@ void saveToPly(const mrpt::maps::CPointsMap& pc, const std::string& filename, bo
 
     for (size_t i = 0; i < N; ++i)
     {
-        write_val(xs[i]);
-        write_val(ys[i]);
-        write_val(zs[i]);
-        for (auto b : f_bufs)
+        for (const auto& acc : accessors)
         {
-            write_val((*b)[i]);
-        }
+            switch (acc.type)
+            {
+                default:
+                    throw std::runtime_error("Error: unknown field type");
+
+                case FieldAccessor::FLOAT:
+                {
+                    const auto& buf =
+                        *static_cast<const mrpt::aligned_std_vector<float>*>(acc.bufPtr);
+                    write_val(buf[i]);
+                    break;
+                }
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
-        for (auto b : d_bufs)
-        {
-            write_val((*b)[i]);
-        }
-        for (auto b : u16_bufs)
-        {
-            write_val((*b)[i]);
-        }
-        for (auto b : u8_bufs)
-        {
-            write_val((*b)[i]);
-        }
+                case FieldAccessor::DOUBLE:
+                {
+                    const auto& buf =
+                        *static_cast<const mrpt::aligned_std_vector<double>*>(acc.bufPtr);
+                    write_val(buf[i]);
+                    break;
+                }
+                case FieldAccessor::UINT16:
+                {
+                    const auto& buf =
+                        *static_cast<const mrpt::aligned_std_vector<uint16_t>*>(acc.bufPtr);
+                    write_val(buf[i]);
+                    break;
+                }
+                case FieldAccessor::UINT8:
+                {
+                    const auto& buf =
+                        *static_cast<const mrpt::aligned_std_vector<uint8_t>*>(acc.bufPtr);
+                    write_val(buf[i]);
+                    break;
+                }
 #endif
+            }
+        }
         if (!binary)
         {
             f << "\n";
@@ -190,6 +339,40 @@ int main(int argc, char** argv)
                                  ? mrpt::system::fileNameChangeExtension(arg_input.getValue(), "")
                                  : arg_out_prefix.getValue();
 
+        // Parse export fields if specified
+        std::vector<std::string> selectedFields;
+        if (argExportFields.isSet())
+        {
+            const auto&              fieldsStr = argExportFields.getValue();
+            std::vector<std::string> tokens;
+            mrpt::system::tokenize(fieldsStr, ", \t", tokens);
+
+            // Remove empty tokens and trim
+            for (auto& token : tokens)
+            {
+                if (!token.empty())
+                {
+                    selectedFields.push_back(token);
+                }
+            }
+
+            if (selectedFields.empty())
+            {
+                throw std::runtime_error("--export-fields specified but no valid fields found!");
+            }
+
+            std::cout << "Exporting only selected fields: ";
+            for (size_t i = 0; i < selectedFields.size(); i++)
+            {
+                std::cout << selectedFields[i];
+                if (i + 1 < selectedFields.size())
+                {
+                    std::cout << ", ";
+                }
+            }
+            std::cout << std::endl;
+        }
+
         for (const auto& [name, layer] : mm.layers)
         {
             auto* pts = mp2p_icp::MapToPointsMap(*layer);
@@ -198,9 +381,100 @@ int main(int argc, char** argv)
                 continue;
             }
 
+            // Validate selected fields exist in this point cloud
+            if (!selectedFields.empty())
+            {
+                const auto f_names = pts->getPointFieldNames_float();
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                const auto d_names   = pts->getPointFieldNames_double();
+                const auto u16_names = pts->getPointFieldNames_uint16();
+                const auto u8_names  = pts->getPointFieldNames_uint8();
+#endif
+
+                for (const auto& field : selectedFields)
+                {
+                    bool found = (field == "x" || field == "y" || field == "z");
+
+                    if (!found)
+                    {
+                        for (const auto& n : f_names)
+                        {
+                            if (n == field)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    if (!found)
+                    {
+                        for (const auto& n : d_names)
+                        {
+                            if (n == field)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found)
+                    {
+                        for (const auto& n : u16_names)
+                        {
+                            if (n == field)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found)
+                    {
+                        for (const auto& n : u8_names)
+                        {
+                            if (n == field)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+#endif
+
+                    if (!found)
+                    {
+                        std::cerr << "Warning: Field '" << field << "' not found in layer '" << name
+                                  << "'. Available fields: x, y, z";
+                        for (const auto& fn : f_names)
+                        {
+                            std::cerr << ", " << fn;
+                        }
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                        for (const auto& fn : d_names)
+                        {
+                            std::cerr << ", " << fn;
+                        }
+                        for (const auto& fn : u16_names)
+                        {
+                            std::cerr << ", " << fn;
+                        }
+                        for (const auto& fn : u8_names)
+                        {
+                            std::cerr << ", " << fn;
+                        }
+#endif
+                        std::cerr << std::endl;
+                        throw std::runtime_error(
+                            "Field '" + field +
+                            "' specified in --export-fields not found in layer '" + name + "'");
+                    }
+                }
+            }
+
             std::string out = prefix + "_" + name + ".ply";
             std::cout << "Exporting '" << name << "' to " << out << "..." << std::endl;
-            saveToPly(*pts, out, arg_binary.getValue());
+            saveToPly(*pts, out, arg_binary.getValue(), selectedFields);
         }
     }
     catch (const std::exception& e)
