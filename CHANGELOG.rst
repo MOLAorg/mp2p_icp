@@ -2,6 +2,32 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#24 <https://github.com/MOLAorg/mp2p_icp/issues/24>`_ from MOLAorg/feat/mm2txt-select-fields
+  mm2txt and mm2ply now have a --export-fields flag
+* mm2txt and mm2ply now have a --export-fields flag
+* Merge pull request `#23 <https://github.com/MOLAorg/mp2p_icp/issues/23>`_ from MOLAorg/fix/some-deprecations
+  Fix usage of deprecated cloud types
+* Provide shortcut names for common cloud field names
+* More deprecated cloud usage
+* FIX bug: FilterDecimateVoxel, if using flatten, did not propagate all input cloud fields
+* Fix usage of some deprecated cloud types
+* FilterSOR: create output layers even if input is empty
+* FilterDeskew: propagate input fields even if the cloud is empty
+* FilterByExpression: show debug-level stats
+* FilterNormalizeIntensity: do not throw on empty clouds
+* Merge pull request `#22 <https://github.com/MOLAorg/mp2p_icp/issues/22>`_ from MOLAorg/feat/new-filters
+  Add new filter FilterRenameLayer
+* Added filter FilterRenameLayer
+* mm2txt: prepare for deprecated classes in 3.0.0
+* FilterAdjustTimestamps: new method 'None' to bypass filter
+* Fix: sm2mm did not attach to ParameterSource the final_filter elements
+* sm2mm: did not observe the optional profiler parameter for the final_filter stage
+* Fix: FilterMLS did not properly copy all point fields when using upsampling
+* Fix: FilterAbsoluteTimestamp now also works for accumulated points in one layer
+* Contributors: Jose Luis Blanco-Claraco
+
 2.2.1 (2026-01-06)
 ------------------
 * Merge pull request `#21 <https://github.com/MOLAorg/mp2p_icp/issues/21>`_ from MOLAorg/feat/abs-stamp-filter
