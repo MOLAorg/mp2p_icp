@@ -261,14 +261,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     // First time we see this (x,y) cell:
                     flattenUsedBins.insert(flattenIdx);
 
-                    outPc->insertPointFast(
-                        vxl.point->x, vxl.point->y, static_cast<float>(*params.flatten_to));
-                }
-                else
-                {
                     const auto* pc = vxl.source.value();
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
                     auto& ctx = ctxs[pc];
                     if (!ctx.xs_src)
                     {
@@ -280,8 +274,24 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 #else
                     outPc->insertPointFrom(*pc, *vxl.pointIdx, ctx);
 #endif
+                    // Actual flatten in "z":
+                    outPc->getPointsBufferRef_float_field("z")->back() =
+                        static_cast<float>(*params.flatten_to);
+                }
+                else
+                {
+                    const auto* pc = vxl.source.value();
+
+                    auto& ctx = ctxs[pc];
+                    if (!ctx.xs_src)
+                    {
+                        outPc->registerPointFieldsFrom(*pc);
+                        ctx = outPc->prepareForInsertPointsFrom(*pc);
+                    }
+#if MRPT_VERSION >= 0x020f03  // 2.15.3
+                    outPc->insertPointFrom(*vxl.pointIdx, ctx);
 #else
-                    outPc->insertPointFrom(*pc, *vxl.pointIdx);
+                    outPc->insertPointFrom(*pc, *vxl.pointIdx, ctx);
 #endif
                 }
             });
