@@ -242,9 +242,11 @@ mrpt::maps::CGenericPointsMap::Ptr simulate_skewed_points(
     const mrpt::Clock::time_point& stamp, const mrpt::poses::CPose3DInterpolator& gtKeyframes,
     const std::vector<mrpt::math::TPoint3D>& gtPoints, const double lidar_scan_period)
 {
+    using namespace mp2p_icp_filters;
+
     auto pts = mrpt::maps::CGenericPointsMap::Create();
-    pts->registerField_float(mrpt::maps::CPointsMap::POINT_FIELD_TIMESTAMP);
-    pts->registerField_float(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
+    pts->registerField_float(POINT_FIELD_TIMESTAMP);
+    pts->registerField_float(POINT_FIELD_INTENSITY);
 
     // Simulate a scan where each point is acquired at a different time during the scan period.
     // Assume points are acquired sequentially over [stamp, stamp + lidar_scan_period)
@@ -271,9 +273,8 @@ mrpt::maps::CGenericPointsMap::Ptr simulate_skewed_points(
         // Add to map, with time offset
         pts->insertPointFast(pt_local.x, pt_local.y, pt_local.z);
 
-        pts->insertPointField_float(
-            mrpt::maps::CPointsMap::POINT_FIELD_TIMESTAMP, static_cast<float>(rel_time));
-        pts->insertPointField_float(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY, 1.0f);
+        pts->insertPointField_float(POINT_FIELD_TIMESTAMP, static_cast<float>(rel_time));
+        pts->insertPointField_float(POINT_FIELD_INTENSITY, 1.0f);
 
 #if 0
         std::cout << "PT[" << i << "] x: " << pt_local.x << ", y: " << pt_local.y
@@ -300,6 +301,8 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
 // === DESKEW TEST ===
 [[nodiscard]] SimulationResult run_deskew_test(const SimulationParams& p)
 {
+    using namespace mp2p_icp_filters;
+
     // Generate test data:
     const auto gtPoints = create_gt_points(p);
 
@@ -411,10 +414,8 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
             return fields;
         }();
 
-        ASSERT_EQUAL_(
-            outFields.count(std::string(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY)), 1);
-        ASSERT_EQUAL_(
-            outFields.count(std::string(mrpt::maps::CPointsMap::POINT_FIELD_TIMESTAMP)), 1);
+        ASSERT_EQUAL_(outFields.count(std::string(POINT_FIELD_INTENSITY)), 1);
+        ASSERT_EQUAL_(outFields.count(std::string(POINT_FIELD_TIMESTAMP)), 1);
 
         for (size_t i = 0; i < deskewedPts->size(); i++)
         {
@@ -443,6 +444,8 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
 // === DESKEW TEST VIA SM2MM  ===
 [[nodiscard]] SimulationResult run_deskew_in_sm2mm_test(const SimulationParams& p)
 {
+    using namespace mp2p_icp_filters;
+
     // Generate test data:
     const auto gtPoints = create_gt_points(p);
 
@@ -621,8 +624,8 @@ filters:
         return fields;
     }();
 
-    ASSERT_EQUAL_(outFields.count(std::string(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY)), 1);
-    ASSERT_EQUAL_(outFields.count(std::string(mrpt::maps::CPointsMap::POINT_FIELD_TIMESTAMP)), 1);
+    ASSERT_EQUAL_(outFields.count(std::string(POINT_FIELD_INTENSITY)), 1);
+    ASSERT_EQUAL_(outFields.count(std::string(POINT_FIELD_TIMESTAMP)), 1);
 
     for (size_t i = 0; i < deskewedPts->size(); i++)
     {

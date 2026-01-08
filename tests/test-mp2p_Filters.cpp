@@ -38,7 +38,7 @@ using namespace mp2p_icp;
 namespace
 {
 
-constexpr std::string_view INTENSITY = mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY;
+constexpr std::string_view INTENSITY = POINT_FIELD_INTENSITY;
 
 // Helper to create a test point cloud with known positions and intensities
 mrpt::maps::CPointsMap::Ptr createTestPointsWithIntensity(
@@ -204,12 +204,9 @@ void test_FilterByIntensity_ThreeLayers()
     ASSERT_EQUAL_(low_pc->size() + mid_pc->size() + high_pc->size(), input_pc->size());
 
     // Verify intensity ranges
-    const auto* ptrI_low =
-        low_pc->getPointsBufferRef_float_field(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
-    const auto* ptrI_mid =
-        mid_pc->getPointsBufferRef_float_field(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
-    const auto* ptrI_high =
-        high_pc->getPointsBufferRef_float_field(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
+    const auto* ptrI_low  = low_pc->getPointsBufferRef_float_field(POINT_FIELD_INTENSITY);
+    const auto* ptrI_mid  = mid_pc->getPointsBufferRef_float_field(POINT_FIELD_INTENSITY);
+    const auto* ptrI_high = high_pc->getPointsBufferRef_float_field(POINT_FIELD_INTENSITY);
 
     if (ptrI_low)
     {

@@ -54,7 +54,7 @@ void FilterByExpression_SpatialFiltering()
 
 void FilterByExpression_IntensityAndLogic()
 {
-    constexpr auto INTENSITY = mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY;
+    constexpr auto INTENSITY = POINT_FIELD_INTENSITY;
 
     auto pc = mrpt::maps::CGenericPointsMap::Create();
     pc->registerField_float(INTENSITY);
@@ -88,12 +88,12 @@ void FilterByExpression_IntensityAndLogic()
 void FilterByExpression_CustomFields()
 {
     auto pc = mrpt::maps::CGenericPointsMap::Create();
-    pc->registerField_uint16(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID);
+    pc->registerField_uint16(POINT_FIELD_RING_ID);
     pc->registerField_uint8("SEMANTICS");
     pc->registerField_double("latitude");
 
     pc->insertPoint(0, 0, 0);
-    pc->insertPointField_uint16(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID, 32);
+    pc->insertPointField_uint16(POINT_FIELD_RING_ID, 32);
     pc->insertPointField_uint8("SEMANTICS", 12);
     pc->insertPointField_double("latitude", 3.14);
 

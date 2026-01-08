@@ -109,8 +109,7 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
     const auto& xs = pc.getPointsBufferRef_x();
 
-    const auto* ptrI =
-        pc.getPointsBufferRef_float_field(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
+    const auto* ptrI = pc.getPointsBufferRef_float_field(POINT_FIELD_INTENSITY);
 
     if (!ptrI || ptrI->empty())
     {

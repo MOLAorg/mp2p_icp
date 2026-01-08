@@ -37,6 +37,11 @@
 
 const char* VALID_FORMATS = "(xyz|xyzi|xyzirt|xyzrgb|xyzrgb_normalized)";
 
+// Replicated here from CGenericPointsMap until MRPT 2.15.3 is minimum required version:
+constexpr static std::string_view POINT_FIELD_INTENSITY = "intensity";
+constexpr static std::string_view POINT_FIELD_RING_ID   = "ring";
+constexpr static std::string_view POINT_FIELD_TIMESTAMP = "t";
+
 using namespace std::string_literals;
 
 // CLI flags:
@@ -162,7 +167,7 @@ int main(int argc, char** argv)
         {
             ASSERT_GE_(nCols, 4U);
             auto pts = mrpt::maps::CGenericPointsMap::Create();
-            pts->registerField_float(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
+            pts->registerField_float(POINT_FIELD_INTENSITY);
             pts->reserve(nRows);
             if (nCols > 4)
             {
@@ -174,8 +179,7 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < nRows; i++)
             {
                 pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
-                pts->insertPointField_float(
-                    mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY, data(i, idxI));
+                pts->insertPointField_float(POINT_FIELD_INTENSITY, data(i, idxI));
             }
 
             pc = pts;
@@ -184,9 +188,9 @@ int main(int argc, char** argv)
         {
             ASSERT_GE_(nCols, 6U);
             auto pts = mrpt::maps::CGenericPointsMap::Create();
-            pts->registerField_float(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
-            pts->registerField_uint16(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID);
-            pts->registerField_float(mrpt::maps::CPointsMap::POINT_FIELD_TIMESTAMP);
+            pts->registerField_float(POINT_FIELD_INTENSITY);
+            pts->registerField_uint16(POINT_FIELD_RING_ID);
+            pts->registerField_float(POINT_FIELD_TIMESTAMP);
             pts->reserve(nRows);
             if (nCols > 6)
             {
@@ -198,13 +202,10 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < nRows; i++)
             {
                 pts->insertPointFast(data(i, idxX + 0), data(i, idxX + 1), data(i, idxX + 2));
-                pts->insertPointField_float(
-                    mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY, data(i, idxI));
+                pts->insertPointField_float(POINT_FIELD_INTENSITY, data(i, idxI));
                 pts->insertPointField_uint16(
-                    mrpt::maps::CPointsMap::POINT_FIELD_RING_ID,
-                    static_cast<uint16_t>(data(i, idxR)));
-                pts->insertPointField_float(
-                    mrpt::maps::CPointsMap::POINT_FIELD_TIMESTAMP, data(i, idxT));
+                    POINT_FIELD_RING_ID, static_cast<uint16_t>(data(i, idxR)));
+                pts->insertPointField_float(POINT_FIELD_TIMESTAMP, data(i, idxT));
             }
 
             pc = pts;

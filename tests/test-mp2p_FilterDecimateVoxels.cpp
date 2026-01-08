@@ -32,7 +32,7 @@ using namespace mp2p_icp;
 mrpt::maps::CPointsMap::Ptr createTestPoints(size_t n_x, size_t n_y)
 {
     auto pc = mrpt::maps::CGenericPointsMap::Create();
-    pc->registerField_float(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
+    pc->registerField_float(POINT_FIELD_INTENSITY);
 
     // Create a 2D grid of points, 10x10. Each point has a small, known Z-offset.
     for (size_t i = 0; i < n_x; ++i)
@@ -45,7 +45,7 @@ mrpt::maps::CPointsMap::Ptr createTestPoints(size_t n_x, size_t n_y)
             float intensity = static_cast<float>(i * n_y + j);
 
             pc->insertPointFast(x, y, z);
-            pc->insertPointField_float(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY, intensity);
+            pc->insertPointField_float(POINT_FIELD_INTENSITY, intensity);
         }
     }
     return pc;
@@ -194,7 +194,7 @@ void test_decimate_method(
     }
 
     // The output should also have intensity.
-    ASSERT_(output_pc->hasPointField(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY));
+    ASSERT_(output_pc->hasPointField(POINT_FIELD_INTENSITY));
     std::cout << " Success ✅." << std::endl;
 }
 
