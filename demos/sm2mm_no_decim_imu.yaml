@@ -60,13 +60,12 @@ filters:
     params:
       # one or more layers to remove
       pointcloud_layer_to_remove: ["raw", "deskewed"]
-
 # -------------------------------------------------------------------
 # 3) Final, overall filter pipeline to apply to the whole metric map
 # -------------------------------------------------------------------
-final_filters:
-  - class_name: mp2p_icp_filters::FilterNormalizeIntensity
-    params:
-      pointcloud_layer: "filtered"
-      #remember_intensity_range: true
-      #fixed_maximum_intensity: 2000.0
+#final_filters:
+#  - class_name: mp2p_icp_filters::FilterNormalizeIntensity
+#    params:
+#      pointcloud_layer: "filtered"
+#      #remember_intensity_range: true
+#      #fixed_maximum_intensity: 2000.0
