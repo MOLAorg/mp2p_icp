@@ -20,6 +20,9 @@
 
 using namespace mp2p_icp;
 
+Parameterizable::Parameterizable()  = default;
+Parameterizable::~Parameterizable() = default;
+
 void ParameterSource::attach(Parameterizable& obj)
 {
     for (auto& p : obj.declaredParameters())

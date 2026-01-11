@@ -100,6 +100,13 @@ class Parameterizable
     friend class ParameterSource;
 
    public:
+    Parameterizable();
+    virtual ~Parameterizable();
+    Parameterizable(const Parameterizable&)            = default;
+    Parameterizable(Parameterizable&&)                 = default;
+    Parameterizable& operator=(const Parameterizable&) = default;
+    Parameterizable& operator=(Parameterizable&&)      = default;
+
     /**
      * Each parameterizable object can be attached to one source at a given time
      */
