@@ -32,8 +32,6 @@
 #include <mrpt/system/datetime.h>
 #include <mrpt/system/filesystem.h>
 
-#include <fstream>
-
 // CLI flags:
 static TCLAP::CmdLine cmd("icp-run");
 
@@ -122,7 +120,10 @@ static mrpt::obs::CRawlog::Ptr load_rawlog(const std::string& filename)
     mrpt::img::CImage::setImagesPathBase(mrpt::obs::CRawlog::detectImagesDirectory(filename));
 
     auto& r = rawlogsCache[filename];
-    if (r) return r;
+    if (r)
+    {
+        return r;
+    }
     r = mrpt::obs::CRawlog::Create();
 
     std::cout << "Loading rawlog file `" << filename << "`..." << std::endl;
@@ -184,7 +185,7 @@ static mp2p_icp::metric_map_t::Ptr load_input_pc(const std::string& filename, bo
     {
         const auto sepPos      = extPos + 7;
         const auto fil         = filename.substr(0, sepPos);
-        const auto rawlogIndex = std::stod(filename.substr(sepPos + 1));
+        const auto rawlogIndex = std::stoi(filename.substr(sepPos + 1));
 
         const auto r = load_rawlog(fil);
 
@@ -257,7 +258,10 @@ void runIcp()
     // ------------------------------
     auto [icp, icpParams] = mp2p_icp::icp_pipeline_from_yaml(cfg);
 
-    if (argGenerateDebugFiles.isSet()) icpParams.generateDebugFiles = true;
+    if (argGenerateDebugFiles.isSet())
+    {
+        icpParams.generateDebugFiles = true;
+    }
 
     const auto initialGuess = mrpt::math::TPose3D::FromString(argInitialGuess.getValue());
 
@@ -301,7 +305,10 @@ void runIcp()
         }
     }
 
-    if (argProfile.isSet()) icp->profiler().enable(true);
+    if (argProfile.isSet())
+    {
+        icp->profiler().enable(true);
+    }
 
     const double t_ini = mrpt::Clock::nowDouble();
 
@@ -321,7 +328,10 @@ int main(int argc, char** argv)
     try
     {
         // Parse arguments:
-        if (!cmd.parse(argc, argv)) return 1;  // should exit.
+        if (!cmd.parse(argc, argv))
+        {
+            return 1;  // should exit.
+        }
 
         runIcp();
     }

@@ -159,14 +159,17 @@ void run_mm_georef(Cli& cli)
         std::string errMsg;
         const auto  plugins = cli.arg_plugins.getValue();
         std::cout << "Loading plugin(s): " << plugins << std::endl;
-        if (!mrpt::system::loadPluginModules(plugins, errMsg)) throw std::runtime_error(errMsg);
+        if (!mrpt::system::loadPluginModules(plugins, errMsg))
+        {
+            throw std::runtime_error(errMsg);
+        }
     }
 
     if (cli.argExtract.isSet())
     {
         return run_mm_extract(cli);
     }
-    else if (cli.argInject.isSet())
+    if (cli.argInject.isSet())
     {
         return run_mm_inject(cli);
     }
@@ -184,7 +187,10 @@ int main(int argc, char** argv)
         Cli cli;
 
         // Parse arguments:
-        if (!cli.cmd.parse(argc, argv)) return 1;  // should exit.
+        if (!cli.cmd.parse(argc, argv))
+        {
+            return 1;  // should exit.
+        }
 
         run_mm_georef(cli);
     }

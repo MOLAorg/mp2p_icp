@@ -52,7 +52,10 @@ int main(int argc, char** argv)
     try
     {
         // Parse arguments:
-        if (!cmd.parse(argc, argv)) return 1;  // should exit.
+        if (!cmd.parse(argc, argv))
+        {
+            return 1;  // should exit.
+        }
 
         run_mm_info();
     }

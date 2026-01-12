@@ -83,12 +83,18 @@ void run_mm_filter(Cli& cli)
         std::string errMsg;
         const auto  plugins = cli.arg_plugins.getValue();
         std::cout << "Loading plugin(s): " << plugins << std::endl;
-        if (!mrpt::system::loadPluginModules(plugins, errMsg)) throw std::runtime_error(errMsg);
+        if (!mrpt::system::loadPluginModules(plugins, errMsg))
+        {
+            throw std::runtime_error(errMsg);
+        }
     }
 
     const auto& filInput = cli.argInput.getValue();
 
-    if (cli.argPipeline.isSet()) ASSERT_FILE_EXISTS_(cli.argPipeline.getValue());
+    if (cli.argPipeline.isSet())
+    {
+        ASSERT_FILE_EXISTS_(cli.argPipeline.getValue());
+    }
 
     std::cout << "[mm-filter] Reading input map from: '" << filInput << "'..." << std::endl;
 
@@ -141,7 +147,9 @@ void run_mm_filter(Cli& cli)
     std::cout << "[mm-filter] Writing metric map to: '" << filOut << "'..." << std::endl;
 
     if (!mm.save_to_file(filOut))
+    {
         THROW_EXCEPTION_FMT("Error writing to target file '%s'", filOut.c_str());
+    }
 }
 }  // namespace
 
@@ -152,7 +160,10 @@ int main(int argc, char** argv)
         Cli cli;
 
         // Parse arguments:
-        if (!cli.cmd.parse(argc, argv)) return 1;  // should exit.
+        if (!cli.cmd.parse(argc, argv))
+        {
+            return 1;  // should exit.
+        }
 
         run_mm_filter(cli);
     }
