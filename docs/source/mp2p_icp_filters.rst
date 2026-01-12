@@ -278,6 +278,60 @@ Useful for edge extraction (LOAM-style).
 
 ---
 
+Filter: `FilterDecimate`
+------------------------
+
+**Description**: Naive point cloud downsampling that reduces the number of points by keeping only one out of every N points.
+The filter can be configured either with a fixed decimation factor or by specifying a target maximum size (in which case the decimation factor is computed automatically).
+
+If the output layer already exists, new points are accumulated on it; previous contents are not cleared.
+
+.. note::
+   This filter is non-deterministic regarding the spatial distribution of points, as it relies purely on the internal storage order.
+   For spatially-aware downsampling, consider using :cpp:class:`FilterDecimateVoxels` or :cpp:class:`FilterDecimateAdaptive` instead.
+
+**Parameters**:
+
+* **input\_layer** (:cpp:type:`std::string`, default: `raw`): The input point cloud layer name.
+
+* **output\_layer** (:cpp:type:`std::string`): The output layer name for the decimated cloud.
+
+* **decimation** (:cpp:type:`uint32\_t`, default: `0`): Keep one out of every N points.
+  If greater than 0, this parameter takes precedence over ``target_max_size``.
+  For example, ``decimation=10`` keeps every 10th point, resulting in approximately 10% of the original points.
+
+* **target\_max\_size** (:cpp:type:`uint64\_t`, default: `0`): Target maximum number of points in the output cloud.
+  Used only if ``decimation`` is 0.
+  The decimation factor is computed automatically to achieve approximately this many output points.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      # Example 1: Fixed decimation factor
+      - class_name: mp2p_icp_filters::FilterDecimate
+        params:
+          input_layer: 'raw'
+          output_layer: 'decimated'
+          decimation: 5  # Keep every 5th point
+
+      # Example 2: Target maximum size
+      - class_name: mp2p_icp_filters::FilterDecimate
+        params:
+          input_layer: 'raw'
+          output_layer: 'decimated'
+          target_max_size: 10000  # Aim for ~10k points
+
+.. rubric:: Before → After Screenshot
+
+.. image:: decimate_example.png
+   :alt: Screenshot showing point cloud before and after applying FilterDecimate
+
+|
+
+---
+
+
 Filter: `FilterDecimateAdaptive`
 --------------------------------
 

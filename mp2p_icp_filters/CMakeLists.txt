@@ -12,6 +12,7 @@ set(LIB_SRCS
   src/FilterByRange.cpp
   src/FilterByRing.cpp
   src/FilterCurvature.cpp
+  src/FilterDecimate.cpp
   src/FilterDecimateAdaptive.cpp
   src/FilterDecimateVoxels.cpp
   src/FilterDeleteLayer.cpp
@@ -47,6 +48,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterByRange.h
   include/mp2p_icp_filters/FilterByRing.h
   include/mp2p_icp_filters/FilterCurvature.h
+  include/mp2p_icp_filters/FilterDecimate.h
   include/mp2p_icp_filters/FilterDecimateAdaptive.h
   include/mp2p_icp_filters/FilterDecimateVoxels.h
   include/mp2p_icp_filters/FilterDeleteLayer.h

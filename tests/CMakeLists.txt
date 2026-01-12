@@ -62,6 +62,7 @@ mp2p_add_test(mp2p_quality_reproject_ranges)
 
 mp2p_add_test(mp2p_FilterAbsoluteTimestamp EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterByExpression EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_FilterDecimate EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterDecimateVoxels EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterEdgesPlanes EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterPoleDetector EXTRA_LIBS mp2p_icp_filters)
