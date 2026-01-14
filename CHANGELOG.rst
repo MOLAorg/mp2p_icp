@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.3.1 (2026-01-14)
+------------------
 * Merge pull request `#25 <https://github.com/MOLAorg/mp2p_icp/issues/25>`_ from MOLAorg/feat/naive-decimate
   Add trivial FilterDecimate for fast downsampling without spatial awareness
 * lint fixes
