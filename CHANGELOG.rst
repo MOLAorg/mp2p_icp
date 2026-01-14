@@ -2,6 +2,20 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#25 <https://github.com/MOLAorg/mp2p_icp/issues/25>`_ from MOLAorg/feat/naive-decimate
+  Add trivial FilterDecimate for fast downsampling without spatial awareness
+* lint fixes
+* Add trivial FilterDecimate for fast downsampling without spatial awareness
+* Parameterizable: add virtual base dtor
+* Remove the NormalizeIntensity stage in the demo pipelines; visualization does that already
+* docs: fill missing manpages
+* docs: add sm2mm pipelines page
+* Clarify map layers and simple maps descriptions
+  Updated references to CMetricMap and CGenericPointsMap in the documentation for clarity and accuracy.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.3.0 (2026-01-08)
 ------------------
 * Merge pull request `#24 <https://github.com/MOLAorg/mp2p_icp/issues/24>`_ from MOLAorg/feat/mm2txt-select-fields
