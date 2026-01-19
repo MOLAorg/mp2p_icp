@@ -24,6 +24,7 @@ Applications
   app_mm-filter
   app_mm-georef
   app_mm-viewer
+  app_mm2las
   app_mm2ply
   app_mm2txt
   app_txt2mm
