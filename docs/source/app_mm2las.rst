@@ -7,7 +7,7 @@ Application: ``mm2las``
 Overview
 --------
 
-``mm2las`` is a command-line tool that exports the layers of a MOLA metric map (*.mm) file as LAS point cloud files. 
+``mm2las`` is a command-line tool that exports the layers of a MOLA metric map (``*.mm``) file as LAS point cloud files. 
 It converts metric map files into the industry-standard **LAS format version 1.4**, enabling seamless integration with modern GIS applications, 
 LIDAR processing suites, and 3D viewers like CloudCompare, QGIS, or ArcGIS.
 
