@@ -14,7 +14,7 @@
 
 /**
  * @file   test-mp2p_class_factory.cpp
- * @brief  Unit tests for Generator
+ * @brief  Unit tests to check correct registration of classes
  * @author Jose Luis Blanco Claraco
  * @date   Jan 21, 2026
  */
@@ -99,5 +99,4 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         std::cerr << mrpt::exception_to_str(e) << "\n";
         return 1;
     }
-    return 0;
 }

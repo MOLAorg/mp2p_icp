@@ -16,7 +16,7 @@
  * @file   FilterVoxelSOR.h
  * @brief  Voxel-based Statistical Outlier Removal (SOR) filter.
  * @author Jose Luis Blanco Claraco
- * @date   Jan 21, 2025
+ * @date   Jan 21, 2026
  */
 
 #pragma once

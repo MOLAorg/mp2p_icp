@@ -16,7 +16,7 @@
  * @file   FilterVoxelSOR.cpp
  * @brief  Voxel-based Statistical Outlier Removal (SOR) filter.
  * @author Jose Luis Blanco Claraco
- * @date   Jan 21, 2025
+ * @date   Jan 21, 2026
  */
 
 #include <mp2p_icp_filters/FilterVoxelSOR.h>
@@ -54,6 +54,10 @@ void FilterVoxelSOR::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 void FilterVoxelSOR::initialize_filter(const mrpt::containers::yaml& c)
 {
     params.load_from_yaml(c);
+
+    ASSERT_GT_(params.voxel_size, 0.0f);
+    ASSERT_GE_(params.mean_k, 1);
+    ASSERT_GE_(params.parallelization_grain_size, 1);
 }
 
 void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
@@ -62,6 +66,15 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
     if (!pcIn || pcIn->empty())
     {
         return;
+    }
+
+    if (params.output_layer_inliers == params.input_layer ||
+        (!params.output_layer_outliers.empty() &&
+         (params.output_layer_outliers == params.input_layer ||
+          params.output_layer_outliers == params.output_layer_inliers)))
+    {
+        throw std::invalid_argument(
+            "FilterVoxelSOR: output layers must differ from input_layer and each other");
     }
 
     MRPT_LOG_DEBUG("FilterVoxelSOR: Starting SOR filtering...");
