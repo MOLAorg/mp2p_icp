@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.4.0 (2026-01-21)
+------------------
 * Merge pull request `#27 <https://github.com/MOLAorg/mp2p_icp/issues/27>`_ from MOLAorg/feat/new-filter-voxel-sor
 * Add new unit test for class factory
 * Add new FilterVoxelSOR filter
