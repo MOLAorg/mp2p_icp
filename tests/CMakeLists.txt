@@ -60,6 +60,7 @@ mp2p_add_test(mp2p_optimize_pt2pl)
 mp2p_add_test(mp2p_optimize_with_prior)
 mp2p_add_test(mp2p_quality_reproject_ranges)
 
+mp2p_add_test(mp2p_class_factory EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterAbsoluteTimestamp EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterByExpression EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterDecimate EXTRA_LIBS mp2p_icp_filters)
@@ -69,6 +70,7 @@ mp2p_add_test(mp2p_FilterPoleDetector EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterRenameLayer EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_Filters EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterSOR EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_FilterVoxelSOR EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_generator EXTRA_LIBS mp2p_icp_filters)
 
 

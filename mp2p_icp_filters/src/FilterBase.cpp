@@ -95,7 +95,9 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
 
         const auto sClass = e.at("class_name").as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
-        ASSERT_(o);
+        ASSERTMSG_(
+            o,
+            mrpt::format("Cannot create object of class `%s`, is it registered?", sClass.c_str()));
 
         auto f = std::dynamic_pointer_cast<FilterBase>(o);
         ASSERTMSG_(

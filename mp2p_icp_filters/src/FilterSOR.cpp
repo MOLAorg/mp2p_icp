@@ -34,13 +34,6 @@ IMPLEMENTS_MRPT_OBJECT(FilterSOR, mp2p_icp_filters::FilterBase, mp2p_icp_filters
 
 using namespace mp2p_icp_filters;
 
-FilterSOR::FilterSOR()
-{
-#if MRPT_VERSION < 0x020f04
-    throw std::runtime_error("FilterSOR requires MRPT >= 2.15.4");
-#endif
-}
-
 void FilterSOR::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
@@ -62,6 +55,10 @@ void FilterSOR::initialize_filter(const mrpt::containers::yaml& c)
 
 void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
 {
+#if MRPT_VERSION < 0x020f04
+    throw std::runtime_error("FilterSOR requires MRPT >= 2.15.4");
+#endif
+
     auto pcPtr = inOut.layer<mrpt::maps::CPointsMap>(params.input_pointcloud_layer);
     ASSERT_(pcPtr);
     const auto& pc = *pcPtr;
@@ -159,6 +156,9 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
     mrpt::math::meanAndStd(avg_distances, mean_dist, std_dev);
     const double threshold = mean_dist + params.std_dev_mul * std_dev;
 
+    size_t num_inliers  = 0;
+    size_t num_outliers = 0;
+
     // 4. Pass 2: Dispatch points to output layers
     for (size_t i = 0; i < N; ++i)
     {
@@ -166,6 +166,7 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
         if (isInlier)
         {
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
+            ++num_inliers;
             if (outInliers)
             {
                 outInliers->insertPointFrom(i, *ctxI);
@@ -173,11 +174,13 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
         }
         else
         {
+            ++num_outliers;
             if (outOutliers)
             {
                 outOutliers->insertPointFrom(i, *ctxO);
             }
 #elif MRPT_VERSION >= 0x020f00  // 2.15.0
+            ++num_inliers;
             if (outInliers)
             {
                 outInliers->insertPointFrom(pc, i, *ctxI);
@@ -185,11 +188,13 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
         }
         else
         {
+            ++num_outliers;
             if (outOutliers)
             {
                 outOutliers->insertPointFrom(pc, i, *ctxO);
             }
 #else
+            ++num_inliers;
             if (outInliers)
             {
                 outInliers->insertPointFrom(pc, i);
@@ -197,6 +202,7 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
         }
         else
         {
+            ++num_outliers;
             if (outOutliers)
             {
                 outOutliers->insertPointFrom(pc, i);
@@ -204,4 +210,8 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
 #endif
         }
     }
+
+    // Debug stats:
+    MRPT_LOG_DEBUG_FMT(
+        "FilterSOR: Total points: %zu, Inliers: %zu, Outliers: %zu", N, num_inliers, num_outliers);
 }

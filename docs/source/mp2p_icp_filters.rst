@@ -920,3 +920,79 @@ Filter: `FilterVoxelSlice`
 
 .. image:: voxel_slice_example.png
    :alt: Screenshot showing point cloud before and after applying FilterVoxelSlice
+
+|
+
+---
+
+Filter: ``FilterVoxelSOR``
+---------------------------
+
+**Purpose:** Remove outlier points from point clouds using a voxel-based Statistical Outlier Removal (SOR) algorithm.
+This filter partitions the point cloud into voxels and performs localized outlier detection within each voxel,
+making it significantly faster than global SOR methods for large-scale point clouds while maintaining accuracy.
+
+**How it works:** The algorithm divides the input point cloud into cubic voxels of a specified size. Within each voxel,
+it computes the average distance from each point to its k-nearest neighbors. Points whose average distance exceeds
+a threshold (mean + std_dev_mul × standard deviation) within their local voxel are classified as outliers.
+This localized approach dramatically reduces computational cost by limiting KD-tree searches to small subsets of points.
+
+**Key parameters:**
+
+- ``voxel_size``: Size of each voxel cube in meters (default: 2.0). Larger voxels process more points together but may miss local outliers.
+- ``mean_k``: Number of nearest neighbors to analyze for each point (default: 20). Higher values provide more robust statistics but increase computation time.
+- ``std_dev_mul``: Standard deviation multiplier threshold (default: 2.0). Lower values remove more points; higher values are more permissive.
+- ``input_layer``: Source point cloud layer to filter (default: ``raw``).
+- ``output_layer_inliers``: Destination layer for filtered inlier points.
+- ``output_layer_outliers``: Optional destination layer for detected outlier points (useful for debugging).
+- ``use_tsl_robin_map``: Use optimized hash map for voxel storage (default: true, recommended for performance).
+
+**Use cases:**
+
+- Removing sensor noise and spurious measurements from lidar scans
+- Cleaning point clouds before map building or registration
+- Preprocessing for downstream algorithms sensitive to outliers
+- Real-time filtering where computational efficiency is critical
+
+.. dropdown:: YAML configuration example
+    :icon: code
+
+    .. code-block:: yaml
+
+        class_name: mp2p_icp_filters::FilterVoxelSOR
+        params:
+          input_layer: 'raw'
+          output_layer_inliers: 'filtered'
+          output_layer_outliers: 'outliers'  # optional
+          voxel_size: 2.0          # meters
+          mean_k: 20               # neighbors to consider
+          std_dev_mul: 2.0         # threshold sensitivity
+          use_tsl_robin_map: true  # performance optimization
+
+.. dropdown:: C++ API example
+    :icon: code
+
+    .. code-block:: cpp
+
+        #include <mp2p_icp_filters/FilterVoxelSOR.h>
+
+        // Create and configure filter
+        auto filter = mp2p_icp_filters::FilterVoxelSOR::Create();
+        filter->params.input_layer = "raw";
+        filter->params.output_layer_inliers = "clean";
+        filter->params.voxel_size = 1.5f;
+        filter->params.mean_k = 25;
+        filter->params.std_dev_mul = 2.5;
+
+        // Apply filter to metric map
+        mp2p_icp::metric_map_t map;
+        // ... populate map with point cloud data ...
+        filter->filter(map);
+
+        // Access filtered results
+        auto clean_cloud = map.point_layer("clean");
+
+
+**Performance notes:** The voxel-based approach provides substantial speedup over global SOR, especially for large point clouds (>1M points).
+Typical speedup factors range from 5-20× depending on point cloud density and voxel size. The ``use_tsl_robin_map`` option enables
+further optimization using a high-performance hash map implementation.
