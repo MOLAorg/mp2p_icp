@@ -41,7 +41,7 @@ class FilterSOR : public mp2p_icp_filters::FilterBase
     DEFINE_MRPT_OBJECT(FilterSOR, mp2p_icp_filters)
 
    public:
-    FilterSOR();
+    FilterSOR() = default;
 
     void filter(mp2p_icp::metric_map_t& inOut) const override;
 

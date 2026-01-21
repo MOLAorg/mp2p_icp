@@ -34,13 +34,6 @@ IMPLEMENTS_MRPT_OBJECT(FilterSOR, mp2p_icp_filters::FilterBase, mp2p_icp_filters
 
 using namespace mp2p_icp_filters;
 
-FilterSOR::FilterSOR()
-{
-#if MRPT_VERSION < 0x020f04
-    throw std::runtime_error("FilterSOR requires MRPT >= 2.15.4");
-#endif
-}
-
 void FilterSOR::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
@@ -62,6 +55,10 @@ void FilterSOR::initialize_filter(const mrpt::containers::yaml& c)
 
 void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
 {
+#if MRPT_VERSION < 0x020f04
+    throw std::runtime_error("FilterSOR requires MRPT >= 2.15.4");
+#endif
+
     auto pcPtr = inOut.layer<mrpt::maps::CPointsMap>(params.input_pointcloud_layer);
     ASSERT_(pcPtr);
     const auto& pc = *pcPtr;
