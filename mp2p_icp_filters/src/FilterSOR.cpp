@@ -159,12 +159,16 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
     mrpt::math::meanAndStd(avg_distances, mean_dist, std_dev);
     const double threshold = mean_dist + params.std_dev_mul * std_dev;
 
+    size_t num_inliers  = 0;
+    size_t num_outliers = 0;
+
     // 4. Pass 2: Dispatch points to output layers
     for (size_t i = 0; i < N; ++i)
     {
         const bool isInlier = (avg_distances[i] <= threshold);
         if (isInlier)
         {
+            ++num_inliers;
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
             if (outInliers)
             {
@@ -173,6 +177,7 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
         }
         else
         {
+            ++num_outliers;
             if (outOutliers)
             {
                 outOutliers->insertPointFrom(i, *ctxO);
@@ -204,4 +209,8 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
 #endif
         }
     }
+
+    // Debug stats:
+    MRPT_LOG_DEBUG_FMT(
+        "FilterSOR: Total points: %zu, Inliers: %zu, Outliers: %zu", N, num_inliers, num_outliers);
 }

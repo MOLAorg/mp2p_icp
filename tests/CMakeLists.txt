@@ -69,6 +69,7 @@ mp2p_add_test(mp2p_FilterPoleDetector EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterRenameLayer EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_Filters EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterSOR EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_FilterVoxelSOR EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_generator EXTRA_LIBS mp2p_icp_filters)
 
 

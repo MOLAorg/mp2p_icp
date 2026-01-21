@@ -27,6 +27,7 @@ set(LIB_SRCS
   src/FilterRenameLayer.cpp
   src/FilterSOR.cpp
   src/FilterVoxelSlice.cpp
+  src/FilterVoxelSOR.cpp
   src/Generator.cpp
   src/GeneratorEdgesFromCurvature.cpp
   src/GeneratorEdgesFromRangeImage.cpp
@@ -63,6 +64,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterRenameLayer.h
   include/mp2p_icp_filters/FilterSOR.h
   include/mp2p_icp_filters/FilterVoxelSlice.h
+  include/mp2p_icp_filters/FilterVoxelSOR.h
   include/mp2p_icp_filters/Generator.h
   include/mp2p_icp_filters/GeneratorEdgesFromCurvature.h
   include/mp2p_icp_filters/GeneratorEdgesFromRangeImage.h
