@@ -2,6 +2,15 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#27 <https://github.com/MOLAorg/mp2p_icp/issues/27>`_ from MOLAorg/feat/new-filter-voxel-sor
+* Add new unit test for class factory
+* Add new FilterVoxelSOR filter
+* Merge pull request `#26 <https://github.com/MOLAorg/mp2p_icp/issues/26>`_ from MOLAorg/feat/mm2las
+* Add mm2las CLI tool
+* Contributors: Jose Luis Blanco-Claraco
+
 2.3.1 (2026-01-14)
 ------------------
 * Merge pull request `#25 <https://github.com/MOLAorg/mp2p_icp/issues/25>`_ from MOLAorg/feat/naive-decimate
