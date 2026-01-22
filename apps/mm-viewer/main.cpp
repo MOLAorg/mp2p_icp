@@ -61,13 +61,19 @@ static TCLAP::ValueArg<std::string> arg_tumTrajectory(
     "t", "trajectory", "Also draw a trajectory, given by a TUM file trajectory.", false,
     "trajectory.tum", "trajectory.tum", cmd);
 
+static TCLAP::MultiArg<std::string> arg_add3dScenes(
+    "s", "add-3d-scene", "Adds an extra 3D scene file (*.3dscene) for visualization.", false,
+    "scene.3dscene", cmd);
+
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
 
 auto                             glVizMap = mrpt::opengl::CSetOfObjects::Create();
 auto                             glGrid   = mrpt::opengl::CGridPlaneXY::Create();
-mrpt::opengl::CSetOfObjects::Ptr glENUCorner, glMapCorner;
+mrpt::opengl::CSetOfObjects::Ptr glENUCorner;
+mrpt::opengl::CSetOfObjects::Ptr glMapCorner;
 mrpt::opengl::CSetOfObjects::Ptr glTrajectory;
+mrpt::opengl::CSetOfObjects::Ptr glVizObjects;
 
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
@@ -112,6 +118,15 @@ std::string            theMapFileName = "unnamed.mm";
 
 // Robot path to display (optional):
 mrpt::poses::CPose3DInterpolator trajectory;
+
+// Extra viz layers from 3Dscene files (optional)
+struct ExtraVizLayer
+{
+    std::string                      fileName;
+    mrpt::opengl::CSetOfObjects::Ptr glObjects;
+    nanogui::CheckBox*               checkBox = nullptr;
+};
+static std::vector<ExtraVizLayer> extraVizLayers;
 
 // Camera travelling trajectory:
 mrpt::poses::CPose3DInterpolator camTravelling;
@@ -461,6 +476,19 @@ void updateGuiAfterLoadingNewMap()
         cbLayersByName[layerNames.at(i)] = cb;
     }
 
+    for (auto& evl : extraVizLayers)
+    {
+        evl.checkBox = panelLayers->add<nanogui::CheckBox>(
+            "(viz) " + evl.fileName,
+            [&evl](bool checked)
+            {
+                evl.glObjects->setVisibility(checked);
+                rebuild_3d_view(false);
+            });
+        evl.checkBox->setFontSize(SMALL_FONT_SIZE);
+        evl.checkBox->setChecked(true);
+    }
+
     // and point cloud fields:
     ASSERT_(cmbRecolorizeByField);
     cmbRecolorizeByField->setItems(knownPointFields);
@@ -707,6 +735,7 @@ void main_show_gui()
     glMapCorner->enableShowName();
 
     glTrajectory = mrpt::opengl::CSetOfObjects::Create();
+    glVizObjects = mrpt::opengl::CSetOfObjects::Create();
 
     glENUCorner = mrpt::opengl::stock_objects::CornerXYZ(2.0f);
     glENUCorner->setName("ENU");
@@ -868,6 +897,10 @@ void main_show_gui()
                 {
                     cb->setChecked(true);
                 }
+                for (const auto& evl : extraVizLayers)
+                {
+                    evl.checkBox->setChecked(true);
+                }
                 rebuild_3d_view();
             });
 
@@ -879,6 +912,10 @@ void main_show_gui()
                 for (auto& [name, cb] : cbLayersByName)
                 {
                     cb->setChecked(false);
+                }
+                for (const auto& evl : extraVizLayers)
+                {
+                    evl.checkBox->setChecked(false);
                 }
                 rebuild_3d_view();
             });
@@ -1373,6 +1410,7 @@ void rebuild_3d_view(bool force_rebuild_view)
         glVizMap->insert(glPts);
         glVizMap->insert(glMapCorner);
         glVizMap->insert(glTrajectory);
+        glVizMap->insert(glVizObjects);
     }
 
     if (cbApplyGeoRef->checked() && theMap.georeferencing.has_value())
@@ -1436,6 +1474,13 @@ void rebuild_3d_view(bool force_rebuild_view)
             }
             prevPose = p;
         }
+    }
+
+    // glVizObjects
+    glVizObjects->clear();
+    for (auto& evl : extraVizLayers)
+    {
+        glVizObjects->insert(evl.glObjects);
     }
 
     // XYZ corner overlay viewports: one for "Map", another for "ENU"
@@ -1575,6 +1620,28 @@ int main(int argc, char** argv)
             bool trajectoryReadOk = trajectory.loadFromTextFile_TUM(arg_tumTrajectory.getValue());
             ASSERT_(trajectoryReadOk);
             std::cout << "Read trajectory with " << trajectory.size() << " keyframes.\n";
+        }
+
+        // load 3D files:
+        for (const auto& path : arg_add3dScenes.getValue())
+        {
+            ASSERT_FILE_EXISTS_(path);
+            auto scene  = mrpt::opengl::Scene::Create();
+            bool readOk = scene->loadFromFile(path);
+            ASSERT_(readOk);
+
+            ExtraVizLayer evl;
+            evl.fileName  = mrpt::system::extractFileName(path);
+            evl.glObjects = mrpt::opengl::CSetOfObjects::Create();
+            evl.glObjects->setName(evl.fileName);
+
+            // Move all objects from the loaded scene into our set
+            for (const auto& obj : *scene->getViewport())
+            {
+                evl.glObjects->insert(obj);
+            }
+
+            extraVizLayers.push_back(evl);
         }
 
         main_show_gui();
