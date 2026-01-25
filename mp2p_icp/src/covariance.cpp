@@ -42,7 +42,7 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
     mrpt::math::CMatrixDouble61 xInitial;
     xInitial[0] = finalAlignSolution.x();
     xInitial[1] = finalAlignSolution.y();
-    xInitial[0] = finalAlignSolution.x();
+    xInitial[2] = finalAlignSolution.z();
     xInitial[3] = finalAlignSolution.yaw();
     xInitial[4] = finalAlignSolution.pitch();
     xInitial[5] = finalAlignSolution.roll();
@@ -88,7 +88,7 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
 
             mrpt::math::CVectorFixedDouble<3> ret =
                 mp2p_icp::error_point2point(p.local, p.global, pose);
-            err.block<3, 1>(idx_pt * 3, 0) = ret.asEigen();
+            err.block<3, 1>(static_cast<int>(idx_pt * 3), 0) = ret.asEigen();
         }
         auto base_idx = nPt2Pt * 3;
 
@@ -96,9 +96,9 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         for (size_t idx_pt = 0; idx_pt < nPt2Ln; idx_pt++)
         {
             // Error
-            const auto&                       p       = in.paired_pt2ln[idx_pt];
-            mrpt::math::CVectorFixedDouble<3> ret     = mp2p_icp::error_point2line(p, pose);
-            err.block<3, 1>(base_idx + idx_pt * 3, 0) = ret.asEigen();
+            const auto&                       p   = in.paired_pt2ln[idx_pt];
+            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_point2line(p, pose);
+            err.block<3, 1>(static_cast<int>(base_idx + idx_pt * 3), 0) = ret.asEigen();
         }
         base_idx += nPt2Ln * 3;
 
@@ -106,19 +106,19 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         // Minimum angle to approach zero
         for (size_t idx_ln = 0; idx_ln < nLn2Ln; idx_ln++)
         {
-            const auto&                       p       = in.paired_ln2ln[idx_ln];
-            mrpt::math::CVectorFixedDouble<4> ret     = mp2p_icp::error_line2line(p, pose);
-            err.block<4, 1>(base_idx + idx_ln * 4, 0) = ret.asEigen();
+            const auto&                       p   = in.paired_ln2ln[idx_ln];
+            mrpt::math::CVectorFixedDouble<4> ret = mp2p_icp::error_line2line(p, pose);
+            err.block<4, 1>(static_cast<int>(base_idx + idx_ln * 4), 0) = ret.asEigen();
         }
-        base_idx += nLn2Ln;
+        base_idx += nLn2Ln * 4;
 
         // Point-to-plane:
         for (size_t idx_pl = 0; idx_pl < nPt2Pl; idx_pl++)
         {
             // Error:
-            const auto&                       p       = in.paired_pt2pl[idx_pl];
-            mrpt::math::CVectorFixedDouble<3> ret     = mp2p_icp::error_point2plane(p, pose);
-            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
+            const auto&                       p   = in.paired_pt2pl[idx_pl];
+            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_point2plane(p, pose);
+            err.block<3, 1>(static_cast<int>(base_idx + idx_pl * 3), 0) = ret.asEigen();
         }
         base_idx += nPt2Pl * 3;
 
@@ -126,10 +126,11 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
         for (size_t idx_pl = 0; idx_pl < nPl2Pl; idx_pl++)
         {
             // Error term:
-            const auto&                       p       = in.paired_pl2pl[idx_pl];
-            mrpt::math::CVectorFixedDouble<3> ret     = mp2p_icp::error_plane2plane(p, pose);
-            err.block<3, 1>(idx_pl * 3 + base_idx, 0) = ret.asEigen();
+            const auto&                       p   = in.paired_pl2pl[idx_pl];
+            mrpt::math::CVectorFixedDouble<3> ret = mp2p_icp::error_plane2plane(p, pose);
+            err.block<3, 1>(static_cast<int>(base_idx + idx_pl * 3), 0) = ret.asEigen();
         }
+        base_idx += nPl2Pl * 3;
 
         // cov-to-cov:
         for (size_t idx_cov2cov = 0; idx_cov2cov < nCov2Cov; idx_cov2cov++)
@@ -142,8 +143,9 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
 
             const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
 
-            // TODO: Add sqrt(COV) term?
-            err.block<3, 1>(idx_cov2cov * 3, 0) = cov_inv * ret.asEigen();
+            // Apply the inverse covariance weighting (Mahalanobis distance)
+            err.block<3, 1>(static_cast<int>(base_idx + idx_cov2cov * 3), 0) =
+                cov_inv * ret.asEigen();
         }
     };
 
