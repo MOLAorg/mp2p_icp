@@ -64,10 +64,11 @@ void Matcher_Point2Line::implMatchOneLayer(
 
     const TransformedLocalPointCloud tl = transform_local_to_global(pcLocal, localPose);
 
+    const auto threshold_f = static_cast<float>(distanceThreshold);
+
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(
-            {tl.localMin, tl.localMax},
-            distanceThreshold + bounding_box_intersection_check_epsilon_))
+            {tl.localMin, tl.localMax}, threshold_f + bounding_box_intersection_check_epsilon_))
     {
         return;
     }
@@ -77,7 +78,7 @@ void Matcher_Point2Line::implMatchOneLayer(
 
     // Loop for each point in local map:
     // --------------------------------------------------
-    const float maxDistForCorrespondenceSquared = mrpt::square(distanceThreshold);
+    const float maxDistForCorrespondenceSquared = mrpt::square(threshold_f);
 
     const auto& lxs = pcLocal.getPointsBufferRef_x();
     const auto& lys = pcLocal.getPointsBufferRef_y();
@@ -94,7 +95,9 @@ void Matcher_Point2Line::implMatchOneLayer(
 
         if (!allowMatchAlreadyMatchedPoints_ &&
             ms.localPairedBitField.point_layers.at(localName)[localIdx])
+        {
             continue;  // skip, already paired.
+        }
 
         // Don't discard **global** map points if already used by another
         // matcher, since the assumption of "line" features implies that
@@ -131,7 +134,10 @@ void Matcher_Point2Line::implMatchOneLayer(
         }
 
         // minimum: 2 points to be able to fit a line
-        if (kddIdxs.size() < minimumLinePoints) continue;
+        if (kddIdxs.size() < minimumLinePoints)
+        {
+            continue;
+        }
 
         mp2p_icp::vector_of_points_to_xyz(kddPts, kddXs, kddYs, kddZs);
 
@@ -140,16 +146,21 @@ void Matcher_Point2Line::implMatchOneLayer(
 
         // Do these points look like a line?
 #if 0
-        std::cout << "eig values: " << eig.eigVals[0] << " " << eig.eigVals[1]
-                  << " " << eig.eigVals[2]
-                  << " eigvec0: " << eig.eigVectors[0].asString() << "\n"
+        std::cout << "eig values: " << eig.eigVals[0] << " " << eig.eigVals[1] << " "
+                  << eig.eigVals[2] << " eigvec0: " << eig.eigVectors[0].asString() << "\n"
                   << " eigvec1: " << eig.eigVectors[1].asString() << "\n"
                   << " eigvec2: " << eig.eigVectors[2].asString() << "\n";
 #endif
 
         // e0/e{1,2} must be < lineEigenThreshold:
-        if (eig.eigVals[0] > lineEigenThreshold * eig.eigVals[2]) continue;
-        if (eig.eigVals[1] > lineEigenThreshold * eig.eigVals[2]) continue;
+        if (eig.eigVals[0] > lineEigenThreshold * eig.eigVals[2])
+        {
+            continue;
+        }
+        if (eig.eigVals[1] > lineEigenThreshold * eig.eigVals[2])
+        {
+            continue;
+        }
 
         auto& p    = out.paired_pt2ln.emplace_back();
         p.pt_local = {lxs[localIdx], lys[localIdx], lzs[localIdx]};

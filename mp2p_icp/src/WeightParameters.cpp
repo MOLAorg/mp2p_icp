@@ -50,7 +50,9 @@ void WeightParameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t 
                 in >> dummy_use_robust_kernel;
             }
             else
+            {
                 in >> robust_kernel;
+            }
 
             in >> currentEstimateForRobust >> robust_kernel_param;
 
@@ -69,13 +71,16 @@ void WeightParameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t 
 
 void WeightParameters::load_from(const mrpt::containers::yaml& p)
 {
-    MCP_LOAD_REQ(p, use_scale_outlier_detector);
+    MCP_LOAD_OPT(p, use_scale_outlier_detector);
     MCP_LOAD_OPT(p, scale_outlier_threshold);
 
     MCP_LOAD_REQ(p, robust_kernel);
     MCP_LOAD_OPT(p, robust_kernel_param);
 
-    if (p.has("pair_weights")) pair_weights.load_from(p["pair_weights"]);
+    if (p.has("pair_weights"))
+    {
+        pair_weights.load_from(p["pair_weights"]);
+    }
 }
 void WeightParameters::save_to(mrpt::containers::yaml& p) const
 {
