@@ -33,6 +33,7 @@
 #include <mp2p_icp/Solver_GaussNewton.h>
 #include <mp2p_icp/Solver_Horn.h>
 #include <mp2p_icp/Solver_OLAE.h>
+#include <mp2p_icp/WeightParameters.h>
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/core/initializer.h>
 
@@ -66,4 +67,5 @@ MRPT_INITIALIZER(register_mp2p_icp)
 
     registerClass(CLASS_ID(mp2p_icp::LogRecord));
     registerClass(CLASS_ID(mp2p_icp::Parameters));
+    registerClass(CLASS_ID(mp2p_icp::WeightParameters));
 }

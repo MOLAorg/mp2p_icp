@@ -74,6 +74,9 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
     checkAllParametersAreRealized();
 
+    ASSERT_NOT_EQUAL_(params.input_pointcloud_layer, params.output_layer_between);
+    ASSERT_NOT_EQUAL_(params.input_pointcloud_layer, params.output_layer_outside);
+
     // In:
     const auto pcPtr = inOut.point_layer(params.input_pointcloud_layer);
     ASSERTMSG_(

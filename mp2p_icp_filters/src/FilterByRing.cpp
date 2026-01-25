@@ -106,6 +106,9 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
         "At least one of 'output_layer_selected' or "
         "'output_layer_non_selected' must be provided.");
 
+    ASSERT_NOT_EQUAL_(params.input_pointcloud_layer, params.output_layer_non_selected);
+    ASSERT_NOT_EQUAL_(params.input_pointcloud_layer, params.output_layer_selected);
+
     const auto& xs = pc.getPointsBufferRef_x();
 
 #if MRPT_VERSION >= 0x020f04  // 2.15.4

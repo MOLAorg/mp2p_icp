@@ -107,6 +107,10 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         "'output_layer_low_intensity' or 'output_layer_mid_intensity' must be "
         "provided.");
 
+    ASSERT_NOT_EQUAL_(params.input_pointcloud_layer, params.output_layer_high_intensity);
+    ASSERT_NOT_EQUAL_(params.input_pointcloud_layer, params.output_layer_mid_intensity);
+    ASSERT_NOT_EQUAL_(params.input_pointcloud_layer, params.output_layer_low_intensity);
+
     const auto& xs = pc.getPointsBufferRef_x();
 
     const auto* ptrI = pc.getPointsBufferRef_float_field(POINT_FIELD_INTENSITY);
