@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.4.1 (2026-01-27)
+------------------
 * Add more unit tests
 * Update README to keep it in sync with the provided apps and libraries
 * Merge pull request `#29 <https://github.com/MOLAorg/mp2p_icp/issues/29>`_ from MOLAorg/fix/cov
