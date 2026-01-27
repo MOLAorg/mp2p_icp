@@ -162,8 +162,7 @@ void Parameterizable::checkAllParametersAreRealized() const
         {
             continue;
         }
-        errors << "- '" << p.expression << "'"
-               << "\n";
+        errors << "- '" << p.expression << "'\n";
     }
 
     const auto sErrs = errors.str();
