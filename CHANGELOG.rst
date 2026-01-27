@@ -2,6 +2,19 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Add more unit tests
+* Update README to keep it in sync with the provided apps and libraries
+* Merge pull request `#29 <https://github.com/MOLAorg/mp2p_icp/issues/29>`_ from MOLAorg/fix/cov
+  Fix bugs in covariance estimation for some cases
+* fix covariance estimation bugs; add unit tests for cov2cov
+* Update commit for mola_common
+* Merge pull request `#28 <https://github.com/MOLAorg/mp2p_icp/issues/28>`_ from MOLAorg/feat/mm-viewer-3d-layers
+  mm-viewer: add CLI flags to load overlaid 3D scenes for visualization
+* mm-viewer: add CLI flags to load overlaid 3D scenes for visualization
+* Contributors: Jose Luis Blanco-Claraco
+
 2.4.0 (2026-01-21)
 ------------------
 * Merge pull request `#27 <https://github.com/MOLAorg/mp2p_icp/issues/27>`_ from MOLAorg/feat/new-filter-voxel-sor
