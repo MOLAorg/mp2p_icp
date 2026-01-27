@@ -1,4 +1,4 @@
-/* +
+/*
  _ __ ___   ___ | | __ _
 | '_ ` _ \ / _ \| |/ _` | Modular Optimization framework for
 | | | | | | (_) | | (_| | Localization and mApping (MOLA)

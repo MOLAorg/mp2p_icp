@@ -66,8 +66,7 @@ int main()
             // FPS property check: The points should cover the range well.
             // With 100 points from 0 to 99, picking 10 should likely include ends.
             // (Strict geometric check is complex due to random seed, but size check is robust).
-            std::cout << "[Test Passed] FPS count exact match"
-                      << "\n";
+            std::cout << "[Test Passed] FPS count exact match\n";
         }
 
         // ---------------------------------------------------------
@@ -91,12 +90,10 @@ int main()
 
             // Should just copy the input
             ASSERT_EQUAL_(out->size(), 100ULL);
-            std::cout << "[Test Passed] FPS oversample handling"
-                      << "\n";
+            std::cout << "[Test Passed] FPS oversample handling\n";
         }
 
-        std::cout << "\nFilterFartherPointSampling Unit Tests Passed!"
-                  << "\n";
+        std::cout << "\nFilterFartherPointSampling Unit Tests Passed!\n";
     }
     catch (const std::exception& e)
     {

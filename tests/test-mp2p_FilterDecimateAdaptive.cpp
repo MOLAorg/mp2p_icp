@@ -74,12 +74,10 @@ int main()
             // 500.
             ASSERT_NEAR_(outSize, 500, 20);  // Allow small tolerance
 
-            std::cout << "[Test Passed] Adaptive decimation count check"
-                      << "\n";
+            std::cout << "[Test Passed] Adaptive decimation count check\n";
         }
 
-        std::cout << "\nFilterDecimateAdaptive Unit Tests Passed!"
-                  << "\n";
+        std::cout << "\nFilterDecimateAdaptive Unit Tests Passed!\n";
     }
     catch (const std::exception& e)
     {
