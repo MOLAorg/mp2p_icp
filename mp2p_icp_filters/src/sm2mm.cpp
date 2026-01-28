@@ -30,6 +30,8 @@
 #include <mp2p_icp/update_velocity_buffer_from_obs.h>
 #endif
 
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 
 void mp2p_icp_filters::simplemap_to_metricmap(
@@ -199,7 +201,9 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         for (const auto& obs : *sf)
         {
             ASSERT_(obs);
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
             mp2p_icp::update_velocity_buffer_from_obs(ps.localVelocityBuffer, obs);
+#endif
         }
 
         // Next, do the actual sensor data processing:
