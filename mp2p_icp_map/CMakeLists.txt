@@ -12,6 +12,7 @@ set(LIB_SRCS
   src/NearestPointWithCovCapable.cpp
   src/point_with_cov_pair_t.cpp
   src/pointcloud_sanity_check.cpp
+  src/update_velocity_buffer_from_obs.cpp
   #
   src/register.cpp # This must be last
 )
@@ -31,11 +32,21 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/pointcloud_bitfield.h
   include/mp2p_icp/pointcloud_sanity_check.h
   include/mp2p_icp/render_params.h
+  include/mp2p_icp/update_velocity_buffer_from_obs.h
 )
+
+
+if (mola_imu_preintegration_FOUND)
+  set(imu_pub_link_ mola::mola_imu_preintegration)
+  set(imu_cmake_dep_ mola_imu_preintegration)
+endif()
+
 
 mola_add_library(
   TARGET ${PROJECT_NAME}
   SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
+  PRIVATE_LINK_LIBRARIES
+    ${imu_pub_link_}
   PUBLIC_LINK_LIBRARIES
     mrpt::maps
     mrpt::opengl
@@ -44,4 +55,9 @@ mola_add_library(
     mrpt-maps
     mrpt-opengl
     mrpt-topography
+    ${imu_cmake_dep_}
 )
+
+if (mola_imu_preintegration_FOUND)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
+endif()

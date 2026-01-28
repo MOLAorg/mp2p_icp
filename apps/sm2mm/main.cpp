@@ -28,62 +28,91 @@
 #include <mrpt/system/filesystem.h>
 
 // CLI flags:
-static TCLAP::CmdLine cmd("sm2mm");
-
-static TCLAP::ValueArg<std::string> argInput(
-    "i", "input", "Input .simplemap file", true, "map.simplemap", "map.simplemap", cmd);
-
-static TCLAP::ValueArg<std::string> argOutput(
-    "o", "output", "Output .mm file to write to", true, "out.mm", "out.mm", cmd);
-
-static TCLAP::ValueArg<std::string> argPlugins(
-    "l", "load-plugins",
-    "One or more (comma separated) *.so files to load as plugins, e.g. "
-    "defining new CMetricMap classes",
-    false, "foobar.so", "foobar.so", cmd);
-
-static TCLAP::ValueArg<std::string> argPipeline(
-    "p", "pipeline",
-    "YAML file with the mp2p_icp_filters pipeline to load. It can optionally "
-    "contain a `filters:`, a `generators:`, and a `final_filters:` sections. "
-    "If this argument is not provided, the default generator will be used and "
-    "no filtering will be applied, which might be ok in some cases. "
-    "See the app README for examples:\n"
-    "https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm",
-    false, "pipeline.yaml", "pipeline.yaml", cmd);
-
-static TCLAP::ValueArg<std::string> arg_verbosity_level(
-    "v", "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)", false, "", "INFO",
-    cmd);
-
-static TCLAP::ValueArg<std::string> arg_lazy_load_base_dir(
-    "", "externals-dir",
-    "Lazy-load base directory for datasets with externally-stored observations", false,
-    "dataset_Images", "<ExternalsDirectory>", cmd);
-
-static TCLAP::SwitchArg argNoProgressBar(
-    "", "no-progress-bar",
-    "Disables the progress bar. Useful for cleaner output when using DEBUG "
-    "verbosity level.",
-    cmd);
-
-static TCLAP::SwitchArg argProfiler("", "profiler", "Enables profiler.", cmd);
-
-static TCLAP::ValueArg<size_t> argIndexFrom(
-    "", "from-index",
-    "If provided, the simplemap keyframes until this index will be discarded "
-    "and it will start at this point.",
-    false, 0, "0", cmd);
-
-static TCLAP::ValueArg<size_t> argIndexTo(
-    "", "to-index",
-    "If provided, the simplemap keyframes will be processed up to this index "
-    "only.",
-    false, 0, "0", cmd);
-
-void run_sm_to_mm()
+struct CLI
 {
-    const auto& filSM = argInput.getValue();
+    TCLAP::CmdLine cmd{"sm2mm"};
+
+    TCLAP::ValueArg<std::string> argInput{
+        "i", "input", "Input .simplemap file", true, "map.simplemap", "map.simplemap", cmd};
+
+    TCLAP::ValueArg<std::string> argOutput{
+        "o", "output", "Output .mm file to write to", true, "out.mm", "out.mm", cmd};
+
+    TCLAP::ValueArg<std::string> argPlugins{
+        "l",
+        "load-plugins",
+        "One or more (comma separated) *.so files to load as plugins, e.g. "
+        "defining new CMetricMap classes",
+        false,
+        "foobar.so",
+        "foobar.so",
+        cmd};
+
+    TCLAP::ValueArg<std::string> argPipeline{
+        "p",
+        "pipeline",
+        "YAML file with the mp2p_icp_filters pipeline to load. It can optionally "
+        "contain a `filters:`, a `generators:`, and a `final_filters:` sections. "
+        "If this argument is not provided, the default generator will be used and "
+        "no filtering will be applied, which might be ok in some cases. "
+        "See the app README for examples:\n"
+        "https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm",
+        false,
+        "pipeline.yaml",
+        "pipeline.yaml",
+        cmd};
+
+    TCLAP::ValueArg<std::string> arg_verbosity_level{
+        "v",    "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)", false, "",
+        "INFO", cmd};
+
+    TCLAP::ValueArg<std::string> arg_lazy_load_base_dir{
+        "",
+        "externals-dir",
+        "Lazy-load base directory for datasets with externally-stored observations",
+        false,
+        "dataset_Images",
+        "<ExternalsDirectory>",
+        cmd};
+
+    TCLAP::SwitchArg argNoProgressBar{
+        "", "no-progress-bar",
+        "Disables the progress bar. Useful for cleaner output when using DEBUG "
+        "verbosity level.",
+        cmd};
+
+    TCLAP::SwitchArg argProfiler{"", "profiler", "Enables profiler.", cmd};
+
+    TCLAP::ValueArg<size_t> argIndexFrom{
+        "",
+        "from-index",
+        "If provided, the simplemap keyframes until this index will be discarded "
+        "and it will start at this point.",
+        false,
+        0,
+        "0",
+        cmd};
+
+    TCLAP::ValueArg<size_t> argIndexTo{
+        "",
+        "to-index",
+        "If provided, the simplemap keyframes will be processed up to this index "
+        "only.",
+        false,
+        0,
+        "0",
+        cmd};
+
+    TCLAP::ValueArg<size_t> argDecimateNth{
+        "", "decimate-nth", "Only process every N-th frame", false, 1, "N", cmd};
+
+    TCLAP::ValueArg<size_t> argDecimateMax{
+        "", "decimate-max", "Try to evenly pick at most N frames", false, 0, "N", cmd};
+};
+
+void run_sm_to_mm(CLI& cli)
+{
+    const auto& filSM = cli.argInput.getValue();
 
     mrpt::maps::CSimpleMap sm;
 
@@ -97,9 +126,9 @@ void run_sm_to_mm()
     // Load pipeline from YAML file:
     mrpt::containers::yaml yamlData;  // default: empty
 
-    if (argPipeline.isSet())
+    if (cli.argPipeline.isSet())
     {
-        const auto filYaml = argPipeline.getValue();
+        const auto filYaml = cli.argPipeline.getValue();
         ASSERT_FILE_EXISTS_(filYaml);
         yamlData = mrpt::containers::yaml::FromFile(filYaml);
     }
@@ -107,15 +136,15 @@ void run_sm_to_mm()
     mp2p_icp::metric_map_t mm;
 
     mrpt::system::VerbosityLevel logLevel = mrpt::system::LVL_INFO;
-    if (arg_verbosity_level.isSet())
+    if (cli.arg_verbosity_level.isSet())
     {
         using vl = mrpt::typemeta::TEnumType<mrpt::system::VerbosityLevel>;
-        logLevel = vl::name2value(arg_verbosity_level.getValue());
+        logLevel = vl::name2value(cli.arg_verbosity_level.getValue());
     }
 
-    if (arg_lazy_load_base_dir.isSet())
+    if (cli.arg_lazy_load_base_dir.isSet())
     {
-        mrpt::io::setLazyLoadPathBase(arg_lazy_load_base_dir.getValue());
+        mrpt::io::setLazyLoadPathBase(cli.arg_lazy_load_base_dir.getValue());
     }
     else
     {
@@ -129,20 +158,28 @@ void run_sm_to_mm()
     }
 
     mp2p_icp_filters::sm2mm_options_t opts;
-    opts.showProgressBar = !argNoProgressBar.isSet();
+    opts.showProgressBar = !cli.argNoProgressBar.isSet();
     opts.verbosity       = logLevel;
 
-    if (argIndexFrom.isSet())
+    if (cli.argIndexFrom.isSet())
     {
-        opts.start_index = argIndexFrom.getValue();
+        opts.start_index = cli.argIndexFrom.getValue();
     }
-    if (argIndexTo.isSet())
+    if (cli.argIndexTo.isSet())
     {
-        opts.end_index = argIndexTo.getValue();
+        opts.end_index = cli.argIndexTo.getValue();
+    }
+    if (cli.argDecimateNth.isSet())
+    {
+        opts.decimate_every_nth_frame = cli.argDecimateNth.getValue();
+    }
+    if (cli.argDecimateMax.isSet())
+    {
+        opts.decimate_maximum_frame_count = cli.argDecimateMax.getValue();
     }
 
     std::optional<mrpt::system::CTimeLogger> profiler;
-    if (argProfiler.isSet())
+    if (cli.argProfiler.isSet())
     {
         profiler.emplace();
         opts.profiler = *profiler;
@@ -154,7 +191,7 @@ void run_sm_to_mm()
     std::cout << "[sm2mm] Final map: " << mm.contents_summary() << std::endl;
 
     // Save as mm file:
-    const auto filOut = argOutput.getValue();
+    const auto filOut = cli.argOutput.getValue();
     std::cout << "[sm2mm] Writing metric map to: '" << filOut << "'..." << std::endl;
 
     if (!mm.save_to_file(filOut))
@@ -167,13 +204,15 @@ int main(int argc, char** argv)
 {
     try
     {
+        CLI cli;
+
         // Parse arguments:
-        if (!cmd.parse(argc, argv))
+        if (!cli.cmd.parse(argc, argv))
         {
             return 1;  // should exit.
         }
 
-        run_sm_to_mm();
+        run_sm_to_mm(cli);
     }
     catch (const std::exception& e)
     {

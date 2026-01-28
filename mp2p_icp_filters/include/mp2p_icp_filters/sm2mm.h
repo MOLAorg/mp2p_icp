@@ -47,6 +47,8 @@ struct sm2mm_options_t
     std::optional<size_t>                         start_index;
     std::optional<size_t>                         end_index;
     mrpt::optional_ref<mrpt::system::CTimeLogger> profiler;
+    std::optional<size_t>                         decimate_every_nth_frame;
+    std::optional<size_t>                         decimate_maximum_frame_count;
 };
 
 /** Utility function to build metric maps ("*.mm") from raw observations
