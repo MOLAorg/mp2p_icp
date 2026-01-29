@@ -141,20 +141,20 @@ bool saveToTxt(
             // Check coordinate fields
             if (fieldName == "x")
             {
-                mrpt::system::os::fprintf(f, "%f", xs.at(i));
+                mrpt::system::os::fprintf(f, "%.8f", xs.at(i));
             }
             else if (fieldName == "y")
             {
-                mrpt::system::os::fprintf(f, "%f", ys.at(i));
+                mrpt::system::os::fprintf(f, "%.8f", ys.at(i));
             }
             else if (fieldName == "z")
             {
-                mrpt::system::os::fprintf(f, "%f", zs.at(i));
+                mrpt::system::os::fprintf(f, "%.8f", zs.at(i));
             }
             // Check float fields
             else if (floatFields.count(fieldName))
             {
-                mrpt::system::os::fprintf(f, "%f", floatFields.at(fieldName).at(i));
+                mrpt::system::os::fprintf(f, "%.8e", floatFields.at(fieldName).at(i));
             }
             // Check uint16 fields
             else if (uint16Fields.count(fieldName))
@@ -165,7 +165,7 @@ bool saveToTxt(
             // Check double fields
             else if (doubleFields.count(fieldName))
             {
-                mrpt::system::os::fprintf(f, "%lf", doubleFields.at(fieldName).at(i));
+                mrpt::system::os::fprintf(f, "%.16le", doubleFields.at(fieldName).at(i));
             }
             // Check uint8 fields
             else if (uint8Fields.count(fieldName))

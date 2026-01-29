@@ -271,7 +271,7 @@ void saveToPly(
     }
 
     // 4. Data Loop
-    auto write_val = [&](auto val)
+    auto write_val = [&](auto val, const char* fmt)
     {
         if (binary)
         {
@@ -279,7 +279,7 @@ void saveToPly(
         }
         else
         {
-            f << +val << " ";
+            f << mrpt::format(fmt, val) << " ";
         }
     };
 
@@ -296,7 +296,7 @@ void saveToPly(
                 {
                     const auto& buf =
                         *static_cast<const mrpt::aligned_std_vector<float>*>(acc.bufPtr);
-                    write_val(buf[i]);
+                    write_val(buf[i], "%.8e");
                     break;
                 }
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
@@ -304,21 +304,21 @@ void saveToPly(
                 {
                     const auto& buf =
                         *static_cast<const mrpt::aligned_std_vector<double>*>(acc.bufPtr);
-                    write_val(buf[i]);
+                    write_val(buf[i], "%.16le");
                     break;
                 }
                 case FieldAccessor::UINT16:
                 {
                     const auto& buf =
                         *static_cast<const mrpt::aligned_std_vector<uint16_t>*>(acc.bufPtr);
-                    write_val(buf[i]);
+                    write_val(buf[i], "%u");
                     break;
                 }
                 case FieldAccessor::UINT8:
                 {
                     const auto& buf =
                         *static_cast<const mrpt::aligned_std_vector<uint8_t>*>(acc.bufPtr);
-                    write_val(buf[i]);
+                    write_val(buf[i], "%i");
                     break;
                 }
 #endif
