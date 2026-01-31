@@ -24,7 +24,7 @@ Usage
 
 .. code-block:: bash
 
-   mm2ply -i <input.mm> [-o <output_prefix>] [-b] [--export-fields <field1,field2,...>]
+   mm2ply -i <input.mm> [-o <output_prefix>] [-b] [--export-fields <field1,field2,...>] [--ignore-missing-fields]
 
 Arguments
 ^^^^^^^^^
@@ -33,6 +33,7 @@ Arguments
 - ``-o, --output <prefix>`` (optional): Prefix for output PLY files. If not specified, uses the input filename without extension
 - ``-b, --binary`` (optional): Export in binary format instead of ASCII (default: ASCII)
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export in the specified order. If not provided, all available fields will be exported. Spaces around commas are allowed
+- ``--ignore-missing-fields`` (optional): If defined, the lack of any of the ``--export-fields`` in the map will be considered a warning instead of an error, and that column will be padded with zeros.
 
 Examples
 ^^^^^^^^
