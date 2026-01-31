@@ -54,6 +54,12 @@ TCLAP::ValueArg<std::string> argExportFields(
     "the specified order.",
     false, "", "field1,field2,...", cmd);
 
+TCLAP::SwitchArg argIgnoreMissingFields(
+    "", "ignore-missing-fields",
+    "If defined, the lack of any of the --export-fields in the map will be considered a warning "
+    "instead of an error, and that column will be padded with zeros.",
+    cmd);
+
 bool saveToTxt(
     const mrpt::maps::CGenericPointsMap& pts, const std::string& fileName, bool printHeader,
     const std::vector<std::string>& selectedFields = {})
@@ -332,9 +338,12 @@ void run_mm2txt()
                         }
 #endif
                         std::cerr << std::endl;
-                        THROW_EXCEPTION_FMT(
-                            "Field '%s' specified in --export-fields not found in layer '%s'",
-                            field.c_str(), name.c_str());
+                        if (!argIgnoreMissingFields.isSet())
+                        {
+                            THROW_EXCEPTION_FMT(
+                                "Field '%s' specified in --export-fields not found in layer '%s'",
+                                field.c_str(), name.c_str());
+                        }
                     }
                 }
             }

@@ -25,7 +25,7 @@ Usage
 
 .. code-block:: bash
 
-   mm2txt <input.mm> [-l <layer_name>] [--export-fields <field1,field2,...>]
+   mm2txt <input.mm> [-l <layer_name>] [--export-fields <field1,field2,...>] [--ignore-missing-fields]
 
 Arguments
 ^^^^^^^^^
@@ -33,6 +33,7 @@ Arguments
 - ``input`` (required): Input metric map file (\*.mm)
 - ``-l, --layer <name>`` (optional): Layer to export. If not provided, all layers will be exported. This argument can appear multiple times to export specific layers
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export in the specified order. If not provided, all available fields will be exported. Spaces around commas are allowed
+- ``--ignore-missing-fields`` (optional): If defined, the lack of any of the ``--export-fields`` in the map will be considered a warning instead of an error, and that column will be padded with zeros.
 
 Examples
 ^^^^^^^^
