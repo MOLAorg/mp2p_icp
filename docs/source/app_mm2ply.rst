@@ -33,7 +33,7 @@ Arguments
 - ``-o, --output <prefix>`` (optional): Prefix for output PLY files. If not specified, uses the input filename without extension
 - ``-b, --binary`` (optional): Export in binary format instead of ASCII (default: ASCII)
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export in the specified order. If not provided, all available fields will be exported. Spaces around commas are allowed
-- ``--ignore-missing-fields`` (optional): If defined, the lack of any of the ``--export-fields`` in the map will be considered a warning instead of an error, and that column will be padded with zeros.
+- ``--ignore-missing-fields`` (optional): If defined, the lack of any of the ``--export-fields`` in the map will be considered a warning instead of an error.
 
 Examples
 ^^^^^^^^
@@ -102,7 +102,7 @@ When using the ``--export-fields`` option:
 - Fields must be specified as a comma-separated list
 - Spaces around commas are allowed (e.g., ``"x, y, z"`` or ``"x,y,z"``)
 - Fields will be exported in the exact order specified
-- All specified fields must exist in the point cloud, or an error will be raised
+- All specified fields must exist in the point cloud, or an error will be raised (unless ``--ignore-missing-fields`` is added)
 - The tool validates field availability and reports available fields if a requested field is not found
 - Color fields (``color_r``, ``color_g``, ``color_b``) are automatically mapped to PLY standard names (``red``, ``green``, ``blue``) in the output file, even when using field selection
 

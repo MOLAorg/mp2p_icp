@@ -49,7 +49,7 @@ TCLAP::ValueArg<std::string> argExportFields(
 TCLAP::SwitchArg argIgnoreMissingFields(
     "", "ignore-missing-fields",
     "If defined, the lack of any of the --export-fields in the map will be considered a warning "
-    "instead of an error, and that column will be padded with zeros.",
+    "instead of an error; missing fields are skipped.",
     cmd);
 
 // ----------------------------------------------------------------
@@ -425,6 +425,7 @@ int main(int argc, char** argv)
             {
                 continue;
             }
+            std::vector<std::string> validFields;
 
             // Validate selected fields exist in this point cloud
             if (!selectedFields.empty())
@@ -436,6 +437,7 @@ int main(int argc, char** argv)
                 const auto u8_names  = pts->getPointFieldNames_uint8();
 #endif
 
+                // Filter selectedFields to only include fields that exist
                 for (const auto& field : selectedFields)
                 {
                     bool found = (field == "x" || field == "y" || field == "z");
@@ -509,7 +511,7 @@ int main(int argc, char** argv)
                             std::cerr << ", " << fn;
                         }
 #endif
-                        std::cerr << std::endl;
+                        std::cerr << " - skipping this field." << std::endl;
                         if (!argIgnoreMissingFields.isSet())
                         {
                             throw std::runtime_error(
@@ -517,13 +519,22 @@ int main(int argc, char** argv)
                                 "' specified in --export-fields not found in layer '" + name + "'");
                         }
                     }
+                    else
+                    {
+                        validFields.push_back(field);
+                    }
+                }
+                if (validFields.empty())
+                {
+                    std::cerr << "Warning: None of the requested fields exist in layer '" << name
+                              << "'. Skipping export for this layer." << std::endl;
+                    continue;
                 }
             }
 
             std::string out = prefix + "_" + name + ".ply";
             std::cout << "Exporting '" << name << "' to " << out << "..." << std::endl;
-            saveToPly(
-                *pts, out, arg_binary.getValue(), selectedFields, argIgnoreMissingFields.isSet());
+            saveToPly(*pts, out, arg_binary.getValue(), validFields);
         }
     }
     catch (const std::exception& e)
