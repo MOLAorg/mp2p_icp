@@ -57,7 +57,7 @@ TCLAP::ValueArg<std::string> argExportFields(
 TCLAP::SwitchArg argIgnoreMissingFields(
     "", "ignore-missing-fields",
     "If defined, the lack of any of the --export-fields in the map will be considered a warning "
-    "instead of an error, and that column will be padded with zeros.",
+    "instead of an error; missing fields are skipped.",
     cmd);
 
 bool saveToTxt(
@@ -297,6 +297,7 @@ void run_mm2txt()
         if (auto* genxyz = dynamic_cast<const mrpt::maps::CGenericPointsMap*>(pts); genxyz)
         {
             // Validate selected fields exist in this point cloud
+            std::vector<std::string> validFields;
             if (!selectedFields.empty())
             {
                 const auto& floatFields  = genxyz->float_fields();
@@ -337,7 +338,7 @@ void run_mm2txt()
                             std::cerr << ", " << fname;
                         }
 #endif
-                        std::cerr << std::endl;
+                        std::cerr << " - skipping this field." << std::endl;
                         if (!argIgnoreMissingFields.isSet())
                         {
                             THROW_EXCEPTION_FMT(
@@ -345,11 +346,25 @@ void run_mm2txt()
                                 field.c_str(), name.c_str());
                         }
                     }
+                    else
+                    {
+                        validFields.push_back(field);
+                    }
                 }
+                if (validFields.empty())
+                {
+                    std::cerr << "Warning: None of the requested fields exist in layer '" << name
+                              << "'. Skipping export for this layer." << std::endl;
+                    continue;
+                }
+            }
+            else
+            {
+                validFields = selectedFields;
             }
 
             bool printHeader = true;
-            saveToTxt(*genxyz, filName, printHeader, selectedFields);
+            saveToTxt(*genxyz, filName, printHeader, validFields);
         }
 #if MRPT_VERSION < 0x030000  // <3.0.0
         else

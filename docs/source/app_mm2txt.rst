@@ -33,7 +33,7 @@ Arguments
 - ``input`` (required): Input metric map file (\*.mm)
 - ``-l, --layer <name>`` (optional): Layer to export. If not provided, all layers will be exported. This argument can appear multiple times to export specific layers
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export in the specified order. If not provided, all available fields will be exported. Spaces around commas are allowed
-- ``--ignore-missing-fields`` (optional): If defined, the lack of any of the ``--export-fields`` in the map will be considered a warning instead of an error, and that column will be padded with zeros.
+- ``--ignore-missing-fields`` (optional): If defined, the lack of any of the ``--export-fields`` in the map will be considered a warning instead of an error.
 
 Examples
 ^^^^^^^^
@@ -122,7 +122,7 @@ When using the ``--export-fields`` option:
 - Fields must be specified as a comma-separated list
 - Spaces around commas are allowed (e.g., ``"x, y, z"`` or ``"x,y,z"``)
 - Fields will be exported in the exact order specified
-- All specified fields must exist in the point cloud, or an error will be raised
+- All specified fields must exist in the point cloud, or an error will be raised (unless ``--ignore-missing-fields`` is added)
 - The tool validates field availability and reports available fields if a requested field is not found
 - This option is only supported for **CGenericPointsMap** point clouds; for legacy types (CPointsMapXYZI, CPointsMapXYZIRT), all fields are exported with a warning
 
