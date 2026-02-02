@@ -48,7 +48,10 @@ int main(int argc, char** argv)
     try
     {
         // Parse arguments:
-        if (!cmd.parse(argc, argv)) return 1;  // should exit.
+        if (!cmd.parse(argc, argv))
+        {
+            return 1;  // should exit.
+        }
 
         const auto& f = argInput.getValue();
 
@@ -62,11 +65,19 @@ int main(int argc, char** argv)
         mp2p_icp::metric_map_t mm;
         mm.layers["raw"] = std::move(obs->pointcloud);
 
-        if (argID.isSet()) mm.id = argID.getValue();
-        if (argLabel.isSet()) mm.label = argLabel.getValue();
+        if (argID.isSet())
+        {
+            mm.id = argID.getValue();
+        }
+        if (argLabel.isSet())
+        {
+            mm.label = argLabel.getValue();
+        }
 
         if (!mm.save_to_file(argOutput.getValue()))
+        {
             THROW_EXCEPTION_FMT("Error writing to target file '%s'", argOutput.getValue().c_str());
+        }
     }
     catch (const std::exception& e)
     {

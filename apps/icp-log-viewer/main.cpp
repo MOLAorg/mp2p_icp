@@ -470,7 +470,10 @@ void main_show_gui()
         {
             return;
         }
-        m.save_to_file(outFile);
+        if (bool ok = m.save_to_file(outFile); !ok)
+        {
+            std::cerr << "Error saving file: " << outFile << "\n";
+        }
     };
 
     // tab 2: variables

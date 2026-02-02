@@ -40,11 +40,14 @@ void run_mm_info()
     ASSERT_FILE_EXISTS_(argMapFile.getValue());
 
     std::cout << "[mm-info] Reading input map from: '" << filInput << "'..." << std::endl;
+    const double mm_t0 = mrpt::Clock::nowDouble();
 
     mp2p_icp::metric_map_t mm;
     mm.load_from_file(filInput);
 
-    std::cout << "[mm-info] Done read map. Contents:\n" << mm.contents_summary() << std::endl;
+    const double mm_t1 = mrpt::Clock::nowDouble();
+    std::cout << "[mm-info] Done read map in " << (mm_t1 - mm_t0) << " sec. Contents:\n"
+              << mm.contents_summary() << std::endl;
 }
 
 int main(int argc, char** argv)
