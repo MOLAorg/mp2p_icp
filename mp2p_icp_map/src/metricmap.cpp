@@ -644,11 +644,18 @@ bool metric_map_t::save_to_file(
     {
         return false;
     }
+    try
+    {
+        auto arch = mrpt::serialization::archiveFrom(f);
+        arch << *this;
 
-    auto arch = mrpt::serialization::archiveFrom(f);
-    arch << *this;
-
-    return true;
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[metric_map_t::save_to_file] Error: " << e.what();
+        return false;
+    }
 }
 
 bool metric_map_t::load_from_file(
