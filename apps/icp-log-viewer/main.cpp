@@ -28,6 +28,7 @@
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/config.h>
 #include <mrpt/config/CConfigFile.h>
+#include <mrpt/core/Clock.h>
 #include <mrpt/core/round.h>
 #include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>

@@ -23,6 +23,7 @@
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/Clock.h>
 #include <mrpt/io/lazy_load_path.h>
 #include <mrpt/system/COutputLogger.h>
 #include <mrpt/system/filesystem.h>
