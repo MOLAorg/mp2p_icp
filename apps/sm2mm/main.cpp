@@ -23,9 +23,15 @@
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/Clock.h>
 #include <mrpt/io/lazy_load_path.h>
 #include <mrpt/system/COutputLogger.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/version.h>
+
+#if MRPT_VERSION >= 0x020f07
+#include <mrpt/io/compression_options.h>
+#endif
 
 // CLI flags:
 struct CLI
@@ -65,6 +71,19 @@ struct CLI
     TCLAP::ValueArg<std::string> arg_verbosity_level{
         "v",    "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)", false, "",
         "INFO", cmd};
+
+#if MRPT_VERSION >= 0x020f07
+    TCLAP::ValueArg<std::string> arg_compression_method{
+        "",
+        "compression-method",
+        "Compression method to use in the output metric map .mm file. "
+        "Options: CompressionType::None|CompressionType::Gzip|CompressionType::Zstd. (Default: "
+        "CompressionType::Zstd)",
+        false,
+        "CompressionType::Zstd",
+        "METHOD",
+        cmd};
+#endif
 
     TCLAP::ValueArg<std::string> arg_lazy_load_base_dir{
         "",
@@ -117,10 +136,14 @@ void run_sm_to_mm(CLI& cli)
     mrpt::maps::CSimpleMap sm;
 
     std::cout << "[sm2mm] Reading simplemap from: '" << filSM << "'..." << std::endl;
+    const double sm_t0 = mrpt::Clock::nowDouble();
 
     sm.loadFromFile(filSM);
 
-    std::cout << "[sm2mm] Done read simplemap with " << sm.size() << " keyframes." << std::endl;
+    const double sm_t1 = mrpt::Clock::nowDouble();
+    std::cout << "[sm2mm] Done read simplemap with " << sm.size() << " keyframes in "
+              << (sm_t1 - sm_t0) << " sec.\n";
+
     ASSERT_(!sm.empty());
 
     // Load pipeline from YAML file:
@@ -194,7 +217,20 @@ void run_sm_to_mm(CLI& cli)
     const auto filOut = cli.argOutput.getValue();
     std::cout << "[sm2mm] Writing metric map to: '" << filOut << "'..." << std::endl;
 
+#if MRPT_VERSION >= 0x020f07
+    mrpt::io::CompressionOptions compOpts{mrpt::io::CompressionType::Zstd, 3 /*default level*/};
+    if (cli.arg_compression_method.isSet())
+    {
+        using ct      = mrpt::typemeta::TEnumType<mrpt::io::CompressionType>;
+        compOpts.type = ct::name2value(cli.arg_compression_method.getValue());
+    }
+#endif
+
+#if MRPT_VERSION >= 0x020f07
+    if (!mm.save_to_file(filOut, compOpts))
+#else
     if (!mm.save_to_file(filOut))
+#endif
     {
         THROW_EXCEPTION_FMT("Error writing to target file '%s'", filOut.c_str());
     }
@@ -216,7 +252,7 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
-        std::cerr << e.what();
+        std::cerr << e.what() << std::endl;
         return 1;
     }
     return 0;

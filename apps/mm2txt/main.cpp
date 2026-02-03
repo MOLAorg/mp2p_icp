@@ -22,6 +22,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/Clock.h>
 #include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
@@ -207,11 +208,14 @@ void run_mm2txt()
     ASSERT_FILE_EXISTS_(argMapFile.getValue());
 
     std::cout << "[mm-info] Reading input map from: '" << filInput << "'..." << std::endl;
+    const double mm_t0 = mrpt::Clock::nowDouble();
 
     mp2p_icp::metric_map_t mm;
     mm.load_from_file(filInput);
 
-    std::cout << "[mm-info] Done read map. Contents:\n" << mm.contents_summary() << std::endl;
+    const double mm_t1 = mrpt::Clock::nowDouble();
+    std::cout << "[mm-info] Done read map in " << (mm_t1 - mm_t0) << " sec. Contents:\n"
+              << mm.contents_summary() << "\n";
 
     std::vector<std::string> layers;
     if (argLayers.isSet())
@@ -413,7 +417,7 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
-        std::cerr << e.what();
+        std::cerr << e.what() << std::endl;
         return 1;
     }
     return 0;

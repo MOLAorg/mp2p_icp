@@ -13,11 +13,18 @@
 */
 
 #include <mp2p_icp/LogRecord.h>
-#include <mrpt/io/CFileGZInputStream.h>
-#include <mrpt/io/CFileGZOutputStream.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/serialization/stl_serialization.h>
+#include <mrpt/version.h>
+
+#if MRPT_VERSION >= 0x020f07
+#include <mrpt/io/CCompressedInputStream.h>
+#include <mrpt/io/CCompressedOutputStream.h>
+#else
+#include <mrpt/io/CFileGZInputStream.h>
+#include <mrpt/io/CFileGZOutputStream.h>
+#endif
 
 IMPLEMENTS_MRPT_OBJECT(LogRecord, mrpt::serialization::CSerializable, mp2p_icp)
 
@@ -74,9 +81,13 @@ void LogRecord::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version
             in >> initialGuessLocalWrtGlobal >> icpParameters >> icpResult >> iterationsDetails;
 
             if (version >= 1)
+            {
                 in >> dynamicVariables;
+            }
             else
+            {
                 dynamicVariables.clear();
+            }
         }
         break;
         default:
@@ -84,12 +95,25 @@ void LogRecord::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version
     };
 }
 
-bool LogRecord::save_to_file(const std::string& fileName) const
+bool LogRecord::save_to_file(
+#if MRPT_VERSION >= 0x020f07
+    const std::string& fileName, const mrpt::io::CompressionOptions& co
+#else
+    const std::string& fileName
+#endif
+) const
 {
     try
     {
+#if MRPT_VERSION >= 0x020f07
+        auto f = mrpt::io::CCompressedOutputStream(fileName, mrpt::io::OpenMode::TRUNCATE, co);
+#else
         auto f = mrpt::io::CFileGZOutputStream(fileName);
-        if (!f.is_open()) return false;
+#endif
+        if (!f.is_open())
+        {
+            return false;
+        }
 
         auto arch = mrpt::serialization::archiveFrom(f);
         arch << *this;
@@ -107,8 +131,15 @@ bool LogRecord::load_from_file(const std::string& fileName)
 {
     try
     {
+#if MRPT_VERSION >= 0x020f07
+        auto f = mrpt::io::CCompressedInputStream(fileName);
+#else
         auto f = mrpt::io::CFileGZInputStream(fileName);
-        if (!f.is_open()) return false;
+#endif
+        if (!f.is_open())
+        {
+            return false;
+        }
 
         auto arch = mrpt::serialization::archiveFrom(f);
         arch >> *this;
@@ -117,7 +148,7 @@ bool LogRecord::load_from_file(const std::string& fileName)
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[LogRecord::save_to_file] Error: " << e.what();
+        std::cerr << "[LogRecord::load_from_file] Error: " << e.what();
         return false;
     }
 }

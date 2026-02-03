@@ -27,6 +27,7 @@
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/Clock.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>

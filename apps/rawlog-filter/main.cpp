@@ -23,7 +23,7 @@
 #include <mp2p_icp_filters/Generator.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/containers/yaml.h>
-#include <mrpt/io/CFileGZOutputStream.h>
+#include <mrpt/core/Clock.h>
 #include <mrpt/io/lazy_load_path.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CRawlog.h>
@@ -31,6 +31,13 @@
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/progress.h>
+#include <mrpt/version.h>
+
+#if MRPT_VERSION >= 0x020f07
+#include <mrpt/io/CCompressedOutputStream.h>
+#else
+#include <mrpt/io/CFileGZOutputStream.h>
+#endif
 
 // CLI flags:
 struct Cli
@@ -174,8 +181,14 @@ void run_mm_filter(Cli& cli)
     const auto filOut = cli.argOutput.getValue();
     std::cout << "[rawlog-filter] Creating output rawlog file: '" << filOut << "'..." << std::endl;
 
+#if MRPT_VERSION >= 0x020f07
+    mrpt::io::CCompressedOutputStream fo(
+        filOut, mrpt::io::OpenMode::TRUNCATE, {mrpt::io::CompressionType::Zstd});
+#else
     mrpt::io::CFileGZOutputStream fo(filOut);
-    auto                          outArch = mrpt::serialization::archiveFrom(fo);
+#endif
+
+    auto outArch = mrpt::serialization::archiveFrom(fo);
 
     if (cli.arg_lazy_load_base_dir.isSet())
     {
@@ -260,7 +273,7 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
-        std::cerr << e.what();
+        std::cerr << e.what() << std::endl;
         return 1;
     }
     return 0;

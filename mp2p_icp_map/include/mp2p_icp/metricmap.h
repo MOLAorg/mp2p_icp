@@ -33,6 +33,10 @@
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <mrpt/serialization/CSerializable.h>
 #include <mrpt/topography/data_types.h>
+#include <mrpt/version.h>
+#if MRPT_VERSION >= 0x020f07
+#include <mrpt/io/compression_options.h>
+#endif
 
 #include <map>
 #include <memory>
@@ -175,7 +179,13 @@ class metric_map_t : public mrpt::serialization::CSerializable,
      *  using on-the-fly GZIP compression.
      * \return true on success.
      */
-    bool save_to_file(const std::string& fileName) const;
+#if MRPT_VERSION >= 0x020f07
+    [[nodiscard]] bool save_to_file(
+        const std::string&                  fileName,
+        const mrpt::io::CompressionOptions& co = {mrpt::io::CompressionType::Zstd}) const;
+#else
+    [[nodiscard]] bool save_to_file(const std::string& fileName) const;
+#endif
 
     /** Loads the metric_map_t object from a file. See \save_to_file()
      * \return true on success.

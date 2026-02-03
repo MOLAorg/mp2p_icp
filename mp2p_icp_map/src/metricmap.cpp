@@ -21,8 +21,6 @@
 #include <mp2p_icp/MetricMapMergeCapable.h>
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
-#include <mrpt/io/CFileGZInputStream.h>
-#include <mrpt/io/CFileGZOutputStream.h>
 #include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/maps/CVoxelMapRGB.h>
 #include <mrpt/obs/customizable_obs_viz.h>
@@ -36,6 +34,14 @@
 #include <mrpt/serialization/stl_serialization.h>
 #include <mrpt/system/string_utils.h>  // unitsFormat()
 #include <mrpt/version.h>
+
+#if MRPT_VERSION >= 0x020f07
+#include <mrpt/io/CCompressedInputStream.h>
+#include <mrpt/io/CCompressedOutputStream.h>
+#else
+#include <mrpt/io/CFileGZInputStream.h>
+#include <mrpt/io/CFileGZOutputStream.h>
+#endif
 
 #include <algorithm>
 #include <iterator>
@@ -621,18 +627,35 @@ std::string metric_map_t::contents_summary() const
     return ret;
 }
 
-bool metric_map_t::save_to_file(const std::string& fileName) const
+bool metric_map_t::save_to_file(
+#if MRPT_VERSION >= 0x020f07
+    const std::string& fileName, const mrpt::io::CompressionOptions& co
+#else
+    const std::string& fileName
+#endif
+) const
 {
+#if MRPT_VERSION >= 0x020f07
+    auto f = mrpt::io::CCompressedOutputStream(fileName, mrpt::io::OpenMode::TRUNCATE, co);
+#else
     auto f = mrpt::io::CFileGZOutputStream(fileName);
+#endif
     if (!f.is_open())
     {
         return false;
     }
+    try
+    {
+        auto arch = mrpt::serialization::archiveFrom(f);
+        arch << *this;
 
-    auto arch = mrpt::serialization::archiveFrom(f);
-    arch << *this;
-
-    return true;
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[metric_map_t::save_to_file] Error: " << e.what();
+        return false;
+    }
 }
 
 bool metric_map_t::load_from_file(
@@ -640,7 +663,11 @@ bool metric_map_t::load_from_file(
 {
     using namespace std::string_literals;
 
+#if MRPT_VERSION >= 0x020f07
+    auto f = mrpt::io::CCompressedInputStream(fileName);
+#else
     auto f = mrpt::io::CFileGZInputStream(fileName);
+#endif
     if (!f.is_open())
     {
         if (outErrorMsg)

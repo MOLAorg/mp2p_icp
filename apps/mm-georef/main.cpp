@@ -148,7 +148,11 @@ void run_mm_inject(Cli& cli)
 
     std::cout << "[mm-georef] Saving updated map to: '" << filMap << "'..." << std::endl;
 
-    mm.save_to_file(filMap);
+    bool ok = mm.save_to_file(filMap);
+    if (!ok)
+    {
+        THROW_EXCEPTION_FMT("Error saving updated map to file: '%s'", filMap.c_str());
+    }
 }
 
 void run_mm_georef(Cli& cli)
@@ -196,7 +200,7 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
-        std::cerr << e.what();
+        std::cerr << e.what() << std::endl;
         return 1;
     }
     return 0;

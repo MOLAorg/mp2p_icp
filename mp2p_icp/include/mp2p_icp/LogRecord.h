@@ -24,6 +24,9 @@
 #include <mp2p_icp/Results.h>
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/serialization/CSerializable.h>
+#if MRPT_VERSION >= 0x020f07
+#include <mrpt/io/compression_options.h>
+#endif
 
 #include <optional>
 
@@ -40,8 +43,7 @@ class LogRecord : public mrpt::serialization::CSerializable
     DEFINE_SERIALIZABLE(LogRecord, mp2p_icp)
 
    public:
-    LogRecord()  = default;
-    ~LogRecord() = default;
+    LogRecord() = default;
 
     /** @name Data fields
      * @{ */
@@ -79,7 +81,13 @@ class LogRecord : public mrpt::serialization::CSerializable
      *  using on-the-fly GZIP compression.
      * \return true on success.
      */
-    bool save_to_file(const std::string& fileName) const;
+#if MRPT_VERSION >= 0x020f07
+    [[nodiscard]] bool save_to_file(
+        const std::string&                  fileName,
+        const mrpt::io::CompressionOptions& co = {mrpt::io::CompressionType::Zstd}) const;
+#else
+    [[nodiscard]] bool save_to_file(const std::string& fileName) const;
+#endif
 
     /** Loads the record object from a file. See \save_to_file()
      * \return true on success.

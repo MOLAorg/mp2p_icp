@@ -20,8 +20,14 @@
  */
 
 #include <mp2p_icp/load_xyz_file.h>
-#include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/version.h>
+
+#if MRPT_VERSION >= 0x020f07
+#include <mrpt/io/CCompressedInputStream.h>
+#else
+#include <mrpt/io/CFileGZInputStream.h>
+#endif
 
 #include <fstream>
 
@@ -34,8 +40,13 @@ mrpt::maps::CSimplePointsMap::Ptr mp2p_icp::load_xyz_file(const std::string& fil
 
     if (mrpt::system::extractFileExtension(fil) == "gz")
     {
+#if MRPT_VERSION >= 0x020f07
+        mrpt::io::CCompressedInputStream f(fil);
+#else
         mrpt::io::CFileGZInputStream f(fil);
-        std::string                  buf;
+#endif
+
+        std::string buf;
         while (!f.checkEOF())
         {
             const size_t N = 10000;
