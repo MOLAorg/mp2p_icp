@@ -148,7 +148,7 @@ bool LogRecord::load_from_file(const std::string& fileName)
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[LogRecord::save_to_file] Error: " << e.what();
+        std::cerr << "[LogRecord::load_from_file] Error: " << e.what();
         return false;
     }
 }
