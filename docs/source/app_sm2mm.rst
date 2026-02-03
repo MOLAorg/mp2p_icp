@@ -33,9 +33,9 @@ CLI Reference
 
     sm2mm  [--decimate-max <N>] [--decimate-nth <N>] [--to-index <0>]
             [--from-index <0>] [--profiler] [--no-progress-bar]
-            [--externals-dir <<ExternalsDirectory>>] [-v <INFO>] [-p
-            <pipeline.yaml>] [-l <foobar.so>] -o <out.mm> -i <map.simplemap>
-            [--] [--version] [-h]
+            [--externals-dir <<ExternalsDirectory>>] [--compression-method
+            <METHOD>] [-v <INFO>] [-p <pipeline.yaml>] [-l <foobar.so>] -o
+            <out.mm> -i <map.simplemap> [--] [--version] [-h]
 
 
     Where:
@@ -64,6 +64,11 @@ CLI Reference
     --externals-dir <<ExternalsDirectory>>
         Lazy-load base directory for datasets with externally-stored
         observations
+
+    --compression-method <METHOD>
+        Compression method to use in the output metric map .mm file. Options:
+        CompressionType::None|CompressionType::Gzip|CompressionType::Zstd.
+        (Default: CompressionType::Zstd)
 
     -v <INFO>,  --verbosity <INFO>
         Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)
