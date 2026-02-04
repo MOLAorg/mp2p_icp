@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.5.0 (2026-02-04)
+------------------
 * Merge pull request `#39 <https://github.com/MOLAorg/mp2p_icp/issues/39>`_ from MOLAorg/feat/permit-missing-externals
   sm2mm: Add optional flag --permit-missing-externals
 * sm2mm: Add optional flag --permit-missing-externals
