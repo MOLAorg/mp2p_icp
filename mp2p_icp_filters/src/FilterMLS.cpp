@@ -69,8 +69,6 @@ void FilterMLS::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
  */
 struct MLSResult
 {
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
     bool            valid = false;
     Eigen::Vector3d mean;
     Eigen::Vector3d plane_normal;
@@ -78,6 +76,9 @@ struct MLSResult
     Eigen::Vector3d v_axis;
     Eigen::VectorXd c_vec;  // Polynomial coefficients
     int             order = 0;
+
+    mutable std::vector<double> u_pow;  // Reusable workspace
+    mutable std::vector<double> v_pow;  // Reusable workspace
 
     /**
      * @brief Computes the local surface fit for a query point and its neighbors.
@@ -166,13 +167,23 @@ struct MLSResult
                 const double          v       = diff.dot(v_axis);
                 const double          w_coord = diff.dot(plane_normal);
 
+                // Cache powers once per point
+                u_pow.resize(order + 1);
+                v_pow.resize(order + 1);
+                u_pow[0] = v_pow[0] = 1.0;
+                for (int p = 1; p <= order; ++p)
+                {
+                    u_pow[p] = u_pow[p - 1] * u;
+                    v_pow[p] = v_pow[p - 1] * v;
+                }
+
                 // Polynomial terms: 1, v, v^2, ..., u, uv, u^2, ...
                 int j = 0;
                 for (int ui = 0; ui <= order; ++ui)
                 {
                     for (int vi = 0; vi <= order - ui; ++vi)
                     {
-                        A(ii, j++) = std::pow(u, ui) * std::pow(v, vi);
+                        A(ii, j++) = u_pow[ui] * v_pow[vi];
                     }
                 }
                 b(ii) = w_coord;
@@ -220,19 +231,29 @@ struct MLSResult
         // 2. Evaluate the polynomial z(u,v) and its partial derivatives
         if (order > 1)
         {
+            // Cache powers once
+            u_pow.resize(order + 1);
+            v_pow.resize(order + 1);
+            u_pow[0] = v_pow[0] = 1.0;
+            for (int p = 1; p <= order; ++p)
+            {
+                u_pow[p] = u_pow[p - 1] * u;
+                v_pow[p] = v_pow[p - 1] * v;
+            }
+
             int j = 0;
             for (int ui = 0; ui <= order; ++ui)
             {
                 for (int vi = 0; vi <= order - ui; ++vi)
                 {
-                    z += c_vec[j] * std::pow(u, ui) * std::pow(v, vi);
+                    z += c_vec[j] * u_pow[ui] * v_pow[vi];
                     if (ui > 0)
                     {
-                        dz_du += c_vec[j] * ui * std::pow(u, ui - 1) * std::pow(v, vi);
+                        dz_du += c_vec[j] * ui * u_pow[ui - 1] * v_pow[vi];
                     }
                     if (vi > 0)
                     {
-                        dz_dv += c_vec[j] * std::pow(u, ui) * vi * std::pow(v, vi - 1);
+                        dz_dv += c_vec[j] * u_pow[ui] * vi * v_pow[vi - 1];
                     }
                     j++;
                 }
