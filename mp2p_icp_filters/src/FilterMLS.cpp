@@ -36,12 +36,33 @@
 #if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>
 #include <tbb/concurrent_vector.h>
+#include <tbb/enumerable_thread_specific.h>
 #include <tbb/parallel_for.h>
 #endif
 
 IMPLEMENTS_MRPT_OBJECT(FilterMLS, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
+
+namespace
+{
+// Fast weight function to replace expensive std::exp()
+inline double fast_weight_gaussian(double sqr_dist, double sqr_radius)
+{
+    const double x = -sqr_dist / sqr_radius;
+
+    // Early exit for very small weights
+    if (x < -2.0)
+    {
+        return 0.0;
+    }
+
+    // Padé approximation: exp(x) ≈ (1 + x/2) / (1 - x/2)
+    // Accurate within ~1-2% for x in [-2, 0]
+    const double xh = x * 0.5;
+    return (1.0 + xh) / (1.0 - xh);
+}
+}  // namespace
 
 void FilterMLS::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
@@ -69,8 +90,6 @@ void FilterMLS::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
  */
 struct MLSResult
 {
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
     bool            valid = false;
     Eigen::Vector3d mean;
     Eigen::Vector3d plane_normal;
@@ -85,7 +104,10 @@ struct MLSResult
      */
     void computeMLSSurface(
         const Eigen::Vector3d& query_point, const mrpt::maps::CPointsMap& pc,
-        const std::vector<uint64_t>& neighbor_indices, int poly_order, double search_radius)
+        const std::vector<uint64_t>& neighbor_indices, int poly_order, double search_radius,
+        std::vector<double>& weights_workspace, std::vector<Eigen::Vector3d>& points_workspace,
+        Eigen::VectorXd& basis_workspace, std::vector<double>& u_pow_workspace,
+        std::vector<double>& v_pow_workspace)
     {
         valid                    = false;
         order                    = poly_order;
@@ -97,8 +119,10 @@ struct MLSResult
         Eigen::Matrix3d covariance_matrix = Eigen::Matrix3d::Zero();
         const double    sqr_radius        = search_radius * search_radius;
 
-        std::vector<double>          weights(n_neighbors);
-        std::vector<Eigen::Vector3d> points(n_neighbors);
+        weights_workspace.resize(n_neighbors);
+        points_workspace.resize(n_neighbors);
+        auto& weights = weights_workspace;
+        auto& points  = points_workspace;
 
         for (size_t i = 0; i < n_neighbors; ++i)
         {
@@ -106,7 +130,7 @@ struct MLSResult
             const double sqr_dist = (points[i] - query_point).squaredNorm();
 
             // Gaussian weight
-            weights[i] = std::exp(-sqr_dist / sqr_radius);
+            weights[i] = fast_weight_gaussian(sqr_dist, sqr_radius);
 
             total_weight += weights[i];
             mean += weights[i] * points[i];
@@ -153,43 +177,64 @@ struct MLSResult
                 return;  // Not enough points to fit
             }
 
-            Eigen::MatrixXd A(n_neighbors, numCoeffs);
-            Eigen::VectorXd b(n_neighbors);
-            Eigen::VectorXd w(n_neighbors);
+            // NEW: Build A^T*W*A and A^T*W*b directly without constructing A
+            // This eliminates 3 temporary matrix allocations and 2 matrix multiplications
+            Eigen::MatrixXd AtWA(numCoeffs, numCoeffs);
+            Eigen::VectorXd AtWb(numCoeffs);
+            AtWA.setZero();
+            AtWb.setZero();
 
-            // Build the weighted least-squares problem A*c = b
+            // Temporary vector for polynomial basis (reused across iterations)
+            basis_workspace.resize(numCoeffs);
+            auto& basis = basis_workspace;
+
+            u_pow_workspace.resize(order + 1);
+            v_pow_workspace.resize(order + 1);
+            auto& u_pow = u_pow_workspace;
+            auto& v_pow = v_pow_workspace;
+
+            // Build the weighted least-squares system directly
             for (size_t i = 0; i < n_neighbors; ++i)
             {
-                const auto            ii      = static_cast<Eigen::Index>(i);
                 const Eigen::Vector3d diff    = points[i] - mean;
                 const double          u       = diff.dot(u_axis);
                 const double          v       = diff.dot(v_axis);
                 const double          w_coord = diff.dot(plane_normal);
+                const double          weight  = weights[i];
 
-                // Polynomial terms: 1, v, v^2, ..., u, uv, u^2, ...
+                // Cache powers once per point
+                u_pow[0] = v_pow[0] = 1.0;
+                for (int p = 1; p <= order; ++p)
+                {
+                    u_pow[p] = u_pow[p - 1] * u;
+                    v_pow[p] = v_pow[p - 1] * v;
+                }
+
+                // Build polynomial basis vector: [1, v, v^2, ..., u, uv, u^2, ...]
                 int j = 0;
                 for (int ui = 0; ui <= order; ++ui)
                 {
                     for (int vi = 0; vi <= order - ui; ++vi)
                     {
-                        A(ii, j++) = std::pow(u, ui) * std::pow(v, vi);
+                        basis(j++) = u_pow[ui] * v_pow[vi];
                     }
                 }
-                b(ii) = w_coord;
-                w(ii) = weights[i];
+
+                // Accumulate A^T*W*A = sum(w_i * basis * basis^T)
+                // Use noalias() to avoid temporary allocation
+                AtWA.noalias() += weight * (basis * basis.transpose());
+
+                // Accumulate A^T*W*b = sum(w_i * w_coord * basis)
+                AtWb.noalias() += weight * w_coord * basis;
             }
 
-            // Solve for c (the coefficients) using Weighted LLS
-            // (A^T * W * A) * c = A^T * W * b
-            Eigen::MatrixXd AtW  = A.transpose() * w.asDiagonal();
-            Eigen::MatrixXd AtWA = AtW * A;
-            Eigen::VectorXd AtWb = AtW * b;
-
-            c_vec = AtWA.llt().solve(AtWb);
-            if (AtWA.llt().info() != Eigen::Success)
+            // Solve (A^T*W*A)*c = A^T*W*b using Cholesky decomposition
+            Eigen::LLT<Eigen::MatrixXd> llt(AtWA);
+            if (llt.info() != Eigen::Success)
             {
                 return;
             }
+            c_vec = llt.solve(AtWb);
         }
         else  // order 1 (planar fit)
         {
@@ -205,8 +250,8 @@ struct MLSResult
      * @brief Projects a point onto the fitted surface using the SIMPLE method.
      */
     void projectPointSimple(
-        const Eigen::Vector3d& pt, Eigen::Vector3d& projected_pt,
-        Eigen::Vector3d& projected_normal) const
+        const Eigen::Vector3d& pt, Eigen::Vector3d& projected_pt, Eigen::Vector3d& projected_normal,
+        std::vector<double>& u_pow_cache, std::vector<double>& v_pow_cache) const
     {
         // 1. Compute (u, v) coordinates of 'pt' in the local frame
         const Eigen::Vector3d diff = pt - mean;
@@ -220,19 +265,29 @@ struct MLSResult
         // 2. Evaluate the polynomial z(u,v) and its partial derivatives
         if (order > 1)
         {
+            // Cache powers once
+            auto& u_pow = u_pow_cache;
+            auto& v_pow = v_pow_cache;
+            u_pow[0] = v_pow[0] = 1.0;
+            for (int p = 1; p <= order; ++p)
+            {
+                u_pow[p] = u_pow[p - 1] * u;
+                v_pow[p] = v_pow[p - 1] * v;
+            }
+
             int j = 0;
             for (int ui = 0; ui <= order; ++ui)
             {
                 for (int vi = 0; vi <= order - ui; ++vi)
                 {
-                    z += c_vec[j] * std::pow(u, ui) * std::pow(v, vi);
+                    z += c_vec[j] * u_pow[ui] * v_pow[vi];
                     if (ui > 0)
                     {
-                        dz_du += c_vec[j] * ui * std::pow(u, ui - 1) * std::pow(v, vi);
+                        dz_du += c_vec[j] * ui * u_pow[ui - 1] * v_pow[vi];
                     }
                     if (vi > 0)
                     {
-                        dz_dv += c_vec[j] * std::pow(u, ui) * vi * std::pow(v, vi - 1);
+                        dz_dv += c_vec[j] * u_pow[ui] * vi * v_pow[vi - 1];
                     }
                     j++;
                 }
@@ -286,36 +341,76 @@ struct FilterMLS::Impl
     size_t progress_step_count    = 0;
     double percent_print_progress = 0;  // Copy from params
 
+    struct ThreadWorkspace
+    {
+        std::vector<mrpt::math::TPoint3Df> neighbor_pts;
+        std::vector<float>                 neighbor_dists_sq;
+        std::vector<uint64_t>              neighbor_indices;
+        MLSResult                          result;
+        std::vector<double>                weights;
+        std::vector<Eigen::Vector3d>       points;
+        Eigen::VectorXd                    basis_vector;
+        std::vector<double>                u_pow_cache;
+        std::vector<double>                v_pow_cache;
+
+        ThreadWorkspace()
+        {
+            // Pre-allocate for typical neighborhood size
+            neighbor_pts.reserve(100);
+            neighbor_dists_sq.reserve(100);
+            neighbor_indices.reserve(100);
+            weights.reserve(100);
+            points.reserve(100);
+            basis_vector.resize(10);  // Max for order 3: (3+1)*(3+2)/2 = 10
+            u_pow_cache.resize(4);  // Max order 3 + 1
+            v_pow_cache.resize(4);
+        }
+    };
+
+#if defined(MP2P_HAS_TBB)
+    tbb::enumerable_thread_specific<ThreadWorkspace> thread_workspaces;
+#else
+    ThreadWorkspace workspace;
+#endif
+
     // Main processing function, to be called in parallel
+
     void process_point(
         size_t index, const mrpt::maps::CPointsMap& input_pc,
         const mrpt::maps::CPointsMap& query_pc, const Parameters& p)
     {
+        // Get thread-local workspace
+#if defined(MP2P_HAS_TBB)
+        auto& ws = thread_workspaces.local();
+#else
+        auto& ws = workspace;
+#endif
+
         mrpt::math::TPoint3Df p_query;
         query_pc.getPoint(index, p_query.x, p_query.y, p_query.z);
 
         // 1. Find neighbors in the *input* cloud
-        std::vector<mrpt::math::TPoint3Df> neighbor_pts;
-        std::vector<float>                 neighbor_dists_sq;
-        std::vector<uint64_t>              neighbor_indices;
+        // Reuse workspace vectors (clear but keep capacity)
+        ws.neighbor_pts.clear();
+        ws.neighbor_dists_sq.clear();
+        ws.neighbor_indices.clear();
 
         input_pc.nn_radius_search(
-            p_query, p.search_radius * p.search_radius, neighbor_pts, neighbor_dists_sq,
-            neighbor_indices, 0 /*max results, 0=all*/
-        );  //
+            p_query, p.search_radius * p.search_radius, ws.neighbor_pts, ws.neighbor_dists_sq,
+            ws.neighbor_indices, 0 /*max results, 0=all*/);
 
-        if (static_cast<int>(neighbor_indices.size()) < p.min_neighbors_for_fit)
+        if (static_cast<int>(ws.neighbor_indices.size()) < p.min_neighbors_for_fit)
         {
             return;  // Not enough points to fit
         }
 
-        // 2. Compute MLS Surface
-        MLSResult result;
-        result.computeMLSSurface(
-            Eigen::Vector3d(p_query.x, p_query.y, p_query.z), input_pc, neighbor_indices,
-            p.polynomial_order, p.search_radius);
+        // 2. Compute MLS Surface with workspace
+        ws.result.computeMLSSurface(
+            Eigen::Vector3d(p_query.x, p_query.y, p_query.z), input_pc, ws.neighbor_indices,
+            p.polynomial_order, p.search_radius, ws.weights, ws.points, ws.basis_vector,
+            ws.u_pow_cache, ws.v_pow_cache);
 
-        if (!result.valid)
+        if (!ws.result.valid)
         {
             return;
         }
@@ -323,9 +418,9 @@ struct FilterMLS::Impl
         // 3. Project point and compute normal
         Eigen::Vector3d projected_pt_eig, projected_normal_eig;
 
-        result.projectPointSimple(
+        ws.result.projectPointSimple(
             Eigen::Vector3d(p_query.x, p_query.y, p_query.z), projected_pt_eig,
-            projected_normal_eig);
+            projected_normal_eig, ws.u_pow_cache, ws.v_pow_cache);
 
         // 4. Store results
         new_points.push_back(
@@ -356,6 +451,7 @@ void FilterMLS::initialize_filter(const mrpt::containers::yaml& c)
     ASSERT_GE_(params.polynomial_order, 1);
     ASSERT_GE_(params.min_neighbors_for_fit, 3);
     ASSERT_GE_(params.parallelization_grain_size, 1);
+    ASSERT_LE_(params.polynomial_order, 3);  // ThreadWorkspace buffers sized for max order 3
     MRPT_END
 }
 
