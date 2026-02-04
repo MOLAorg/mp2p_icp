@@ -2,6 +2,30 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#39 <https://github.com/MOLAorg/mp2p_icp/issues/39>`_ from MOLAorg/feat/permit-missing-externals
+  sm2mm: Add optional flag --permit-missing-externals
+* sm2mm: Add optional flag --permit-missing-externals
+* Merge pull request `#38 <https://github.com/MOLAorg/mp2p_icp/issues/38>`_ from MOLAorg/feat/mls-optimizations
+  FilterMLS performance optimizations
+* Merge pull request `#37 <https://github.com/MOLAorg/mp2p_icp/issues/37>`_ from MOLAorg/feat/use-zstd
+  Use ZStd compression by default (for MRPT>=2.15.7)
+* docs: sm2mm add "--compression-method"
+* Explicitly include mrpt/core/Clock.h where used
+* Use ZStd compression by default (for MRPT>=2.15.7)
+* Merge pull request `#36 <https://github.com/MOLAorg/mp2p_icp/issues/36>`_ from MOLAorg/feat/mm2txt-missing-fields-dont-emit
+  mm2txt, mm2ply: don't emit columns of zeros for missing user-given fields
+* Merge pull request `#35 <https://github.com/MOLAorg/mp2p_icp/issues/35>`_ from MOLAorg/feat/mm2txt-ignore-fields
+  mm2txt and mm2ply: Add new option --ignore-missing-fields
+* Merge pull request `#34 <https://github.com/MOLAorg/mp2p_icp/issues/34>`_ from MOLAorg/feat/mm2txt-mm2ply-more-precision
+  Exploit the maximum float32/float64 precision in exported txt formats
+* Merge pull request `#33 <https://github.com/MOLAorg/mp2p_icp/issues/33>`_ from MOLAorg/feat/sm2mm-new-options
+  Feat/sm2mm-new-options
+* sm2mm cli app: add new flags for downsampling options
+* sm2mm: add new downsample options and refactor into update_velocity_buffer_from_obs()
+* Contributors: Jose Luis Blanco-Claraco
+
 2.4.1 (2026-01-27)
 ------------------
 * Add more unit tests
