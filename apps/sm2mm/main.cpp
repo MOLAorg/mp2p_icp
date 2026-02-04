@@ -102,6 +102,12 @@ struct CLI
 
     TCLAP::SwitchArg argProfiler{"", "profiler", "Enables profiler.", cmd};
 
+    TCLAP::SwitchArg argDontThrowOnMissingExternals{
+        "", "permit-missing-externals",
+        "If set, missing external files will generate a warning instead of an exception stopping "
+        "the processing.",
+        cmd};
+
     TCLAP::ValueArg<size_t> argIndexFrom{
         "",
         "from-index",
@@ -206,6 +212,11 @@ void run_sm_to_mm(CLI& cli)
     {
         profiler.emplace();
         opts.profiler = *profiler;
+    }
+
+    if (cli.argDontThrowOnMissingExternals.isSet())
+    {
+        opts.throw_on_missing_external_files = false;
     }
 
     // Create the map:

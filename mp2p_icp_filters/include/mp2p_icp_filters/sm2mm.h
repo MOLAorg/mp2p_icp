@@ -43,7 +43,8 @@ struct sm2mm_options_t
 
     mrpt::system::VerbosityLevel                  verbosity       = mrpt::system::LVL_INFO;
     bool                                          showProgressBar = false;
-    std::vector<std::pair<std::string, double>>   customVariables = {};
+    bool                                          throw_on_missing_external_files = true;
+    std::vector<std::pair<std::string, double>>   customVariables                 = {};
     std::optional<size_t>                         start_index;
     std::optional<size_t>                         end_index;
     mrpt::optional_ref<mrpt::system::CTimeLogger> profiler;

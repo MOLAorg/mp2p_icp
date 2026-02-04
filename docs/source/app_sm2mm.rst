@@ -32,10 +32,11 @@ CLI Reference
     USAGE:
 
     sm2mm  [--decimate-max <N>] [--decimate-nth <N>] [--to-index <0>]
-            [--from-index <0>] [--profiler] [--no-progress-bar]
-            [--externals-dir <<ExternalsDirectory>>] [--compression-method
-            <METHOD>] [-v <INFO>] [-p <pipeline.yaml>] [-l <foobar.so>] -o
-            <out.mm> -i <map.simplemap> [--] [--version] [-h]
+            [--from-index <0>] [--permit-missing-externals] [--profiler]
+            [--no-progress-bar] [--externals-dir <<ExternalsDirectory>>]
+            [--compression-method <METHOD>] [-v <INFO>] [-p <pipeline.yaml>]
+            [-l <foobar.so>] -o <out.mm> -i <map.simplemap> [--] [--version]
+            [-h]
 
 
     Where:
@@ -53,6 +54,10 @@ CLI Reference
     --from-index <0>
         If provided, the simplemap keyframes until this index will be
         discarded and it will start at this point.
+
+    --permit-missing-externals
+        If set, missing external files will generate a warning instead of an
+        exception stopping the processing.
 
     --profiler
         Enables profiler.
