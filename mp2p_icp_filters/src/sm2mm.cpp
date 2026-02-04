@@ -34,6 +34,34 @@
 #include <cmath>
 #include <iostream>
 
+namespace
+{
+std::string first_n_lines(const std::string& input, std::size_t n)
+{
+    if (n == 0)
+    {
+        return {};
+    }
+
+    std::size_t pos   = 0;
+    std::size_t lines = 0;
+
+    while (lines < n)
+    {
+        pos = input.find('\n', pos);
+        if (pos == std::string::npos)
+        {
+            // Fewer than n lines: return entire string
+            return input;
+        }
+        ++pos;  // move past '\n'
+        ++lines;
+    }
+
+    return input.substr(0, pos);
+}
+}  // namespace
+
 void mp2p_icp_filters::simplemap_to_metricmap(
     const mrpt::maps::CSimpleMap& sm, mp2p_icp::metric_map_t& mm,
     const mrpt::containers::yaml& yamlData, const sm2mm_options_t& options)
@@ -206,22 +234,41 @@ void mp2p_icp_filters::simplemap_to_metricmap(
 #endif
         }
 
-        // Next, do the actual sensor data processing:
-        for (const auto& obs : *sf)
+        try
         {
-            ASSERT_(obs);
-            obs->load();
-
-            bool handled = mp2p_icp_filters::apply_generators(generators, *obs, mm, robotPose);
-
-            if (!handled)
+            // Next, do the actual sensor data processing:
+            for (const auto& obs : *sf)
             {
+                ASSERT_(obs);
+                obs->load();
+
+                bool handled = mp2p_icp_filters::apply_generators(generators, *obs, mm, robotPose);
+
+                if (!handled)
+                {
+                    obs->unload();
+                    continue;
+                }
+
+                // process it:
+                mp2p_icp_filters::apply_filter_pipeline(filters, mm, options.profiler);
+                obs->unload();
+            }
+        }
+        catch (const std::exception& e)
+        {
+            // If the exception msg contains "Assert file existence failed", it's due to missing
+            // external files.
+            const std::string errMsg = e.what();
+            if (errMsg.find("Assert file existence failed") != std::string::npos &&
+                !options.throw_on_missing_external_files)
+            {
+                std::cerr << "[sm2mm] Keyframe #" << curKF
+                          << ": skipping observation due to missing external files: "
+                          << first_n_lines(errMsg, 3) << "\n";
                 continue;
             }
-
-            // process it:
-            mp2p_icp_filters::apply_filter_pipeline(filters, mm, options.profiler);
-            obs->unload();
+            throw;  // Rethrow other exceptions
         }
 
 #if 0
