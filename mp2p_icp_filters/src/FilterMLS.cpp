@@ -52,13 +52,13 @@ inline double fast_weight_gaussian(double sqr_dist, double sqr_radius)
     const double x = -sqr_dist / sqr_radius;
 
     // Early exit for very small weights
-    if (x < -5.0)
+    if (x < -2.0)
     {
         return 0.0;
     }
 
     // Padé approximation: exp(x) ≈ (1 + x/2) / (1 - x/2)
-    // Accurate within ~1-2% for x in [-5, 0]
+    // Accurate within ~1-2% for x in [-2, 0]
     const double xh = x * 0.5;
     return (1.0 + xh) / (1.0 - xh);
 }
@@ -97,9 +97,6 @@ struct MLSResult
     Eigen::Vector3d v_axis;
     Eigen::VectorXd c_vec;  // Polynomial coefficients
     int             order = 0;
-
-    // mutable std::vector<double> u_pow;  // Reusable workspace
-    // mutable std::vector<double> v_pow;  // Reusable workspace
 
     /**
      * @brief Computes the local surface fit for a query point and its neighbors.
@@ -232,11 +229,12 @@ struct MLSResult
             }
 
             // Solve (A^T*W*A)*c = A^T*W*b using Cholesky decomposition
-            c_vec = AtWA.llt().solve(AtWb);
-            if (AtWA.llt().info() != Eigen::Success)
+            Eigen::LLT<Eigen::MatrixXd> llt(AtWA);
+            if (llt.info() != Eigen::Success)
             {
                 return;
             }
+            c_vec = llt.solve(AtWb);
         }
         else  // order 1 (planar fit)
         {
@@ -453,6 +451,7 @@ void FilterMLS::initialize_filter(const mrpt::containers::yaml& c)
     ASSERT_GE_(params.polynomial_order, 1);
     ASSERT_GE_(params.min_neighbors_for_fit, 3);
     ASSERT_GE_(params.parallelization_grain_size, 1);
+    ASSERT_LE_(params.polynomial_order, 3);  // ThreadWorkspace buffers sized for max order 3
     MRPT_END
 }
 
