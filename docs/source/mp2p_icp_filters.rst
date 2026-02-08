@@ -30,9 +30,9 @@ The absolute timestamps are stored in a new double-precision field (default name
 
 **Parameters**:
 
-* **pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): The point cloud layer to process.
+* **pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): The point cloud layer to process (it's both input and output).
 
-* **output\_field\_name** (:cpp:type:`std::string`, default: `timestamp_abs`): The name of the new output field where absolute timestamps will be stored.
+* **output\_field\_name** (:cpp:type:`std::string`, default: `timestamp_abs`): The name of the new output field where absolute timestamps will be stored (type ``double``).
 
 .. code-block:: yaml
 
@@ -831,6 +831,35 @@ This is typically used to separate **static** (high occupancy) and **dynamic** (
 
 .. image:: remove_by_voxel_occupancy_example.png
    :alt: Screenshot showing point cloud before and after applying FilterRemoveByVoxelOccupancy
+
+|
+
+---
+
+Filter: `FilterRenameLayer`
+---------------------------
+
+**Description**: Renames a layer within a metric map.
+This filter takes a layer (which can be of any class) and changes its key
+in the map to a new name. If a layer with the output name already exists, it is overwritten.
+
+**Parameters**:
+
+* **input_layer** (:cpp:type:`std::string`): The current name of the layer to be renamed.
+
+* **output_layer** (:cpp:type:`std::string`): The new name for the layer.
+
+* **fail_if_input_layer_does_not_exist** (:cpp:type:`bool`, default: `true`): Can be set to `false` to silently ignore missing input layers.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterRenameLayer
+        params:
+          input_layer: 'raw_points'
+          output_layer: 'processed_points'
+          fail_if_input_layer_does_not_exist: true
 
 |
 
