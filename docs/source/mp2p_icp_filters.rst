@@ -10,6 +10,11 @@ or via a YAML file using the **filter pipeline** API, e.g.
 :cpp:class:`mp2p_icp_filters::filter_pipeline_from_yaml()` 
 or :cpp:class:`mp2p_icp_filters::filter_pipeline_from_yaml_file()`.
 
+.. note::
+
+    👉 There is an `online graphical editor for sm2mm pipelines <https://molaorg.github.io/pipelines-editor/>`_
+
+
 ____________________________________________
 
 .. contents:: Available filters

@@ -9,6 +9,10 @@ This page describes the file format for `sm2mm` pipelines and lists some useful 
 .. contents::
    :local:
 
+.. note::
+
+    👉 There is an `online graphical editor for sm2mm pipelines <https://molaorg.github.io/pipelines-editor/>`_
+
 
 1. What does `sm2mm` mean?
 ############################
@@ -42,6 +46,7 @@ Each pipeline file can contain these sections:
 
 Refer to example pipeline files `sm2mm_*.yaml` under the `demos directory <https://github.com/MOLAorg/mp2p_icp/tree/develop/demos>`_.
 Some of them are explained below with a diagram.
+
 
 |
 
