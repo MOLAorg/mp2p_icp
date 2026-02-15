@@ -11,6 +11,7 @@ set(LIB_SRCS
   src/FilterByIntensity.cpp
   src/FilterByRange.cpp
   src/FilterByRing.cpp
+  src/FilterClear.cpp
   src/FilterCurvature.cpp
   src/FilterDecimate.cpp
   src/FilterDecimateAdaptive.cpp
@@ -24,6 +25,7 @@ set(LIB_SRCS
   src/FilterNormalizeIntensity.cpp
   src/FilterPoleDetector.cpp
   src/FilterRemoveByVoxelOccupancy.cpp
+  src/FilterRemovePointCloudField.cpp
   src/FilterRenameLayer.cpp
   src/FilterSOR.cpp
   src/FilterVoxelSlice.cpp
@@ -48,6 +50,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterByIntensity.h
   include/mp2p_icp_filters/FilterByRange.h
   include/mp2p_icp_filters/FilterByRing.h
+  include/mp2p_icp_filters/FilterClear.h
   include/mp2p_icp_filters/FilterCurvature.h
   include/mp2p_icp_filters/FilterDecimate.h
   include/mp2p_icp_filters/FilterDecimateAdaptive.h
@@ -62,6 +65,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterPoleDetector.h
   include/mp2p_icp_filters/FilterRemoveByVoxelOccupancy.h
   include/mp2p_icp_filters/FilterRenameLayer.h
+  include/mp2p_icp_filters/FilterRemovePointCloudField.h
   include/mp2p_icp_filters/FilterSOR.h
   include/mp2p_icp_filters/FilterVoxelSlice.h
   include/mp2p_icp_filters/FilterVoxelSOR.h

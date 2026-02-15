@@ -30,6 +30,7 @@
 #include <mp2p_icp_filters/FilterByIntensity.h>
 #include <mp2p_icp_filters/FilterByRange.h>
 #include <mp2p_icp_filters/FilterByRing.h>
+#include <mp2p_icp_filters/FilterClear.h>
 #include <mp2p_icp_filters/FilterCurvature.h>
 #include <mp2p_icp_filters/FilterDecimate.h>
 #include <mp2p_icp_filters/FilterDecimateAdaptive.h>
@@ -43,6 +44,7 @@
 #include <mp2p_icp_filters/FilterNormalizeIntensity.h>
 #include <mp2p_icp_filters/FilterPoleDetector.h>
 #include <mp2p_icp_filters/FilterRemoveByVoxelOccupancy.h>
+#include <mp2p_icp_filters/FilterRemovePointCloudField.h>
 #include <mp2p_icp_filters/FilterRenameLayer.h>
 #include <mp2p_icp_filters/FilterSOR.h>
 #include <mp2p_icp_filters/FilterVoxelSOR.h>
@@ -70,6 +72,7 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::FilterByIntensity));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterByRange));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterByRing));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterClear));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterCurvature));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterDecimate));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterDecimateAdaptive));
@@ -78,13 +81,14 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::FilterDeskew));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterEdgesPlanes));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterFartherPointSampling));
-    registerClass(CLASS_ID(mp2p_icp_filters::FilterMLS));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterMerge));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterMLS));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterNormalizeIntensity));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterPoleDetector));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRemoveByVoxelOccupancy));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterRemovePointCloudField));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRenameLayer));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterSOR));
-    registerClass(CLASS_ID(mp2p_icp_filters::FilterVoxelSOR));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterVoxelSlice));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterVoxelSOR));
 }
