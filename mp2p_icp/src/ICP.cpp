@@ -66,7 +66,8 @@ void ICP::align(
     // Prepare output debug records:
     std::optional<LogRecord> currentLog;
 
-    const bool generateDebugRecord = outputDebugInfo.has_value() || p.generateDebugFiles;
+    const bool generateDebugRecord = outputDebugInfo.has_value() || p.generateDebugFiles ||
+                                     static_cast<bool>(p.functor_should_generate_debug_file);
 
     if (generateDebugRecord)
     {
@@ -461,24 +462,45 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
 {
     using namespace std::string_literals;
 
-    if (!p.generateDebugFiles)
-    {
-        return;
-    }
-
     // global log file record counter:
-    static unsigned int logFileCounter = 0;
-    static std::mutex   counterMtx;
-    unsigned int        RECORD_UNIQUE_ID;
+    unsigned int RECORD_UNIQUE_ID = 0;
+
+    const auto lambda_increment_record_unique_id = [&]()
     {
-        auto lck = mrpt::lockHelper(counterMtx);
+        static unsigned int logFileCounter = 0;
+        static std::mutex   counterMtx;
+        auto                lck = mrpt::lockHelper(counterMtx);
+        RECORD_UNIQUE_ID        = logFileCounter++;
+    };
 
-        RECORD_UNIQUE_ID = logFileCounter++;
-
+    const bool write_log_file = [&]()
+    {
+        if (p.functor_should_generate_debug_file)
+        {
+            if (const auto gen_opt = p.functor_should_generate_debug_file(log); gen_opt.has_value())
+            {
+                if (gen_opt.value() == true)
+                {
+                    lambda_increment_record_unique_id();
+                }
+                return gen_opt.value();
+            }
+        }
+        if (!p.generateDebugFiles)
+        {
+            return false;
+        }
+        lambda_increment_record_unique_id();
         if (p.decimationDebugFiles > 1 && (RECORD_UNIQUE_ID % p.decimationDebugFiles) != 0)
         {
-            return;  // skip due to decimation
+            return false;  // skip due to decimation
         }
+        return true;
+    }();
+
+    if (!write_log_file)
+    {
+        return;
     }
 
     std::string filename = p.debugFileNameFormat;
@@ -529,12 +551,14 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
         {
             std::cerr << "[ICP::save_log_file] Could not create directory to "
                          "save icp log file: '"
-                      << baseDir << "'" << std::endl;
+                      << baseDir << "'"
+                      << "\n";
         }
         else
         {
             std::cerr << "[ICP::save_log_file] Created output directory for logs: '" << baseDir
-                      << "'" << std::endl;
+                      << "'"
+                      << "\n";
         }
     }
 
@@ -543,7 +567,7 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
     if (!saveOk)
     {
         std::cerr << "[ICP::save_log_file] Could not save icp log file to '" << filename << "'"
-                  << std::endl;
+                  << "\n";
     }
 }
 
