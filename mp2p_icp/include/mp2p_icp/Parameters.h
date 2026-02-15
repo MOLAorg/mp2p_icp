@@ -26,6 +26,7 @@
 namespace mp2p_icp
 {
 class metric_map_t;  // Frwd decl
+class LogRecord;  // Frwd decl
 
 /** ICP parameters.
  * \sa ICP_Base
@@ -89,8 +90,12 @@ struct Parameters : public mrpt::serialization::CSerializable
     /** Function to apply to the local and global maps before saving the map to
      * a log file. Useful to apply deletion filters to save space and time.
      */
-    std::function<void(mp2p_icp::metric_map_t&)> functor_before_logging_local,
-        functor_before_logging_global;
+    std::function<void(mp2p_icp::metric_map_t&)> functor_before_logging_local;
+    std::function<void(mp2p_icp::metric_map_t&)> functor_before_logging_global;
+
+    /** Optional function to override `generateDebugFiles`: If the function is provided, and it
+     * returns a valid value, it will override `generateDebugFiles` and `decimationDebugFiles`  */
+    std::function<std::optional<bool>(const LogRecord&)> functor_should_generate_debug_file;
 
     bool debugPrintIterationProgress = false;
 
