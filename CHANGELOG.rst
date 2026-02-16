@@ -2,6 +2,21 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#42 <https://github.com/MOLAorg/mp2p_icp/issues/42>`_ from MOLAorg/feat/filter-remove-several-point-fields
+  FilterRemovePointCloudField now accepts multiple fields
+* FilterRemovePointCloudField now accepts multiple fields
+* Merge pull request `#41 <https://github.com/MOLAorg/mp2p_icp/issues/41>`_ from MOLAorg/feat/functor-save-log-file
+  Add functor_should_generate_debug_file to override the decision of whether to write .icplog files
+* Add functor_should_generate_debug_file to override the decision of whether to write .icplog files
+* Merge pull request `#40 <https://github.com/MOLAorg/mp2p_icp/issues/40>`_ from MOLAorg/feat/new-clear-remove-field-filters
+  Add new filters: FilterClear and FilterRemovePointCloudField
+* Add new filters: FilterClear and FilterRemovePointCloudField
+* docs: refer to the online pipeline editor
+* docs: add missing docs for FilterRenameLayer
+* Contributors: Jose Luis Blanco-Claraco
+
 2.5.0 (2026-02-04)
 ------------------
 * Merge pull request `#39 <https://github.com/MOLAorg/mp2p_icp/issues/39>`_ from MOLAorg/feat/permit-missing-externals
