@@ -52,7 +52,7 @@ void test_remove_field()
         FilterRemovePointCloudField filter;
         mrpt::containers::yaml      p;
         p["pointcloud_layer"] = "raw";
-        p["field_name"]       = "custom_field";
+        p["field_names"]      = "custom_field";
         filter.initialize(p);
 
         filter.filter(map);
@@ -80,7 +80,7 @@ void test_remove_field()
         FilterRemovePointCloudField filter;
         mrpt::containers::yaml      p;
         p["pointcloud_layer"] = "raw";
-        p["field_name"]       = "timestamp_abs";
+        p["field_names"]      = "timestamp_abs";
         filter.initialize(p);
 
         filter.filter(map);
@@ -107,7 +107,7 @@ void test_remove_field()
         FilterRemovePointCloudField filter;
         mrpt::containers::yaml      p;
         p["pointcloud_layer"] = "raw";
-        p["field_name"]       = "ring";
+        p["field_names"]      = "ring";
         filter.initialize(p);
 
         filter.filter(map);
@@ -134,7 +134,7 @@ void test_remove_field()
         FilterRemovePointCloudField filter;
         mrpt::containers::yaml      p;
         p["pointcloud_layer"] = "raw";
-        p["field_name"]       = "intensity";
+        p["field_names"]      = "intensity";
         filter.initialize(p);
 
         filter.filter(map);
@@ -156,7 +156,7 @@ void test_remove_field()
         FilterRemovePointCloudField filter;
         mrpt::containers::yaml      p;
         p["pointcloud_layer"]       = "raw";
-        p["field_name"]             = "non_existent_field";
+        p["field_names"]            = "non_existent_field";
         p["throw_on_missing_field"] = true;
         filter.initialize(p);
 
@@ -187,7 +187,7 @@ void test_remove_field()
         FilterRemovePointCloudField filter;
         mrpt::containers::yaml      p;
         p["pointcloud_layer"]       = "raw";
-        p["field_name"]             = "non_existent_field";
+        p["field_names"]            = "non_existent_field";
         p["throw_on_missing_field"] = false;
         filter.initialize(p);
 
@@ -205,7 +205,7 @@ void test_remove_field()
         FilterRemovePointCloudField filter;
         mrpt::containers::yaml      p;
         p["pointcloud_layer"] = "non_existent_layer";
-        p["field_name"]       = "some_field";
+        p["field_names"]      = "some_field";
         filter.initialize(p);
 
         // Should not throw, just log warning and skip
@@ -226,7 +226,7 @@ void test_remove_field()
         FilterRemovePointCloudField filter;
         mrpt::containers::yaml      p;
         p["pointcloud_layer"] = "simple";
-        p["field_name"]       = "some_field";
+        p["field_names"]      = "some_field";
         filter.initialize(p);
 
         // Should not throw, just log warning and skip
@@ -257,7 +257,7 @@ void test_remove_field()
         FilterRemovePointCloudField filter;
         mrpt::containers::yaml      p;
         p["pointcloud_layer"] = "layer1";
-        p["field_name"]       = "field_a";
+        p["field_names"]      = "field_a";
         filter.initialize(p);
 
         filter.filter(map);
@@ -266,6 +266,48 @@ void test_remove_field()
         ASSERT_(!pc1->hasPointField("field_a"));
         ASSERT_(pc2->hasPointField("field_b"));
         std::cout << "[Test Passed] Remove field from specific layer" << std::endl;
+    }
+
+    // ---------------------------------------------------------
+    // Case 10: Remove multiple fields at once
+    // ---------------------------------------------------------
+    {
+        mp2p_icp::metric_map_t map;
+        auto                   pc = mrpt::maps::CGenericPointsMap::Create();
+
+        // Register multiple fields
+        ASSERT_(pc->registerField_float("field1"));
+        ASSERT_(pc->registerField_double("field2"));
+        ASSERT_(pc->registerField_uint16("field3"));
+
+        pc->insertPoint(1.0f, 2.0f, 3.0f);
+        pc->insertPointField_float("field1", 1.0f);
+        pc->insertPointField_double("field2", 2.0);
+        pc->insertPointField_uint16("field3", 3);
+
+        ASSERT_(pc->hasPointField("field1"));
+        ASSERT_(pc->hasPointField("field2"));
+        ASSERT_(pc->hasPointField("field3"));
+
+        map.layers["raw"] = pc;
+
+        FilterRemovePointCloudField filter;
+        mrpt::containers::yaml      p;
+        p["pointcloud_layer"] = "raw";
+        // Pass as sequence
+        p["field_names"] = mrpt::containers::yaml::Sequence();
+        p["field_names"].asSequence().push_back("field1");
+        p["field_names"].asSequence().push_back("field2");
+        p["field_names"].asSequence().push_back("field3");
+        filter.initialize(p);
+
+        filter.filter(map);
+
+        // All three fields should be removed
+        ASSERT_(!pc->hasPointField("field1"));
+        ASSERT_(!pc->hasPointField("field2"));
+        ASSERT_(!pc->hasPointField("field3"));
+        std::cout << "[Test Passed] Remove multiple fields at once" << std::endl;
     }
 }
 

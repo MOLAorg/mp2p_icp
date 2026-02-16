@@ -29,8 +29,31 @@ using namespace mp2p_icp_filters;
 void FilterRemovePointCloudField::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
 {
     MCP_LOAD_OPT(c, pointcloud_layer);
-    MCP_LOAD_REQ(c, field_name);
     MCP_LOAD_OPT(c, throw_on_missing_field);
+
+    ASSERTMSG_(
+        c.has("field_names"),
+        "YAML configuration must have an entry `field_names` with a scalar or sequence.");
+
+    field_names.clear();
+
+    auto cfgIn = c["field_names"];
+    if (cfgIn.isScalar())
+    {
+        field_names.push_back(cfgIn.as<std::string>());
+    }
+    else
+    {
+        ASSERTMSG_(
+            cfgIn.isSequence(),
+            "YAML configuration must have an entry `field_names` with a scalar or sequence.");
+
+        for (const auto& s : cfgIn.asSequence())
+        {
+            field_names.push_back(s.as<std::string>());
+        }
+    }
+    ASSERT_(!field_names.empty());
 }
 
 FilterRemovePointCloudField::FilterRemovePointCloudField()
@@ -72,27 +95,31 @@ void FilterRemovePointCloudField::filter(mp2p_icp::metric_map_t& inOut) const
         return;
     }
 
-    // Try to unregister the field
-    const bool removed = pc->unregisterField(params.field_name);
+    // Process each field name
+    for (const auto& field_name : params.field_names)
+    {
+        // Try to unregister the field
+        const bool removed = pc->unregisterField(field_name);
 
-    if (!removed && params.throw_on_missing_field)
-    {
-        THROW_EXCEPTION(mrpt::format(
-            "Field '%s' does not exist in layer '%s'", params.field_name.c_str(),
-            params.pointcloud_layer.c_str()));
-    }
+        if (!removed && params.throw_on_missing_field)
+        {
+            THROW_EXCEPTION(mrpt::format(
+                "Field '%s' does not exist in layer '%s'", field_name.c_str(),
+                params.pointcloud_layer.c_str()));
+        }
 
-    if (removed)
-    {
-        MRPT_LOG_DEBUG_STREAM(
-            "Removed field '" << params.field_name << "' from layer '" << params.pointcloud_layer
-                              << "'");
-    }
-    else
-    {
-        MRPT_LOG_DEBUG_STREAM(
-            "Field '" << params.field_name << "' not found in layer '" << params.pointcloud_layer
-                      << "' (ignored)");
+        if (removed)
+        {
+            MRPT_LOG_DEBUG_STREAM(
+                "Removed field '" << field_name << "' from layer '" << params.pointcloud_layer
+                                  << "'");
+        }
+        else
+        {
+            MRPT_LOG_DEBUG_STREAM(
+                "Field '" << field_name << "' not found in layer '" << params.pointcloud_layer
+                          << "' (ignored)");
+        }
     }
 
     MRPT_END
