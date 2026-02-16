@@ -873,11 +873,11 @@ This is typically used to separate **static** (high occupancy) and **dynamic** (
 Filter: `FilterRemovePointCloudField`
 --------------------------------------
 
-**Description**: Unregisters (removes) a custom point cloud field from a ``CGenericPointsMap`` layer.
+**Description**: Unregisters (removes) one or more custom point cloud fields from a ``CGenericPointsMap`` layer.
 
-This filter completely removes a previously registered custom field of any supported type (``float``, ``double``, ``uint16_t``, ``uint8_t``) from a point cloud layer. The field and all its associated data are deleted, freeing the memory.
+This filter completely removes previously registered custom fields of any supported type (``float``, ``double``, ``uint16_t``, ``uint8_t``) from a point cloud layer. The fields and all their associated data are deleted, freeing the memory.
 
-Unlike clearing data, this operation removes the field definition itself, as if it had never been registered. After removal, attempting to access the field will fail unless it is registered again.
+Unlike clearing data, this operation removes the field definitions themselves, as if they had never been registered. After removal, attempting to access the fields will fail unless they are registered again.
 
 **Important**: This filter only works with layers containing ``mrpt::maps::CGenericPointsMap`` or derived classes. Other map types (like ``CSimplePointsMap``) will be silently skipped.
 
@@ -885,26 +885,26 @@ Unlike clearing data, this operation removes the field definition itself, as if 
 
 * **pointcloud_layer** (:cpp:type:`std::string`, default: `raw`): The point cloud layer to process.
 
-* **field_name** (:cpp:type:`std::string`, required): The name of the custom field to remove (e.g., ``intensity``, ``ring``, ``timestamp_abs``, or any user-defined field name).
+* **field_names** (:cpp:type:`std::string` or :cpp:type:`std::vector<std::string>`, required): One or more custom field names to remove (e.g., ``intensity``, ``ring``, ``timestamp_abs``, or any user-defined field names). Can be specified as a single string or as a list/sequence.
 
-* **throw_on_missing_field** (:cpp:type:`bool`, default: `true`): Whether to throw an exception if the specified field does not exist. If ``false``, missing fields are silently ignored.
+* **throw_on_missing_field** (:cpp:type:`bool`, default: `true`): Whether to throw an exception if any of the specified fields does not exist. If ``false``, missing fields are silently ignored.
 
 .. code-block:: yaml
 
     filters:
       #...
-      # Remove a timestamp field that's no longer needed
+      # Remove a single timestamp field that's no longer needed
       - class_name: mp2p_icp_filters::FilterRemovePointCloudField
         params:
           pointcloud_layer: 'raw'
-          field_name: 'timestamp_abs'
+          field_names: 'timestamp_abs'
           throw_on_missing_field: true
 
-      # Silently remove intensity if it exists
+      # Remove multiple fields at once
       - class_name: mp2p_icp_filters::FilterRemovePointCloudField
         params:
-          pointcloud_layer: 'filtered'
-          field_name: 'intensity'
+          pointcloud_layer: 'raw'
+          field_names: ['intensity', 'ring', 'timestamp_abs']
           throw_on_missing_field: false
 
 |

@@ -53,10 +53,10 @@ class FilterRemovePointCloudField : public mp2p_icp_filters::FilterBase
         /** The point cloud layer to process */
         std::string pointcloud_layer = "raw";
 
-        /** The name of the field to remove (e.g., "intensity", "ring", "timestamp_abs") */
-        std::string field_name;
+        /** One or more field names to remove (e.g., "intensity", "ring", "timestamp_abs") */
+        std::vector<std::string> field_names;
 
-        /** Whether to throw an exception if the field does not exist.
+        /** Whether to throw an exception if any field does not exist.
          * If false, missing fields are silently ignored. */
         bool throw_on_missing_field = true;
     };
