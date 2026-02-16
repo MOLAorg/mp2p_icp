@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.6.0 (2026-02-16)
+------------------
 * Merge pull request `#42 <https://github.com/MOLAorg/mp2p_icp/issues/42>`_ from MOLAorg/feat/filter-remove-several-point-fields
   FilterRemovePointCloudField now accepts multiple fields
 * FilterRemovePointCloudField now accepts multiple fields
