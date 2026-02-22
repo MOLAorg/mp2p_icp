@@ -24,6 +24,7 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/maps/CGenericPointsMap.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
 #include <mrpt/system/string_utils.h>
@@ -61,9 +62,16 @@ TCLAP::SwitchArg argIgnoreMissingFields(
     "instead of an error; missing fields are skipped.",
     cmd);
 
+TCLAP::ValueArg<std::string> argFrame(
+    "", "frame",
+    "Coordinate frame for exported points: 'map' (default) uses the map local frame; "
+    "'enu' transforms points to the East-North-Up frame (requires georeferencing data in the map).",
+    false, "map", "map|enu", cmd);
+
 bool saveToTxt(
     const mrpt::maps::CGenericPointsMap& pts, const std::string& fileName, bool printHeader,
-    const std::vector<std::string>& selectedFields = {})
+    const std::vector<std::string>&            selectedFields = {},
+    const std::optional<mrpt::poses::CPose3D>& T_enu_to_map   = std::nullopt)
 {
     FILE* f = mrpt::system::os::fopen(fileName.c_str(), "wt");
     if (!f)
@@ -141,6 +149,13 @@ bool saveToTxt(
 
     for (size_t i = 0; i < n; i++)
     {
+        // On-the-fly coordinate transform if exporting in ENU frame
+        double tx = xs.at(i), ty = ys.at(i), tz = zs.at(i);
+        if (T_enu_to_map.has_value())
+        {
+            T_enu_to_map->composePoint(xs.at(i), ys.at(i), zs.at(i), tx, ty, tz);
+        }
+
         for (size_t fieldIdx = 0; fieldIdx < fieldsToExport.size(); fieldIdx++)
         {
             const auto& fieldName = fieldsToExport[fieldIdx];
@@ -148,15 +163,15 @@ bool saveToTxt(
             // Check coordinate fields
             if (fieldName == "x")
             {
-                mrpt::system::os::fprintf(f, "%.8f", xs.at(i));
+                mrpt::system::os::fprintf(f, "%.8f", tx);
             }
             else if (fieldName == "y")
             {
-                mrpt::system::os::fprintf(f, "%.8f", ys.at(i));
+                mrpt::system::os::fprintf(f, "%.8f", ty);
             }
             else if (fieldName == "z")
             {
-                mrpt::system::os::fprintf(f, "%.8f", zs.at(i));
+                mrpt::system::os::fprintf(f, "%.8f", tz);
             }
             // Check float fields
             else if (floatFields.count(fieldName))
@@ -268,6 +283,25 @@ void run_mm2txt()
         std::cout << std::endl;
     }
 
+    // Handle --frame option
+    std::optional<mrpt::poses::CPose3D> T_enu_to_map;
+    {
+        const auto frame = argFrame.getValue();
+        if (frame == "enu")
+        {
+            ASSERTMSG_(
+                mm.georeferencing.has_value(),
+                "Cannot use --frame enu: the input map does not contain georeferencing "
+                "information.");
+            T_enu_to_map = mm.georeferencing->T_enu_to_map.mean;
+            std::cout << "[mm2txt] Exporting points in ENU frame.\n";
+        }
+        else
+        {
+            ASSERTMSG_(frame == "map", "Invalid --frame value. Must be 'map' or 'enu'.");
+        }
+    }
+
     const auto printSelectedFieldsWarning = [&selectedFields]()
     {
         if (!selectedFields.empty())
@@ -368,7 +402,7 @@ void run_mm2txt()
             }
 
             bool printHeader = true;
-            saveToTxt(*genxyz, filName, printHeader, validFields);
+            saveToTxt(*genxyz, filName, printHeader, validFields, T_enu_to_map);
         }
 #if MRPT_VERSION < 0x030000  // <3.0.0
         else

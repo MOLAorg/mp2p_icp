@@ -22,6 +22,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/maps/CPointsMap.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/string_utils.h>
 #include <mrpt/version.h>
@@ -52,12 +53,19 @@ TCLAP::SwitchArg argIgnoreMissingFields(
     "instead of an error; missing fields are skipped.",
     cmd);
 
+TCLAP::ValueArg<std::string> argFrame(
+    "", "frame",
+    "Coordinate frame for exported points: 'map' (default) uses the map local frame; "
+    "'enu' transforms points to the East-North-Up frame (requires georeferencing data in the map).",
+    false, "map", "map|enu", cmd);
+
 // ----------------------------------------------------------------
 // PLY Export Logic using CPointsMap field-generic API
 // ----------------------------------------------------------------
 void saveToPly(
     const mrpt::maps::CPointsMap& pc, const std::string& filename, bool binary,
-    const std::vector<std::string>& selectedFields = {}, bool ignoreMissingFields = false)
+    const std::vector<std::string>& selectedFields = {}, bool ignoreMissingFields = false,
+    const std::optional<mrpt::poses::CPose3D>& T_enu_to_map = std::nullopt)
 {
     std::ofstream f;
     f.open(filename, binary ? std::ios::binary : std::ios::out);
@@ -296,6 +304,13 @@ void saveToPly(
 
     for (size_t i = 0; i < N; ++i)
     {
+        // On-the-fly coordinate transform if exporting in ENU frame
+        double tx = 0, ty = 0, tz = 0;
+        if (T_enu_to_map.has_value())
+        {
+            T_enu_to_map->composePoint(xs[i], ys[i], zs[i], tx, ty, tz);
+        }
+
         for (const auto& acc : accessors)
         {
             // Handle missing fields (when ignoreMissingFields is true)
@@ -322,6 +337,15 @@ void saveToPly(
                         write_val(0.0f, "%.8e");
                         break;
                 }
+                continue;
+            }
+
+            // Use transformed coordinates if in ENU mode
+            if (T_enu_to_map.has_value() && (acc.name == "x" || acc.name == "y" || acc.name == "z"))
+            {
+                const float val =
+                    static_cast<float>(acc.name == "x" ? tx : (acc.name == "y" ? ty : tz));
+                write_val(val, "%.8e");
                 continue;
             }
 
@@ -379,6 +403,27 @@ int main(int argc, char** argv)
         }
         mp2p_icp::metric_map_t mm;
         mm.load_from_file(arg_input.getValue());
+
+        // Handle --frame option
+        std::optional<mrpt::poses::CPose3D> T_enu_to_map;
+        {
+            const auto frame = argFrame.getValue();
+            if (frame == "enu")
+            {
+                if (!mm.georeferencing.has_value())
+                {
+                    throw std::runtime_error(
+                        "Cannot use --frame enu: the input map does not contain georeferencing "
+                        "information.");
+                }
+                T_enu_to_map = mm.georeferencing->T_enu_to_map.mean;
+                std::cout << "[mm2ply] Exporting points in ENU frame." << std::endl;
+            }
+            else if (frame != "map")
+            {
+                throw std::runtime_error("Invalid --frame value. Must be 'map' or 'enu'.");
+            }
+        }
 
         std::string prefix = arg_out_prefix.getValue().empty()
                                  ? mrpt::system::fileNameChangeExtension(arg_input.getValue(), "")
@@ -534,7 +579,9 @@ int main(int argc, char** argv)
 
             std::string out = prefix + "_" + name + ".ply";
             std::cout << "Exporting '" << name << "' to " << out << "..." << std::endl;
-            saveToPly(*pts, out, arg_binary.getValue(), validFields);
+            saveToPly(
+                *pts, out, arg_binary.getValue(), validFields, false /*ignoreMissing*/,
+                T_enu_to_map);
         }
     }
     catch (const std::exception& e)

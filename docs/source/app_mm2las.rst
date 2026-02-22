@@ -26,7 +26,7 @@ Usage
 
 .. code-block:: bash
 
-   mm2las -i <input.mm> [-o <output_prefix>] [--export-fields <field1,field2,...>]
+   mm2las -i <input.mm> [-o <output_prefix>] [--export-fields <field1,field2,...>] [--frame map|enu]
 
 Arguments
 ^^^^^^^^^
@@ -36,6 +36,7 @@ Arguments
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export. If omitted, all available fields are exported, with non-standard fields becoming Extra Dimensions.
 - ``--system-id <string>``: Sets the System Identifier in the LAS header (default: "mm2las").
 - ``--generating-software <string>``: Sets the Generating Software in the LAS header (default: "MOLA mm2las").
+- ``--frame <map|enu>`` (optional): Coordinate frame for exported points. ``map`` (default) exports coordinates in the map local frame. ``enu`` transforms all point coordinates to the East-North-Up frame using the georeferencing information stored in the map. Requires that the input map contains georeferencing data; otherwise, an error is raised.
 
 
 Examples
@@ -64,6 +65,12 @@ Export with RGB colors:
 .. code-block:: bash
 
    mm2las -i mymap.mm --export-fields "x,y,z,red,green,blue"
+
+Export points in the ENU (East-North-Up) frame:
+
+.. code-block:: bash
+
+   mm2las -i mymap.mm --frame enu
 
 
 Field Selection
@@ -122,6 +129,11 @@ Using PDAL:
    pdal translate mymap_layer.las mymap_layer.laz
 
 LAZ files typically achieve 7-20× compression ratios while maintaining lossless data.
+
+Coordinate Frames
+-----------------
+
+By default, points are exported in the **map** local frame (the native coordinate system of the metric map). If the map contains georeferencing metadata (see :ref:`app_mm-georef`), you can use ``--frame enu`` to export all point coordinates transformed to the **ENU (East-North-Up)** frame. The transformation uses the ``T_enu_to_map`` SE(3) pose stored in the map's georeferencing data. Non-coordinate fields (intensity, RGB, etc.) are not affected by this transformation.
 
 Limitations
 -----------
