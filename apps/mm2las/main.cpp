@@ -22,6 +22,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/maps/CPointsMap.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/string_utils.h>
 #include <mrpt/version.h>
@@ -54,6 +55,12 @@ TCLAP::ValueArg<std::string> argSystemId(
 TCLAP::ValueArg<std::string> argGeneratingSoftware(
     "", "generating-software", "Generating Software for LAS header (max 32 chars)", false,
     "MOLA mm2las", "string", cmd);
+
+TCLAP::ValueArg<std::string> argFrame(
+    "", "frame",
+    "Coordinate frame for exported points: 'map' (default) uses the map local frame; "
+    "'enu' transforms points to the East-North-Up frame (requires georeferencing data in the map).",
+    false, "map", "map|enu", cmd);
 
 // ----------------------------------------------------------------
 // LAS 1.4 Format Structures
@@ -171,7 +178,8 @@ struct FieldInfo
 void saveToLas(
     const mrpt::maps::CPointsMap& pc, const std::string& filename,
     const std::vector<std::string>& selectedFields, const std::string& systemId,
-    const std::string& generatingSoftware)
+    const std::string&                         generatingSoftware,
+    const std::optional<mrpt::poses::CPose3D>& T_enu_to_map = std::nullopt)
 {
     const size_t N = pc.size();
     if (N == 0)
@@ -590,12 +598,17 @@ void saveToLas(
 
     for (size_t i = 0; i < N; ++i)
     {
-        min_x = std::min(min_x, static_cast<double>(xs[i]));
-        max_x = std::max(max_x, static_cast<double>(xs[i]));
-        min_y = std::min(min_y, static_cast<double>(ys[i]));
-        max_y = std::max(max_y, static_cast<double>(ys[i]));
-        min_z = std::min(min_z, static_cast<double>(zs[i]));
-        max_z = std::max(max_z, static_cast<double>(zs[i]));
+        double px = xs[i], py = ys[i], pz = zs[i];
+        if (T_enu_to_map.has_value())
+        {
+            T_enu_to_map->composePoint(xs[i], ys[i], zs[i], px, py, pz);
+        }
+        min_x = std::min(min_x, px);
+        max_x = std::max(max_x, px);
+        min_y = std::min(min_y, py);
+        max_y = std::max(max_y, py);
+        min_z = std::min(min_z, pz);
+        max_z = std::max(max_z, pz);
     }
 
     // 5. Calculate extra bytes for extra dimensions
@@ -746,10 +759,17 @@ void saveToLas(
     {
         LASPointFormat8 pt = {};
 
+        // On-the-fly coordinate transform if exporting in ENU frame
+        double px = xs[i], py = ys[i], pz = zs[i];
+        if (T_enu_to_map.has_value())
+        {
+            T_enu_to_map->composePoint(xs[i], ys[i], zs[i], px, py, pz);
+        }
+
         // Scale coordinates
-        pt.x = static_cast<int32_t>((xs[i] - header.x_offset) / header.x_scale_factor);
-        pt.y = static_cast<int32_t>((ys[i] - header.y_offset) / header.y_scale_factor);
-        pt.z = static_cast<int32_t>((zs[i] - header.z_offset) / header.z_scale_factor);
+        pt.x = static_cast<int32_t>((px - header.x_offset) / header.x_scale_factor);
+        pt.y = static_cast<int32_t>((py - header.y_offset) / header.y_scale_factor);
+        pt.z = static_cast<int32_t>((pz - header.z_offset) / header.z_scale_factor);
 
         // Intensity
         if (hasIntensity)
@@ -930,6 +950,27 @@ int main(int argc, char** argv)
         mp2p_icp::metric_map_t mm;
         mm.load_from_file(arg_input.getValue());
 
+        // Handle --frame option
+        std::optional<mrpt::poses::CPose3D> T_enu_to_map;
+        {
+            const auto frame = argFrame.getValue();
+            if (frame == "enu")
+            {
+                if (!mm.georeferencing.has_value())
+                {
+                    throw std::runtime_error(
+                        "Cannot use --frame enu: the input map does not contain georeferencing "
+                        "information.");
+                }
+                T_enu_to_map = mm.georeferencing->T_enu_to_map.mean;
+                std::cout << "[mm2las] Exporting points in ENU frame." << std::endl;
+            }
+            else if (frame != "map")
+            {
+                throw std::runtime_error("Invalid --frame value. Must be 'map' or 'enu'.");
+            }
+        }
+
         std::string prefix = arg_out_prefix.getValue().empty()
                                  ? mrpt::system::fileNameChangeExtension(arg_input.getValue(), "")
                                  : arg_out_prefix.getValue();
@@ -988,7 +1029,7 @@ int main(int argc, char** argv)
             std::string out = prefix + "_" + name + ".las";
             std::cout << "Exporting '" << name << "' to " << out << " (" << pts->size()
                       << " points)..." << std::endl;
-            saveToLas(*pts, out, selectedFields, systemId, generatingSoftware);
+            saveToLas(*pts, out, selectedFields, systemId, generatingSoftware, T_enu_to_map);
         }
 
         std::cout << "Done." << std::endl;

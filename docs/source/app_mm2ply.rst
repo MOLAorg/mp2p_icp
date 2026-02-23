@@ -24,7 +24,7 @@ Usage
 
 .. code-block:: bash
 
-   mm2ply -i <input.mm> [-o <output_prefix>] [-b] [--export-fields <field1,field2,...>] [--ignore-missing-fields]
+   mm2ply -i <input.mm> [-o <output_prefix>] [-b] [--export-fields <field1,field2,...>] [--ignore-missing-fields] [--frame map|enu]
 
 Arguments
 ^^^^^^^^^
@@ -34,6 +34,7 @@ Arguments
 - ``-b, --binary`` (optional): Export in binary format instead of ASCII (default: ASCII)
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export in the specified order. If not provided, all available fields will be exported. Spaces around commas are allowed
 - ``--ignore-missing-fields`` (optional): If defined, the lack of any of the ``--export-fields`` in the map will be considered a warning instead of an error.
+- ``--frame <map|enu>`` (optional): Coordinate frame for exported points. ``map`` (default) exports coordinates in the map local frame. ``enu`` transforms all point coordinates to the East-North-Up frame using the georeferencing information stored in the map. Requires that the input map contains georeferencing data; otherwise, an error is raised.
 
 Examples
 ^^^^^^^^
@@ -79,6 +80,12 @@ Combine with custom output prefix:
 .. code-block:: bash
 
    mm2ply -i mymap.mm -o results/filtered --export-fields "x,y,z,ring,time"
+
+Export points in the ENU (East-North-Up) frame:
+
+.. code-block:: bash
+
+   mm2ply -i mymap.mm --frame enu
 
 Output
 ------
@@ -131,3 +138,8 @@ The PLY format written by this tool follows the standard specification:
 - **Data**: One vertex per line (ASCII) or record (binary)
 
 Color field name mapping ensures compatibility with standard PLY viewers and processing tools.
+
+Coordinate Frames
+-----------------
+
+By default, points are exported in the **map** local frame (the native coordinate system of the metric map). If the map contains georeferencing metadata (see :ref:`app_mm-georef`), you can use ``--frame enu`` to export all point coordinates transformed to the **ENU (East-North-Up)** frame. The transformation uses the ``T_enu_to_map`` SE(3) pose stored in the map's georeferencing data. Non-coordinate fields (colors, intensity, etc.) are not affected by this transformation.

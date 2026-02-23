@@ -25,7 +25,7 @@ Usage
 
 .. code-block:: bash
 
-   mm2txt <input.mm> [-l <layer_name>] [--export-fields <field1,field2,...>] [--ignore-missing-fields]
+   mm2txt <input.mm> [-l <layer_name>] [--export-fields <field1,field2,...>] [--ignore-missing-fields] [--frame map|enu]
 
 Arguments
 ^^^^^^^^^
@@ -34,6 +34,7 @@ Arguments
 - ``-l, --layer <name>`` (optional): Layer to export. If not provided, all layers will be exported. This argument can appear multiple times to export specific layers
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export in the specified order. If not provided, all available fields will be exported. Spaces around commas are allowed
 - ``--ignore-missing-fields`` (optional): If defined, the lack of any of the ``--export-fields`` in the map will be considered a warning instead of an error.
+- ``--frame <map|enu>`` (optional): Coordinate frame for exported points. ``map`` (default) exports coordinates in the map local frame. ``enu`` transforms all point coordinates to the East-North-Up frame using the georeferencing information stored in the map. Requires that the input map contains georeferencing data; otherwise, an error is raised.
 
 Examples
 ^^^^^^^^
@@ -73,6 +74,12 @@ Export only 2D coordinates and intensity:
 .. code-block:: bash
 
    mm2txt mymap.mm --export-fields "x,y,intensity"
+
+Export points in the ENU (East-North-Up) frame:
+
+.. code-block:: bash
+
+   mm2txt mymap.mm --frame enu
 
 Output
 ------
@@ -145,3 +152,8 @@ Supported Point Cloud Types
 - **CGenericPointsMap**: Generic point clouds with custom fields (full support for ``--export-fields``)
 - **CPointsMapXYZI** (Deprecated): Point clouds with intensity values (``--export-fields`` not supported)
 - **CPointsMapXYZIRT** (Deprecated): Point clouds with intensity, ring, and time information (``--export-fields`` not supported)
+
+Coordinate Frames
+-----------------
+
+By default, points are exported in the **map** local frame (the native coordinate system of the metric map). If the map contains georeferencing metadata (see :ref:`app_mm-georef`), you can use ``--frame enu`` to export all point coordinates transformed to the **ENU (East-North-Up)** frame. The transformation uses the ``T_enu_to_map`` SE(3) pose stored in the map's georeferencing data. Non-coordinate fields (intensity, ring, etc.) are not affected by this transformation.
