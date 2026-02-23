@@ -1413,16 +1413,17 @@ void rebuild_3d_view(bool force_rebuild_view)
         glVizMap->insert(glVizObjects);
     }
 
+    // XY plane of the map: leave in the "map" frame or "enu" frame, whatever is the root,
+    // so no need to change pose of glGrid
+
     if (cbApplyGeoRef->checked() && theMap.georeferencing.has_value())
     {
         glVizMap->setPose(theMap.georeferencing->T_enu_to_map.mean);
-        glGrid->setPose(theMap.georeferencing->T_enu_to_map.mean);
         glENUCorner->setVisibility(true);
     }
     else
     {
         glVizMap->setPose(mrpt::poses::CPose3D::Identity());
-        glGrid->setPose(mrpt::poses::CPose3D::Identity());
         glENUCorner->setVisibility(false);
     }
 
