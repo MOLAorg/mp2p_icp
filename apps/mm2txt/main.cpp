@@ -222,14 +222,14 @@ void run_mm2txt()
 
     ASSERT_FILE_EXISTS_(argMapFile.getValue());
 
-    std::cout << "[mm-info] Reading input map from: '" << filInput << "'..." << std::endl;
+    std::cout << "[mm2txt] Reading input map from: '" << filInput << "'..." << std::endl;
     const double mm_t0 = mrpt::Clock::nowDouble();
 
     mp2p_icp::metric_map_t mm;
     mm.load_from_file(filInput);
 
     const double mm_t1 = mrpt::Clock::nowDouble();
-    std::cout << "[mm-info] Done read map in " << (mm_t1 - mm_t0) << " sec. Contents:\n"
+    std::cout << "[mm2txt] Done read map in " << (mm_t1 - mm_t0) << " sec. Contents:\n"
               << mm.contents_summary() << "\n";
 
     std::vector<std::string> layers;
