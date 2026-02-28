@@ -136,7 +136,12 @@ void run_mm_inject(Cli& cli)
     std::cout << "[mm-georef] Reading input map from: '" << filMap << "'..." << std::endl;
 
     mp2p_icp::metric_map_t mm;
-    mm.load_from_file(filMap);
+
+    bool readOk = mm.load_from_file(filMap);
+    if (!readOk)
+    {
+        THROW_EXCEPTION_FMT("Error reading map file: '%s'", filMap.c_str());
+    }
 
     std::cout << "[mm-georef] Done read map: " << mm.contents_summary() << std::endl;
 
