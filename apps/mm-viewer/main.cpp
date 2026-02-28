@@ -897,9 +897,10 @@ void main_show_gui()
                 {
                     cb->setChecked(true);
                 }
-                for (const auto& evl : extraVizLayers)
+                for (auto& evl : extraVizLayers)
                 {
                     evl.checkBox->setChecked(true);
+                    evl.glObjects->setVisibility(true);
                 }
                 rebuild_3d_view();
             });
@@ -913,9 +914,10 @@ void main_show_gui()
                 {
                     cb->setChecked(false);
                 }
-                for (const auto& evl : extraVizLayers)
+                for (auto& evl : extraVizLayers)
                 {
                     evl.checkBox->setChecked(false);
+                    evl.glObjects->setVisibility(false);
                 }
                 rebuild_3d_view();
             });
