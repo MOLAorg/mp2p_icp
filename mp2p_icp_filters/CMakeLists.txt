@@ -2,6 +2,18 @@ project(mp2p_icp_filters LANGUAGES CXX)
 
 # -----------------------
 # define lib:
+# ---------------------------------------------------------------------------
+# SIMD support detection for optimized operations.
+# On x86/x86_64 we compile separate translation units with -mavx / -msse2
+# so that the rest of the library can be compiled without those flags.
+# That also makes Eigen3 included headers not affected.
+# ---------------------------------------------------------------------------
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|i686|AMD64|amd64)$")
+  set(MP2P_ARCH_INTEL_COMPATIBLE TRUE)
+else()
+  set(MP2P_ARCH_INTEL_COMPATIBLE FALSE)
+endif()
+
 set(LIB_SRCS
   src/FilterAbsoluteTimestamp.cpp
   src/FilterAdjustTimestamps.cpp
@@ -31,6 +43,8 @@ set(LIB_SRCS
   src/FilterVoxelSlice.cpp
   src/FilterVoxelSOR.cpp
   src/Generator.cpp
+  src/Generator_view_vector_sse2.cpp
+  src/Generator_view_vector_avx.cpp
   src/GeneratorEdgesFromCurvature.cpp
   src/GeneratorEdgesFromRangeImage.cpp
   src/GetOrCreatePointLayer.cpp
@@ -101,6 +115,37 @@ mola_add_library(
 
 # We want C++20 for mp2p_icp_filters, to capture structured bindings (FilterDeskew.cpp)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
+
+# ---------------------------------------------------------------------------
+# Per-file SIMD compiler flags for the view-vector kernel.
+# We compile each SIMD variant in its own translation unit so the rest of
+# the library is not forced to enable AVX/SSE globally.
+# ---------------------------------------------------------------------------
+if(MP2P_ARCH_INTEL_COMPATIBLE)
+  if(MSVC)
+    # MSVC: SSE2 is on by default for x64; AVX needs /arch:AVX.
+    set_source_files_properties(src/Generator_view_vector_sse2.cpp
+      PROPERTIES COMPILE_DEFINITIONS "MP2P_HAS_SSE2=1")
+    set_source_files_properties(src/Generator_view_vector_avx.cpp
+      PROPERTIES
+        COMPILE_FLAGS "/arch:AVX"
+        COMPILE_DEFINITIONS "MP2P_HAS_AVX=1")
+  else()
+    # GCC / Clang
+    set_source_files_properties(src/Generator_view_vector_sse2.cpp
+      PROPERTIES
+        COMPILE_FLAGS "-msse2"
+        COMPILE_DEFINITIONS "MP2P_HAS_SSE2=1")
+    set_source_files_properties(src/Generator_view_vector_avx.cpp
+      PROPERTIES
+        COMPILE_FLAGS "-mavx"
+        COMPILE_DEFINITIONS "MP2P_HAS_AVX=1")
+  endif()
+
+  # Inform Generator.cpp (the dispatcher) which kernels are available.
+  set_source_files_properties(src/Generator.cpp
+    PROPERTIES COMPILE_DEFINITIONS "MP2P_HAS_SSE2=1;MP2P_HAS_AVX=1")
+endif()
 
 
 if (TBB_FOUND AND MP2PICP_USE_TBB)

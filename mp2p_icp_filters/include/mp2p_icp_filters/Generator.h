@@ -24,6 +24,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CPointsMap.h>
+#include <mrpt/math/TPoint3D.h>
 #include <mrpt/obs/obs_frwds.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
@@ -150,6 +151,13 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
 
         bool throw_on_unhandled_observation_class = false;
 
+        /** If true (default), a "view vector" field is added to the output point
+         *  cloud layer if it is a mrpt::maps::CGenericPointsMap. The view vector
+         *  is the unit vector pointing inwards from the point towards the sensor
+         *  origin, stored as float fields named "view_x", "view_y", "view_z".
+         */
+        bool generate_view_vector = true;
+
         /** If not empty, it will be used instead of class name in Logger and Profiler.
          *  This is loaded from the `name` key in the YAML configuration block.
          */
@@ -198,6 +206,15 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     bool implProcessCustomMap(
         const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
         const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt) const;
+
+    /** Adds "view_x", "view_y", "view_z" float fields to the newly-appended
+     *  points in \a pc (from index \a firstNewPtIdx onwards), containing the
+     *  unit vector from each point towards \a sensorOrigin.
+     *  Does nothing if \a pc is not a mrpt::maps::CGenericPointsMap.
+     */
+    void addViewVectorField(
+        mrpt::maps::CPointsMap& pc, size_t firstNewPtIdx,
+        const mrpt::math::TPoint3D& sensorOrigin) const;
 };
 
 /** A set of generators  */
