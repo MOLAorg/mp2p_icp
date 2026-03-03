@@ -13,9 +13,10 @@
 # --------------------------------------------------------
 # 1) Generator (observation -> local frame metric maps)
 # --------------------------------------------------------
-#generators:
-#  - class_name: mp2p_icp_filters::Generator
-#    params: ~
+generators:
+  - class_name: mp2p_icp_filters::Generator
+    params:
+      generate_view_vector: true # Generate "view" vectors for advanced normals handling (Default=true)
 
 # --------------------------------------------------------
 # 2) Per local frame filtering

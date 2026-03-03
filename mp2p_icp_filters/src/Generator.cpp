@@ -391,17 +391,32 @@ void Generator::addViewVectorField(
     mrpt::maps::CPointsMap& pc, size_t firstNewPtIdx,
     const mrpt::math::TPoint3D& sensorOrigin) const
 {
-    if (!params.generate_view_vector)
-    {
-        return;
-    }
-
     auto* genPc = dynamic_cast<mrpt::maps::CGenericPointsMap*>(&pc);
     if (!genPc)
     {
-        MRPT_LOG_DEBUG(
-            "[addViewVectorField] Output layer is not CGenericPointsMap; skipping view vector "
-            "generation.");
+        if (params.generate_view_vector)
+        {
+            MRPT_LOG_DEBUG(
+                "[addViewVectorField] Output layer is not CGenericPointsMap; skipping view vector "
+                "generation.");
+        }
+        return;
+    }
+
+    // Exit now if we are not generating view vectors, not without first checking consistency:
+    if (!params.generate_view_vector)
+    {
+        for (const std::string_view fname : {"view_x", "view_y", "view_z"})
+        {
+            if (genPc->hasPointField(fname))
+            {
+                THROW_EXCEPTION(
+                    "Consistency check didn't pass: generate_view_vector=false, but the map layer "
+                    "already has view vector fields. Continuing would leave the cloud in an "
+                    "inconsistent state.");
+            }
+        }
+        // All look ok.
         return;
     }
 
