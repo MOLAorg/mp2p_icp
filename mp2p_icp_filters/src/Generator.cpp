@@ -29,10 +29,12 @@
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/cpu.h>
 #include <mrpt/core/get_env.h>
 #include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/math/TPoint3D.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservation3DRangeScan.h>
 #include <mrpt/obs/CObservationIMU.h>
@@ -42,6 +44,8 @@
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/version.h>
+
+#include "Generator_view_vector_impl.h"
 
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
@@ -58,6 +62,7 @@ void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Gene
     MCP_LOAD_OPT(c, process_class_names_regex);
     MCP_LOAD_OPT(c, process_sensor_labels_regex);
     MCP_LOAD_OPT(c, throw_on_unhandled_observation_class);
+    MCP_LOAD_OPT(c, generate_view_vector);
 
     MCP_LOAD_OPT(c, name);
     if (!name.empty())
@@ -161,12 +166,55 @@ bool Generator::process(
         "Processing observation type='%s' label='%s' stamp=%.04f", obsClassName,
         o.sensorLabel.c_str(), mrpt::Clock::toDouble(o.timestamp));
 
-    // default: use point clouds:
-    if (params.metric_map_definition_ini_file.empty() && params.metric_map_definition.empty())
+    mrpt::maps::CPointsMap* outPc = nullptr;
+
+    const auto lambdaGetOutputLayer = [&]()
     {
-        return implProcessDefault(o, out, robotPose);
+        outPc = nullptr;
+        if (auto itLy = out.layers.find(params.target_layer); itLy != out.layers.end())
+        {
+            outPc = dynamic_cast<mrpt::maps::CPointsMap*>(itLy->second.get());
+        }
+    };
+
+    lambdaGetOutputLayer();  // try to get the layer if it existed already
+    const size_t ptsBefore = outPc ? outPc->size() : 0;
+
+    // Actual insertion into map:
+    const bool actualInserted = [&]()
+    {
+        if (params.metric_map_definition_ini_file.empty() && params.metric_map_definition.empty())
+        {
+            // default: use point clouds:
+            return implProcessDefault(o, out, robotPose);
+        }
+        return implProcessCustomMap(o, out, robotPose);
+    }();
+    if (!actualInserted)
+    {
+        return false;
     }
-    return implProcessCustomMap(o, out, robotPose);
+
+    lambdaGetOutputLayer();  // try it again if it was created in the functions above
+
+    // Add view vectors for the newly-inserted points.
+    // The sensor origin in the output frame is p.translation():
+    if (outPc != nullptr)
+    {
+        const auto p =
+            (robotPose.has_value() ? robotPose->asTPose() : mrpt::math::TPose3D::Identity()) +
+            o.sensorPose();
+        addViewVectorField(*outPc, ptsBefore, p.translation());
+
+        const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*outPc);
+        ASSERT_(sanityPassed);
+
+        MRPT_LOG_DEBUG_FMT(
+            "[process] Ended with layer '%s' having: %s", params.target_layer.c_str(),
+            outPc->asString().c_str());
+    }
+
+    return true;
 
     MRPT_END
 }
@@ -302,17 +350,8 @@ bool Generator::filterPointCloud(  //
 
     const mrpt::poses::CPose3D p = robotPose ? robotPose.value() + sensorPose : sensorPose;
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     outPc->registerPointFieldsFrom(pc);
-#endif
     outPc->insertAnotherMap(&pc, p);
-
-    const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*outPc);
-    ASSERT_(sanityPassed);
-
-    MRPT_LOG_DEBUG_FMT(
-        "[filterPointCloud] Ended with layer '%s' having: %s", params.target_layer.c_str(),
-        outPc->asString().c_str());
 
     return true;
 }
@@ -325,15 +364,151 @@ bool Generator::filterRotatingScan(  //
     return false;  // Not implemented
 }
 
+// ---------------------------------------------------------------------------
+// Scalar kernel – always compiled, used as fallback and for the tail.
+// ---------------------------------------------------------------------------
+namespace mp2p_icp_filters::internal
+{
+void addViewVectors_scalar(
+    float* vx, float* vy, float* vz, const float* px, const float* py, const float* pz, size_t N,
+    float sx, float sy, float sz)
+{
+    for (size_t i = 0; i < N; i++)
+    {
+        const float dx      = sx - px[i];
+        const float dy      = sy - py[i];
+        const float dz      = sz - pz[i];
+        const float nsq     = dx * dx + dy * dy + dz * dz;
+        const float inv_nrm = (nsq > 1e-20f) ? (1.0f / std::sqrt(nsq)) : 0.0f;
+        vx[i]               = dx * inv_nrm;
+        vy[i]               = dy * inv_nrm;
+        vz[i]               = dz * inv_nrm;
+    }
+}
+}  // namespace mp2p_icp_filters::internal
+
+void Generator::addViewVectorField(
+    mrpt::maps::CPointsMap& pc, size_t firstNewPtIdx,
+    const mrpt::math::TPoint3D& sensorOrigin) const
+{
+    auto* genPc = dynamic_cast<mrpt::maps::CGenericPointsMap*>(&pc);
+    if (!genPc)
+    {
+        if (params.generate_view_vector)
+        {
+            MRPT_LOG_DEBUG(
+                "[addViewVectorField] Output layer is not CGenericPointsMap; skipping view vector "
+                "generation.");
+        }
+        return;
+    }
+
+    // Exit now if we are not generating view vectors, not without first checking consistency:
+    if (!params.generate_view_vector)
+    {
+        for (const std::string_view fname : {"view_x", "view_y", "view_z"})
+        {
+            if (genPc->hasPointField(fname))
+            {
+                THROW_EXCEPTION(
+                    "Consistency check didn't pass: generate_view_vector=false, but the map layer "
+                    "already has view vector fields. Continuing would leave the cloud in an "
+                    "inconsistent state.");
+            }
+        }
+        // All look ok.
+        return;
+    }
+
+    const size_t nTotal = pc.size();
+    ASSERT_LE_(firstNewPtIdx, nTotal);
+    if (firstNewPtIdx >= nTotal)
+    {
+        return;
+    }
+
+    // Register each field if absent; if already present, resize to cover nTotal.
+    // registerField_float() initialises the new vector to size() zeros, so registering
+    // after insertAnotherMap() gives us correctly-sized storage for all points.
+    for (const std::string_view fname : {"view_x", "view_y", "view_z"})
+    {
+        if (!genPc->hasPointField(fname))
+        {
+            genPc->registerField_float(fname);
+        }
+        else
+        {
+            // Field existed from a prior append; extend it with zeros for new slots.
+            auto* fv = genPc->getPointsBufferRef_float_field(fname);
+            if (fv->size() < nTotal)
+            {
+                fv->resize(nTotal, 0.0f);
+            }
+        }
+    }
+
+    // Direct buffer access: one hash lookup per field, not one per point.
+    float* vx_data = genPc->getPointsBufferRef_float_field("view_x")->data() + firstNewPtIdx;
+    float* vy_data = genPc->getPointsBufferRef_float_field("view_y")->data() + firstNewPtIdx;
+    float* vz_data = genPc->getPointsBufferRef_float_field("view_z")->data() + firstNewPtIdx;
+
+    const float* px_data = pc.getPointsBufferRef_x().data() + firstNewPtIdx;
+    const float* py_data = pc.getPointsBufferRef_y().data() + firstNewPtIdx;
+    const float* pz_data = pc.getPointsBufferRef_z().data() + firstNewPtIdx;
+
+    const float  sx = static_cast<float>(sensorOrigin.x);
+    const float  sy = static_cast<float>(sensorOrigin.y);
+    const float  sz = static_cast<float>(sensorOrigin.z);
+    const size_t N  = nTotal - firstNewPtIdx;
+
+    // Runtime-dispatch to the best available SIMD implementation.
+    // The SIMD translation units are compiled with their own -mavx / -msse2 flags;
+    // the main library is compiled without those flags.
+#if defined(MP2P_HAS_AVX)
+    if (mrpt::cpu::supports(mrpt::cpu::feature::AVX))
+    {
+        internal::addViewVectors_avx(
+            vx_data, vy_data, vz_data, px_data, py_data, pz_data, N, sx, sy, sz);
+        return;
+    }
+#endif
+#if defined(MP2P_HAS_SSE2)
+    if (mrpt::cpu::supports(mrpt::cpu::feature::SSE2))
+    {
+        internal::addViewVectors_sse2(
+            vx_data, vy_data, vz_data, px_data, py_data, pz_data, N, sx, sy, sz);
+        return;
+    }
+#endif
+    internal::addViewVectors_scalar(
+        vx_data, vy_data, vz_data, px_data, py_data, pz_data, N, sx, sy, sz);
+}
+
 bool mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
-    mp2p_icp::metric_map_t& output, const std::optional<mrpt::poses::CPose3D>& robotPose)
+    mp2p_icp::metric_map_t& output, const std::optional<mrpt::poses::CPose3D>& robotPose,
+    const mrpt::optional_ref<mrpt::system::CTimeLogger>& profiler)
 {
     ASSERT_(!generators.empty());
     bool anyHandled = false;
     for (const auto& g : generators)
     {
         ASSERT_(g.get() != nullptr);
+
+        // Optional profiler:
+        std::optional<mrpt::system::CTimeLoggerEntry> tle;
+        if (profiler)
+        {
+            if (g->params.name.empty())
+            {
+                tle.emplace(*profiler, g->GetRuntimeClass()->className);
+            }
+            else
+            {
+                tle.emplace(*profiler, g->params.name);
+            }
+        }
+
         bool handled = g->process(obs, output, robotPose);
         anyHandled   = anyHandled || handled;
     }
