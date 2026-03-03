@@ -242,7 +242,8 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                 ASSERT_(obs);
                 obs->load();
 
-                bool handled = mp2p_icp_filters::apply_generators(generators, *obs, mm, robotPose);
+                bool handled = mp2p_icp_filters::apply_generators(
+                    generators, *obs, mm, robotPose, options.profiler);
 
                 if (!handled)
                 {

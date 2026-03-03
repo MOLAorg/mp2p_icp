@@ -471,13 +471,29 @@ void Generator::addViewVectorField(
 
 bool mp2p_icp_filters::apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
-    mp2p_icp::metric_map_t& output, const std::optional<mrpt::poses::CPose3D>& robotPose)
+    mp2p_icp::metric_map_t& output, const std::optional<mrpt::poses::CPose3D>& robotPose,
+    const mrpt::optional_ref<mrpt::system::CTimeLogger>& profiler)
 {
     ASSERT_(!generators.empty());
     bool anyHandled = false;
     for (const auto& g : generators)
     {
         ASSERT_(g.get() != nullptr);
+
+        // Optional profiler:
+        std::optional<mrpt::system::CTimeLoggerEntry> tle;
+        if (profiler)
+        {
+            if (g->params.name.empty())
+            {
+                tle.emplace(*profiler, g->GetRuntimeClass()->className);
+            }
+            else
+            {
+                tle.emplace(*profiler, g->params.name);
+            }
+        }
+
         bool handled = g->process(obs, output, robotPose);
         anyHandled   = anyHandled || handled;
     }

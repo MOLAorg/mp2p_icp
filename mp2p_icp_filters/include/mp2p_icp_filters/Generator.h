@@ -28,6 +28,7 @@
 #include <mrpt/obs/obs_frwds.h>
 #include <mrpt/rtti/CObject.h>
 #include <mrpt/system/COutputLogger.h>
+#include <mrpt/system/CTimeLogger.h>
 
 #include <regex>
 #include <stdexcept>
@@ -155,6 +156,8 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
          *  cloud layer if it is a mrpt::maps::CGenericPointsMap. The view vector
          *  is the unit vector pointing inwards from the point towards the sensor
          *  origin, stored as float fields named "view_x", "view_y", "view_z".
+         *
+         *  Generation is SIMD vectorized, with a minimal runtime cost of ~30 μs per LiDAR scan.
          */
         bool generate_view_vector = true;
 
@@ -230,8 +233,9 @@ using GeneratorSet = std::vector<Generator::Ptr>;
  */
 bool apply_generators(
     const GeneratorSet& generators, const mrpt::obs::CObservation& obs,
-    mp2p_icp::metric_map_t&                    output,
-    const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt);
+    mp2p_icp::metric_map_t&                              output,
+    const std::optional<mrpt::poses::CPose3D>&           robotPose = std::nullopt,
+    const mrpt::optional_ref<mrpt::system::CTimeLogger>& profiler  = std::nullopt);
 
 /// \overload (functional version returning the metric_map_t)
 [[nodiscard]] mp2p_icp::metric_map_t apply_generators(
