@@ -2,6 +2,26 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#45 <https://github.com/MOLAorg/mp2p_icp/issues/45>`_ from MOLAorg/feat/mm2grid
+  Add new cli app: mm2grid
+* Add new cli app: mm2grid
+* Merge pull request `#44 <https://github.com/MOLAorg/mp2p_icp/issues/44>`_ from MOLAorg/feat/view-vector
+  Generators now optionally generate a 'view' direction vector per point
+* FilterMLS: now uses the view-direction vectors to ensure normals point outwards
+* Generator: add safety consistency check
+* Generators are now also included into sm2mm profiler
+* Generators now optionally generate a 'view' direction vector per point
+* mm-viewer: FIX: show/hide all buttons did not apply to extra viz layers
+* mm-georef: Fix creation of empty output map if input didn't exist
+* mm2txt: Fix wrong console message saying mm-info instead of mm2txt
+* mm-viewer UI: show XY grid plane at the root frame of reference (ENU or map)
+* Merge pull request `#43 <https://github.com/MOLAorg/mp2p_icp/issues/43>`_ from MOLAorg/feat/export-enu-frame
+  Export tools now accept "--frame enu" to generate XYZ data in ENU frame
+* Export tools now accept "--frame enu" to generate XYZ data in ENU frame
+* Contributors: Jose Luis Blanco-Claraco
+
 2.6.0 (2026-02-16)
 ------------------
 * Merge pull request `#42 <https://github.com/MOLAorg/mp2p_icp/issues/42>`_ from MOLAorg/feat/filter-remove-several-point-fields
