@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.7.0 (2026-03-03)
+------------------
 * Merge pull request `#45 <https://github.com/MOLAorg/mp2p_icp/issues/45>`_ from MOLAorg/feat/mm2grid
   Add new cli app: mm2grid
 * Add new cli app: mm2grid
