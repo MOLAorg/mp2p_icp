@@ -614,49 +614,81 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
         return;
     }
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     // Register the normal fields in the output map.
-    outPc->registerField_float("normal_x");  //
-    outPc->registerField_float("normal_y");  //
-    outPc->registerField_float("normal_z");  //
+    outPc->registerField_float("normal_x");
+    outPc->registerField_float("normal_y");
+    outPc->registerField_float("normal_z");
 
     // and the ones at origin cloud:
     outPc->registerPointFieldsFrom(*query_pc);
 
+    auto* normals_x = outPc->getPointsBufferRef_float_field("normal_x");
+    auto* normals_y = outPc->getPointsBufferRef_float_field("normal_y");
+    auto* normals_z = outPc->getPointsBufferRef_float_field("normal_z");
+    ASSERT_(normals_x);
+    ASSERT_(normals_y);
+    ASSERT_(normals_z);
+
     const auto ctx = outPc->prepareForInsertPointsFrom(*query_pc);
-#endif
 
     const size_t firstIdx = outPc->size();
     outPc->reserve(firstIdx + nNewPoints);
 
-    auto& xs = const_cast<mrpt::aligned_std_vector<float>&>(outPc->getPointsBufferRef_x());
-    auto& ys = const_cast<mrpt::aligned_std_vector<float>&>(outPc->getPointsBufferRef_y());
-    auto& zs = const_cast<mrpt::aligned_std_vector<float>&>(outPc->getPointsBufferRef_z());
+    auto& xs = *outPc->getPointsBufferRef_float_field("x");
+    auto& ys = *outPc->getPointsBufferRef_float_field("y");
+    auto& zs = *outPc->getPointsBufferRef_float_field("z");
+
+    // check if we have view-direction vectors as normal hints in the input cloud. They should be
+    // allocated into outPc by prepareForInsertPointsFrom() above, and already reserve()'d, so we
+    // can take a ref to those buffers now:
+    auto* view_x = outPc->getPointsBufferRef_float_field("view_x");
+    auto* view_y = outPc->getPointsBufferRef_float_field("view_y");
+    auto* view_z = outPc->getPointsBufferRef_float_field("view_z");
+
+    const bool has_view_vector = (view_x != nullptr) && (view_y != nullptr) && (view_z != nullptr);
+    MRPT_LOG_DEBUG_STREAM("Have view-direction vectors: " << has_view_vector);
 
     for (size_t i = 0; i < nNewPoints; ++i)
     {
         // add point: this copies all existing fields:
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
         outPc->insertPointFrom(impl_->new_points_source_index[i], ctx);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-        outPc->insertPointFrom(input_pc, impl_->new_points_source_index[i], ctx);
-#else
-        outPc->insertPointFrom(input_pc, impl_->new_points_source_index[i]);
-#endif
+
         // Overwrite XYZ with new projected version:
         xs.back() = impl_->new_points[i].x;
         ys.back() = impl_->new_points[i].y;
         zs.back() = impl_->new_points[i].z;
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
-        // Set normals
-        outPc->insertPointField_float("normal_x", impl_->new_normals[i].x);
-        outPc->insertPointField_float("normal_y", impl_->new_normals[i].y);
-        outPc->insertPointField_float("normal_z", impl_->new_normals[i].z);
-#endif
+        // Set normals, taking into account the view-direction so they point towards the outside of
+        // solid bodies:
+        if (!has_view_vector)
+        {
+            normals_x->push_back(impl_->new_normals[i].x);
+            normals_y->push_back(impl_->new_normals[i].y);
+            normals_z->push_back(impl_->new_normals[i].z);
+        }
+        else
+        {
+            const float dotValue = mrpt::math::dotProduct<3, float>(
+                mrpt::math::TPoint3Df(
+                    impl_->new_normals[i].x, impl_->new_normals[i].y, impl_->new_normals[i].z),
+                mrpt::math::TPoint3Df(view_x->back(), view_y->back(), view_z->back()));
+            if (dotValue >= 0)
+            {
+                normals_x->push_back(impl_->new_normals[i].x);
+                normals_y->push_back(impl_->new_normals[i].y);
+                normals_z->push_back(impl_->new_normals[i].z);
+            }
+            else
+            {
+                // Reverse normal:
+                normals_x->push_back(-impl_->new_normals[i].x);
+                normals_y->push_back(-impl_->new_normals[i].y);
+                normals_z->push_back(-impl_->new_normals[i].z);
+            }
+        }
     }
 
-    outPc->mark_as_modified();  //
+    outPc->mark_as_modified();
 
     MRPT_LOG_INFO_STREAM(
         "MLS filter finished. Query points: " << nQueryPoints << ", Output points: " << nNewPoints);
