@@ -20,11 +20,14 @@
  * @date   Dec 15, 2023
  */
 
+#include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
+#include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/io/lazy_load_path.h>
+#include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/COutputLogger.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/version.h>
@@ -133,7 +136,29 @@ struct CLI
 
     TCLAP::ValueArg<size_t> argDecimateMax{
         "", "decimate-max", "Try to evenly pick at most N frames", false, 0, "N", cmd};
+
+    TCLAP::ValueArg<std::string> argGeoRef{
+        "g",
+        "georef",
+        "Optional geo-referencing file (binary `*.georef` or YAML `*.yaml`/`*.yml`) "
+        "providing the SE(3) transformation T_enu_to_map and the geodetic reference "
+        "coordinates. When supplied, robot poses are expressed in the ENU "
+        "(East-North-Up) frame before being passed to the generators, and the output "
+        ".mm file is tagged with the georeferencing metadata (T_enu_to_map set to "
+        "identity, since the map is already in ENU coordinates).",
+        false,
+        "myMap.georef",
+        "(myMap.georef|myMap.yaml)",
+        cmd};
 };
+
+namespace
+{
+bool is_binary_georef(const std::string& fil)
+{
+    return mrpt::system::extractFileExtension(fil) == "georef";
+}
+}  // namespace
 
 void run_sm_to_mm(CLI& cli)
 {
@@ -217,6 +242,36 @@ void run_sm_to_mm(CLI& cli)
     if (cli.argDontThrowOnMissingExternals.isSet())
     {
         opts.throw_on_missing_external_files = false;
+    }
+
+    // Load georeferencing data if provided:
+    if (cli.argGeoRef.isSet())
+    {
+        const auto filGeoRef = cli.argGeoRef.getValue();
+        std::cout << "[sm2mm] Loading georeferencing from: '" << filGeoRef << "'..." << std::endl;
+
+        std::optional<mp2p_icp::metric_map_t::Georeferencing> g;
+
+        if (is_binary_georef(filGeoRef))
+        {
+            mrpt::io::CFileGZInputStream f(filGeoRef);
+            auto                         arch = mrpt::serialization::archiveFrom(f);
+            arch >> g;
+        }
+        else
+        {
+            const auto yamlGeoRef = mrpt::containers::yaml::FromFile(filGeoRef);
+            g                     = mp2p_icp::FromYAML(yamlGeoRef);
+        }
+
+        if (!g.has_value())
+        {
+            THROW_EXCEPTION_FMT(
+                "Georeferencing file '%s' was loaded but contained no data.", filGeoRef.c_str());
+        }
+
+        opts.georeferencing = *g;
+        std::cout << "[sm2mm] Georeferencing loaded OK." << std::endl;
     }
 
     // Create the map:

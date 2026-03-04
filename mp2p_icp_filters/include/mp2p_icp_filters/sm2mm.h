@@ -50,6 +50,31 @@ struct sm2mm_options_t
     mrpt::optional_ref<mrpt::system::CTimeLogger> profiler;
     std::optional<size_t>                         decimate_every_nth_frame;
     std::optional<size_t>                         decimate_maximum_frame_count;
+
+    /** If provided, robot poses from the simplemap are transformed into the
+     *  ENU (East-North-Up) frame before being passed to the generators.
+     *  Specifically, the effective pose used for each keyframe becomes:
+     *
+     *    T_enu_to_map \oplus robotPose
+     *
+     *  so that the generated metric map is expressed in ENU coordinates.
+     *  This is relevant for filters that expect an exact upward direction of
+     *  the map +Z axis, for example.
+     *
+     *  When this field is set, the output metric_map_t will be populated with
+     *  a copy of the georeferencing information, **but** with
+     *  `T_enu_to_map` reset to the identity pose (while preserving its
+     *  covariance matrix), because the map points are already expressed in the
+     *  ENU frame and no further rigid-body correction is needed at query time.
+     *
+     *  The geodetic reference point (`geo_coord`) is copied verbatim from the
+     *  input.
+     *
+     *  \note This option is mutually exclusive with any post-hoc injection of
+     *        georeferencing data via `mm-georef --inject-to-map`; use one or
+     *        the other.
+     */
+    std::optional<mp2p_icp::metric_map_t::Georeferencing> georeferencing;
 };
 
 /** Utility function to build metric maps ("*.mm") from raw observations
@@ -59,6 +84,11 @@ struct sm2mm_options_t
  * [sm2mm](https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm).
  *
  * The former contents of outMap are cleared.
+ *
+ * If `options.georeferencing` is set, robot poses are transformed into the
+ * ENU frame (via `T_enu_to_map \oplus robotPose`) before being handed to the
+ * generators, and the output map is tagged with the corresponding
+ * georeferencing metadata (with `T_enu_to_map` set to identity).
  */
 void simplemap_to_metricmap(
     const mrpt::maps::CSimpleMap& sm, mp2p_icp::metric_map_t& outMap,
