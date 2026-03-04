@@ -78,8 +78,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     else
     {
         std::cout << "[sm2mm] Warning: no generators defined in the pipeline, "
-                     "using default generator."
-                  << std::endl;
+                     "using default generator.\n";
 
         auto defaultGen = mp2p_icp_filters::Generator::Create();
         defaultGen->setMinLoggingLevel(options.verbosity);
@@ -96,7 +95,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     }
     else
     {
-        std::cout << "[sm2mm] Warning: no filters defined in the pipeline." << std::endl;
+        std::cout << "[sm2mm] Warning: no filters defined in the pipeline.\n";
     }
 
     // Final, overall filters for the whole metric map:
@@ -105,6 +104,23 @@ void mp2p_icp_filters::simplemap_to_metricmap(
     {
         finalFilters = mp2p_icp_filters::filter_pipeline_from_yaml(
             yamlData["final_filters"], options.verbosity);
+    }
+
+    // Precompute the ENU transform if georeferencing is provided.
+    // T_enu_to_map is the SE(3) pose such that:
+    //   p_enu = T_enu_to_map (+) p_local
+    // We want to express robot poses in ENU, so we compose:
+    //   robotPose_enu = T_enu_to_map (+) robotPose_local
+    std::optional<mrpt::poses::CPose3D> T_enu_to_map;
+    if (options.georeferencing.has_value())
+    {
+        T_enu_to_map = options.georeferencing->T_enu_to_map.mean;
+
+        if (options.verbosity <= mrpt::system::LVL_INFO)
+        {
+            std::cout << "[sm2mm] Georeferencing enabled. T_enu_to_map=" << T_enu_to_map->asString()
+                      << "\n";
+        }
     }
 
     // sm2mm core code:
@@ -215,14 +231,19 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         ASSERT_(sf);
         const mrpt::poses::CPose3D robotPose = pose->getMeanVal();
 
-        // Update pose variables:
+        // If georeferencing is active, express the robot pose in the ENU frame:
+        //   robotPose_enu = T_enu_to_map (+) robotPose_local
+        const mrpt::poses::CPose3D effectiveRobotPose =
+            T_enu_to_map.has_value() ? (*T_enu_to_map + robotPose) : robotPose;
+
+        // Update pose variables (using the effective pose seen by generators):
         ps.updateVariables(
-            {{"robot_x", robotPose.x()},
-             {"robot_y", robotPose.y()},
-             {"robot_z", robotPose.z()},
-             {"robot_yaw", robotPose.yaw()},
-             {"robot_pitch", robotPose.pitch()},
-             {"robot_roll", robotPose.roll()}});
+            {{"robot_x", effectiveRobotPose.x()},
+             {"robot_y", effectiveRobotPose.y()},
+             {"robot_z", effectiveRobotPose.z()},
+             {"robot_yaw", effectiveRobotPose.yaw()},
+             {"robot_pitch", effectiveRobotPose.pitch()},
+             {"robot_roll", effectiveRobotPose.roll()}});
         ps.realize();
 
         // First, search for velocity buffer data:
@@ -243,7 +264,7 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                 obs->load();
 
                 bool handled = mp2p_icp_filters::apply_generators(
-                    generators, *obs, mm, robotPose, options.profiler);
+                    generators, *obs, mm, effectiveRobotPose, options.profiler);
 
                 if (!handled)
                 {
@@ -322,6 +343,29 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         if (options.verbosity <= mrpt::system::LVL_INFO)
         {
             std::cout << "Done with 'final_filters'." << std::endl;
+        }
+    }
+
+    // If georeferencing was provided, tag the output map accordingly.
+    // The geodetic reference point is preserved verbatim, but T_enu_to_map is
+    // reset to the identity (the map is already in ENU coordinates).
+    if (options.georeferencing.has_value())
+    {
+        mp2p_icp::metric_map_t::Georeferencing outGeoref;
+        outGeoref.geo_coord = options.georeferencing->geo_coord;
+
+        // Identity mean pose, but keep the covariance:
+        const auto inverse_T_enu_to_map = -options.georeferencing->T_enu_to_map.mean;
+
+        outGeoref.T_enu_to_map = options.georeferencing->T_enu_to_map +
+                                 mrpt::poses::CPose3DPDFGaussian(
+                                     inverse_T_enu_to_map, mrpt::math::CMatrixDouble66::Zero());
+
+        mm.georeferencing = outGeoref;
+
+        if (options.verbosity <= mrpt::system::LVL_INFO)
+        {
+            std::cout << "[sm2mm] Output map tagged with georeferencing\n";
         }
     }
 }

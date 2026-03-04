@@ -183,5 +183,5 @@ Loading the Result in ROS 1
 See Also
 --------
 
-- :ref:`app_mm-info` — display a summary of any metric map file
-- :ref:`app_mm2txt` — export point cloud layers from a metric map as CSV/TXT
+- :ref:`app_mm-info` - display a summary of any metric map file
+- :ref:`app_mm2txt` - export point cloud layers from a metric map as CSV/TXT

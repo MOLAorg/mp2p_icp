@@ -513,11 +513,11 @@ Filter: `FilterDeskew`
 * **method** (:cpp:enum:`MotionCompensationMethod`, default: `Linear`):
   The motion compensation method used to interpolate or integrate point positions:
   
-  * **MotionCompensationMethod::None** — No compensation; all points are assumed to be acquired at the same vehicle pose.
-  * **MotionCompensationMethod::Linear** — Constant velocity (linear and angular) model using the provided `twist`.
-  * **MotionCompensationMethod::IMU** — Integration using IMU data with constant linear acceleration and angular velocity.
-  * **MotionCompensationMethod::IMUh** — Higher-order IMU integration assuming constant jerk and angular acceleration.
-  * **MotionCompensationMethod::IMUt** — Trapezoidal IMU integration using constant linear acceleration and angular velocity.
+  * **MotionCompensationMethod::None** - No compensation; all points are assumed to be acquired at the same vehicle pose.
+  * **MotionCompensationMethod::Linear** - Constant velocity (linear and angular) model using the provided `twist`.
+  * **MotionCompensationMethod::IMU** - Integration using IMU data with constant linear acceleration and angular velocity.
+  * **MotionCompensationMethod::IMUh** - Higher-order IMU integration assuming constant jerk and angular acceleration.
+  * **MotionCompensationMethod::IMUt** - Trapezoidal IMU integration using constant linear acceleration and angular velocity.
 
 * **twist** (:cpp:type:`std::optional<mrpt::math::TTwist3D>`):
   The velocity (linear and angular) of the vehicle in the local frame.
