@@ -911,43 +911,49 @@ std::optional<metric_map_t::Georeferencing> mp2p_icp::FromYAML(
     g.geo_coord.lat.decimal_value = yaml_data["geo_coord"]["lat"].as<double>();
     g.geo_coord.height            = yaml_data["geo_coord"]["altitude"].as<double>();
 
-    const auto& ym = yaml_data["T_enu_to_map"]["mean"];
-    g.T_enu_to_map.mean.x(ym["x"].as<double>());
-    g.T_enu_to_map.mean.y(ym["y"].as<double>());
-    g.T_enu_to_map.mean.z(ym["z"].as<double>());
+    const auto& ym      = yaml_data["T_enu_to_map"]["mean"];
+    g.T_enu_to_map.mean = mrpt::poses::CPose3D::FromXYZYawPitchRoll(
+        ym["x"].as<double>(), ym["y"].as<double>(), ym["z"].as<double>(),
+        mrpt::DEG2RAD(ym["yaw_deg"].as<double>()), mrpt::DEG2RAD(ym["pitch_deg"].as<double>()),
+        mrpt::DEG2RAD(ym["roll_deg"].as<double>()));
 
     yaml_data["T_enu_to_map"]["cov"].toMatrix(g.T_enu_to_map.cov);
 
     return georef;
 }
 
-mrpt::containers::yaml mp2p_icp::ToYAML(const std::optional<metric_map_t::Georeferencing>& gref)
+mrpt::containers::yaml mp2p_icp::ToYAML(const std::optional<metric_map_t::Georeferencing>& geoRef)
 {
     mrpt::containers::yaml data = mrpt::containers::yaml::Map();
 
     data["type"]    = GEOREF_MAGIC_STR;
-    data["defined"] = gref.has_value();
-    if (gref)
+    data["defined"] = geoRef.has_value();
+    if (geoRef)
     {
         {
-            mrpt::containers::yaml gcoord = mrpt::containers::yaml::Map();
-            gcoord["lon"]                 = gref->geo_coord.lon;
-            gcoord["lat"]                 = gref->geo_coord.lat;
-            gcoord["altitude"]            = gref->geo_coord.height;
+            mrpt::containers::yaml geoCoord = mrpt::containers::yaml::Map();
+            geoCoord["lon"]                 = geoRef->geo_coord.lon;
+            geoCoord["lat"]                 = geoRef->geo_coord.lat;
+            geoCoord["altitude"]            = geoRef->geo_coord.height;
 
-            data["geo_coord"] = gcoord;
+            data["geo_coord"] = geoCoord;
         }
 
         mrpt::containers::yaml pose_mean = mrpt::containers::yaml::Map();
+        const auto&            p         = geoRef->T_enu_to_map.mean;
 
-        pose_mean["x"] = gref->T_enu_to_map.mean.x();
-        pose_mean["y"] = gref->T_enu_to_map.mean.y();
-        pose_mean["z"] = gref->T_enu_to_map.mean.z();
+        pose_mean["x"]         = p.x();
+        pose_mean["y"]         = p.y();
+        pose_mean["z"]         = p.z();
+        pose_mean["yaw_deg"]   = mrpt::RAD2DEG(p.yaw());
+        pose_mean["pitch_deg"] = mrpt::RAD2DEG(p.pitch());
+        pose_mean["roll_deg"]  = mrpt::RAD2DEG(p.roll());
 
         mrpt::containers::yaml pose = mrpt::containers::yaml::Map();
         pose["mean"]                = pose_mean;
-        pose["cov"]                 = mrpt::containers::yaml::FromMatrix(gref->T_enu_to_map.cov);
-        data["T_enu_to_map"]        = pose;
+        pose["cov"]                 = mrpt::containers::yaml::FromMatrix(geoRef->T_enu_to_map.cov);
+        pose["cov"].comment("Covariance in order [x,y,z,yaw,pitch,roll]");
+        data["T_enu_to_map"] = pose;
     }
     return data;
 }

@@ -325,7 +325,7 @@ mrpt::serialization::CArchive& operator<<(
 std::optional<metric_map_t::Georeferencing> FromYAML(const mrpt::containers::yaml& yaml_data);
 
 /// Serialization of geo-reference information as YAML
-mrpt::containers::yaml ToYAML(const std::optional<metric_map_t::Georeferencing>& gref);
+mrpt::containers::yaml ToYAML(const std::optional<metric_map_t::Georeferencing>& geoRef);
 
 // ---- Template implementations ----
 template <class MapClass>

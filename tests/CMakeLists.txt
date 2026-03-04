@@ -47,6 +47,7 @@ mp2p_add_test(mp2p_deskew EXTRA_LIBS mp2p_icp_filters)
 endif()
 
 #mp2p_add_test(mp2p_matcher_pt2pl)  # TODO: This now requires a NP metric map to run the test
+mp2p_add_test(georef-yaml)
 mp2p_add_test(mp2p_cov2cov)
 mp2p_add_test(mp2p_error_terms_jacobians)
 mp2p_add_test(mp2p_estimate_points_eigen)
