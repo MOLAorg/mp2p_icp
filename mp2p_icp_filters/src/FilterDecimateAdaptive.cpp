@@ -75,6 +75,10 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     checkAllParametersAreRealized();
 
+    // sanity checks:
+    ASSERT_GT_(params.desired_output_point_count, 0);
+    ASSERT_GT_(params.voxel_size, 0);
+
     // In:
     ASSERTMSG_(
         inOut.layers.count(params.input_pointcloud_layer) != 0,
@@ -175,17 +179,22 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
 #endif
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     outPc->registerPointFieldsFrom(pc);
     mrpt::maps::CPointsMap::InsertCtx ctx = outPc->prepareForInsertPointsFrom(pc);
-#endif
 
     // Perform resampling:
     // -------------------
     constexpr int FRACTIONARY_BIT_COUNT = 12;
 
-    const size_t nVoxels           = voxels.size();
-    float        voxelIdxIncrement = 1.0f;
+    const size_t nVoxels = voxels.size();
+
+    if (nVoxels == 0)
+    {
+        MRPT_LOG_WARN("FilterDecimateAdaptive: No occupied voxels. Output will be empty.");
+        return;  // Exit early to avoid division by zero
+    }
+
+    float voxelIdxIncrement = 1.0f;
     if (nVoxels > params.desired_output_point_count)
     {
         voxelIdxIncrement =
@@ -223,13 +232,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         {
             auto ptIdx = ith.voxel->indices[ith.nextIdx++];
 
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
             outPc->insertPointFrom(ptIdx, ctx);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-            outPc->insertPointFrom(pc, ptIdx, ctx);
-#else
-            outPc->insertPointFrom(pc, ptIdx);
-#endif
             anyInsertInTheRound = true;
 
             if (ith.nextIdx >= ith.voxel->indices.size())

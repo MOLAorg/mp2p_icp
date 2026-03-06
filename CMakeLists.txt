@@ -55,7 +55,7 @@ endif()
 add_subdirectory(3rdparty)
 
 # find dependencies:
-find_package(MRPT 2.11.5 REQUIRED COMPONENTS
+find_package(MRPT 2.15.0 REQUIRED COMPONENTS
   containers
   tfest
   maps
