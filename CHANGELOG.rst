@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.7.1 (2026-03-08)
+------------------
 * Merge pull request `#48 <https://github.com/MOLAorg/mp2p_icp/issues/48>`_ from MOLAorg/fix/filter-adaptive-avoid-fpe
   FIX: Avoid potential division by zero in FilterDecimateAdaptive
 * Update minimum required MRPT version 2.15.0
