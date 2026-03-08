@@ -2,6 +2,20 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#48 <https://github.com/MOLAorg/mp2p_icp/issues/48>`_ from MOLAorg/fix/filter-adaptive-avoid-fpe
+  FIX: Avoid potential division by zero in FilterDecimateAdaptive
+* Update minimum required MRPT version 2.15.0
+* FIX: Avoid potential division by zero in FilterDecimateAdaptive
+* Merge pull request `#47 <https://github.com/MOLAorg/mp2p_icp/issues/47>`_ from MOLAorg/fix/georef-yaml-missing-fields
+  FIX: georeferencing yaml serialization missed orientation fields
+* FIX: georeferencing yaml serialization missed orientation fields
+* Merge pull request `#46 <https://github.com/MOLAorg/mp2p_icp/issues/46>`_ from MOLAorg/feat/sm2mm-in-enu-frame
+  sm2mm: new  feature to directly use georef as input and produce maps (and apply filters!) in ENU frame
+* sm2mm: new  feature to directly use georef as input and produce maps in ENU frame
+* Contributors: Jose Luis Blanco-Claraco
+
 2.7.0 (2026-03-03)
 ------------------
 * Merge pull request `#45 <https://github.com/MOLAorg/mp2p_icp/issues/45>`_ from MOLAorg/feat/mm2grid
