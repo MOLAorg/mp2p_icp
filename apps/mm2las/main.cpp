@@ -36,6 +36,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <stdexcept>
 
 // CLI flags
 TCLAP::CmdLine cmd("mm2las");
@@ -292,7 +293,8 @@ void saveToLas(
             latBuf = pc.getPointsBufferRef_double_field("latitude");
             lonBuf = pc.getPointsBufferRef_double_field("longitude");
             altBuf = pc.getPointsBufferRef_double_field("altitude");
-            if (latBuf && lonBuf && altBuf && !latBuf->empty())
+            if (latBuf && lonBuf && altBuf && latBuf->size() >= N && lonBuf->size() >= N &&
+                altBuf->size() >= N)
             {
                 hasPerPointGeodetic = true;
                 std::cout
@@ -784,6 +786,30 @@ void saveToLas(
         header.x_scale_factor = 1e-8;  // longitude
         header.y_scale_factor = 1e-8;  // latitude
         header.z_scale_factor = 0.001;  // altitude in meters, 1mm precision
+    }
+
+    // Verify that the coordinate range fits in int32 with the chosen scale.
+    // LAS stores coordinates as (coord - offset) / scale cast to int32, so the
+    // maximum representable span from the offset is INT32_MAX * scale.
+    {
+        const double int32_max     = static_cast<double>(std::numeric_limits<int32_t>::max());
+        const double max_span_x    = int32_max * header.x_scale_factor;
+        const double max_span_y    = int32_max * header.y_scale_factor;
+        const double max_span_z    = int32_max * header.z_scale_factor;
+        const double actual_span_x = max_x - min_x;
+        const double actual_span_y = max_y - min_y;
+        const double actual_span_z = max_z - min_z;
+        if (actual_span_x > max_span_x || actual_span_y > max_span_y || actual_span_z > max_span_z)
+        {
+            throw std::runtime_error(
+                "Point cloud extent overflows int32 with the chosen LAS scale factors.\n"
+                "  X span: " +
+                std::to_string(actual_span_x) + " (max " + std::to_string(max_span_x) + ")\n" +
+                "  Y span: " + std::to_string(actual_span_y) + " (max " +
+                std::to_string(max_span_y) + ")\n" + "  Z span: " + std::to_string(actual_span_z) +
+                " (max " + std::to_string(max_span_z) + ")\n" +
+                "Use a coarser scale factor or split the point cloud into smaller tiles.");
+        }
     }
 
     // Calculate VLR sizes
