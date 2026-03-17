@@ -178,8 +178,11 @@ struct FieldInfo
     size_t      size   = 0;  // size in bytes for serialization
 };
 
-// WKT string for EPSG:4979 (WGS 84 geographic 3D)
-// X=Longitude, Y=Latitude, Z=Ellipsoidal height
+// WKT2:2019 string for EPSG:4979 (WGS 84 geographic 3D).
+// IMPORTANT: Axis order is longitude-first (ORDER[1]) to match LAS point data
+// layout where X=longitude, Y=latitude, Z=ellipsoidal height. The canonical
+// EPSG:4979 definition uses lat-first, but that would cause CRS-aware readers
+// to swap X/Y. WKT1 cannot represent 3D geographic CRS, so WKT2 is required.
 static const char* const kWKT_EPSG4979 =
     "GEOGCRS[\"WGS 84\","
     "ENSEMBLE[\"World Geodetic System 1984 ensemble\","
@@ -195,8 +198,8 @@ static const char* const kWKT_EPSG4979 =
     "ENSEMBLEACCURACY[2.0]],"
     "PRIMEM[\"Greenwich\",0,ANGLEUNIT[\"degree\",0.0174532925199433]],"
     "CS[ellipsoidal,3],"
-    "AXIS[\"geodetic latitude (Lat)\",north,ORDER[1],ANGLEUNIT[\"degree\",0.0174532925199433]],"
-    "AXIS[\"geodetic longitude (Lon)\",east,ORDER[2],ANGLEUNIT[\"degree\",0.0174532925199433]],"
+    "AXIS[\"geodetic longitude (Lon)\",east,ORDER[1],ANGLEUNIT[\"degree\",0.0174532925199433]],"
+    "AXIS[\"geodetic latitude (Lat)\",north,ORDER[2],ANGLEUNIT[\"degree\",0.0174532925199433]],"
     "AXIS[\"ellipsoidal height (h)\",up,ORDER[3],LENGTHUNIT[\"metre\",1]],"
     "USAGE[SCOPE[\"Geodesy.\"],AREA[\"World.\"],"
     "BBOX[-90,-180,90,180]],"
