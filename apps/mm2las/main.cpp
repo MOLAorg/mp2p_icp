@@ -30,7 +30,6 @@
 #include <mrpt/version.h>
 
 #include <algorithm>
-#include <array>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -213,9 +212,9 @@ void saveToLas(
     const mrpt::maps::CPointsMap& pc, const std::string& filename,
     const std::vector<std::string>& selectedFields, const std::string& systemId,
     const std::string&                                           generatingSoftware,
-    const std::optional<mrpt::poses::CPose3D>&                   T_enu_to_map    = std::nullopt,
-    bool                                                         exportGeodetic  = false,
-    const std::optional<mp2p_icp::metric_map_t::Georeferencing>& geodetic        = std::nullopt)
+    const std::optional<mrpt::poses::CPose3D>&                   T_enu_to_map   = std::nullopt,
+    bool                                                         exportGeodetic = false,
+    const std::optional<mp2p_icp::metric_map_t::Georeferencing>& geodetic       = std::nullopt)
 {
     const size_t N = pc.size();
     if (N == 0)
@@ -693,7 +692,7 @@ void saveToLas(
 
     // Helper lambda: compute geodetic coords for a point
     // Returns {longitude, latitude, altitude} (LAS X=lon, Y=lat, Z=alt)
-    auto pointToGeodetic = [&](size_t i) -> std::array<double, 3>
+    auto pointToGeodetic = [&](size_t i) -> mrpt::math::TPoint3D
     {
         if (hasPerPointGeodetic)
         {
@@ -715,16 +714,33 @@ void saveToLas(
         return {geod.lon.getDecimalValue(), geod.lat.getDecimalValue(), geod.height};
     };
 
+    // Cache on-the-fly geodetic results so the write loop does not recompute them.
+    // The fast-path (hasPerPointGeodetic) reads existing buffers cheaply and needs no cache.
+    std::vector<mrpt::math::TPoint3D> geodeticCache;
+    if (exportGeodetic && !hasPerPointGeodetic)
+    {
+        geodeticCache.resize(N);
+    }
+
     for (size_t i = 0; i < N; ++i)
     {
         double px, py, pz;
         if (exportGeodetic)
         {
             // In geodetic mode: X=longitude, Y=latitude, Z=altitude
-            auto g = pointToGeodetic(i);
-            px     = g[0];
-            py     = g[1];
-            pz     = g[2];
+            mrpt::math::TPoint3D g;
+            if (!hasPerPointGeodetic)
+            {
+                g                = pointToGeodetic(i);
+                geodeticCache[i] = g;
+            }
+            else
+            {
+                g = pointToGeodetic(i);
+            }
+            px = g.x;
+            py = g.y;
+            pz = g.z;
         }
         else
         {
@@ -759,6 +775,12 @@ void saveToLas(
     header.system_identifier[31] = '\0';
     std::strncpy(header.generating_software, generatingSoftware.c_str(), 31);
     header.generating_software[31] = '\0';
+
+    // Bit 4 (0x10) signals a WKT CRS VLR is present; only set it when we actually write one.
+    if (!exportGeodetic)
+    {
+        header.global_encoding &= ~static_cast<uint16_t>(0x10);
+    }
 
     header.point_data_format_id     = 8;  // Always use Format 8
     header.point_data_record_length = 38 + static_cast<uint16_t>(extraBytesPerPoint);
@@ -967,10 +989,11 @@ void saveToLas(
         double px, py, pz;
         if (exportGeodetic)
         {
-            auto g = pointToGeodetic(i);
-            px     = g[0];  // longitude
-            py     = g[1];  // latitude
-            pz     = g[2];  // altitude
+            const mrpt::math::TPoint3D g =
+                !hasPerPointGeodetic ? geodeticCache[i] : pointToGeodetic(i);
+            px = g.x;  // longitude
+            py = g.y;  // latitude
+            pz = g.z;  // altitude
         }
         else
         {
