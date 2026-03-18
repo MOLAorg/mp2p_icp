@@ -213,8 +213,9 @@ void saveToLas(
     const mrpt::maps::CPointsMap& pc, const std::string& filename,
     const std::vector<std::string>& selectedFields, const std::string& systemId,
     const std::string&                                           generatingSoftware,
-    const std::optional<mrpt::poses::CPose3D>&                   T_enu_to_map = std::nullopt,
-    const std::optional<mp2p_icp::metric_map_t::Georeferencing>& geodetic     = std::nullopt)
+    const std::optional<mrpt::poses::CPose3D>&                   T_enu_to_map    = std::nullopt,
+    bool                                                         exportGeodetic  = false,
+    const std::optional<mp2p_icp::metric_map_t::Georeferencing>& geodetic        = std::nullopt)
 {
     const size_t N = pc.size();
     if (N == 0)
@@ -269,7 +270,7 @@ void saveToLas(
     [[maybe_unused]] const mrpt::aligned_std_vector<double>* altBuf = nullptr;
 
 #if MRPT_VERSION >= 0x020f03
-    if (geodetic.has_value())
+    if (exportGeodetic)
     {
         const auto d_names_check = pc.getPointFieldNames_double();
         bool       hasLat = false, hasLon = false, hasAlt = false;
@@ -310,6 +311,15 @@ void saveToLas(
         }
     }
 #endif
+
+    // Preflight: geodetic mode requires either per-point buffers or a georeferencing context
+    // for on-the-fly conversion. Fail early with a clear message instead of a null deref later.
+    if (exportGeodetic && !hasPerPointGeodetic && !geodetic.has_value())
+    {
+        throw std::runtime_error(
+            "Cannot export in geodetic mode: no per-point latitude/longitude/altitude fields "
+            "found and no georeferencing context was provided for on-the-fly conversion.");
+    }
 
     // 2. Collect all fields to export
     std::vector<std::string> fieldsToExport;
@@ -708,7 +718,7 @@ void saveToLas(
     for (size_t i = 0; i < N; ++i)
     {
         double px, py, pz;
-        if (geodetic.has_value())
+        if (exportGeodetic)
         {
             // In geodetic mode: X=longitude, Y=latitude, Z=altitude
             auto g = pointToGeodetic(i);
@@ -768,7 +778,7 @@ void saveToLas(
     header.z_offset = min_z;
 
     // In geodetic mode, use finer scale for degrees and set appropriate offsets
-    if (geodetic.has_value())
+    if (exportGeodetic)
     {
         // Scale factor tradeoffs for geodetic coordinates:
         // LAS stores coordinates as int32, so the usable range from the offset
@@ -817,8 +827,8 @@ void saveToLas(
     uint32_t vlrTotalBytes = 0;
 
     // WKT CRS VLR (geodetic mode)
-    const size_t wktLen = geodetic.has_value() ? (std::strlen(kWKT_EPSG4979) + 1) : 0;  // +1 null
-    if (geodetic.has_value())
+    const size_t wktLen = exportGeodetic ? (std::strlen(kWKT_EPSG4979) + 1) : 0;  // +1 null
+    if (exportGeodetic)
     {
         numVLRs++;
         vlrTotalBytes += sizeof(VLRHeader) + wktLen;
@@ -845,7 +855,7 @@ void saveToLas(
     f.write(reinterpret_cast<const char*>(&header), sizeof(LASHeader_1_4));
 
     // 7a. Write WKT CRS VLR (geodetic mode)
-    if (geodetic.has_value())
+    if (exportGeodetic)
     {
         VLRHeader wktVlr;
         std::strncpy(wktVlr.user_id, "LASF_Projection", 16);
@@ -955,7 +965,7 @@ void saveToLas(
 
         // Coordinate transform depending on export mode
         double px, py, pz;
-        if (geodetic.has_value())
+        if (exportGeodetic)
         {
             auto g = pointToGeodetic(i);
             px     = g[0];  // longitude
@@ -1159,6 +1169,7 @@ int main(int argc, char** argv)
 
         // Handle --frame option
         std::optional<mrpt::poses::CPose3D>                   T_enu_to_map;
+        bool                                                  exportGeodetic = false;
         std::optional<mp2p_icp::metric_map_t::Georeferencing> geodeticExport;
         {
             const auto frame = argFrame.getValue();
@@ -1175,26 +1186,29 @@ int main(int argc, char** argv)
             }
             else if (frame == "geodetic")
             {
-                if (!mm.georeferencing.has_value())
+                exportGeodetic = true;
+                // Provide georeferencing context when available (needed for on-the-fly
+                // conversion). If absent, saveToLas will use per-point lat/lon/alt fields
+                // directly, or fail with a clear error if those are also absent.
+                if (mm.georeferencing.has_value() && !mm.georeferencing->geo_coord.isClear())
                 {
-                    throw std::runtime_error(
-                        "Cannot use --frame geodetic: the input map does not contain "
-                        "georeferencing information.");
+                    geodeticExport = mm.georeferencing;
+                    std::cout << "[mm2las] Exporting points in geodetic WGS-84 coordinates "
+                                 "(EPSG:4979)."
+                              << std::endl;
+                    std::cout << "[mm2las] Reference: lat="
+                              << mm.georeferencing->geo_coord.lat.getDecimalValue()
+                              << " lon=" << mm.georeferencing->geo_coord.lon.getDecimalValue()
+                              << " alt=" << mm.georeferencing->geo_coord.height << " m"
+                              << std::endl;
                 }
-                if (mm.georeferencing->geo_coord.isClear())
+                else
                 {
-                    throw std::runtime_error(
-                        "Cannot use --frame geodetic: georeferencing exists but geodetic "
-                        "coordinates (lat/lon/alt) are not defined.");
+                    std::cout
+                        << "[mm2las] Exporting points in geodetic WGS-84 coordinates (EPSG:4979) "
+                           "using per-point latitude/longitude/altitude fields."
+                        << std::endl;
                 }
-                geodeticExport = mm.georeferencing;
-                std::cout << "[mm2las] Exporting points in geodetic WGS-84 coordinates "
-                             "(EPSG:4979)."
-                          << std::endl;
-                std::cout << "[mm2las] Reference: lat="
-                          << mm.georeferencing->geo_coord.lat.getDecimalValue()
-                          << " lon=" << mm.georeferencing->geo_coord.lon.getDecimalValue()
-                          << " alt=" << mm.georeferencing->geo_coord.height << " m" << std::endl;
             }
             else if (frame != "map")
             {
@@ -1263,7 +1277,7 @@ int main(int argc, char** argv)
                       << " points)..." << std::endl;
             saveToLas(
                 *pts, out, selectedFields, systemId, generatingSoftware, T_enu_to_map,
-                geodeticExport);
+                exportGeodetic, geodeticExport);
         }
 
         std::cout << "Done." << std::endl;
