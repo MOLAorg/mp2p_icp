@@ -108,9 +108,11 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     struct DataPerVoxel
     {
-        const PointCloudToVoxelGrid::voxel_t* voxel     = nullptr;
-        uint32_t                              nextIdx   = 0;
-        bool                                  exhausted = false;
+        // voxel_t is a non-owning span (16 bytes); copy by value so we don't
+        // hold a dangling pointer to the temporary built inside visit_voxels.
+        PointCloudToVoxelGrid::voxel_t voxel;
+        uint32_t                       nextIdx   = 0;
+        bool                           exhausted = false;
     };
 
     // A list of all "valid" voxels:
@@ -121,16 +123,16 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     const auto lambdaVisitVoxel =
         [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& data)
     {
-        if (!data.indices.empty())
+        if (!data.empty())
         {
             nTotalVoxels++;
         }
-        if (data.indices.size() < _.minimum_input_points_per_voxel)
+        if (data.size() < _.minimum_input_points_per_voxel)
         {
             return;
         }
 
-        voxels.emplace_back().voxel = &data;
+        voxels.emplace_back().voxel = data;
     };
 
     // Parse input cloud through subsampling:
@@ -230,12 +232,12 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         auto& ith = voxels[i];
         if (!ith.exhausted)
         {
-            auto ptIdx = ith.voxel->indices[ith.nextIdx++];
+            auto ptIdx = ith.voxel[ith.nextIdx++];
 
             outPc->insertPointFrom(ptIdx, ctx);
             anyInsertInTheRound = true;
 
-            if (ith.nextIdx >= ith.voxel->indices.size())
+            if (ith.nextIdx >= ith.voxel.size())
             {
                 ith.exhausted = true;
             }

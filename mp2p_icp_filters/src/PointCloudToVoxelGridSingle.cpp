@@ -95,7 +95,14 @@ void PointCloudToVoxelGridSingle::processPointCloud(
 
     if (use_tsl_robin_map_)
     {
-        impl_->pts_voxels.reserve(impl_->pts_voxels.size() + last_pt_idx);
+        // No pre-reservation: reserving for all input points (last_pt_idx -
+        // first_pt_idx) is a gross over-estimate when voxels are large relative
+        // to point spacing — e.g. 100k points at 0.5m voxels yields ~10k unique
+        // voxels, so reserving 100k wastes ~10x RAM upfront. Alternatives:
+        //   a) reserve(N / expected_pts_per_voxel) — needs a hint parameter.
+        //   b) reserve(N) — correct worst-case but costly for big clouds.
+        //   c) no reserve — O(log N) rehashes, fine for single-pass use.
+        // We choose (c): let robin_map grow on demand.
         lambda_process(impl_->pts_voxels);
     }
     else

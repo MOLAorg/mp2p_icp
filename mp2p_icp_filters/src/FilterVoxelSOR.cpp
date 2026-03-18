@@ -49,6 +49,7 @@ void FilterVoxelSOR::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
     MCP_LOAD_OPT(c, std_dev_mul);
     MCP_LOAD_OPT(c, use_tsl_robin_map);
     MCP_LOAD_OPT(c, parallelization_grain_size);
+    MCP_LOAD_OPT(c, points_per_batch);
 }
 
 void FilterVoxelSOR::initialize_filter(const mrpt::containers::yaml& c)
@@ -78,13 +79,6 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     MRPT_LOG_DEBUG("FilterVoxelSOR: Starting SOR filtering...");
-
-    // 1. Partition into Voxel Grid
-    PointCloudToVoxelGrid grid;
-    grid.setConfiguration(params.voxel_size, params.use_tsl_robin_map);
-    grid.processPointCloud(*pcIn);
-
-    MRPT_LOG_DEBUG("FilterVoxelSOR: Done voxels.");
 
     // 2. Prepare output layers
     auto outInliers = GetOrCreatePointLayer(
@@ -116,216 +110,179 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
     std::atomic<size_t> inliersCount{0};
     std::atomic<size_t> outliersCount{0};
 
-    // 3. Collect all voxels into a vector for parallel processing
+    // 3. Classification bitset: 1 byte per point, written during voxel processing,
+    //    read in a single serial pass at the end.
+    const size_t         nPoints = pcIn->size();
+    std::vector<uint8_t> isInlier(nPoints, 0);  // 0 = outlier, 1 = inlier
+
+    // Collect voxels into a vector for parallel processing.
+    // voxel_t is a non-owning view (pointer + count) into grid's flat index
+    // array; it is safe to copy as long as `grid` outlives the processing loop.
     struct VoxelData
     {
         PointCloudToVoxelGrid::indices_t idx;
         PointCloudToVoxelGrid::voxel_t   vxl;
     };
-
     std::vector<VoxelData> voxels;
-    grid.visit_voxels([&](const auto& idx, const auto& vxl) { voxels.push_back({idx, vxl}); });
 
-    const size_t numVoxels = voxels.size();
-    MRPT_LOG_DEBUG_FMT("FilterVoxelSOR: Processing %zu voxels...", numVoxels);
+    // 4. Process the cloud in index-range chunks to bound peak RAM.
+    //    Peak memory per chunk: O(chunkSize * 9 bytes) for the flat index array
+    //    plus the hash-map bucket array (proportional to unique voxels in chunk).
+    //    Voxels at chunk boundaries may see a partial point set, but the effect
+    //    on SOR quality is negligible when voxel_size << cloud spatial extent.
+    const size_t chunkSize = (params.points_per_batch > 0) ? params.points_per_batch : nPoints;
 
-    // Thread-safe storage for results: each thread accumulates its own results
-    struct ThreadResults
+    PointCloudToVoxelGrid grid;
+    grid.setConfiguration(params.voxel_size, params.use_tsl_robin_map);
+
+    for (size_t chunkStart = 0; chunkStart < nPoints; chunkStart += chunkSize)
     {
-        std::vector<size_t> inlierIndices;
-        std::vector<size_t> outlierIndices;
-    };
+        const size_t chunkEnd = std::min(chunkStart + chunkSize, nPoints);
+        const size_t chunkN   = chunkEnd - chunkStart;
+
+        grid.clear();
+        grid.processPointCloud(*pcIn, chunkStart, chunkN);
+
+        voxels.clear();
+        grid.visit_voxels([&](const auto& idx, const auto& vxl) { voxels.push_back({idx, vxl}); });
+
+        const size_t numVoxels = voxels.size();
+        MRPT_LOG_DEBUG_FMT(
+            "FilterVoxelSOR: chunk [%zu, %zu): %zu voxels", chunkStart, chunkEnd, numVoxels);
 
 #if defined(MP2P_HAS_TBB)
-    // Use thread-local storage for each thread to avoid mutex contention
-    tbb::enumerable_thread_specific<ThreadResults> threadResults;
-
-    // 4. Process voxels in parallel
-    tbb::parallel_for(
-        tbb::blocked_range<size_t>(0, numVoxels, params.parallelization_grain_size),
-        [&](const tbb::blocked_range<size_t>& r)
-        {
-            // Get thread-local storage
-            auto& localResults = threadResults.local();
-
-            for (size_t voxelIdx = r.begin(); voxelIdx < r.end(); ++voxelIdx)
+        tbb::parallel_for(
+            tbb::blocked_range<size_t>(0, numVoxels, params.parallelization_grain_size),
+            [&](const tbb::blocked_range<size_t>& r)
             {
-                const auto&  vxlData      = voxels[voxelIdx];
-                const auto&  vxl          = vxlData.vxl;
-                const size_t nVoxelPoints = vxl.indices.size();
-
-                // If too few points for SOR, keep them all as inliers
-                if (nVoxelPoints <= params.mean_k)
+                for (size_t voxelIdx = r.begin(); voxelIdx < r.end(); ++voxelIdx)
                 {
-                    for (const auto originalIdx : vxl.indices)
+                    const auto&  vxl          = voxels[voxelIdx].vxl;
+                    const size_t nVoxelPoints = vxl.size();
+
+                    if (nVoxelPoints <= params.mean_k)
                     {
-                        localResults.inlierIndices.push_back(originalIdx);
+                        for (const auto originalIdx : vxl)
+                        {
+                            isInlier[originalIdx] = 1;
+                        }
+                        continue;
                     }
-                    continue;
+
+                    mrpt::maps::CSimplePointsMap localMap;
+                    localMap.reserve(nVoxelPoints);
+                    for (const auto originalIdx : vxl)
+                    {
+                        localMap.insertPointFast(xs[originalIdx], ys[originalIdx], zs[originalIdx]);
+                    }
+
+                    std::vector<double> avg_distances(nVoxelPoints);
+                    std::vector<size_t> nn_indices(params.mean_k + 1);
+                    std::vector<float>  nn_dists_sq(params.mean_k + 1);
+
+                    for (size_t i = 0; i < nVoxelPoints; ++i)
+                    {
+                        localMap.kdTreeNClosestPoint3DIdx(
+                            xs[vxl[i]], ys[vxl[i]], zs[vxl[i]], params.mean_k + 1, nn_indices,
+                            nn_dists_sq);
+
+                        double sum_dist = 0;
+                        for (size_t k = 1; k < nn_dists_sq.size(); ++k)
+                        {
+                            sum_dist += std::sqrt(static_cast<double>(nn_dists_sq[k]));
+                        }
+                        avg_distances[i] = sum_dist / static_cast<double>(params.mean_k);
+                    }
+
+                    double mu, sigma;
+                    mrpt::math::meanAndStd(avg_distances, mu, sigma);
+                    const double threshold = mu + params.std_dev_mul * sigma;
+
+                    for (size_t i = 0; i < nVoxelPoints; ++i)
+                    {
+                        if (avg_distances[i] <= threshold)
+                        {
+                            isInlier[vxl[i]] = 1;
+                        }
+                    }
                 }
+            });
+#else
+        for (size_t voxelIdx = 0; voxelIdx < numVoxels; ++voxelIdx)
+        {
+            const auto&  vxl          = voxels[voxelIdx].vxl;
+            const size_t nVoxelPoints = vxl.size();
 
-                // Build a small local map for k-NN
-                mrpt::maps::CSimplePointsMap localMap;
-                localMap.reserve(nVoxelPoints);
-                for (const auto originalIdx : vxl.indices)
+            if (nVoxelPoints <= params.mean_k)
+            {
+                for (const auto originalIdx : vxl)
                 {
-                    localMap.insertPointFast(xs[originalIdx], ys[originalIdx], zs[originalIdx]);
+                    isInlier[originalIdx] = 1;
                 }
+                continue;
+            }
 
-                // Calculate avg distance to k-neighbors for each point in voxel
-                std::vector<double> avg_distances(nVoxelPoints);
-                std::vector<size_t> nn_indices(params.mean_k + 1);
-                std::vector<float>  nn_dists_sq(params.mean_k + 1);
+            mrpt::maps::CSimplePointsMap localMap;
+            localMap.reserve(nVoxelPoints);
+            for (const auto originalIdx : vxl)
+            {
+                localMap.insertPointFast(xs[originalIdx], ys[originalIdx], zs[originalIdx]);
+            }
 
-                for (size_t i = 0; i < nVoxelPoints; ++i)
+            std::vector<double> avg_distances(nVoxelPoints);
+            std::vector<size_t> nn_indices(params.mean_k + 1);
+            std::vector<float>  nn_dists_sq(params.mean_k + 1);
+
+            for (size_t i = 0; i < nVoxelPoints; ++i)
+            {
+                localMap.kdTreeNClosestPoint3DIdx(
+                    xs[vxl[i]], ys[vxl[i]], zs[vxl[i]], params.mean_k + 1, nn_indices, nn_dists_sq);
+
+                double sum_dist = 0;
+                for (size_t k = 1; k < nn_dists_sq.size(); ++k)
                 {
-                    localMap.kdTreeNClosestPoint3DIdx(
-                        xs[vxl.indices[i]], ys[vxl.indices[i]], zs[vxl.indices[i]],
-                        params.mean_k + 1, nn_indices, nn_dists_sq);
-
-                    double sum_dist = 0;
-                    // index 0 is the point itself
-                    for (size_t k = 1; k < nn_dists_sq.size(); ++k)
-                    {
-                        sum_dist += std::sqrt(static_cast<double>(nn_dists_sq[k]));
-                    }
-
-                    avg_distances[i] = sum_dist / static_cast<double>(params.mean_k);
+                    sum_dist += std::sqrt(static_cast<double>(nn_dists_sq[k]));
                 }
+                avg_distances[i] = sum_dist / static_cast<double>(params.mean_k);
+            }
 
-                // Compute voxel-local stats
-                double mu, sigma;
-                mrpt::math::meanAndStd(avg_distances, mu, sigma);
-                const double threshold = mu + params.std_dev_mul * sigma;
+            double mu, sigma;
+            mrpt::math::meanAndStd(avg_distances, mu, sigma);
+            const double threshold = mu + params.std_dev_mul * sigma;
 
-                // Classify points
-                for (size_t i = 0; i < nVoxelPoints; ++i)
+            for (size_t i = 0; i < nVoxelPoints; ++i)
+            {
+                if (avg_distances[i] <= threshold)
                 {
-                    const auto originalIdx = vxl.indices[i];
-                    if (avg_distances[i] <= threshold)
-                    {
-                        localResults.inlierIndices.push_back(originalIdx);
-                    }
-                    else
-                    {
-                        localResults.outlierIndices.push_back(originalIdx);
-                    }
+                    isInlier[vxl[i]] = 1;
                 }
             }
-        });
+        }
+#endif
+    }  // end chunk loop
 
-    // 5. Merge results from all threads
-    for (const auto& result : threadResults)
+    // 5. Single serial pass: copy classified points to output layers
+    for (size_t idx = 0; idx < nPoints; ++idx)
     {
-        for (const auto idx : result.inlierIndices)
+        if (isInlier[idx])
         {
+            inliersCount++;
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
             outInliers->insertPointFrom(idx, ctxI);
 #else
             outInliers->insertPointFrom(*pcIn, idx, ctxI);
 #endif
         }
-        inliersCount += result.inlierIndices.size();
-
-        if (outOutliers)
+        else if (outOutliers)
         {
-            for (const auto idx : result.outlierIndices)
-            {
+            outliersCount++;
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
-                outOutliers->insertPointFrom(idx, *ctxO);
+            outOutliers->insertPointFrom(idx, *ctxO);
 #else
-                outOutliers->insertPointFrom(*pcIn, idx, *ctxO);
+            outOutliers->insertPointFrom(*pcIn, idx, *ctxO);
 #endif
-            }
-            outliersCount += result.outlierIndices.size();
         }
     }
-
-#else
-    // Sequential fallback (no TBB)
-    for (size_t voxelIdx = 0; voxelIdx < numVoxels; ++voxelIdx)
-    {
-        const auto&  vxlData      = voxels[voxelIdx];
-        const auto&  vxl          = vxlData.vxl;
-        const size_t nVoxelPoints = vxl.indices.size();
-
-        // If too few points for SOR, keep them all as inliers
-        if (nVoxelPoints <= params.mean_k)
-        {
-            inliersCount += nVoxelPoints;
-            for (const auto originalIdx : vxl.indices)
-            {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
-                outInliers->insertPointFrom(originalIdx, ctxI);
-#else
-                outInliers->insertPointFrom(*pcIn, originalIdx, ctxI);
-#endif
-            }
-            continue;
-        }
-
-        // Build a small local map for k-NN
-        mrpt::maps::CSimplePointsMap localMap;
-        localMap.reserve(nVoxelPoints);
-        for (const auto originalIdx : vxl.indices)
-        {
-            localMap.insertPointFast(xs[originalIdx], ys[originalIdx], zs[originalIdx]);
-        }
-
-        // Calculate avg distance to k-neighbors for each point in voxel
-        std::vector<double> avg_distances(nVoxelPoints);
-        std::vector<size_t> nn_indices(params.mean_k + 1);
-        std::vector<float>  nn_dists_sq(params.mean_k + 1);
-
-        for (size_t i = 0; i < nVoxelPoints; ++i)
-        {
-            localMap.kdTreeNClosestPoint3DIdx(
-                xs[vxl.indices[i]], ys[vxl.indices[i]], zs[vxl.indices[i]], params.mean_k + 1,
-                nn_indices, nn_dists_sq);
-
-            double sum_dist = 0;
-            // index 0 is the point itself
-            for (size_t k = 1; k < nn_dists_sq.size(); ++k)
-            {
-                sum_dist += std::sqrt(static_cast<double>(nn_dists_sq[k]));
-            }
-
-            avg_distances[i] = sum_dist / static_cast<double>(params.mean_k);
-        }
-
-        // Compute voxel-local stats
-        double mu, sigma;
-        mrpt::math::meanAndStd(avg_distances, mu, sigma);
-        const double threshold = mu + params.std_dev_mul * sigma;
-
-        // Dispatch
-        for (size_t i = 0; i < nVoxelPoints; ++i)
-        {
-            const auto originalIdx = vxl.indices[i];
-            if (avg_distances[i] <= threshold)
-            {
-                inliersCount++;
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
-                outInliers->insertPointFrom(originalIdx, ctxI);
-#else
-                outInliers->insertPointFrom(*pcIn, originalIdx, ctxI);
-#endif
-            }
-            else
-            {
-                outliersCount++;
-                if (outOutliers)
-                {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
-                    outOutliers->insertPointFrom(originalIdx, *ctxO);
-#else
-                    outOutliers->insertPointFrom(*pcIn, originalIdx, *ctxO);
-#endif
-                }
-            }
-        }
-    }
-#endif
 
     MRPT_LOG_DEBUG_FMT(
         "FilterVoxelSOR: Inliers kept: %zu, Outliers removed: %zu", inliersCount.load(),

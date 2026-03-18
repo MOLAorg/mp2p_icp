@@ -55,10 +55,21 @@ class PointCloudToVoxelGrid
 
     Parameters params;
 
-    /** The list of point indices in each voxel */
+    /** Non-owning view of the point indices in a voxel.
+     *  Backed by the flat index array inside PointCloudToVoxelGrid; valid
+     *  only while the owning PointCloudToVoxelGrid is alive and unmodified.
+     *  Trivially copyable (pointer + count, 16 bytes — no heap allocation).
+     */
     struct voxel_t
     {
-        std::vector<std::size_t> indices;
+        const std::size_t* begin_ptr = nullptr;
+        std::uint32_t      count     = 0;
+
+        std::size_t        size() const { return count; }
+        bool               empty() const { return count == 0; }
+        const std::size_t* begin() const { return begin_ptr; }
+        const std::size_t* end() const { return begin_ptr + count; }
+        std::size_t        operator[](std::size_t i) const { return begin_ptr[i]; }
     };
 
     struct indices_t
