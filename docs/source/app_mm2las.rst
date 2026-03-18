@@ -26,7 +26,7 @@ Usage
 
 .. code-block:: bash
 
-   mm2las -i <input.mm> [-o <output_prefix>] [--export-fields <field1,field2,...>] [--frame map|enu]
+   mm2las -i <input.mm> [-o <output_prefix>] [--export-fields <field1,field2,...>] [--frame map|enu|geodetic]
 
 Arguments
 ^^^^^^^^^
@@ -36,7 +36,7 @@ Arguments
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export. If omitted, all available fields are exported, with non-standard fields becoming Extra Dimensions.
 - ``--system-id <string>``: Sets the System Identifier in the LAS header (default: "mm2las").
 - ``--generating-software <string>``: Sets the Generating Software in the LAS header (default: "MOLA mm2las").
-- ``--frame <map|enu>`` (optional): Coordinate frame for exported points. ``map`` (default) exports coordinates in the map local frame. ``enu`` transforms all point coordinates to the East-North-Up frame using the georeferencing information stored in the map. Requires that the input map contains georeferencing data; otherwise, an error is raised.
+- ``--frame <map|enu|geodetic>`` (optional): Coordinate frame for exported points. ``map`` (default) exports coordinates in the map local frame. ``enu`` transforms all point coordinates to the East-North-Up frame using the georeferencing information stored in the map. ``geodetic`` exports points as WGS-84 geographic coordinates (EPSG:4979) with longitude as X, latitude as Y, and ellipsoidal height as Z, embedding the CRS as a WKT VLR in the LAS file for full georeferencing support in GIS software. Requires that the input map contains georeferencing data with valid geodetic coordinates. If per-point ``latitude``/``longitude``/``altitude`` double fields already exist in the map (e.g., from ``mola-mm-add-geodetic``), they are used directly; otherwise, the conversion from map coordinates is computed on the fly.
 
 
 Examples
@@ -72,6 +72,12 @@ Export points in the ENU (East-North-Up) frame:
 
    mm2las -i mymap.mm --frame enu
 
+Export as georeferenced WGS-84 coordinates (EPSG:4979) for GIS software:
+
+.. code-block:: bash
+
+   mm2las -i mymap.mm --frame geodetic
+
 
 Field Selection
 ---------------
@@ -105,8 +111,8 @@ LAS Format Details
 
 - **LAS Version**: 1.4.
 - **Point Format**: 8 (Base size: 38 bytes + Extra Dimensions).
-- **WKT Support**: Uses LAS 1.4 Global Encoding to signal coordinate reference system compatibility.
-- **Coordinate precision**: 0.001 (1mm scale).
+- **WKT CRS Support**: When using ``--frame geodetic``, embeds an OGC WKT string for EPSG:4979 (WGS 84 3D) as a VLR, following the LAS 1.4 specification for CRS encoding.
+- **Coordinate precision**: 0.001 (1mm scale) for metric frames; 1e-8 degrees (~1mm at equator) for geodetic latitude/longitude.
 - **Maximum points**: Supports >4.3 billion points via 64-bit Extended Point Counters.
 
 Compression
@@ -133,13 +139,18 @@ LAZ files typically achieve 7-20× compression ratios while maintaining lossless
 Coordinate Frames
 -----------------
 
-By default, points are exported in the **map** local frame (the native coordinate system of the metric map). If the map contains georeferencing metadata (see :ref:`app_mm-georef`), you can use ``--frame enu`` to export all point coordinates transformed to the **ENU (East-North-Up)** frame. The transformation uses the ``T_enu_to_map`` SE(3) pose stored in the map's georeferencing data. Non-coordinate fields (intensity, RGB, etc.) are not affected by this transformation.
+By default, points are exported in the **map** local frame (the native coordinate system of the metric map). If the map contains georeferencing metadata (see :ref:`app_mm-georef`), you can use:
+
+- ``--frame enu``: Exports all point coordinates transformed to the **ENU (East-North-Up)** frame. The transformation uses the ``T_enu_to_map`` SE(3) pose stored in the map's georeferencing data.
+- ``--frame geodetic``: Exports points as **WGS-84 geographic coordinates (EPSG:4979)**, with X=longitude, Y=latitude, Z=ellipsoidal height. A WKT Coordinate Reference System record is embedded as a VLR in the LAS file, enabling commercial GIS software (CloudCompare, QGIS, Global Mapper, ArcGIS, etc.) to correctly geolocate the point cloud on the globe. The coordinate precision is ~1mm (scale factor 1e-8 degrees for lat/lon, 0.001m for altitude), with a usable range of ~2,388km from the offset origin — more than sufficient for any single point cloud. If the map already contains per-point ``latitude``/``longitude``/``altitude`` fields (e.g., added by the ``mola-mm-add-geodetic`` tool), those values are used directly. Otherwise, the geodetic coordinates are computed on the fly from the map coordinates using the georeferencing origin and the ENU-to-geodetic conversion via WGS-84 ellipsoid parameters.
+
+Non-coordinate fields (intensity, RGB, etc.) are not affected by these transformations.
 
 Limitations
 -----------
 
 - **Waveform Data**: Not supported in the current export logic.
 - **Direct LAZ**: Compressed LAZ files are not written directly; use ``laszip`` or ``pdal`` for post-compression.
-- **Coordinate Systems**: While the file is LAS 1.4 compliant, specific CRS WKT strings are not yet automatically embedded in the VLRs.
+- **Coordinate Systems**: CRS WKT embedding is only available with ``--frame geodetic`` (EPSG:4979). Other projected CRS (e.g., UTM) are not currently supported.
 
 

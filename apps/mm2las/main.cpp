@@ -25,6 +25,8 @@
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/string_utils.h>
+#include <mrpt/topography/conversions.h>
+#include <mrpt/topography/data_types.h>
 #include <mrpt/version.h>
 
 #include <algorithm>
@@ -33,6 +35,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <stdexcept>
 
 // CLI flags
 TCLAP::CmdLine cmd("mm2las");
@@ -59,8 +62,11 @@ TCLAP::ValueArg<std::string> argGeneratingSoftware(
 TCLAP::ValueArg<std::string> argFrame(
     "", "frame",
     "Coordinate frame for exported points: 'map' (default) uses the map local frame; "
-    "'enu' transforms points to the East-North-Up frame (requires georeferencing data in the map).",
-    false, "map", "map|enu", cmd);
+    "'enu' transforms points to the East-North-Up frame (requires georeferencing data in the map); "
+    "'geodetic' exports as WGS-84 lon/lat/alt with EPSG:4979 CRS embedded in the LAS file "
+    "(requires georeferencing data). If per-point latitude/longitude/altitude fields already exist "
+    "in the map, they are used directly; otherwise, the conversion is computed on the fly.",
+    false, "map", "map|enu|geodetic", cmd);
 
 // ----------------------------------------------------------------
 // LAS 1.4 Format Structures
@@ -172,14 +178,43 @@ struct FieldInfo
     size_t      size   = 0;  // size in bytes for serialization
 };
 
+// WKT2:2019 string for EPSG:4979 (WGS 84 geographic 3D).
+// IMPORTANT: Axis order is longitude-first (ORDER[1]) to match LAS point data
+// layout where X=longitude, Y=latitude, Z=ellipsoidal height. The canonical
+// EPSG:4979 definition uses lat-first, but that would cause CRS-aware readers
+// to swap X/Y. WKT1 cannot represent 3D geographic CRS, so WKT2 is required.
+static const char* const kWKT_EPSG4979 =
+    "GEOGCRS[\"WGS 84\","
+    "ENSEMBLE[\"World Geodetic System 1984 ensemble\","
+    "MEMBER[\"World Geodetic System 1984 (Transit)\"],"
+    "MEMBER[\"World Geodetic System 1984 (G730)\"],"
+    "MEMBER[\"World Geodetic System 1984 (G873)\"],"
+    "MEMBER[\"World Geodetic System 1984 (G1150)\"],"
+    "MEMBER[\"World Geodetic System 1984 (G1674)\"],"
+    "MEMBER[\"World Geodetic System 1984 (G1762)\"],"
+    "MEMBER[\"World Geodetic System 1984 (G2139)\"],"
+    "ELLIPSOID[\"WGS 84\",6378137,298.257223563,"
+    "LENGTHUNIT[\"metre\",1]],"
+    "ENSEMBLEACCURACY[2.0]],"
+    "PRIMEM[\"Greenwich\",0,ANGLEUNIT[\"degree\",0.0174532925199433]],"
+    "CS[ellipsoidal,3],"
+    "AXIS[\"geodetic longitude (Lon)\",east,ORDER[1],ANGLEUNIT[\"degree\",0.0174532925199433]],"
+    "AXIS[\"geodetic latitude (Lat)\",north,ORDER[2],ANGLEUNIT[\"degree\",0.0174532925199433]],"
+    "AXIS[\"ellipsoidal height (h)\",up,ORDER[3],LENGTHUNIT[\"metre\",1]],"
+    "USAGE[SCOPE[\"Geodesy.\"],AREA[\"World.\"],"
+    "BBOX[-90,-180,90,180]],"
+    "ID[\"EPSG\",4979]]";
+
 // ----------------------------------------------------------------
 // LAS 1.4 Export Logic with Extra Dimensions
 // ----------------------------------------------------------------
 void saveToLas(
     const mrpt::maps::CPointsMap& pc, const std::string& filename,
     const std::vector<std::string>& selectedFields, const std::string& systemId,
-    const std::string&                         generatingSoftware,
-    const std::optional<mrpt::poses::CPose3D>& T_enu_to_map = std::nullopt)
+    const std::string&                                           generatingSoftware,
+    const std::optional<mrpt::poses::CPose3D>&                   T_enu_to_map   = std::nullopt,
+    bool                                                         exportGeodetic = false,
+    const std::optional<mp2p_icp::metric_map_t::Georeferencing>& geodetic       = std::nullopt)
 {
     const size_t N = pc.size();
     if (N == 0)
@@ -225,6 +260,65 @@ void saveToLas(
 
     const auto &xs = pc.getPointsBufferRef_x(), &ys = pc.getPointsBufferRef_y(),
                &zs = pc.getPointsBufferRef_z();
+
+    // Detect pre-existing per-point geodetic fields
+    bool hasPerPointGeodetic = false;
+
+    [[maybe_unused]] const mrpt::aligned_std_vector<double>* latBuf = nullptr;
+    [[maybe_unused]] const mrpt::aligned_std_vector<double>* lonBuf = nullptr;
+    [[maybe_unused]] const mrpt::aligned_std_vector<double>* altBuf = nullptr;
+
+#if MRPT_VERSION >= 0x020f03
+    if (exportGeodetic)
+    {
+        const auto d_names_check = pc.getPointFieldNames_double();
+        bool       hasLat = false, hasLon = false, hasAlt = false;
+        for (const auto& n : d_names_check)
+        {
+            if (n == "latitude")
+            {
+                hasLat = true;
+            }
+            if (n == "longitude")
+            {
+                hasLon = true;
+            }
+            if (n == "altitude")
+            {
+                hasAlt = true;
+            }
+        }
+        if (hasLat && hasLon && hasAlt)
+        {
+            latBuf = pc.getPointsBufferRef_double_field("latitude");
+            lonBuf = pc.getPointsBufferRef_double_field("longitude");
+            altBuf = pc.getPointsBufferRef_double_field("altitude");
+            if (latBuf && lonBuf && altBuf && latBuf->size() >= N && lonBuf->size() >= N &&
+                altBuf->size() >= N)
+            {
+                hasPerPointGeodetic = true;
+                std::cout
+                    << "  [geodetic] Using pre-existing per-point latitude/longitude/altitude "
+                       "fields."
+                    << std::endl;
+            }
+        }
+        if (!hasPerPointGeodetic)
+        {
+            std::cout << "  [geodetic] Per-point geodetic fields not found; computing on the fly."
+                      << std::endl;
+        }
+    }
+#endif
+
+    // Preflight: geodetic mode requires either per-point buffers or a georeferencing context
+    // for on-the-fly conversion. Fail early with a clear message instead of a null deref later.
+    if (exportGeodetic && !hasPerPointGeodetic && !geodetic.has_value())
+    {
+        throw std::runtime_error(
+            "Cannot export in geodetic mode: no per-point latitude/longitude/altitude fields "
+            "found and no georeferencing context was provided for on-the-fly conversion.");
+    }
 
     // 2. Collect all fields to export
     std::vector<std::string> fieldsToExport;
@@ -596,12 +690,67 @@ void saveToLas(
     double min_z = std::numeric_limits<double>::max();
     double max_z = std::numeric_limits<double>::lowest();
 
+    // Helper lambda: compute geodetic coords for a point
+    // Returns {longitude, latitude, altitude} (LAS X=lon, Y=lat, Z=alt)
+    auto pointToGeodetic = [&](size_t i) -> mrpt::math::TPoint3D
+    {
+        if (hasPerPointGeodetic)
+        {
+            return {(*lonBuf)[i], (*latBuf)[i], (*altBuf)[i]};
+        }
+        // On-the-fly conversion: map -> ENU -> geocentric -> geodetic
+        const mrpt::math::TPoint3D ptENU =
+            geodetic->T_enu_to_map.mean.composePoint({xs[i], ys[i], zs[i]});
+
+        mrpt::topography::TGeocentricCoords geocentric;
+        mrpt::topography::ENUToGeocentric(
+            ptENU, geodetic->geo_coord, geocentric,
+            mrpt::topography::TEllipsoid::Ellipsoid_WGS84());
+
+        mrpt::topography::TGeodeticCoords geod;
+        mrpt::topography::geocentricToGeodetic(
+            geocentric, geod, mrpt::topography::TEllipsoid::Ellipsoid_WGS84());
+
+        return {geod.lon.getDecimalValue(), geod.lat.getDecimalValue(), geod.height};
+    };
+
+    // Cache on-the-fly geodetic results so the write loop does not recompute them.
+    // The fast-path (hasPerPointGeodetic) reads existing buffers cheaply and needs no cache.
+    std::vector<mrpt::math::TPoint3D> geodeticCache;
+    if (exportGeodetic && !hasPerPointGeodetic)
+    {
+        geodeticCache.resize(N);
+    }
+
     for (size_t i = 0; i < N; ++i)
     {
-        double px = xs[i], py = ys[i], pz = zs[i];
-        if (T_enu_to_map.has_value())
+        double px, py, pz;
+        if (exportGeodetic)
         {
-            T_enu_to_map->composePoint(xs[i], ys[i], zs[i], px, py, pz);
+            // In geodetic mode: X=longitude, Y=latitude, Z=altitude
+            mrpt::math::TPoint3D g;
+            if (!hasPerPointGeodetic)
+            {
+                g                = pointToGeodetic(i);
+                geodeticCache[i] = g;
+            }
+            else
+            {
+                g = pointToGeodetic(i);
+            }
+            px = g.x;
+            py = g.y;
+            pz = g.z;
+        }
+        else
+        {
+            px = xs[i];
+            py = ys[i];
+            pz = zs[i];
+            if (T_enu_to_map.has_value())
+            {
+                T_enu_to_map->composePoint(xs[i], ys[i], zs[i], px, py, pz);
+            }
         }
         min_x = std::min(min_x, px);
         max_x = std::max(max_x, px);
@@ -627,6 +776,12 @@ void saveToLas(
     std::strncpy(header.generating_software, generatingSoftware.c_str(), 31);
     header.generating_software[31] = '\0';
 
+    // Bit 4 (0x10) signals a WKT CRS VLR is present; only set it when we actually write one.
+    if (!exportGeodetic)
+    {
+        header.global_encoding &= ~static_cast<uint16_t>(0x10);
+    }
+
     header.point_data_format_id     = 8;  // Always use Format 8
     header.point_data_record_length = 38 + static_cast<uint16_t>(extraBytesPerPoint);
 
@@ -644,16 +799,72 @@ void saveToLas(
     header.y_offset = min_y;
     header.z_offset = min_z;
 
-    // If we have extra dimensions, we need VLR for "Extra Bytes"
+    // In geodetic mode, use finer scale for degrees and set appropriate offsets
+    if (exportGeodetic)
+    {
+        // Scale factor tradeoffs for geodetic coordinates:
+        // LAS stores coordinates as int32, so the usable range from the offset
+        // is ±(2^31 * scale) ≈ ±2.147e9 * scale.
+        //
+        // At 1e-8 degrees: ~1.1mm precision at equator (cos(lat) shrinks this
+        // towards poles). Range: ±21.47 degrees from offset — more than enough
+        // for any single point cloud extent.
+        //
+        // At 1e-7 degrees: ~1.1cm precision, ±214.7 deg range (exceeds globe).
+        // At 1e-9 degrees: ~0.11mm precision, but only ±2.15 deg range (~239km
+        // at equator), which could overflow for very large-area datasets.
+        //
+        // 1e-8 is the sweet spot: mm-level precision with ample range (~2,388km).
+        header.x_scale_factor = 1e-8;  // longitude
+        header.y_scale_factor = 1e-8;  // latitude
+        header.z_scale_factor = 0.001;  // altitude in meters, 1mm precision
+    }
+
+    // Verify that the coordinate range fits in int32 with the chosen scale.
+    // LAS stores coordinates as (coord - offset) / scale cast to int32, so the
+    // maximum representable span from the offset is INT32_MAX * scale.
+    {
+        const double int32_max     = static_cast<double>(std::numeric_limits<int32_t>::max());
+        const double max_span_x    = int32_max * header.x_scale_factor;
+        const double max_span_y    = int32_max * header.y_scale_factor;
+        const double max_span_z    = int32_max * header.z_scale_factor;
+        const double actual_span_x = max_x - min_x;
+        const double actual_span_y = max_y - min_y;
+        const double actual_span_z = max_z - min_z;
+        if (actual_span_x > max_span_x || actual_span_y > max_span_y || actual_span_z > max_span_z)
+        {
+            throw std::runtime_error(
+                "Point cloud extent overflows int32 with the chosen LAS scale factors.\n"
+                "  X span: " +
+                std::to_string(actual_span_x) + " (max " + std::to_string(max_span_x) + ")\n" +
+                "  Y span: " + std::to_string(actual_span_y) + " (max " +
+                std::to_string(max_span_y) + ")\n" + "  Z span: " + std::to_string(actual_span_z) +
+                " (max " + std::to_string(max_span_z) + ")\n" +
+                "Use a coarser scale factor or split the point cloud into smaller tiles.");
+        }
+    }
+
+    // Calculate VLR sizes
+    uint32_t numVLRs       = 0;
+    uint32_t vlrTotalBytes = 0;
+
+    // WKT CRS VLR (geodetic mode)
+    const size_t wktLen = exportGeodetic ? (std::strlen(kWKT_EPSG4979) + 1) : 0;  // +1 null
+    if (exportGeodetic)
+    {
+        numVLRs++;
+        vlrTotalBytes += sizeof(VLRHeader) + wktLen;
+    }
+
+    // Extra Bytes VLR
     if (extraBytesPerPoint > 0)
     {
-        header.number_of_variable_length_records = 1;
-        header.offset_to_point_data = 375 + sizeof(VLRHeader) + (extraFields.size() * 192);
+        numVLRs++;
+        vlrTotalBytes += sizeof(VLRHeader) + (extraFields.size() * 192);
     }
-    else
-    {
-        header.offset_to_point_data = 375;
-    }
+
+    header.number_of_variable_length_records = numVLRs;
+    header.offset_to_point_data              = 375 + vlrTotalBytes;
 
     std::cout << "LAS 1.4 Point Format 8:" << std::endl;
     std::cout << "  Base size: 38 bytes" << std::endl;
@@ -665,7 +876,22 @@ void saveToLas(
     // Write header
     f.write(reinterpret_cast<const char*>(&header), sizeof(LASHeader_1_4));
 
-    // 7. Write VLR for Extra Bytes if needed
+    // 7a. Write WKT CRS VLR (geodetic mode)
+    if (exportGeodetic)
+    {
+        VLRHeader wktVlr;
+        std::strncpy(wktVlr.user_id, "LASF_Projection", 16);
+        wktVlr.record_id     = 2112;  // OGC WKT CRS
+        wktVlr.record_length = static_cast<uint16_t>(wktLen);
+        std::strncpy(wktVlr.description, "OGC WKT CRS (EPSG:4979)", 31);
+
+        f.write(reinterpret_cast<const char*>(&wktVlr), sizeof(VLRHeader));
+        f.write(kWKT_EPSG4979, static_cast<std::streamsize>(wktLen));
+
+        std::cout << "  [geodetic] Embedded EPSG:4979 WKT CRS in LAS file." << std::endl;
+    }
+
+    // 7b. Write VLR for Extra Bytes if needed
     if (extraBytesPerPoint > 0)
     {
         VLRHeader vlr;
@@ -759,11 +985,25 @@ void saveToLas(
     {
         LASPointFormat8 pt = {};
 
-        // On-the-fly coordinate transform if exporting in ENU frame
-        double px = xs[i], py = ys[i], pz = zs[i];
-        if (T_enu_to_map.has_value())
+        // Coordinate transform depending on export mode
+        double px, py, pz;
+        if (exportGeodetic)
         {
-            T_enu_to_map->composePoint(xs[i], ys[i], zs[i], px, py, pz);
+            const mrpt::math::TPoint3D g =
+                !hasPerPointGeodetic ? geodeticCache[i] : pointToGeodetic(i);
+            px = g.x;  // longitude
+            py = g.y;  // latitude
+            pz = g.z;  // altitude
+        }
+        else
+        {
+            px = xs[i];
+            py = ys[i];
+            pz = zs[i];
+            if (T_enu_to_map.has_value())
+            {
+                T_enu_to_map->composePoint(xs[i], ys[i], zs[i], px, py, pz);
+            }
         }
 
         // Scale coordinates
@@ -951,7 +1191,9 @@ int main(int argc, char** argv)
         mm.load_from_file(arg_input.getValue());
 
         // Handle --frame option
-        std::optional<mrpt::poses::CPose3D> T_enu_to_map;
+        std::optional<mrpt::poses::CPose3D>                   T_enu_to_map;
+        bool                                                  exportGeodetic = false;
+        std::optional<mp2p_icp::metric_map_t::Georeferencing> geodeticExport;
         {
             const auto frame = argFrame.getValue();
             if (frame == "enu")
@@ -965,9 +1207,36 @@ int main(int argc, char** argv)
                 T_enu_to_map = mm.georeferencing->T_enu_to_map.mean;
                 std::cout << "[mm2las] Exporting points in ENU frame." << std::endl;
             }
+            else if (frame == "geodetic")
+            {
+                exportGeodetic = true;
+                // Provide georeferencing context when available (needed for on-the-fly
+                // conversion). If absent, saveToLas will use per-point lat/lon/alt fields
+                // directly, or fail with a clear error if those are also absent.
+                if (mm.georeferencing.has_value() && !mm.georeferencing->geo_coord.isClear())
+                {
+                    geodeticExport = mm.georeferencing;
+                    std::cout << "[mm2las] Exporting points in geodetic WGS-84 coordinates "
+                                 "(EPSG:4979)."
+                              << std::endl;
+                    std::cout << "[mm2las] Reference: lat="
+                              << mm.georeferencing->geo_coord.lat.getDecimalValue()
+                              << " lon=" << mm.georeferencing->geo_coord.lon.getDecimalValue()
+                              << " alt=" << mm.georeferencing->geo_coord.height << " m"
+                              << std::endl;
+                }
+                else
+                {
+                    std::cout
+                        << "[mm2las] Exporting points in geodetic WGS-84 coordinates (EPSG:4979) "
+                           "using per-point latitude/longitude/altitude fields."
+                        << std::endl;
+                }
+            }
             else if (frame != "map")
             {
-                throw std::runtime_error("Invalid --frame value. Must be 'map' or 'enu'.");
+                throw std::runtime_error(
+                    "Invalid --frame value. Must be 'map', 'enu', or 'geodetic'.");
             }
         }
 
@@ -1029,7 +1298,9 @@ int main(int argc, char** argv)
             std::string out = prefix + "_" + name + ".las";
             std::cout << "Exporting '" << name << "' to " << out << " (" << pts->size()
                       << " points)..." << std::endl;
-            saveToLas(*pts, out, selectedFields, systemId, generatingSoftware, T_enu_to_map);
+            saveToLas(
+                *pts, out, selectedFields, systemId, generatingSoftware, T_enu_to_map,
+                exportGeodetic, geodeticExport);
         }
 
         std::cout << "Done." << std::endl;
