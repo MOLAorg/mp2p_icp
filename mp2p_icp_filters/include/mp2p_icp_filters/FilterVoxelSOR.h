@@ -77,6 +77,16 @@ class FilterVoxelSOR : public mp2p_icp_filters::FilterBase
          *  Only used if TBB is available at build time.
          */
         size_t parallelization_grain_size = 10;
+
+        /** Maximum number of input points processed in one voxel-grid batch.
+         *  For very large clouds the voxel grid (hash map + flat index array)
+         *  can exhaust RAM.  Splitting into chunks bounds peak memory to
+         *  O(points_per_batch) without affecting SOR quality: voxels at chunk
+         *  boundaries may see a partial point set, but the effect is negligible
+         *  when voxel_size << spatial extent of the cloud.
+         *  Set to 0 to disable chunking (process the whole cloud at once).
+         */
+        size_t points_per_batch = 5'000'000;
     };
 
     /** Algorithm parameters */
