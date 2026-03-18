@@ -64,8 +64,13 @@ void PointCloudToVoxelGrid::processPointCloud(
     if (use_tsl_robin_map_)
     {
         auto& pts_voxels = impl_->pts_voxels;
-        // Previous point:
-        pts_voxels.reserve(pts_voxels.size() + last_pt_idx - first_pt_idx);
+        // No pre-reservation: reserving for all input points is a worst-case
+        // upper bound that over-allocates significantly when the decimation
+        // ratio is high (many input points map to few voxels). Alternatives:
+        //   a) reserve(N / expected_pts_per_voxel) — needs a hint parameter.
+        //   b) reserve(N) — correct worst-case but costly for big clouds.
+        //   c) no reserve — O(log N) rehashes, fine for single-pass use.
+        // We choose (c): let robin_map grow on demand.
 
         for (std::size_t i = first_pt_idx; i < last_pt_idx; i++)
         {
@@ -93,6 +98,10 @@ void PointCloudToVoxelGrid::clear()
 {
     if (use_tsl_robin_map_)
     {
+        // Set a low min_load_factor so clear() is allowed to shrink the bucket
+        // array back to a small size, freeing peak memory. Without this, the
+        // map retains the largest-ever allocation across filter invocations.
+        impl_->pts_voxels.min_load_factor(0.01f);
         impl_->pts_voxels.clear();
     }
     else
