@@ -335,7 +335,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             [&](const PointCloudToVoxelGrid::indices_t& idx,
                 const PointCloudToVoxelGrid::voxel_t&   vxl)
             {
-                if (vxl.indices.size() < params.minimum_points_per_voxel)
+                if (vxl.size() < params.minimum_points_per_voxel)
                 {
                     return;
                 }
@@ -358,10 +358,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     {
                         // Analyze the voxel contents:
                         auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
-                        const float inv_n = (1.0f / static_cast<float>(vxl.indices.size()));
-                        for (size_t i = 0; i < vxl.indices.size(); i++)
+                        const float inv_n = (1.0f / static_cast<float>(vxl.size()));
+                        for (size_t i = 0; i < vxl.size(); i++)
                         {
-                            const auto pt_idx = vxl.indices[i];
+                            const auto pt_idx = vxl[i];
                             mean.x += xs[pt_idx];
                             mean.y += ys[pt_idx];
                             mean.z += zs[pt_idx];
@@ -373,9 +373,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                             std::optional<float>  minSqrErr;
                             std::optional<size_t> bestIdx;
 
-                            for (size_t i = 0; i < vxl.indices.size(); i++)
+                            for (size_t i = 0; i < vxl.size(); i++)
                             {
-                                const auto  pt_idx = vxl.indices[i];
+                                const auto  pt_idx = vxl[i];
                                 const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
                                                      mrpt::square(ys[pt_idx] - mean.y) +
                                                      mrpt::square(zs[pt_idx] - mean.z);
@@ -402,10 +402,10 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                         // Insert a randomly-picked point:
                         const auto idxInVoxel =
                             (params.decimate_method == DecimateMethod::RandomPoint)
-                                ? (rng.drawUniform64bit() % vxl.indices.size())
+                                ? (rng.drawUniform64bit() % vxl.size())
                                 : 0UL;
 
-                        const auto pt_idx = vxl.indices.at(idxInVoxel);
+                        const auto pt_idx = vxl[idxInVoxel];
                         insertPtIdx       = pt_idx;
                     }
                     break;

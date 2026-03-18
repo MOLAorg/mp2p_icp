@@ -104,21 +104,21 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
     filter_grid_.visit_voxels(
         [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& vxl)
         {
-            if (!vxl.indices.empty())
+            if (!vxl.empty())
             {
                 nTotalVoxels++;
             }
-            if (vxl.indices.size() < params.min_points_per_voxel)
+            if (vxl.size() < params.min_points_per_voxel)
             {
                 return;
             }
 
             // Analyze the voxel contents:
             mrpt::math::TPoint3Df mean{0, 0, 0};
-            const float           inv_n = 1.0f / static_cast<float>(vxl.indices.size());
-            for (size_t i = 0; i < vxl.indices.size(); i++)
+            const float           inv_n = 1.0f / static_cast<float>(vxl.size());
+            for (size_t i = 0; i < vxl.size(); i++)
             {
-                const auto pt_idx = vxl.indices[i];
+                const auto pt_idx = vxl[i];
                 mean.x += xs[pt_idx];
                 mean.y += ys[pt_idx];
                 mean.z += zs[pt_idx];
@@ -129,9 +129,9 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
 
             mrpt::math::CMatrixFixed<double, 3, 3> mat_a;
             mat_a.setZero();
-            for (size_t i = 0; i < vxl.indices.size(); i++)
+            for (size_t i = 0; i < vxl.size(); i++)
             {
-                const auto                  pt_idx = vxl.indices[i];
+                const auto                  pt_idx = vxl[i];
                 const mrpt::math::TPoint3Df a(
                     xs[pt_idx] - mean.x, ys[pt_idx] - mean.y, zs[pt_idx] - mean.z);
                 mat_a(0, 0) += a.x * a.x;
@@ -210,18 +210,18 @@ void FilterEdgesPlanes::filter(mp2p_icp::metric_map_t& inOut) const
 
             if (dest != nullptr)
             {
-                for (size_t i = 0; i < vxl.indices.size(); i += params.decimation)
+                for (size_t i = 0; i < vxl.size(); i += params.decimation)
                 {
-                    const auto pt_idx = vxl.indices[i];
+                    const auto pt_idx = vxl[i];
                     dest->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
                 }
             }
             // full_pointcloud_decimation=0 means dont use this layer
             if (params.full_pointcloud_decimation > 0)
             {
-                for (size_t i = 0; i < vxl.indices.size(); i += params.full_pointcloud_decimation)
+                for (size_t i = 0; i < vxl.size(); i += params.full_pointcloud_decimation)
                 {
-                    const auto pt_idx = vxl.indices[i];
+                    const auto pt_idx = vxl[i];
                     pc_full_decim->insertPointFast(xs[pt_idx], ys[pt_idx], zs[pt_idx]);
                 }
             }

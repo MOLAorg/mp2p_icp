@@ -116,7 +116,9 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
     std::atomic<size_t> inliersCount{0};
     std::atomic<size_t> outliersCount{0};
 
-    // 3. Collect all voxels into a vector for parallel processing
+    // 3. Collect all voxels into a vector for parallel processing.
+    //    voxel_t is a non-owning view (pointer + count) into grid's flat index
+    //    array, so copying it here is safe as long as `grid` outlives this loop.
     struct VoxelData
     {
         PointCloudToVoxelGrid::indices_t idx;
@@ -152,12 +154,12 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
             {
                 const auto&  vxlData      = voxels[voxelIdx];
                 const auto&  vxl          = vxlData.vxl;
-                const size_t nVoxelPoints = vxl.indices.size();
+                const size_t nVoxelPoints = vxl.size();
 
                 // If too few points for SOR, keep them all as inliers
                 if (nVoxelPoints <= params.mean_k)
                 {
-                    for (const auto originalIdx : vxl.indices)
+                    for (const auto originalIdx : vxl)
                     {
                         localResults.inlierIndices.push_back(originalIdx);
                     }
@@ -167,7 +169,7 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
                 // Build a small local map for k-NN
                 mrpt::maps::CSimplePointsMap localMap;
                 localMap.reserve(nVoxelPoints);
-                for (const auto originalIdx : vxl.indices)
+                for (const auto originalIdx : vxl)
                 {
                     localMap.insertPointFast(xs[originalIdx], ys[originalIdx], zs[originalIdx]);
                 }
@@ -180,8 +182,8 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
                 for (size_t i = 0; i < nVoxelPoints; ++i)
                 {
                     localMap.kdTreeNClosestPoint3DIdx(
-                        xs[vxl.indices[i]], ys[vxl.indices[i]], zs[vxl.indices[i]],
-                        params.mean_k + 1, nn_indices, nn_dists_sq);
+                        xs[vxl[i]], ys[vxl[i]], zs[vxl[i]], params.mean_k + 1, nn_indices,
+                        nn_dists_sq);
 
                     double sum_dist = 0;
                     // index 0 is the point itself
@@ -201,7 +203,7 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
                 // Classify points
                 for (size_t i = 0; i < nVoxelPoints; ++i)
                 {
-                    const auto originalIdx = vxl.indices[i];
+                    const auto originalIdx = vxl[i];
                     if (avg_distances[i] <= threshold)
                     {
                         localResults.inlierIndices.push_back(originalIdx);
@@ -247,13 +249,13 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
     {
         const auto&  vxlData      = voxels[voxelIdx];
         const auto&  vxl          = vxlData.vxl;
-        const size_t nVoxelPoints = vxl.indices.size();
+        const size_t nVoxelPoints = vxl.size();
 
         // If too few points for SOR, keep them all as inliers
         if (nVoxelPoints <= params.mean_k)
         {
             inliersCount += nVoxelPoints;
-            for (const auto originalIdx : vxl.indices)
+            for (const auto originalIdx : vxl)
             {
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
                 outInliers->insertPointFrom(originalIdx, ctxI);
@@ -267,7 +269,7 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
         // Build a small local map for k-NN
         mrpt::maps::CSimplePointsMap localMap;
         localMap.reserve(nVoxelPoints);
-        for (const auto originalIdx : vxl.indices)
+        for (const auto originalIdx : vxl)
         {
             localMap.insertPointFast(xs[originalIdx], ys[originalIdx], zs[originalIdx]);
         }
@@ -280,8 +282,7 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
         for (size_t i = 0; i < nVoxelPoints; ++i)
         {
             localMap.kdTreeNClosestPoint3DIdx(
-                xs[vxl.indices[i]], ys[vxl.indices[i]], zs[vxl.indices[i]], params.mean_k + 1,
-                nn_indices, nn_dists_sq);
+                xs[vxl[i]], ys[vxl[i]], zs[vxl[i]], params.mean_k + 1, nn_indices, nn_dists_sq);
 
             double sum_dist = 0;
             // index 0 is the point itself
@@ -301,7 +302,7 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
         // Dispatch
         for (size_t i = 0; i < nVoxelPoints; ++i)
         {
-            const auto originalIdx = vxl.indices[i];
+            const auto originalIdx = vxl[i];
             if (avg_distances[i] <= threshold)
             {
                 inliersCount++;
