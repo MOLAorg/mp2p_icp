@@ -2,6 +2,24 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* BUGFIX: Fix potential crash (regression in former voxel parallelization)
+* Merge pull request `#50 <https://github.com/MOLAorg/mp2p_icp/issues/50>`_ from MOLAorg/fix/ram-usage
+  Fix/ram usage
+* Process points by chunks to limit RAM usage
+* reduce memory allocations in voxel views
+* Smarter usage of reserve() in tsl maps
+* Add agents.md
+* Merge pull request `#49 <https://github.com/MOLAorg/mp2p_icp/issues/49>`_ from MOLAorg/mm2las/georef
+  mm2las: export flag '--frame geodetic' for georeferenced clouds
+* Use geodetic coords cache
+* Correctly honor exportGeodetic
+* mm2las: Add sanity checks
+* Fix: X=lon, Y=lat coord order for WKT2
+* mm2las: export flag '--frame geodetic' for georeferenced clouds
+* Contributors: Jose Luis Blanco-Claraco
+
 2.7.1 (2026-03-08)
 ------------------
 * Merge pull request `#48 <https://github.com/MOLAorg/mp2p_icp/issues/48>`_ from MOLAorg/fix/filter-adaptive-avoid-fpe
