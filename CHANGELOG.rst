@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.8.0 (2026-04-01)
+------------------
 * BUGFIX: Fix potential crash (regression in former voxel parallelization)
 * Merge pull request `#50 <https://github.com/MOLAorg/mp2p_icp/issues/50>`_ from MOLAorg/fix/ram-usage
   Fix/ram usage
