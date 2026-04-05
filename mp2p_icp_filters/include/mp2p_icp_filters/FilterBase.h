@@ -125,9 +125,9 @@ constexpr auto POINT_FIELD_RING_ID   = mrpt::maps::CPointsMap::POINT_FIELD_RING_
 constexpr auto POINT_FIELD_TIMESTAMP = mrpt::maps::CPointsMap::POINT_FIELD_TIMESTAMP;
 #else
 // Define here locally, until MRPT 2.15.3 is the minimum required version:
-constexpr static std::string_view POINT_FIELD_INTENSITY = "intensity";
-constexpr static std::string_view POINT_FIELD_RING_ID   = "ring";
-constexpr static std::string_view POINT_FIELD_TIMESTAMP = "t";
+constexpr static const char* POINT_FIELD_INTENSITY = "intensity";
+constexpr static const char* POINT_FIELD_RING_ID   = "ring";
+constexpr static const char* POINT_FIELD_TIMESTAMP = "t";
 #endif
 
 /** @} */
