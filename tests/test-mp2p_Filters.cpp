@@ -38,7 +38,7 @@ using namespace mp2p_icp;
 namespace
 {
 
-constexpr std::string_view INTENSITY = POINT_FIELD_INTENSITY;
+constexpr auto INTENSITY = POINT_FIELD_INTENSITY;
 
 // Helper to create a test point cloud with known positions and intensities
 mrpt::maps::CPointsMap::Ptr createTestPointsWithIntensity(

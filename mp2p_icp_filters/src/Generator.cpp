@@ -406,7 +406,7 @@ void Generator::addViewVectorField(
     // Exit now if we are not generating view vectors, not without first checking consistency:
     if (!params.generate_view_vector)
     {
-        for (const std::string_view fname : {"view_x", "view_y", "view_z"})
+        for (const char* const fname : {"view_x", "view_y", "view_z"})
         {
             if (genPc->hasPointField(fname))
             {
@@ -430,7 +430,7 @@ void Generator::addViewVectorField(
     // Register each field if absent; if already present, resize to cover nTotal.
     // registerField_float() initialises the new vector to size() zeros, so registering
     // after insertAnotherMap() gives us correctly-sized storage for all points.
-    for (const std::string_view fname : {"view_x", "view_y", "view_z"})
+    for (const char* const fname : {"view_x", "view_y", "view_z"})
     {
         if (!genPc->hasPointField(fname))
         {
