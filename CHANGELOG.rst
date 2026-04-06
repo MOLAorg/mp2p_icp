@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.8.1 (2026-04-06)
+------------------
 * Merge pull request `#51 <https://github.com/MOLAorg/mp2p_icp/issues/51>`_ from MOLAorg/fix/new-mrpt-api
   Update to build against mrpt >=2.15.13
 * Update to build against mrpt >=2.15.13 (pointcloud field names as std::string instead of string_view)
