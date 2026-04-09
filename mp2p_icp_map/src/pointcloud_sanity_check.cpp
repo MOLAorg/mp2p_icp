@@ -21,21 +21,14 @@
 
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mrpt/core/exceptions.h>
-#include <mrpt/version.h>
-
-#if MRPT_VERSION >= 0x20f00  // 2.15.0
 #include <mrpt/maps/CPointsMap.h>
-#else
-#include <mrpt/maps/CPointsMapXYZI.h>
-#include <mrpt/maps/CPointsMapXYZIRT.h>
-#endif
+#include <mrpt/version.h>
 
 bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool printWarnings)
 {
     bool         ok = true;
     const size_t n  = pc.size();
 
-#if MRPT_VERSION >= 0x20f00  // 2.15.0
     for (const auto& field : pc.getPointFieldNames_float())
     {
         const auto& vec = pc.getPointsBufferRef_float_field(field);
@@ -52,11 +45,7 @@ bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool pr
     }
     for (const auto& field : pc.getPointFieldNames_uint16())
     {
-#if MRPT_VERSION >= 0x20f04  // 2.15.4
         const auto& vec = pc.getPointsBufferRef_uint16_field(field);
-#else
-        const auto& vec = pc.getPointsBufferRef_uint_field(field);
-#endif
         if (vec && !vec->empty() && vec->size() != n)
         {
             ok = false;
@@ -69,7 +58,6 @@ bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool pr
         }
     }
 
-#if MRPT_VERSION >= 0x20f03  // 2.15.3
     for (const auto& field : pc.getPointFieldNames_double())
     {
         const auto& vec = pc.getPointsBufferRef_double_field(field);
@@ -98,51 +86,6 @@ bool mp2p_icp::pointcloud_sanity_check(const mrpt::maps::CPointsMap& pc, bool pr
             }
         }
     }
-#endif
 
-#else
-    if (auto* pcIRT = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(&pc); pcIRT)
-    {
-        if (pcIRT->hasIntensityField() && pcIRT->getPointsBufferRef_intensity()->size() != n)
-        {
-            ok = false;
-            if (printWarnings)
-                std::cerr << "[mp2p_icp] XYZIRT WARNING: Intensity channel has "
-                             "incorrect length="
-                          << pcIRT->getPointsBufferRef_intensity()->size() << " expected=" << n
-                          << std::endl;
-        }
-        if (pcIRT->hasRingField() && pcIRT->getPointsBufferRef_ring()->size() != n)
-        {
-            ok = false;
-            if (printWarnings)
-                std::cerr << "[mp2p_icp] XYZIRT WARNING: Ring channel has "
-                             "incorrect length="
-                          << pcIRT->getPointsBufferRef_ring()->size() << " expected=" << n
-                          << std::endl;
-        }
-        if (pcIRT->hasTimeField() && pcIRT->getPointsBufferRef_timestamp()->size() != n)
-        {
-            ok = false;
-            if (printWarnings)
-                std::cerr << "[mp2p_icp] XYZIRT WARNING: Timestamp channel has "
-                             "incorrect length="
-                          << pcIRT->getPointsBufferRef_timestamp()->size() << " expected=" << n
-                          << std::endl;
-        }
-    }
-    else if (auto* pcI = dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(&pc); pcI)
-    {
-        if (pcI->getPointsBufferRef_intensity() && pcI->getPointsBufferRef_intensity()->size() != n)
-        {
-            ok = false;
-            if (printWarnings)
-                std::cerr << "[mp2p_icp] XYZI WARNING: Intensity channel has "
-                             "incorrect length="
-                          << pcI->getPointsBufferRef_intensity()->size() << " expected=" << n
-                          << std::endl;
-        }
-    }
-#endif
     return ok;
 }

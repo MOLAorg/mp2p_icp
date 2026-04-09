@@ -29,8 +29,6 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/core/exceptions.h>
-#include <mrpt/maps/CPointsMapXYZIRT.h>
-#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/version.h>
 
