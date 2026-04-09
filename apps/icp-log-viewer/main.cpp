@@ -75,6 +75,12 @@ static TCLAP::ValueArg<double> argAutoPlayPeriod(
     "mode.",
     false, 0.1, "period [seconds]", cmd);
 
+static TCLAP::ValueArg<double> argMinQuality(
+    "q", "min-quality",
+    "Minimum ICP quality (range [0,1], i.e. 0%-100%) to load a log file. "
+    "Files whose ICP result quality is below this threshold are skipped.",
+    false, 0.0, "quality [0,1]", cmd);
+
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
 
@@ -231,6 +237,48 @@ void main_show_gui()
 
         files.resize(1);
         files[0].wholePath = argSingleFile.getValue();
+    }
+
+    // Apply minimum quality filter if requested:
+    if (argMinQuality.isSet())
+    {
+        const double minQ = argMinQuality.getValue();
+        if (minQ < 0.0 || minQ > 1.0)
+        {
+            THROW_EXCEPTION_FMT("--min-quality must be in [0,1]. Got: %.03f", minQ);
+        }
+        std::cout << "Applying minimum quality filter: q >= " << minQ << std::endl;
+
+        mrpt::system::CDirectoryExplorer::TFileInfoList filteredFiles;
+        for (const auto& file : files)
+        {
+            mp2p_icp::LogRecord lr;
+            if (!lr.load_from_file(file.wholePath))
+            {
+                std::cerr << "  Warning: could not load '" << file.wholePath << "'" << std::endl;
+                continue;
+            }
+            if (lr.icpResult.quality >= minQ)
+            {
+                filteredFiles.push_back(file);
+            }
+            else
+            {
+                std::cout << "  Skipping (quality=" << lr.icpResult.quality << " < " << minQ
+                          << "): " << file.name << std::endl;
+            }
+        }
+        std::cout << "Quality filter: kept " << filteredFiles.size() << " / " << files.size()
+                  << " files." << std::endl;
+
+        if (files.empty())
+        {
+            THROW_EXCEPTION_FMT(
+                "No log files passed --min-quality=%.03f. Lower the threshold or check input logs.",
+                minQ);
+        }
+
+        files = std::move(filteredFiles);
     }
 
     // load files:
