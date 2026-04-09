@@ -98,7 +98,7 @@ struct color_mode_t
      * provided since this has a non-negligible computational cost, which may be
      * important for very large clouds.
      */
-    std::optional<float> autoBoundingBoxOutliersPercentile = {0.025};
+    std::optional<float> autoBoundingBoxOutliersPercentile;
 
     bool operator==(const color_mode_t& o) const
     {

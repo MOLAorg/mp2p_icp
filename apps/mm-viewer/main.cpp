@@ -77,27 +77,30 @@ mrpt::opengl::CSetOfObjects::Ptr glVizObjects;
 
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
-std::array<nanogui::TextBox*, 2> lbMapStats              = {nullptr, nullptr};
-nanogui::CheckBox*               cbApplyGeoRef           = nullptr;
-nanogui::CheckBox*               cbViewOrtho             = nullptr;
-nanogui::CheckBox*               cbView2D                = nullptr;
-nanogui::CheckBox*               cbViewVoxelsAsPoints    = nullptr;
-nanogui::CheckBox*               cbViewVoxelsFreeSpace   = nullptr;
-nanogui::CheckBox*               cbColorizeMap           = nullptr;
-nanogui::CheckBox*               cbKeepNativeCloudColors = nullptr;
-nanogui::ComboBox*               cmbColorIntensity       = nullptr;
-nanogui::ComboBox*               cmbRecolorizeByField    = nullptr;
-nanogui::CheckBox*               cbShowGroundGrid        = nullptr;
-nanogui::Slider*                 slPointSize             = nullptr;
-nanogui::Slider*                 slTrajectoryThickness   = nullptr;
-nanogui::Slider*                 slMidDepthField         = nullptr;
-nanogui::Slider*                 slThicknessDepthField   = nullptr;
-nanogui::Slider*                 slCameraFOV             = nullptr;
-nanogui::Label*                  lbCameraFOV             = nullptr;
-nanogui::Label*                  lbMousePos              = nullptr;
-nanogui::ComboBox*               cbMouseUnits            = nullptr;
-nanogui::Button*                 btnCopyCoords           = nullptr;
-nanogui::Label*                  lbCameraPointing        = nullptr;
+std::array<nanogui::TextBox*, 2> lbMapStats                   = {nullptr, nullptr};
+nanogui::CheckBox*               cbApplyGeoRef                = nullptr;
+nanogui::CheckBox*               cbViewOrtho                  = nullptr;
+nanogui::CheckBox*               cbView2D                     = nullptr;
+nanogui::CheckBox*               cbViewVoxelsAsPoints         = nullptr;
+nanogui::CheckBox*               cbViewVoxelsFreeSpace        = nullptr;
+nanogui::CheckBox*               cbColorizeMap                = nullptr;
+nanogui::CheckBox*               cbKeepNativeCloudColors      = nullptr;
+nanogui::CheckBox*               cbAutoBBoxOutliers           = nullptr;
+nanogui::Slider*                 slAutoBBoxOutliersPercentile = nullptr;
+nanogui::Label*                  lbAutoBBoxOutliersPercentile = nullptr;
+nanogui::ComboBox*               cmbColorIntensity            = nullptr;
+nanogui::ComboBox*               cmbRecolorizeByField         = nullptr;
+nanogui::CheckBox*               cbShowGroundGrid             = nullptr;
+nanogui::Slider*                 slPointSize                  = nullptr;
+nanogui::Slider*                 slTrajectoryThickness        = nullptr;
+nanogui::Slider*                 slMidDepthField              = nullptr;
+nanogui::Slider*                 slThicknessDepthField        = nullptr;
+nanogui::Slider*                 slCameraFOV                  = nullptr;
+nanogui::Label*                  lbCameraFOV                  = nullptr;
+nanogui::Label*                  lbMousePos                   = nullptr;
+nanogui::ComboBox*               cbMouseUnits                 = nullptr;
+nanogui::Button*                 btnCopyCoords                = nullptr;
+nanogui::Label*                  lbCameraPointing             = nullptr;
 nanogui::Label *                 lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
                *lbDepthFieldThickness = nullptr, *lbPointSize = nullptr;
 nanogui::Label*    lbTrajectoryThick = nullptr;
@@ -881,6 +884,36 @@ void main_show_gui()
     cbKeepNativeCloudColors->setChecked(false);
     cbKeepNativeCloudColors->setCallback([&](bool) { rebuild_3d_view(); });
 
+    {
+        auto pn = tab2->add<nanogui::Widget>();
+        pn->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
+
+        cbAutoBBoxOutliers = pn->add<nanogui::CheckBox>("Outlier percentile:");
+        cbAutoBBoxOutliers->setFontSize(MID_FONT_SIZE);
+        cbAutoBBoxOutliers->setChecked(true);
+        cbAutoBBoxOutliers->setCallback(
+            [&](bool checked)
+            {
+                slAutoBBoxOutliersPercentile->setEnabled(checked);
+                lbAutoBBoxOutliersPercentile->setEnabled(checked);
+                rebuild_3d_view(true);
+            });
+
+        lbAutoBBoxOutliersPercentile = pn->add<nanogui::Label>("0.025");
+        lbAutoBBoxOutliersPercentile->setFontSize(MID_FONT_SIZE);
+
+        slAutoBBoxOutliersPercentile = pn->add<nanogui::Slider>();
+        slAutoBBoxOutliersPercentile->setRange({0.0f, 0.25f});
+        slAutoBBoxOutliersPercentile->setValue(0.025f);
+        slAutoBBoxOutliersPercentile->setCallback(
+            [&](float v)
+            {
+                lbAutoBBoxOutliersPercentile->setCaption(mrpt::format("%.3f", v));
+                rebuild_3d_view(true);
+            });
+    }
+
     tab2->add<nanogui::Label>(" ");
     {
         auto pn = tab2->add<nanogui::Widget>();
@@ -1236,9 +1269,11 @@ void main_show_gui()
         LOAD_CB_STATE(cbViewVoxelsFreeSpace);
         LOAD_CB_STATE(cbColorizeMap);
         LOAD_CB_STATE(cbKeepNativeCloudColors);
+        LOAD_CB_STATE(cbAutoBBoxOutliers);
         LOAD_CB_STATE(cbShowGroundGrid);
 
         LOAD_SL_STATE(slPointSize);
+        LOAD_SL_STATE(slAutoBBoxOutliersPercentile);
         LOAD_SL_STATE(slTrajectoryThickness);
         LOAD_SL_STATE(slMidDepthField);
         LOAD_SL_STATE(slThicknessDepthField);
@@ -1264,9 +1299,11 @@ void main_show_gui()
         SAVE_CB_STATE(cbViewVoxelsFreeSpace);
         SAVE_CB_STATE(cbColorizeMap);
         SAVE_CB_STATE(cbKeepNativeCloudColors);
+        SAVE_CB_STATE(cbAutoBBoxOutliers);
         SAVE_CB_STATE(cbShowGroundGrid);
 
         SAVE_SL_STATE(slPointSize);
+        SAVE_SL_STATE(slAutoBBoxOutliersPercentile);
         SAVE_SL_STATE(slTrajectoryThickness);
         SAVE_SL_STATE(slMidDepthField);
         SAVE_SL_STATE(slThicknessDepthField);
@@ -1282,6 +1319,12 @@ void main_show_gui()
 
     // load UI state from last session:
     load_UI_state_from_user_config();
+
+    // Sync derived widget states after load:
+    lbAutoBBoxOutliersPercentile->setCaption(
+        mrpt::format("%.3f", slAutoBBoxOutliersPercentile->value()));
+    slAutoBBoxOutliersPercentile->setEnabled(cbAutoBBoxOutliers->checked());
+    lbAutoBBoxOutliersPercentile->setEnabled(cbAutoBBoxOutliers->checked());
 
     // Build 3D:
     rebuild_3d_view();
@@ -1381,6 +1424,11 @@ void rebuild_3d_view(bool force_rebuild_view)
 
             cm.recolorizeByField =
                 cmbRecolorizeByField->items().at(cmbRecolorizeByField->selectedIndex());
+
+            if (cbAutoBBoxOutliers->checked())
+            {
+                cm.autoBoundingBoxOutliersPercentile = slAutoBBoxOutliersPercentile->value();
+            }
         }
         if (cbKeepNativeCloudColors->checked())
         {
