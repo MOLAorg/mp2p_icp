@@ -376,6 +376,10 @@ void metric_map_t::get_visualization_map_layer(
         vizParams.colorizeByField = p.colorMode->recolorizeByField.value();
         vizParams.colorMap        = p.colorMode->colorMap;
 
+#if MRPT_VERSION >= 0x020f0d
+        vizParams.outlierRejectionPercentile = p.colorMode->autoBoundingBoxOutliersPercentile;
+#endif
+
         mrpt::obs::recolorize3Dpc(glPts, pts.get(), vizParams);
 
         o.insert(glPts);
