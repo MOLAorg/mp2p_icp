@@ -354,10 +354,10 @@ bool Generator::filterPointCloud(  //
 
             outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obj);
             ASSERTMSG_(
-                obj, mrpt::format(
-                         "Error creating class of type '%s': it does not seem to be derived from "
-                         "CPointsMap as expected.",
-                         params.default_pointcloud_class.c_str()));
+                outPc, mrpt::format(
+                           "Error creating class of type '%s': it does not seem to be derived from "
+                           "CPointsMap as expected.",
+                           params.default_pointcloud_class.c_str()));
         }
         ASSERT_(outPc);
 
