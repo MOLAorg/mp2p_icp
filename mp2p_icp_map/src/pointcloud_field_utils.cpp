@@ -28,11 +28,17 @@ bool mp2p_icp::warn_on_field_padding_mismatch(
     bool any = false;
 
     // Helper: check one family of fields.
-    // dst_names  – fields registered in dst for this type
-    // src_has_fn – returns true if src carries a non-empty buffer for the name
-    auto check =
-        [&](const std::vector<std::string>& dst_names, auto src_has_fn, const char* type_label)
+    // dst_names: fields registered in dst for this type
+    // src_has_fn: returns true if src carries a non-empty buffer for the name
+    auto check = [&](const auto& dst_names_org, auto src_has_fn, const char* type_label)
     {
+        // make this compatible with different MRPT versions using std::string_view vs std::string
+        std::vector<std::string> dst_names;
+        for (const auto& mame : dst_names_org)
+        {
+            dst_names.emplace_back(std::string(mame));
+        }
+
         for (const auto& name : dst_names)
         {
             if (!src_has_fn(name))
