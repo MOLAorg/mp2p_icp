@@ -354,26 +354,22 @@ void correctPointsLoop(const CorrectPointsArguments& args)
             {
                 outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
 
-            // Copy additional fields using the insertion context:
-#if MRPT_VERSION >= 0x020f02  // >=2.15.2
+                // Copy additional fields using the insertion context:
                 for (auto& [src, dst] : ctxCopyPointFields->double_fields)
                 {
-                    (*dst)[n0 + i] = (*src)[i];
+                    (*dst)[n0 + i] = src ? (*src)[i] : 0.0;
                 }
-#endif
-#if MRPT_VERSION >= 0x020f03  // >=2.15.3
                 for (auto& [src, dst] : ctxCopyPointFields->uint8_fields)
                 {
-                    (*dst)[n0 + i] = (*src)[i];
+                    (*dst)[n0 + i] = src ? (*src)[i] : uint8_t{0};
                 }
-#endif
                 for (auto& [src, dst] : ctxCopyPointFields->float_fields)
                 {
-                    (*dst)[n0 + i] = (*src)[i];
+                    (*dst)[n0 + i] = src ? (*src)[i] : 0.0f;
                 }
                 for (auto& [src, dst] : ctxCopyPointFields->uint16_fields)
                 {
-                    (*dst)[n0 + i] = (*src)[i];
+                    (*dst)[n0 + i] = src ? (*src)[i] : uint16_t{0};
                 }
             }
         }
