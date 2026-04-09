@@ -123,7 +123,6 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         "At least one 'output_layer_static_objects' or "
         "'output_layer_dynamic_objects' output layers must be provided.");
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     mrpt::maps::CPointsMap::InsertCtx ctxStatic;
     if (outPcStatic)
     {
@@ -136,7 +135,6 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
         outPcDynamic->registerPointFieldsFrom(*pcPtr);
         ctxDynamic = outPcDynamic->prepareForInsertPointsFrom(*pcPtr);
     }
-#endif
 
     // Process occupancy input value so it lies within [0,0.5]:
     const double occFree  = params.occupancy_threshold > 0.5 ? (1.0 - params.occupancy_threshold)
@@ -160,38 +158,26 @@ void FilterRemoveByVoxelOccupancy::filter(mp2p_icp::metric_map_t& inOut) const
             continue;  // undefined! pt out of voxelmap
         }
 
-        mrpt::maps::CPointsMap* trgMap = nullptr;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
-        mrpt::maps::CPointsMap::InsertCtx* ctx = nullptr;
-#endif
+        mrpt::maps::CPointsMap*            trgMap = nullptr;
+        mrpt::maps::CPointsMap::InsertCtx* ctx    = nullptr;
         if (prob_occupancy > occThres)
         {
             trgMap = outPcStatic.get();
             nStatic++;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
             ctx = &ctxStatic;
-#endif
         }
         else if (prob_occupancy < occFree)
         {
             trgMap = outPcDynamic.get();
             nDynamic++;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
             ctx = &ctxDynamic;
-#endif
         }
 
         if (!trgMap)
         {
             continue;
         }
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
         trgMap->insertPointFrom(i, *ctx);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-        trgMap->insertPointFrom(*pcPtr, i, *ctx);
-#else
-        trgMap->insertPointFrom(*pcPtr, i);
-#endif
     }
 
     MRPT_LOG_DEBUG_STREAM(

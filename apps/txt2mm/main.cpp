@@ -21,19 +21,12 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
+#include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/CMatrixDynamic.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/version.h>
-
-#if MRPT_VERSION >= 0x20f00  // 2.15.0
-#include <mrpt/maps/CGenericPointsMap.h>
-#else
-#include <mrpt/maps/CColouredPointsMap.h>
-#include <mrpt/maps/CPointsMapXYZI.h>
-#include <mrpt/maps/CPointsMapXYZIRT.h>
-#endif
 
 const char* VALID_FORMATS = "(xyz|xyzi|xyzirt|xyzrgb|xyzrgb_normalized)";
 
@@ -214,14 +207,10 @@ int main(int argc, char** argv)
         {
             ASSERT_GE_(nCols, 6U);
             const bool rgb_normalized = (format == "xyzrgb_normalized");
-#if MRPT_VERSION >= 0x20f00  // 2.15.0
-            auto pts = mrpt::maps::CGenericPointsMap::Create();
+            auto       pts            = mrpt::maps::CGenericPointsMap::Create();
             pts->registerField_float("color_r");
             pts->registerField_float("color_g");
             pts->registerField_float("color_b");
-#else
-            auto pts = mrpt::maps::CColouredPointsMap::Create();
-#endif
             pts->reserve(nRows);
             if (nCols > 6)
             {
@@ -250,15 +239,9 @@ int main(int argc, char** argv)
                     b_val = mrpt::u8tof(static_cast<uint8_t>(data(i, idxBlue)));
                 }
 
-#if MRPT_VERSION >= 0x20f00  // 2.15.0
                 pts->insertPointField_float("color_r", r_val);
                 pts->insertPointField_float("color_g", g_val);
                 pts->insertPointField_float("color_b", b_val);
-#else
-                pts->insertPointField_color_R(r_val);
-                pts->insertPointField_color_G(g_val);
-                pts->insertPointField_color_B(b_val);
-#endif
             }
 
             pc = pts;

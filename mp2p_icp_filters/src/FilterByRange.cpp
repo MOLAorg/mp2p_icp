@@ -115,7 +115,6 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     const float sqrMin = mrpt::square(params.range_min);
     const float sqrMax = mrpt::square(params.range_max);
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxBetween;
     std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxOutside;
     if (outBetween)
@@ -128,7 +127,6 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
         outOutside->registerPointFieldsFrom(pc);
         ctxOutside = outOutside->prepareForInsertPointsFrom(pc);
     }
-#endif
 
     for (size_t i = 0; i < xs.size(); i++)
     {
@@ -154,15 +152,8 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
 
         if (targetPc)
         {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
             const auto& ctx = isInside ? ctxBetween : ctxOutside;
             targetPc->insertPointFrom(i, ctx.value());
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-            const auto& ctx = isInside ? ctxBetween : ctxOutside;
-            targetPc->insertPointFrom(pc, i, ctx.value());
-#else
-            targetPc->insertPointFrom(pc, i);
-#endif
         }
     }
 

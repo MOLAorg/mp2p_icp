@@ -179,7 +179,6 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
         outNoPoles->reserve(outNoPoles->size() + pc.size() / 10);
     }
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     mrpt::maps::CPointsMap::InsertCtx ctxPoles;
     if (outPoles)
     {
@@ -192,7 +191,6 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
         outNoPoles->registerPointFieldsFrom(pc);
         ctxNoPoles = outNoPoles->prepareForInsertPointsFrom(pc);
     }
-#endif
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
@@ -253,20 +251,12 @@ void FilterPoleDetector::filter(mp2p_icp::metric_map_t& inOut) const
         const bool isPole = check_pass_count >= params.minimum_neighbors_checks_to_pass;
 
         auto* targetPc = isPole ? outPoles.get() : outNoPoles.get();
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
-        auto* ctx = isPole ? &ctxPoles : &ctxNoPoles;
-#endif
+        auto* ctx      = isPole ? &ctxPoles : &ctxNoPoles;
         if (targetPc)
         {
             for (const auto ptIdx : cell.point_indices)
             {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
                 targetPc->insertPointFrom(ptIdx, *ctx);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-                targetPc->insertPointFrom(pc, ptIdx, *ctx);
-#else
-                targetPc->insertPointFrom(pc, ptIdx);
-#endif
             }
         }
     }

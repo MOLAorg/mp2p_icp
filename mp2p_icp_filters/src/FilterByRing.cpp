@@ -111,13 +111,7 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
 
     const auto& xs = pc.getPointsBufferRef_x();
 
-#if MRPT_VERSION >= 0x020f04  // 2.15.4
     const auto* ptrR = pc.getPointsBufferRef_uint16_field("ring");
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-    const auto* ptrR = pc.getPointsBufferRef_uint_field("ring");
-#else
-    const auto* ptrR = pc.getPointsBufferRef_ring();
-#endif
 
     if (!ptrR || ptrR->empty())
     {
@@ -127,7 +121,6 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
             params.input_pointcloud_layer.c_str());
     }
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     mrpt::maps::CPointsMap::InsertCtx ctxSelected;
     if (outSelected)
     {
@@ -140,7 +133,6 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
         outNonSel->registerPointFieldsFrom(pc);
         ctxNotSelected = outNonSel->prepareForInsertPointsFrom(pc);
     }
-#endif
 
     const auto& Rs = *ptrR;
     ASSERT_EQUAL_(Rs.size(), xs.size());
@@ -152,37 +144,25 @@ void FilterByRing::filter(mp2p_icp::metric_map_t& inOut) const
     {
         const auto R = Rs[i];
 
-        mrpt::maps::CPointsMap* trg = nullptr;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
+        mrpt::maps::CPointsMap*            trg = nullptr;
         mrpt::maps::CPointsMap::InsertCtx* ctx = nullptr;
-#endif
 
         if (params.selected_ring_ids.count(R) != 0)
         {
             trg = outSelected.get();
             ++countSel;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
             ctx = &ctxSelected;
-#endif
         }
         else
         {
             trg = outNonSel.get();
             ++countNon;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
             ctx = &ctxNotSelected;
-#endif
         }
 
         if (trg)
         {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
             trg->insertPointFrom(i, *ctx);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-            trg->insertPointFrom(pc, i, *ctx);
-#else
-            trg->insertPointFrom(pc, i);
-#endif
         }
     }
 

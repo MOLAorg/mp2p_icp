@@ -152,10 +152,6 @@ auto findBeforeAfter(const mola::imu::Trajectory& trajectory, const double t)
 }
 #endif  // MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION
 
-#if MRPT_VERSION < 0x020f00  // 2.15.0
-#error "MRPT >= 2.15.0 is required to compile FilterDeskew"
-#endif
-
 struct CorrectPointsArguments
 {
     mrpt::aligned_std_vector<float>&       xs;

@@ -82,11 +82,7 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
         return;
     }
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     auto* TsPtr = pc.getPointsBufferRef_float_field("t");
-#else
-    auto* TsPtr = pc.getPointsBufferRef_timestamp();
-#endif
 
     if (TsPtr == nullptr || (TsPtr->empty() && !pc.empty()))
     {
