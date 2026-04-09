@@ -64,6 +64,7 @@ void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Gene
     MCP_LOAD_OPT(c, throw_on_unhandled_observation_class);
     MCP_LOAD_OPT(c, generate_view_vector);
     MCP_LOAD_OPT(c, default_pointcloud_class);
+    MCP_LOAD_OPT(c, filterOutPointsAtZero);
 
     MCP_LOAD_OPT(c, name);
     if (!name.empty())
@@ -370,7 +371,7 @@ bool Generator::filterPointCloud(  //
     const mrpt::poses::CPose3D p = robotPose ? robotPose.value() + sensorPose : sensorPose;
 
     outPc->registerPointFieldsFrom(pc);
-    outPc->insertAnotherMap(&pc, p);
+    outPc->insertAnotherMap(&pc, p, params.filterOutPointsAtZero);
 
     return true;
 }

@@ -17,6 +17,7 @@ generators:
   - class_name: mp2p_icp_filters::Generator
     params:
       generate_view_vector: true # Generate "view" vectors for advanced normals handling (Default=true)
+      filterOutPointsAtZero: true # Remove invalid points in 'organized' LiDAR scans
 
 # --------------------------------------------------------
 # 2) Per local frame filtering
