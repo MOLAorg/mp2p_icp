@@ -429,5 +429,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                        << " type=" << outPc->GetRuntimeClass()->className
                        << " useSingleGrid=" << (useSingleGrid() ? "Yes" : "No"));
 
+    const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*outPc);
+    ASSERT_(sanityPassed);
+
     MRPT_END
 }

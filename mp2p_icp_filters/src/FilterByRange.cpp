@@ -18,6 +18,7 @@
  * @date   Nov 14, 2023
  */
 
+#include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/FilterByRange.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
@@ -162,6 +163,17 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
         << pc.asString()
         << " outputBetween: " << (outBetween ? outBetween->asString().c_str() : "(none)")
         << " outputOutside: " << (outOutside ? outOutside->asString().c_str() : "(none)"));
+
+    if (outBetween)
+    {
+        const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*outBetween);
+        ASSERT_(sanityPassed);
+    }
+    if (outOutside)
+    {
+        const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*outOutside);
+        ASSERT_(sanityPassed);
+    }
 
     MRPT_END
 }
