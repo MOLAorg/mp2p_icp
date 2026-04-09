@@ -24,6 +24,7 @@
 #include <mola_imu_preintegration/trajectory_from_buffer.h>
 #endif
 
+#include <mp2p_icp/pointcloud_field_utils.h>
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
@@ -430,6 +431,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
         // and then, prepare structures for fast copying:
         insert_ctx = outPc->prepareForInsertPointsFrom(*inPc);
+        mp2p_icp::warn_on_field_padding_mismatch(*inPc, *outPc, *this);
     }
 
     // If the input is empty, just move on:

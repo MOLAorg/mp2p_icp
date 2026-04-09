@@ -18,6 +18,7 @@
  * @date   Sep 10, 2021
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
@@ -172,6 +173,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             outPc->registerPointFieldsFrom(*pcPtrs[mapIdx]);
             mrpt::maps::CPointsMap::InsertCtx ctxOut =
                 outPc->prepareForInsertPointsFrom(*pcPtrs[mapIdx]);
+            mp2p_icp::warn_on_field_padding_mismatch(*pcPtrs[mapIdx], *outPc, *this);
 
             for (size_t i = 0; i < xs.size(); i++)
             {

@@ -19,6 +19,8 @@
  * @date   Dec 28, 2025
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
+#include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/FilterSOR.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
@@ -87,11 +89,13 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
     {
         outInliers->registerPointFieldsFrom(pc);
         ctxI = outInliers->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *outInliers, *this);
     }
     if (outOutliers)
     {
         outOutliers->registerPointFieldsFrom(pc);
         ctxO = outOutliers->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *outOutliers, *this);
     }
 
     if (pcPtr->empty())

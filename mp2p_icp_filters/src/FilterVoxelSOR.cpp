@@ -19,6 +19,8 @@
  * @date   Jan 21, 2026
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
+#include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/FilterVoxelSOR.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
@@ -92,16 +94,17 @@ void FilterVoxelSOR::filter(mp2p_icp::metric_map_t& inOut) const
         outOutliers->clear();
     }
 
-#if MRPT_VERSION >= 0x020f00
     outInliers->registerPointFieldsFrom(*pcIn);
     auto ctxI = outInliers->prepareForInsertPointsFrom(*pcIn);
+    mp2p_icp::warn_on_field_padding_mismatch(*pcIn, *outInliers, *this);
+
     std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxO;
     if (outOutliers)
     {
         outOutliers->registerPointFieldsFrom(*pcIn);
         ctxO = outOutliers->prepareForInsertPointsFrom(*pcIn);
+        mp2p_icp::warn_on_field_padding_mismatch(*pcIn, *outOutliers, *this);
     }
-#endif
 
     const auto& xs = pcIn->getPointsBufferRef_x();
     const auto& ys = pcIn->getPointsBufferRef_y();

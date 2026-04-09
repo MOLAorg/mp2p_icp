@@ -19,6 +19,8 @@
  * @date   Oct 26, 2025
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
+#include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/FilterMLS.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/NonCopiableData.h>
@@ -630,6 +632,7 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(normals_z);
 
     const auto ctx = outPc->prepareForInsertPointsFrom(*query_pc);
+    mp2p_icp::warn_on_field_padding_mismatch(*query_pc, *outPc, *this);
 
     const size_t firstIdx = outPc->size();
     outPc->reserve(firstIdx + nNewPoints);

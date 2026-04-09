@@ -18,6 +18,7 @@
  * @date   Nov 14, 2023
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/FilterByRange.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
@@ -122,11 +123,13 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     {
         outBetween->registerPointFieldsFrom(pc);
         ctxBetween = outBetween->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *outBetween, *this);
     }
     if (outOutside)
     {
         outOutside->registerPointFieldsFrom(pc);
         ctxOutside = outOutside->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *outOutside, *this);
     }
 
     for (size_t i = 0; i < xs.size(); i++)

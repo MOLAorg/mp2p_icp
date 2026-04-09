@@ -18,6 +18,7 @@
  * @date   Sep 10, 2021
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
 #include <mp2p_icp_filters/FilterBoundingBox.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
@@ -111,11 +112,13 @@ void FilterBoundingBox::filter(mp2p_icp::metric_map_t& inOut) const
     {
         insidePc->registerPointFieldsFrom(pc);
         ctxInside = insidePc->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *insidePc, *this);
     }
     if (outsidePc)
     {
         outsidePc->registerPointFieldsFrom(pc);
         ctxOutside = outsidePc->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *outsidePc, *this);
     }
 
     const auto& xs = pc.getPointsBufferRef_x();
