@@ -9,7 +9,7 @@ Quick-start reference for AI agents and new contributors.
 - **Version**: 2.7.1 (March 2026)
 - **License**: BSD-3-Clause
 - **Maintainer**: Jose Luis Blanco-Claraco
-- **Minimum MRPT**: 2.15.0
+- **Minimum MRPT**: 2.15.4
 
 ---
 
@@ -172,7 +172,7 @@ SIMD-optimized translation units are compiled separately with `-mavx` / `-msse2`
 
 | Dependency | Notes |
 |-----------|-------|
-| MRPT ≥ 2.15.0 | containers, tfest, maps, gui, topography — mandatory |
+| MRPT ≥ 2.15.4 | containers, tfest, maps, gui, topography — mandatory |
 | TBB | Optional; enables parallel ICP iterations |
 | mola_common | CMake scripts; fetched as git submodule |
 | mola_imu_preintegration | Optional; advanced deskew in FilterDeskew |

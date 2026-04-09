@@ -126,7 +126,6 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_EQUAL_(Is.size(), xs.size());
     const size_t N = xs.size();
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     mrpt::maps::CPointsMap::InsertCtx ctxLow, ctxHigh, ctxMid;
     if (outLow)
     {
@@ -143,7 +142,6 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
         outMid->registerPointFieldsFrom(pc);
         ctxMid = outMid->prepareForInsertPointsFrom(pc);
     }
-#endif
 
     size_t countLow = 0, countMid = 0, countHigh = 0;
 
@@ -153,43 +151,29 @@ void FilterByIntensity::filter(mp2p_icp::metric_map_t& inOut) const
 
         mrpt::maps::CPointsMap* trg = nullptr;
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
         mrpt::maps::CPointsMap::InsertCtx* ctx = nullptr;
-#endif
         if (I < params.low_threshold)
         {
             trg = outLow.get();
             ++countLow;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
             ctx = &ctxLow;
-#endif
         }
         else if (I > params.high_threshold)
         {
             trg = outHigh.get();
             ++countHigh;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
             ctx = &ctxHigh;
-#endif
         }
         else
         {
             trg = outMid.get();
             ++countMid;
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
             ctx = &ctxMid;
-#endif
         }
 
         if (trg)
         {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
             trg->insertPointFrom(i, *ctx);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-            trg->insertPointFrom(pc, i, *ctx);
-#else
-            trg->insertPointFrom(pc, i);
-#endif
         }
     }
 

@@ -113,11 +113,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& ys = pc.getPointsBufferRef_y();
     const auto& zs = pc.getPointsBufferRef_z();
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     const auto* ptrRings = pc.getPointsBufferRef_float_field("ring");
-#else
-    const auto* ptrRings = pc.getPointsBufferRef_ring();
-#endif
     if (!ptrRings || ptrRings->empty())
     {
         THROW_EXCEPTION_FMT(
@@ -131,7 +127,6 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
 
     const size_t N = xs.size();
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     mrpt::maps::CPointsMap::InsertCtx ctxLarger;
     if (outPcLarger)
     {
@@ -150,7 +145,6 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
         outPcOther->registerPointFieldsFrom(pc);
         ctxOther = outPcOther->prepareForInsertPointsFrom(pc);
     }
-#endif
 
     const uint16_t nRings = 1 + *std::max_element(ringPerPt.begin(), ringPerPt.end());
 
@@ -230,13 +224,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
                 counterLarger++;
                 if (outPcLarger)
                 {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
                     outPcLarger->insertPointFrom(i, ctxLarger);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-                    outPcLarger->insertPointFrom(pc, i, ctxLarger);
-#else
-                    outPcLarger->insertPointFrom(pc, i);
-#endif
                 }
             }
             continue;
@@ -263,26 +251,14 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
                     counterLarger++;
                     if (outPcLarger)
                     {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
                         outPcLarger->insertPointFrom(i, ctxLarger);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-                        outPcLarger->insertPointFrom(pc, i, ctxLarger);
-#else
-                        outPcLarger->insertPointFrom(pc, i);
-#endif
                     }
                 }
                 else
                 {
                     if (outPcOther)
                     {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
                         outPcOther->insertPointFrom(i, ctxOther);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-                        outPcOther->insertPointFrom(pc, i, ctxOther);
-#else
-                        outPcOther->insertPointFrom(pc, i);
-#endif
                     }
                 }
                 continue;
@@ -300,13 +276,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
                 counterLarger++;
                 if (outPcLarger)
                 {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
                     outPcLarger->insertPointFrom(i, ctxLarger);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-                    outPcLarger->insertPointFrom(pc, i, ctxLarger);
-#else
-                    outPcLarger->insertPointFrom(pc, i);
-#endif
                 }
             }
             else
@@ -314,13 +284,7 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
                 counterLess++;
                 if (outPcSmaller)
                 {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
                     outPcSmaller->insertPointFrom(i, ctxSmaller);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-                    outPcSmaller->insertPointFrom(pc, i, ctxSmaller);
-#else
-                    outPcSmaller->insertPointFrom(pc, i);
-#endif
                 }
             }
         }

@@ -19,6 +19,8 @@
  * @date   Dec 28, 2025
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
+#include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/FilterSOR.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
@@ -87,11 +89,13 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
     {
         outInliers->registerPointFieldsFrom(pc);
         ctxI = outInliers->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *outInliers, *this);
     }
     if (outOutliers)
     {
         outOutliers->registerPointFieldsFrom(pc);
         ctxO = outOutliers->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *outOutliers, *this);
     }
 
     if (pcPtr->empty())
@@ -165,7 +169,6 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
         const bool isInlier = (avg_distances[i] <= threshold);
         if (isInlier)
         {
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
             ++num_inliers;
             if (outInliers)
             {
@@ -179,35 +182,6 @@ void FilterSOR::filter(mp2p_icp::metric_map_t& inOut) const
             {
                 outOutliers->insertPointFrom(i, *ctxO);
             }
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-            ++num_inliers;
-            if (outInliers)
-            {
-                outInliers->insertPointFrom(pc, i, *ctxI);
-            }
-        }
-        else
-        {
-            ++num_outliers;
-            if (outOutliers)
-            {
-                outOutliers->insertPointFrom(pc, i, *ctxO);
-            }
-#else
-            ++num_inliers;
-            if (outInliers)
-            {
-                outInliers->insertPointFrom(pc, i);
-            }
-        }
-        else
-        {
-            ++num_outliers;
-            if (outOutliers)
-            {
-                outOutliers->insertPointFrom(pc, i);
-            }
-#endif
         }
     }
 

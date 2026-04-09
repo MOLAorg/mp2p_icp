@@ -161,6 +161,20 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
          */
         bool generate_view_vector = true;
 
+        /** When processing mrpt::obs::CObservationPointCloud as inputs, this will be the class of
+         * the generated layer, in which the cloud will be later inserted.
+         * Set to empty means use the same class as the original cloud in the observation.
+         * Default is to use the modern CGenericPointsMap which is capable of arbitrary point cloud
+         * fields.
+         */
+        std::string default_pointcloud_class = "mrpt::maps::CGenericPointsMap";
+
+        /** When processing mrpt::obs::CObservationPointCloud as inputs, this controls whether
+         *  points with (x,y,z)=(0,0,0) should be discarded as invalid ones; e.g. typical in
+         *  organized clouds from LiDAR sensors.
+         */
+        bool filterOutPointsAtZero = false;
+
         /** If not empty, it will be used instead of class name in Logger and Profiler.
          *  This is loaded from the `name` key in the YAML configuration block.
          */

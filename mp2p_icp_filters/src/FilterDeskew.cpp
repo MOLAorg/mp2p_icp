@@ -24,13 +24,12 @@
 #include <mola_imu_preintegration/trajectory_from_buffer.h>
 #endif
 
+#include <mp2p_icp/pointcloud_field_utils.h>
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/core/exceptions.h>
-#include <mrpt/maps/CPointsMapXYZIRT.h>
-#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/version.h>
 
@@ -153,10 +152,6 @@ auto findBeforeAfter(const mola::imu::Trajectory& trajectory, const double t)
     return {before, lower};
 }
 #endif  // MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION
-
-#if MRPT_VERSION < 0x020f00  // 2.15.0
-#error "MRPT >= 2.15.0 is required to compile FilterDeskew"
-#endif
 
 struct CorrectPointsArguments
 {
@@ -360,26 +355,22 @@ void correctPointsLoop(const CorrectPointsArguments& args)
             {
                 outPc->setPointFast(n0 + i, corrPt.x, corrPt.y, corrPt.z);
 
-            // Copy additional fields using the insertion context:
-#if MRPT_VERSION >= 0x020f02  // >=2.15.2
+                // Copy additional fields using the insertion context:
                 for (auto& [src, dst] : ctxCopyPointFields->double_fields)
                 {
-                    (*dst)[n0 + i] = (*src)[i];
+                    (*dst)[n0 + i] = src ? (*src)[i] : 0.0;
                 }
-#endif
-#if MRPT_VERSION >= 0x020f03  // >=2.15.3
                 for (auto& [src, dst] : ctxCopyPointFields->uint8_fields)
                 {
-                    (*dst)[n0 + i] = (*src)[i];
+                    (*dst)[n0 + i] = src ? (*src)[i] : uint8_t{0};
                 }
-#endif
                 for (auto& [src, dst] : ctxCopyPointFields->float_fields)
                 {
-                    (*dst)[n0 + i] = (*src)[i];
+                    (*dst)[n0 + i] = src ? (*src)[i] : 0.0f;
                 }
                 for (auto& [src, dst] : ctxCopyPointFields->uint16_fields)
                 {
-                    (*dst)[n0 + i] = (*src)[i];
+                    (*dst)[n0 + i] = src ? (*src)[i] : uint16_t{0};
                 }
             }
         }
@@ -440,6 +431,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
         // and then, prepare structures for fast copying:
         insert_ctx = outPc->prepareForInsertPointsFrom(*inPc);
+        mp2p_icp::warn_on_field_padding_mismatch(*inPc, *outPc, *this);
     }
 
     // If the input is empty, just move on:

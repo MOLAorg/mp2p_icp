@@ -336,12 +336,10 @@ void metric_map_t::get_visualization_map_layer(
         if (auto glPtsCol = o.getByClass<mrpt::opengl::CPointCloudColoured>(); glPtsCol)
         {
             glPtsCol->setPointSize(p.pointSize);
-#if MRPT_VERSION >= 0x20e0c  // v2.14.12
             if (p.force_alpha_channel)
             {
                 glPtsCol->setAllPointsAlpha(p.color.A);
             }
-#endif
         }
         else if (auto glPts = o.getByClass<mrpt::opengl::CPointCloud>(); glPts)
         {
@@ -364,22 +362,17 @@ void metric_map_t::get_visualization_map_layer(
         glPts->loadFromPointsMap(pts.get());
 
         glPts->setPointSize(p.pointSize);
-#if MRPT_VERSION >= 0x20e0c  // v2.14.12
         if (p.force_alpha_channel)
         {
             glPts->setAllPointsAlpha(p.color.A);
         }
-#endif
 
         ASSERT_(p.colorMode->recolorizeByField.has_value());
 
-#if MRPT_VERSION >= 0x020f03  // v2.15.3
         mrpt::obs::PointCloudRecoloringParameters vizParams;
         vizParams.colorMapMinCoord = p.colorMode->colorMapMinCoord;
         vizParams.colorMapMaxCoord = p.colorMode->colorMapMaxCoord;
-#else
-        mrpt::obs::VisualizationParameters vizParams;
-#endif
+
         vizParams.colorizeByField = p.colorMode->recolorizeByField.value();
         vizParams.colorMap        = p.colorMode->colorMap;
 

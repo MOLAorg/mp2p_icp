@@ -43,6 +43,7 @@ generators:
       throw_on_unhandled_observation_class: true
       process_class_names_regex: ".*"
       #process_sensor_labels_regex: '.*'
+      filterOutPointsAtZero: true # Remove invalid points in 'organized' LiDAR scans
 
 # --------------------------------------------------------
 # 2) Per local frame filtering

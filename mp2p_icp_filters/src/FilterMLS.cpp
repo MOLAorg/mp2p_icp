@@ -19,6 +19,8 @@
  * @date   Oct 26, 2025
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
+#include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mp2p_icp_filters/FilterMLS.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/NonCopiableData.h>
@@ -614,13 +616,22 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
         return;
     }
 
-    // Register the normal fields in the output map.
+    // Register query_pc fields first, then build the InsertCtx from that
+    // snapshot. Normal fields are intentionally registered AFTER this call so
+    // that they are absent from ctx: insertPointFrom() must not touch them,
+    // because the loop below is the sole writer of normals via push_back().
+    // Registering normals before prepareForInsertPointsFrom() would cause
+    // insertPointFrom() (MRPT >= 0x020f0d) to zero-pad them on every call,
+    // resulting in double-length normal vectors and a sanity-check failure.
+    outPc->registerPointFieldsFrom(*query_pc);
+
+    const auto ctx = outPc->prepareForInsertPointsFrom(*query_pc);
+    mp2p_icp::warn_on_field_padding_mismatch(*query_pc, *outPc, *this);
+
+    // Register the normal fields in the output map only after the ctx is built.
     outPc->registerField_float("normal_x");
     outPc->registerField_float("normal_y");
     outPc->registerField_float("normal_z");
-
-    // and the ones at origin cloud:
-    outPc->registerPointFieldsFrom(*query_pc);
 
     auto* normals_x = outPc->getPointsBufferRef_float_field("normal_x");
     auto* normals_y = outPc->getPointsBufferRef_float_field("normal_y");
@@ -628,8 +639,6 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_(normals_x);
     ASSERT_(normals_y);
     ASSERT_(normals_z);
-
-    const auto ctx = outPc->prepareForInsertPointsFrom(*query_pc);
 
     const size_t firstIdx = outPc->size();
     outPc->reserve(firstIdx + nNewPoints);

@@ -69,6 +69,7 @@ generators:
       throw_on_unhandled_observation_class: true
       process_class_names_regex: "(mrpt::obs::CObservationPointCloud|mrpt::obs::CObservation3DRangeScan|mrpt::obs::CObservation2DRangeScan)"
       process_sensor_labels_regex: ".*"
+      filterOutPointsAtZero: true # Remove invalid points in 'organized' LiDAR scans
       metric_map_definition:
         # Any class derived from mrpt::maps::CMetricMap https://docs.mrpt.org/reference/latest/group_mrpt_maps_grp.html
         class: mrpt::maps::CGenericPointsMap

@@ -18,6 +18,7 @@ generators:
   - class_name: mp2p_icp_filters::Generator
     params:
       name: "generator_default"
+      filterOutPointsAtZero: true # Remove invalid points in 'organized' LiDAR scans
 
   # This one will just create the layer "localmap", expected by the GICP LIO algorithm for localization
   - class_name: mp2p_icp_filters::Generator

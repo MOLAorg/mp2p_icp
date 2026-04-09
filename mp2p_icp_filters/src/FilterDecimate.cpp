@@ -18,6 +18,7 @@
  * @date   Jan 12, 2026
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
 #include <mp2p_icp_filters/FilterDecimate.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
@@ -82,21 +83,14 @@ void FilterDecimate::filter(mp2p_icp::metric_map_t& inOut) const
         pcIn->GetRuntimeClass()->className);
 
     // Efficiently copy points including all extra fields
-#if MRPT_VERSION >= 0x020f00
     outPc->registerPointFieldsFrom(*pcIn);
     auto ctx = outPc->prepareForInsertPointsFrom(*pcIn);
-#endif
+    mp2p_icp::warn_on_field_padding_mismatch(*pcIn, *outPc, *this);
 
     outPc->reserve(outPc->size() + (nIn / N));
 
     for (size_t i = 0; i < nIn; i += N)
     {
-#if MRPT_VERSION >= 0x020f03
         outPc->insertPointFrom(i, ctx);
-#elif MRPT_VERSION >= 0x020f00
-        outPc->insertPointFrom(*pcIn, i, ctx);
-#else
-        outPc->insertPointFrom(*pcIn, i);
-#endif
     }
 }

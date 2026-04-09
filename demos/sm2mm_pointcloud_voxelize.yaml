@@ -4,8 +4,7 @@
 # See: https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm
 #
 # Explanation of this particular pipeline:
-#  - Generators: empty, so the default generator is used (everything in one
-#                layer named 'raw' with all points).
+#  - Generators: default generator is used (creates an 'raw' layer).
 #  - Filters: Just one downsampling filter, with an additional removal of close
 #             points (e.g. the robot body)
 # -----------------------------------------------------------------------------
@@ -13,9 +12,10 @@
 # --------------------------------------------------------
 # 1) Generator (observation -> local frame metric maps)
 # --------------------------------------------------------
-#generators:
-#  - class_name: mp2p_icp_filters::Generator
-#    params: ~
+generators:
+  - class_name: mp2p_icp_filters::Generator
+    params:
+      filterOutPointsAtZero: true # Remove invalid points in 'organized' LiDAR scans
 
 # --------------------------------------------------------
 # 2) Per local frame filtering

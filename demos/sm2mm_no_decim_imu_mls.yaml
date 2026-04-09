@@ -4,8 +4,7 @@
 # See: https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm
 #
 # Explanation of this particular pipeline:
-#  - Generators: empty, so the default generator is used (everything in one
-#                layer named 'raw' with all points).
+#  - Generators: default generator is used (creates an 'raw' layer).
 #  - Filters: Deskew using IMU, remove close points.
 #  - Final filters: intensity normalization, MLS filtering.
 # -----------------------------------------------------------------------------
@@ -17,6 +16,7 @@ generators:
   - class_name: mp2p_icp_filters::Generator
     params:
       generate_view_vector: true # Generate "view" vectors for advanced normals handling (Default=true)
+      filterOutPointsAtZero: true # Remove invalid points in 'organized' LiDAR scans
 
 # --------------------------------------------------------
 # 2) Per local frame filtering

@@ -63,6 +63,8 @@ void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Gene
     MCP_LOAD_OPT(c, process_sensor_labels_regex);
     MCP_LOAD_OPT(c, throw_on_unhandled_observation_class);
     MCP_LOAD_OPT(c, generate_view_vector);
+    MCP_LOAD_OPT(c, default_pointcloud_class);
+    MCP_LOAD_OPT(c, filterOutPointsAtZero);
 
     MCP_LOAD_OPT(c, name);
     if (!name.empty())
@@ -336,9 +338,27 @@ bool Generator::filterPointCloud(  //
     }
     else
     {
-        // Make a new layer of the same type than the input cloud:
-        outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
-            pc.GetRuntimeClass()->ptrCreateObject());
+        if (params.default_pointcloud_class.empty())
+        {
+            // Make a new layer of the same type than the input cloud:
+            outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+                pc.GetRuntimeClass()->ptrCreateObject());
+        }
+        else
+        {
+            auto obj = mrpt::rtti::classFactory(params.default_pointcloud_class);
+            ASSERTMSG_(
+                obj, mrpt::format(
+                         "Error creating class of type '%s'. Is it registered?",
+                         params.default_pointcloud_class.c_str()));
+
+            outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obj);
+            ASSERTMSG_(
+                outPc, mrpt::format(
+                           "Error creating class of type '%s': it does not seem to be derived from "
+                           "CPointsMap as expected.",
+                           params.default_pointcloud_class.c_str()));
+        }
         ASSERT_(outPc);
 
         MRPT_LOG_DEBUG_FMT(
@@ -351,7 +371,7 @@ bool Generator::filterPointCloud(  //
     const mrpt::poses::CPose3D p = robotPose ? robotPose.value() + sensorPose : sensorPose;
 
     outPc->registerPointFieldsFrom(pc);
-    outPc->insertAnotherMap(&pc, p);
+    outPc->insertAnotherMap(&pc, p, params.filterOutPointsAtZero);
 
     return true;
 }

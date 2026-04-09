@@ -11,6 +11,7 @@ set(LIB_SRCS
   src/NearestPlaneCapable.cpp
   src/NearestPointWithCovCapable.cpp
   src/point_with_cov_pair_t.cpp
+  src/pointcloud_field_utils.cpp
   src/pointcloud_sanity_check.cpp
   src/update_velocity_buffer_from_obs.cpp
   #
@@ -30,6 +31,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/point_plane_pair_t.h
   include/mp2p_icp/point_with_cov_pair_t.h
   include/mp2p_icp/pointcloud_bitfield.h
+  include/mp2p_icp/pointcloud_field_utils.h
   include/mp2p_icp/pointcloud_sanity_check.h
   include/mp2p_icp/render_params.h
   include/mp2p_icp/update_velocity_buffer_from_obs.h

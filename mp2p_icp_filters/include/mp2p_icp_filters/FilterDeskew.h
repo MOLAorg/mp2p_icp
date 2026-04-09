@@ -61,8 +61,8 @@ enum class MotionCompensationMethod : uint8_t
  *   reference time point, which can be the start or middle point of the scan. This can be
  *   controlled by adding a FilterAdjustTimestamps before this block.
  *
- * - The input layer must contain a point cloud in the format
- *   mrpt::maps::CPointsMapXYZIRT or mrpt::maps::CGenericPointsMap so timestamps are present.
+ * - The input layer must contain a point cloud of type mrpt::maps::CGenericPointsMap
+ *   so timestamps are present.
  *
  * - If the input layer is of a different type, or the `t` field is missing,
  *   an exception will be thrown by default, unless the option

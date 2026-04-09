@@ -18,6 +18,7 @@
  * @date   Nov 24, 2023
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
 #include <mp2p_icp_filters/FilterDecimateAdaptive.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
@@ -183,6 +184,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     outPc->registerPointFieldsFrom(pc);
     mrpt::maps::CPointsMap::InsertCtx ctx = outPc->prepareForInsertPointsFrom(pc);
+    mp2p_icp::warn_on_field_padding_mismatch(pc, *outPc, *this);
 
     // Perform resampling:
     // -------------------

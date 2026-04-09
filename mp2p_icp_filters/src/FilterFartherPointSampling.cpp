@@ -104,10 +104,8 @@ void FilterFartherPointSampling::filter(mp2p_icp::metric_map_t& inOut) const
 
     outPc->reserve(outPc->size() + params.desired_output_point_count);
 
-#if MRPT_VERSION >= 0x020f00  // 2.15.0
     outPc->registerPointFieldsFrom(pc);
     mrpt::maps::CPointsMap::InsertCtx ctx = outPc->prepareForInsertPointsFrom(pc);
-#endif
 
     const auto input_size = pc.size();
     if (params.desired_output_point_count > input_size)
@@ -124,13 +122,7 @@ void FilterFartherPointSampling::filter(mp2p_icp::metric_map_t& inOut) const
     srand((unsigned)time(NULL));
     std::size_t idx = rand() % input_size;
 
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
     outPc->insertPointFrom(idx, ctx);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-    outPc->insertPointFrom(pc, idx, ctx);
-#else
-    outPc->insertPointFrom(pc, idx);
-#endif
 
     // Initialize distances to first point
     const auto& xs = pc.getPointsBufferRef_x();
@@ -162,13 +154,7 @@ void FilterFartherPointSampling::filter(mp2p_icp::metric_map_t& inOut) const
         } while (top.dist != minDist[top.idx] && !heap.empty());
 
         const auto farthestIdx = top.idx;
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
         outPc->insertPointFrom(farthestIdx, ctx);
-#elif MRPT_VERSION >= 0x020f00  // 2.15.0
-        outPc->insertPointFrom(pc, farthestIdx, ctx);
-#else
-        outPc->insertPointFrom(pc, farthestIdx);
-#endif
         // Update distances relative to new point
         for (std::size_t j = 0; j < input_size; j++)
         {
