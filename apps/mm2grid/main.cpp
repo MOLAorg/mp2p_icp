@@ -79,6 +79,10 @@ TCLAP::SwitchArg argNegate(
     "occupied (negate: true in the YAML).",
     cmd);
 
+TCLAP::ValueArg<std::string> arg_plugins(
+    "", "load-plugins", "One or more (comma separated) *.so files to load as plugins", false,
+    "foobar.so", "foobar.so", cmd);
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -86,6 +90,18 @@ TCLAP::SwitchArg argNegate(
 void run_mm2grid()
 {
     using namespace std::string_literals;
+
+    // Load plugins:
+    if (arg_plugins.isSet())
+    {
+        std::string errMsg;
+        const auto  plugins = arg_plugins.getValue();
+        std::cout << "Loading plugin(s): " << plugins << std::endl;
+        if (!mrpt::system::loadPluginModules(plugins, errMsg))
+        {
+            throw std::runtime_error(errMsg);
+        }
+    }
 
     const auto& filInput = argMapFile.getValue();
     ASSERT_FILE_EXISTS_(filInput);

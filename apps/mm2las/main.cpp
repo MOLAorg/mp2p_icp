@@ -24,6 +24,7 @@
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/os.h>
 #include <mrpt/system/string_utils.h>
 #include <mrpt/topography/conversions.h>
 #include <mrpt/topography/data_types.h>
@@ -67,6 +68,10 @@ TCLAP::ValueArg<std::string> argFrame(
     "(requires georeferencing data). If per-point latitude/longitude/altitude fields already exist "
     "in the map, they are used directly; otherwise, the conversion is computed on the fly.",
     false, "map", "map|enu|geodetic", cmd);
+
+TCLAP::ValueArg<std::string> arg_plugins(
+    "l", "load-plugins", "One or more (comma separated) *.so files to load as plugins", false,
+    "foobar.so", "foobar.so", cmd);
 
 // ----------------------------------------------------------------
 // LAS 1.4 Format Structures
@@ -1187,6 +1192,19 @@ int main(int argc, char** argv)
         {
             return 0;
         }
+
+        // Load plugins:
+        if (arg_plugins.isSet())
+        {
+            std::string errMsg;
+            const auto  plugins = arg_plugins.getValue();
+            std::cout << "Loading plugin(s): " << plugins << std::endl;
+            if (!mrpt::system::loadPluginModules(plugins, errMsg))
+            {
+                throw std::runtime_error(errMsg);
+            }
+        }
+
         mp2p_icp::metric_map_t mm;
         mm.load_from_file(arg_input.getValue());
 
