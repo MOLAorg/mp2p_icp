@@ -22,6 +22,8 @@
 #include <mola_imu_preintegration/ImuIntegrationParams.h>
 #include <mola_imu_preintegration/ImuTransformer.h>
 #include <mola_imu_preintegration/trajectory_from_buffer.h>
+
+#include <stdexcept>
 #endif
 
 #include <mp2p_icp/pointcloud_field_utils.h>

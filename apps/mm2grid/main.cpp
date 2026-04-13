@@ -30,6 +30,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 // ---------------------------------------------------------------------------
 // CLI flags

@@ -30,6 +30,8 @@
 #include <mrpt/system/string_utils.h>
 #include <mrpt/version.h>
 
+#include <stdexcept>
+
 #if MRPT_VERSION < 0x030000  // <3.0.0
 #include <mrpt/maps/CPointsMapXYZI.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>

@@ -34,6 +34,8 @@
 #include <mrpt/system/progress.h>
 #include <mrpt/version.h>
 
+#include <stdexcept>
+
 #if MRPT_VERSION >= 0x020f07
 #include <mrpt/io/CCompressedOutputStream.h>
 #else

@@ -25,6 +25,8 @@
 #include <mrpt/system/datetime.h>
 #include <mrpt/version.h>
 
+#include <stdexcept>
+
 IMPLEMENTS_MRPT_OBJECT(FilterAbsoluteTimestamp, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;

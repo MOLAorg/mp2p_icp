@@ -27,6 +27,8 @@
 #include <mrpt/math/ops_containers.h>  // meanAndCov
 #include <mrpt/version.h>
 
+#include <stdexcept>
+
 #if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>

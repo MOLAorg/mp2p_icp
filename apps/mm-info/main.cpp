@@ -26,6 +26,8 @@
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
 
+#include <stdexcept>
+
 // CLI flags:
 namespace
 {
