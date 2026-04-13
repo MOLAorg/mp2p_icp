@@ -36,6 +36,7 @@ Usage
    mm2grid <input.mm> [-l <layer_name>] [-o <output_base>]
            [--occupied-thresh <value>] [--free-thresh <value>]
            [--mode trinary|scale|raw] [--negate]
+           [--load-plugins <plugin.so>]
 
 Arguments
 ^^^^^^^^^
@@ -61,6 +62,7 @@ Arguments
 - ``--negate`` (optional): If set, the color interpretation is inverted:
   black pixels are free and white pixels are occupied. Sets ``negate: 1`` in
   the YAML. Default: not set (``negate: 0``).
+- ``--load-plugins <file.so>`` (optional): One or more (comma separated) ``.so`` plugin files to load before reading the map. Use this to load custom map types (e.g. ``--load-plugins libmola_metric_maps.so``).
 
 Examples
 ^^^^^^^^

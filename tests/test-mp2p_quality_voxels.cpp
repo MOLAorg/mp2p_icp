@@ -25,6 +25,8 @@
 #include <mrpt/core/get_env.h>
 #include <mrpt/system/filesystem.h>  // pathJoin()
 
+#include <stdexcept>
+
 const bool   VERBOSE = mrpt::get_env<bool>("VERBOSE", false);
 const double SCALE   = mrpt::get_env<double>("SCALE", 3.0);
 

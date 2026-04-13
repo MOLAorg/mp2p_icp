@@ -24,18 +24,37 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/os.h>
+
+#include <stdexcept>
 
 // CLI flags:
 namespace
 {
-TCLAP::CmdLine cmd("mm-filter");
+TCLAP::CmdLine cmd("mm-info");
 
 TCLAP::UnlabeledValueArg<std::string> argMapFile(
     "input", "Load this metric map file (*.mm)", true, "myMap.mm", "myMap.mm", cmd);
+
+TCLAP::ValueArg<std::string> arg_plugins(
+    "l", "load-plugins", "One or more (comma separated) *.so files to load as plugins", false,
+    "foobar.so", "foobar.so", cmd);
 }  // namespace
 
 void run_mm_info()
 {
+    // Load plugins:
+    if (arg_plugins.isSet())
+    {
+        std::string errMsg;
+        const auto  plugins = arg_plugins.getValue();
+        std::cout << "Loading plugin(s): " << plugins << std::endl;
+        if (!mrpt::system::loadPluginModules(plugins, errMsg))
+        {
+            throw std::runtime_error(errMsg);
+        }
+    }
+
     const auto& filInput = argMapFile.getValue();
 
     ASSERT_FILE_EXISTS_(argMapFile.getValue());

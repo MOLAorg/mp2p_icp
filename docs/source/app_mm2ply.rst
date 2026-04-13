@@ -24,7 +24,7 @@ Usage
 
 .. code-block:: bash
 
-   mm2ply -i <input.mm> [-o <output_prefix>] [-b] [--export-fields <field1,field2,...>] [--ignore-missing-fields] [--frame map|enu]
+   mm2ply -i <input.mm> [-o <output_prefix>] [-b] [--export-fields <field1,field2,...>] [--ignore-missing-fields] [--frame map|enu] [-l <plugin.so>]
 
 Arguments
 ^^^^^^^^^
@@ -35,6 +35,7 @@ Arguments
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export in the specified order. If not provided, all available fields will be exported. Spaces around commas are allowed
 - ``--ignore-missing-fields`` (optional): If defined, the lack of any of the ``--export-fields`` in the map will be considered a warning instead of an error.
 - ``--frame <map|enu>`` (optional): Coordinate frame for exported points. ``map`` (default) exports coordinates in the map local frame. ``enu`` transforms all point coordinates to the East-North-Up frame using the georeferencing information stored in the map. Requires that the input map contains georeferencing data; otherwise, an error is raised.
+- ``-l, --load-plugins <file.so>`` (optional): One or more (comma separated) ``.so`` plugin files to load before reading the map. Use this to load custom map types (e.g. ``--load-plugins libmola_metric_maps.so``).
 
 Examples
 ^^^^^^^^

@@ -29,6 +29,7 @@
 #include <mrpt/system/os.h>
 
 #include <fstream>
+#include <stdexcept>
 
 namespace
 {

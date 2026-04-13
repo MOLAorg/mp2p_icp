@@ -26,7 +26,7 @@ Usage
 
 .. code-block:: bash
 
-   mm2las -i <input.mm> [-o <output_prefix>] [--export-fields <field1,field2,...>] [--frame map|enu|geodetic]
+   mm2las -i <input.mm> [-o <output_prefix>] [--export-fields <field1,field2,...>] [--frame map|enu|geodetic] [-l <plugin.so>]
 
 Arguments
 ^^^^^^^^^
@@ -36,6 +36,7 @@ Arguments
 - ``--export-fields <field1,field2,...>`` (optional): Comma-separated list of fields to export. If omitted, all available fields are exported, with non-standard fields becoming Extra Dimensions.
 - ``--system-id <string>``: Sets the System Identifier in the LAS header (default: "mm2las").
 - ``--generating-software <string>``: Sets the Generating Software in the LAS header (default: "MOLA mm2las").
+- ``-l, --load-plugins <file.so>`` (optional): One or more (comma separated) ``.so`` plugin files to load before reading the map. Use this to load custom map types (e.g. ``--load-plugins libmola_metric_maps.so``).
 - ``--frame <map|enu|geodetic>`` (optional): Coordinate frame for exported points. ``map`` (default) exports coordinates in the map local frame. ``enu`` transforms all point coordinates to the East-North-Up frame using the georeferencing information stored in the map. ``geodetic`` exports points as WGS-84 geographic coordinates (EPSG:4979) with longitude as X, latitude as Y, and ellipsoidal height as Z, embedding the CRS as a WKT VLR in the LAS file for full georeferencing support in GIS software. Requires that the input map contains georeferencing data with valid geodetic coordinates. If per-point ``latitude``/``longitude``/``altitude`` double fields already exist in the map (e.g., from ``mola-mm-add-geodetic``), they are used directly; otherwise, the conversion from map coordinates is computed on the fly.
 
 

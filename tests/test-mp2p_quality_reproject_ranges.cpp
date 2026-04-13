@@ -26,6 +26,7 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 
 #include <cstdlib>
+#include <stdexcept>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {

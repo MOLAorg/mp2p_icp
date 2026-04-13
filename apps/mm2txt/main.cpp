@@ -30,6 +30,8 @@
 #include <mrpt/system/string_utils.h>
 #include <mrpt/version.h>
 
+#include <stdexcept>
+
 #if MRPT_VERSION < 0x030000  // <3.0.0
 #include <mrpt/maps/CPointsMapXYZI.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
@@ -67,6 +69,10 @@ TCLAP::ValueArg<std::string> argFrame(
     "Coordinate frame for exported points: 'map' (default) uses the map local frame; "
     "'enu' transforms points to the East-North-Up frame (requires georeferencing data in the map).",
     false, "map", "map|enu", cmd);
+
+TCLAP::ValueArg<std::string> arg_plugins(
+    "", "load-plugins", "One or more (comma separated) *.so files to load as plugins", false,
+    "foobar.so", "foobar.so", cmd);
 
 bool saveToTxt(
     const mrpt::maps::CGenericPointsMap& pts, const std::string& fileName, bool printHeader,
@@ -217,6 +223,18 @@ bool saveToTxt(
 void run_mm2txt()
 {
     using namespace std::string_literals;
+
+    // Load plugins:
+    if (arg_plugins.isSet())
+    {
+        std::string errMsg;
+        const auto  plugins = arg_plugins.getValue();
+        std::cout << "Loading plugin(s): " << plugins << std::endl;
+        if (!mrpt::system::loadPluginModules(plugins, errMsg))
+        {
+            throw std::runtime_error(errMsg);
+        }
+    }
 
     const auto& filInput = argMapFile.getValue();
 

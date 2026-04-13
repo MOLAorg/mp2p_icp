@@ -30,8 +30,11 @@
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/os.h>
 #include <mrpt/system/progress.h>
 #include <mrpt/version.h>
+
+#include <stdexcept>
 
 #if MRPT_VERSION >= 0x020f07
 #include <mrpt/io/CCompressedOutputStream.h>
@@ -81,11 +84,28 @@ struct Cli
     TCLAP::ValueArg<std::string> arg_verbosity_level{
         "v",    "verbosity", "Verbosity level: ERROR|WARN|INFO|DEBUG (Default: INFO)", false, "",
         "INFO", cmd};
+
+    TCLAP::ValueArg<std::string> arg_plugins{
+        "l",   "load-plugins", "One or more (comma separated) *.so files to load as plugins",
+        false, "foobar.so",    "foobar.so",
+        cmd};
 };
 
 void run_mm_filter(Cli& cli)
 {
     using namespace std::string_literals;
+
+    // Load plugins:
+    if (cli.arg_plugins.isSet())
+    {
+        std::string errMsg;
+        const auto  plugins = cli.arg_plugins.getValue();
+        std::cout << "Loading plugin(s): " << plugins << std::endl;
+        if (!mrpt::system::loadPluginModules(plugins, errMsg))
+        {
+            throw std::runtime_error(errMsg);
+        }
+    }
 
     ASSERT_FILE_EXISTS_(cli.argInput.getValue());
     ASSERT_FILE_EXISTS_(cli.argPipeline.getValue());

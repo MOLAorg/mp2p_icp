@@ -24,6 +24,8 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/system/filesystem.h>
 
+#include <stdexcept>
+
 namespace
 {
 
