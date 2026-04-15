@@ -22,6 +22,7 @@
 #include <mrpt/config.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/core/round.h>
+#include <mrpt/io/CCompressedInputStream.h>
 #include <mrpt/math/TObject3D.h>
 #include <mrpt/math/geometry.h>
 #include <mrpt/opengl/CArrow.h>
@@ -30,6 +31,7 @@
 #include <mrpt/opengl/CPointCloudColoured.h>
 #include <mrpt/opengl/stock_objects.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
+#include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>  // loadPluginModules()
 #include <mrpt/system/string_utils.h>  // unitsFormat()
@@ -158,34 +160,66 @@ bool loadMapFile(const std::string& mapFile)
     // Load one single file:
     std::cout << "Loading map file: " << mapFile << std::endl;
 
-    std::string loadErrorMsg;
+    theMap = mp2p_icp::metric_map_t();  // reset
 
-    if (!theMap.load_from_file(mapFile, loadErrorMsg))
+    if (mrpt::system::extractFileExtension(mapFile) == "bin")
     {
-        bool retry_was_successful = false;
-
-        // If it fails and it's because of a missing plugin, try to load plugins to make life of
-        // users easier:
-        if (loadErrorMsg.find("which is not registered") != std::string::npos &&
-            !arg_plugins.isSet())
+        // Load as externally-stored CGenericPointsMap via CCompressedInputStream
+        try
         {
-            std::cout << "The map file requires plugins for missing C++ classes.\n"
-                         "Trying to load 'libmola_metric_maps.so' and retrying.\n"
-                         "Note that you can directly use '-l libmola_metric_maps.so' or any other "
-                         "custom plugin next time.\n";
-
-            if (!load_plugins("libmola_metric_maps.so"))
+            mrpt::io::CCompressedInputStream        f(mapFile);
+            auto                                    arch = mrpt::serialization::archiveFrom(f);
+            mrpt::serialization::CSerializable::Ptr obj  = arch.ReadObject();
+            auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obj);
+            if (!pts)
             {
+                std::cerr << "Error: .bin file did not deserialize to a CPointsMap-derived object"
+                          << (obj ? std::string(" (got: ") + obj->GetRuntimeClass()->className + ")"
+                                  : std::string(" (null object)"))
+                          << std::endl;
                 return false;
             }
-            // Retry:
-            retry_was_successful = theMap.load_from_file(mapFile, loadErrorMsg);
+            const std::string layerName = mrpt::system::extractFileName(mapFile);
+            theMap.layers[layerName]    = pts;
         }
-
-        if (!retry_was_successful)
+        catch (const std::exception& e)
         {
-            std::cerr << "Error loading metric map from file!:\n" << loadErrorMsg << std::endl;
+            std::cerr << "Error loading .bin file: " << e.what() << std::endl;
             return false;
+        }
+    }
+    else
+    {
+        std::string loadErrorMsg;
+
+        if (!theMap.load_from_file(mapFile, loadErrorMsg))
+        {
+            bool retry_was_successful = false;
+
+            // If it fails and it's because of a missing plugin, try to load plugins to make life of
+            // users easier:
+            if (loadErrorMsg.find("which is not registered") != std::string::npos &&
+                !arg_plugins.isSet())
+            {
+                std::cout
+                    << "The map file requires plugins for missing C++ classes.\n"
+                       "Trying to load 'libmola_metric_maps.so' and retrying.\n"
+                       "Note that you can directly use '-l libmola_metric_maps.so' or any other "
+                       "custom plugin next time.\n";
+
+                if (!load_plugins("libmola_metric_maps.so"))
+                {
+                    return false;
+                }
+                // Retry:
+                retry_was_successful = theMap.load_from_file(mapFile, loadErrorMsg);
+            }
+
+            if (!retry_was_successful)
+            {
+                std::cerr << "Error loading metric map from file!:\n" << loadErrorMsg << std::endl;
+                return false;
+            }
         }
     }
 
@@ -194,6 +228,7 @@ bool loadMapFile(const std::string& mapFile)
     // Obtain layer info:
     std::cout << "Loaded map: " << theMap.contents_summary() << std::endl;
 
+    layerNames.clear();
     for (const auto& [name, map] : theMap.layers)
     {
         layerNames.push_back(name);
@@ -777,8 +812,10 @@ void main_show_gui()
                 {
                     try
                     {
-                        const auto fil =
-                            nanogui::file_dialog({{"mm", "Metric maps (*.mm)"}}, false);
+                        const auto fil = nanogui::file_dialog(
+                            {{"mm", "Metric maps (*.mm)"},
+                             {"bin", "Serialized CGenericPointsMap (*.bin)"}},
+                            false);
                         if (fil.empty())
                         {
                             return;
