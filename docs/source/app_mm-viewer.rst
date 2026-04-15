@@ -4,17 +4,31 @@
 Application: ``mm-viewer``
 ===============================
 
-Write me!
+GUI application to visualize metric map files (``.mm``).
+
+Supported input file types
+--------------------------
+
+- **Metric map files** (``.mm``): the native mp2p_icp format, containing one or
+  more named layers of arbitrary map types.
+
+- **Binary point cloud files** (``.bin``): files containing an externally-stored
+  ``mrpt::maps::CGenericPointsMap``-derived object, serialized with MRPT's
+  ``CCompressedInputStream`` (supports uncompressed, gzip, and zstandard formats).
+  The deserialized cloud is loaded as a single layer named after the file stem.
+
+Usage
+-----
 
 .. code-block:: bash
 
-    USAGE: 
+    USAGE:
 
     mm-viewer  [-s <scene.3dscene>] ...  [-t <trajectory.tum>] [-l
                 <foobar.so>] [--] [--version] [-h] <myMap.mm>
 
 
-    Where: 
+    Where:
 
     -s <scene.3dscene>,  --add-3d-scene <scene.3dscene>  (accepted multiple
         times)
@@ -36,6 +50,6 @@ Write me!
         Displays usage information and exits.
 
     <myMap.mm>
-        Load this metric map file (*.mm)
+        Load this metric map file (``*.mm``) or binary point cloud (``*.bin``)
 
 
