@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.9.0 (2026-04-22)
+------------------
 * Merge pull request `#57 <https://github.com/MOLAorg/mp2p_icp/issues/57>`_ from MOLAorg/feat/deskew-filter-ignore-acc
   FilterDeskew: add new option "ignore_accelerometer"
 * Merge pull request `#55 <https://github.com/MOLAorg/mp2p_icp/issues/55>`_ from MOLAorg/feat/mm-viewer-read-bin-files
