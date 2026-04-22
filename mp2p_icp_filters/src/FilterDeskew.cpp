@@ -58,6 +58,7 @@ void FilterDeskew::initialize_filter(const mrpt::containers::yaml& c)
     MCP_LOAD_OPT(c, in_place);
 
     MCP_LOAD_OPT(c, points_already_global);
+    MCP_LOAD_OPT(c, ignore_accelerometer);
 
     auto handleVectorParam = [&](const std::string& key, auto& vec, const std::size_t dim)
     {
@@ -522,13 +523,35 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             // Recall, the reference time should have been set already by the Generator and/or
             // FilterAdjustTimestamps:
-            const auto sample_history =
+            // Note: "non-const" just for the "ignore_accelerometer" filter below.
+            auto sample_history =
                 ps->localVelocityBuffer.collect_samples_around_reference_time(2 * scan_time_span);
 
             const bool use_higher_order = (method == MotionCompensationMethod::IMUh);
 
             if (!sample_history.by_time.empty())
             {
+                // Optionally suppress accelerometer contribution entirely.
+                // Zeroing a_b here makes trajectory_from_buffer integrate with
+                // ac_b = gravity_b only (gravity cancels out in the body frame),
+                // reducing position integration to gyro + constant-velocity-per-interval.
+                // This avoids lever-arm noise from corrupting the deskew path when the
+                // IMU/LiDAR offset is large and the accelerometer signal is unreliable.
+                if (ignore_accelerometer)
+                {
+                    // Zero every a_b in by_type (used by find_closest fallback in
+                    // trajectory_from_buffer) — do NOT clear the map, as find_closest
+                    // on an empty map would crash.
+                    for (auto& [stamp, val] : sample_history.by_type.a_b)
+                    {
+                        val = {0, 0, 0};
+                    }
+                    for (auto& [stamp, sample] : sample_history.by_time)
+                    {
+                        sample.a_b = {0, 0, 0};
+                    }
+                }
+
                 reconstructed_trajectory =
                     mola::imu::trajectory_from_buffer(sample_history, imu_params, use_higher_order);
             }
