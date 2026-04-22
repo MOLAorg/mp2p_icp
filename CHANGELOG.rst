@@ -2,6 +2,33 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#57 <https://github.com/MOLAorg/mp2p_icp/issues/57>`_ from MOLAorg/feat/deskew-filter-ignore-acc
+  FilterDeskew: add new option "ignore_accelerometer"
+* Merge pull request `#55 <https://github.com/MOLAorg/mp2p_icp/issues/55>`_ from MOLAorg/feat/mm-viewer-read-bin-files
+  mm-viewer: can be also open .bin files with serialized CGenericPointsMap
+* Merge pull request `#54 <https://github.com/MOLAorg/mp2p_icp/issues/54>`_ from MOLAorg/feat/mm-apps-plugins
+  mm-info, mm2grid, mm2las, mm2ply, mm2txt now have a --load-plugins flag
+* Optimization in PointCloudToVoxelGridSingle
+* Add <stdexcept> to all required files (don't depend on transitive includes)
+* mm-info, mm2grid, mm2las, mm2ply, mm2txt now have a --load-plugins flag
+* Merge branch 'generator-generic-cloud' into develop
+* cloud rendering: Implement observing the autoBoundingBoxOutliersPercentile
+* Merge pull request `#53 <https://github.com/MOLAorg/mp2p_icp/issues/53>`_ from MOLAorg/generator-generic-cloud
+  Generator: creates CGenericPointsMap by default; add sanity checks in most filters
+* remove more old mrpt version guards
+* New sanity check function: warn_on_field_padding_mismatch()
+* FilterDeskew: guard against new MRPT behavior to keep all field lengths in sync
+* Add sanity checks in filters
+* Bump minimum MRPT version to 2.15.4 (and remove now old dead code)
+* Generator new param 'filterOutPointsAtZero', set to true in demo pipelines
+* Generator: now has a param 'default_pointcloud_class' which defaults to 'CGenericPointsMap'
+* Code clean up (remove now dead code; mrpt backwards compatibility)
+* Merge pull request `#52 <https://github.com/MOLAorg/mp2p_icp/issues/52>`_ from MOLAorg/icp-log-viewer-quality-filter
+  icp-log-viewer: add --min-quality filter CLI flag
+* Contributors: Jose Luis Blanco-Claraco
+
 2.8.1 (2026-04-06)
 ------------------
 * Merge pull request `#51 <https://github.com/MOLAorg/mp2p_icp/issues/51>`_ from MOLAorg/fix/new-mrpt-api
