@@ -32,6 +32,7 @@ filters:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "deskewed"
       method: MotionCompensationMethod::IMU
+      ignore_accelerometer: true # Set to false if using high-quality IMU and in Drones, etc.
       #silently_ignore_no_timestamps: true # To handle more dataset types
       output_layer_class: "mrpt::maps::CGenericPointsMap" # Keep all channels: intensity, ring, ...
 
