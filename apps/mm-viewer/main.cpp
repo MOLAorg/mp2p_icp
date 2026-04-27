@@ -135,7 +135,12 @@ nanogui::ComboBox*               cbTravellingInterp = nullptr;
 std::vector<std::string>                  layerNames;
 std::vector<std::string>                  knownPointFields;
 std::map<std::string, nanogui::CheckBox*> cbLayersByName;
-bool                                      doFitView = false;
+
+// Per-layer GL objects for non-LOD layers.
+// Kept alive so that show/hide is a cheap setVisibility() call, not a rebuild.
+std::map<std::string, mrpt::opengl::CSetOfObjects::Ptr> glNonLodLayers;
+
+bool doFitView = false;
 
 mp2p_icp::metric_map_t theMap;
 std::string            theMapFileName = "unnamed.mm";
@@ -525,12 +530,29 @@ void updateGuiAfterLoadingNewMap()
 
     for (size_t i = 0; i < layerNames.size(); i++)
     {
-        auto cb = panelLayers->add<nanogui::CheckBox>(layerNames.at(i));
+        const std::string lyName = layerNames.at(i);
+        auto              cb     = panelLayers->add<nanogui::CheckBox>(lyName);
         cb->setChecked(true);
-        cb->setCallback([](bool) { rebuild_3d_view(); });
+        cb->setCallback(
+            [lyName](bool checked)
+            {
+                // Toggle visibility directly — no need to rebuild GL objects.
+                if (gLOD.hasLayer(lyName))
+                {
+                    gLOD.setLayerVisible(lyName, checked);
+                }
+                else
+                {
+                    auto it = glNonLodLayers.find(lyName);
+                    if (it != glNonLodLayers.end())
+                    {
+                        it->second->setVisibility(checked);
+                    }
+                }
+            });
         cb->setFontSize(SMALL_FONT_SIZE);
 
-        cbLayersByName[layerNames.at(i)] = cb;
+        cbLayersByName[lyName] = cb;
     }
 
     for (auto& evl : extraVizLayers)
@@ -850,7 +872,7 @@ void buildLODForCurrentMap()
         auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
         if (pts && pts->size() >= LOD_THRESHOLD)
         {
-            gLOD.addLayer(name, *pts, *glVizMap);
+            gLOD.addLayer(name, *pts, *glVizMap, slPointSize ? slPointSize->value() : 2.0f);
         }
     }
 }
@@ -944,6 +966,7 @@ void main_show_gui()
                         }
 
                         gLOD.clear(*glVizMap);
+                        glNonLodLayers.clear();
                         loadMapFile(fil);
                         updateGuiAfterLoadingNewMap();
                         win->performLayout();
@@ -1593,6 +1616,13 @@ void main_show_gui()
             if (argLOD.getValue())
             {
                 gLOD.update(win->camera(), win->width(), win->height());
+
+                // A LOD tree was spliced in: rebuild so the full-cloud GL object
+                // (rendered before the tree was ready) is removed from the scene.
+                if (gLOD.takeRebuildNeeded())
+                {
+                    rebuild_3d_view(true);
+                }
             }
             updateMouseCoordinates();
             updateCameraLookCoordinates();
@@ -1602,7 +1632,9 @@ void main_show_gui()
             updateCameraClipDistances();
         });
 
-    nanogui::mainloop(1000 /*idleLoopPeriod ms*/, 25 /* minRepaintPeriod ms */);
+    // idleLoopPeriod=50ms (20 Hz) so LOD uploads progress at ~10 M pts/s when
+    // idle; minRepaintPeriod=25ms (40 Hz) for smooth interaction.
+    nanogui::mainloop(50 /*idleLoopPeriod ms*/, 25 /* minRepaintPeriod ms */);
 
     nanogui::shutdown();
 
@@ -1630,7 +1662,9 @@ void rebuild_3d_view(bool force_rebuild_view)
     // the map:
     mp2p_icp::render_params_t rpMap;
 
-    rpMap.points.visible = false;
+    // Build render style params for ALL layers (ignoring checked state).
+    // Used only for detecting style changes; visibility is managed separately.
+    rpMap.points.visible = true;
     for (const auto& [lyName, cb] : cbLayersByName)
     {
         // Update stats in the cb label:
@@ -1660,19 +1694,10 @@ void rebuild_3d_view(bool force_rebuild_view)
             }
         }
 
-        // show/hide:
-        if (!cb->checked())
-        {
-            continue;  // hidden
-        }
-        rpMap.points.visible = true;
-
         auto& rpL                       = rpMap.points.perLayer[lyName];
         rpL.pointSize                   = slPointSize->value();
         rpL.render_voxelmaps_as_points  = cbViewVoxelsAsPoints->checked();
         rpL.render_voxelmaps_free_space = cbViewVoxelsFreeSpace->checked();
-
-        lbPointSize->setCaption("Point size: " + std::to_string(rpL.pointSize));
 
         if (cbColorizeMap->checked())
         {
@@ -1696,48 +1721,47 @@ void rebuild_3d_view(bool force_rebuild_view)
         }
     }
 
+    lbPointSize->setCaption("Point size: " + std::to_string(slPointSize->value()));
+
     // Default color:
     for (auto& [layer, rp] : rpMap.points.perLayer)
     {
         rp.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0x80);
     }
 
-    // Regenerate points opengl representation only if some parameter changed:
+    // Regenerate per-layer GL objects only when style params changed.
+    // Visibility (checkbox state) is applied cheaply at the end without rebuilding.
     static std::optional<mp2p_icp::render_params_t> prevRenderParams;
 
     if (!prevRenderParams.has_value() || prevRenderParams.value() != rpMap || force_rebuild_view)
     {
         prevRenderParams = rpMap;
         glVizMap->clear();
+        glNonLodLayers.clear();
 
-        // Build a copy of rpMap without LOD-managed layers so that
-        // get_visualization does not generate redundant GL objects for them.
-        mp2p_icp::render_params_t rpNonLOD = rpMap;
-        for (auto it = rpNonLOD.points.perLayer.begin();
-             it != rpNonLOD.points.perLayer.end();)
+        // Build per-layer GL objects for non-LOD layers.
+        for (const auto& [lyName, rpL] : rpMap.points.perLayer)
         {
-            if (gLOD.hasLayer(it->first))
+            if (gLOD.hasLayer(lyName))
             {
-                it = rpNonLOD.points.perLayer.erase(it);
+                continue;  // LOD renders this layer; skip normal GL object.
             }
-            else
-            {
-                ++it;
-            }
+
+            mp2p_icp::render_params_t rpSingle;
+            rpSingle.points.visible          = true;
+            rpSingle.points.allLayers.color  = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+            rpSingle.points.perLayer[lyName] = rpL;
+
+            auto glLayer           = theMap.get_visualization(rpSingle);
+            glNonLodLayers[lyName] = glLayer;
+            glVizMap->insert(glLayer);
         }
 
-        auto glPts = theMap.get_visualization(rpNonLOD);
-
-        // Show all or selected layers:
-        rpMap.points.allLayers.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
-
-        glVizMap->insert(glPts);
         glVizMap->insert(glMapCorner);
         glVizMap->insert(glTrajectory);
         glVizMap->insert(glVizObjects);
 
-        // Re-attach LOD scene nodes (they were removed by glVizMap->clear()).
-        // Also propagate render params and rebuild colors for each LOD layer.
+        // Re-attach LOD scene nodes (removed by glVizMap->clear()).
         for (const auto& [lyName, cb] : cbLayersByName)
         {
             if (!gLOD.hasLayer(lyName))
@@ -1750,25 +1774,35 @@ void rebuild_3d_view(bool force_rebuild_view)
                 continue;
             }
 
-            // Re-insert this layer's LOD scene node into glVizMap.
             gLOD.reattachSceneNode(lyName, *glVizMap);
 
-            // Push updated render params (point size, color mode).
             auto itRp = rpMap.points.perLayer.find(lyName);
             if (itRp != rpMap.points.perLayer.end())
             {
                 gLOD.applyRenderParams(lyName, itRp->second);
             }
 
-            // Rebuild colors when colorization params changed.
-            if (force_rebuild_view)
+            auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLayer->second);
+            if (pts)
             {
-                auto pts =
-                    std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLayer->second);
-                if (pts)
-                {
-                    gLOD.rebuildColors(lyName, *pts);
-                }
+                gLOD.rebuildColors(lyName, *pts);
+            }
+        }
+    }
+
+    // Sync visibility for all layers from checkbox state (cheap, no rebuild).
+    for (const auto& [lyName, cb] : cbLayersByName)
+    {
+        if (gLOD.hasLayer(lyName))
+        {
+            gLOD.setLayerVisible(lyName, cb->checked());
+        }
+        else
+        {
+            auto it = glNonLodLayers.find(lyName);
+            if (it != glNonLodLayers.end())
+            {
+                it->second->setVisibility(cb->checked());
             }
         }
     }

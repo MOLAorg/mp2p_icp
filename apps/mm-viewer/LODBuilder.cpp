@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <cstdlib>
 #include <numeric>
 #include <random>
@@ -230,21 +231,62 @@ void buildRecursive(
         }
     }
 
-    // Compute this node's rep set from children's rep sets.
-    std::vector<uint32_t> allChildRep;
+    // Compute this node's rep set from children's rep sets, drawing from each
+    // child proportionally to that child's TOTAL point count (not to its
+    // rep-set size).  Sampling uniformly over the pooled rep indices would
+    // over-represent children that subdivided more (their rep set equals the
+    // leaf cap regardless of how many points actually live there), which
+    // produces visible density bias near the root.
+    uint64_t totalSubtreePts = 0;
     for (int ci = 0; ci < 8; ++ci)
     {
-        if (!node.children[ci])
+        if (node.children[ci])
         {
-            continue;
-        }
-        for (const uint32_t idx : node.children[ci]->repIndices)
-        {
-            allChildRep.push_back(idx);
+            totalSubtreePts += node.children[ci]->totalPoints;
         }
     }
 
-    node.repIndices = randomSubsample(allChildRep, ctx.params->pointsPerNode, ctx.rng);
+    node.repIndices.clear();
+    if (totalSubtreePts > 0)
+    {
+        const size_t target = ctx.params->pointsPerNode;
+        node.repIndices.reserve(target);
+        size_t remaining = target;
+        for (int ci = 0; ci < 8; ++ci)
+        {
+            if (!node.children[ci])
+            {
+                continue;
+            }
+            const auto& crep = node.children[ci]->repIndices;
+            if (crep.empty())
+            {
+                continue;
+            }
+            // Quota for this child, proportional to its total points.
+            const double frac =
+                static_cast<double>(node.children[ci]->totalPoints) /
+                static_cast<double>(totalSubtreePts);
+            size_t quota = static_cast<size_t>(std::round(frac * target));
+            // Cap by child's rep size and by remaining budget.
+            quota = std::min(quota, crep.size());
+            quota = std::min(quota, remaining);
+            if (quota == 0)
+            {
+                continue;
+            }
+            auto picked = randomSubsample(crep, quota, ctx.rng);
+            for (uint32_t idx : picked)
+            {
+                node.repIndices.push_back(idx);
+            }
+            remaining -= quota;
+            if (remaining == 0)
+            {
+                break;
+            }
+        }
+    }
     fillGLCloud(node, *ctx.src);
 
     const uint64_t built = ++g_nodesBuilt;

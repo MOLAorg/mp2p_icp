@@ -15,37 +15,63 @@
 #include <mrpt/core/exceptions.h>
 
 #include <cmath>
+#include <limits>
 
 namespace
 {
-// Compute a crude "projected diameter in pixels" for a bounding box.
-// Uses the standard pinhole approximation and the camera zoom distance.
+// Compute eye (camera) world position from MRPT canvas (pointing + az/el/zoom).
+// MRPT convention: azimuth rotates around +Z, elevation tilts from XY plane.
+struct EyePos
+{
+    float x = 0, y = 0, z = 0;
+};
+
+EyePos computeEyePos(const mrpt::gui::CGlCanvasBase& cam)
+{
+    constexpr float kDeg2Rad = 3.14159265f / 180.0f;
+    const float     az       = cam.getAzimuthDegrees() * kDeg2Rad;
+    const float     el       = cam.getElevationDegrees() * kDeg2Rad;
+    const float     zoom     = cam.getZoomDistance();
+
+    EyePos e;
+    e.x = cam.getCameraPointingX() + zoom * std::cos(el) * std::cos(az);
+    e.y = cam.getCameraPointingY() + zoom * std::cos(el) * std::sin(az);
+    e.z = cam.getCameraPointingZ() + zoom * std::sin(el);
+    return e;
+}
+
+// Approximate projected diameter of a bounding box in pixels.
+// Distance is measured from the camera EYE (not the pivot) so off-pivot
+// nodes get correct projected sizes during orbit.
 float calcProjectedDiameter(
     const mrpt::math::TBoundingBoxf& bbox, const mrpt::gui::CGlCanvasBase& cam, int viewportH)
 {
-    // Diagonal length of the bbox (world units).
     const float dx   = bbox.max.x - bbox.min.x;
     const float dy   = bbox.max.y - bbox.min.y;
     const float dz   = bbox.max.z - bbox.min.z;
     const float diag = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-    // Camera pointing-at gives an approximate distance from bbox center.
     const float cx = 0.5f * (bbox.min.x + bbox.max.x);
     const float cy = 0.5f * (bbox.min.y + bbox.max.y);
     const float cz = 0.5f * (bbox.min.z + bbox.max.z);
 
-    const float ddx  = cx - cam.getCameraPointingX();
-    const float ddy  = cy - cam.getCameraPointingY();
-    const float ddz  = cz - cam.getCameraPointingZ();
-    float       dist = std::sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+    const EyePos eye = computeEyePos(cam);
+    const float  ddx = cx - eye.x;
+    const float  ddy = cy - eye.y;
+    const float  ddz = cz - eye.z;
+    float        dist = std::sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
 
-    // Add zoom distance so we don't divide by zero when inside the bbox.
-    dist += cam.getZoomDistance();
+    // Floor at a small positive value to avoid div-by-zero when the eye
+    // happens to fall inside the bbox.
+    if (dist < 1e-3f)
+    {
+        dist = 1e-3f;
+    }
 
     const float fovRad  = cam.cameraFOV() * (3.14159265f / 180.0f);
     const float halfTan = std::tan(0.5f * fovRad);
 
-    if (halfTan < 1e-6f || dist < 1e-6f)
+    if (halfTan < 1e-6f)
     {
         return 0.0f;
     }
@@ -54,45 +80,136 @@ float calcProjectedDiameter(
 
 }  // namespace
 
+namespace
+{
+// Upload rep clouds for the top maxLevel levels of the tree so that a coarse
+// preview is always GPU-resident and can be shown immediately during camera
+// movement, before any idle-frame lazy uploads have occurred.
+void eagerUploadTopLevels(LODNode& root, mrpt::opengl::CSetOfObjects& sceneNode, int maxLevel)
+{
+    std::vector<LODNode*> stack;
+    stack.push_back(&root);
+    while (!stack.empty())
+    {
+        LODNode* node = stack.back();
+        stack.pop_back();
+        if (!node->glRepPoints || node->gpuResident)
+        {
+            continue;
+        }
+        sceneNode.insert(node->glRepPoints);
+        node->gpuResident = true;
+        node->glRepPoints->setVisibility(false);  // visit() controls actual visibility
+
+        if (static_cast<int>(node->level) < maxLevel)
+        {
+            for (auto& child : node->children)
+            {
+                if (child)
+                {
+                    stack.push_back(child.get());
+                }
+            }
+        }
+    }
+}
+}  // namespace
+
+// ----------------------------------------------------------------------------
+
+LODRenderer::~LODRenderer()
+{
+    std::lock_guard<std::mutex> lk(m_buildThreadsMutex);
+    for (auto& bt : m_buildThreads)
+    {
+        if (bt.thread.joinable())
+        {
+            bt.thread.join();
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 void LODRenderer::addLayer(
     const std::string& layerName, const mrpt::maps::CPointsMap& pts,
-    mrpt::opengl::CSetOfObjects& glVizMap)
+    mrpt::opengl::CSetOfObjects& glVizMap, float initialPointSize)
 {
-    auto tree = std::make_unique<LODTree>();
+    auto done = std::make_shared<std::atomic<bool>>(false);
 
-    LODTree::BuildParams bp;
+    {
+        std::lock_guard<std::mutex> lk(m_buildingMutex);
+        m_building[layerName] = done;
+    }
 
-    std::cout << "[LODRenderer] Building LODTree for layer '" << layerName << "' (" << pts.size()
-              << " pts)..." << std::flush;
+    std::cout << "[LODRenderer] Starting background build for layer '" << layerName << "' ("
+              << pts.size() << " pts).\n"
+              << std::flush;
 
-    tree->build(
-        pts, bp,
-        [&layerName](uint32_t depth, uint64_t nodesBuilt)
+    auto* pGlVizMap = &glVizMap;
+
+    std::lock_guard<std::mutex> lkT(m_buildThreadsMutex);
+    BuildThread                 bt;
+    bt.done   = done;
+    bt.thread = std::thread(
+        [this, layerName, &pts, pGlVizMap, initialPointSize, done]()
         {
-            std::cout << "\r[LODRenderer] Layer '" << layerName << "': " << nodesBuilt
-                      << " nodes built (depth " << depth << ")   " << std::flush;
+            auto tree = std::make_unique<LODTree>();
+
+            LODTree::BuildParams bp;
+
+            tree->build(
+                pts, bp,
+                [&layerName](uint32_t depth, uint64_t nodesBuilt)
+                {
+                    if (nodesBuilt % 1000 == 0)
+                    {
+                        std::cout << "\r[LODRenderer] '" << layerName << "': " << nodesBuilt
+                                  << " nodes (depth " << depth << ")   " << std::flush;
+                    }
+                });
+
+            std::cout << "\n[LODRenderer] Build done for layer '" << layerName
+                      << "': " << tree->totalPoints() << " pts, depth=" << tree->depth() << "\n"
+                      << std::flush;
+
+            {
+                std::lock_guard<std::mutex> lk(m_pendingMutex);
+                PendingLayer                pl;
+                pl.layerName        = layerName;
+                pl.tree             = std::move(tree);
+                pl.glVizMap         = pGlVizMap;
+                pl.initialPointSize = initialPointSize;
+                m_pending.push_back(std::move(pl));
+            }
+
+            done->store(true);
         });
-
-    std::cout << "\n[LODRenderer] LODTree done for layer '" << layerName
-              << "': " << tree->totalPoints() << " pts, depth=" << tree->depth() << "\n";
-
-    // Queue the finished tree for GL-thread insertion.
-    std::lock_guard<std::mutex> lk(m_pendingMutex);
-    PendingLayer                pl;
-    pl.layerName = layerName;
-    pl.tree      = std::move(tree);
-    pl.glVizMap  = &glVizMap;
-    m_pending.push_back(std::move(pl));
+    m_buildThreads.push_back(std::move(bt));
 }
 
-void LODRenderer::clear(mrpt::opengl::CSetOfObjects& glVizMap)
+// ----------------------------------------------------------------------------
+
+void LODRenderer::clear(mrpt::opengl::CSetOfObjects& /*glVizMap*/)
 {
-    // Remove each layer's sceneNode from glVizMap.
-    // CSetOfObjects does not expose individual removal; we rebuild after clearing.
-    // We just call glVizMap.clear() from the caller; here we clean local state.
-    (void)glVizMap;
+    // Join all background builds before destroying state so that the pts
+    // reference captured by the thread lambda remains valid until then.
+    {
+        std::lock_guard<std::mutex> lk(m_buildThreadsMutex);
+        for (auto& bt : m_buildThreads)
+        {
+            if (bt.thread.joinable())
+            {
+                bt.thread.join();
+            }
+        }
+        m_buildThreads.clear();
+    }
+
+    {
+        std::lock_guard<std::mutex> lk(m_buildingMutex);
+        m_building.clear();
+    }
 
     m_layers.clear();
 
@@ -100,27 +217,58 @@ void LODRenderer::clear(mrpt::opengl::CSetOfObjects& glVizMap)
         std::lock_guard<std::mutex> lk(m_pendingMutex);
         m_pending.clear();
     }
+
+    {
+        std::lock_guard<std::mutex> lk(m_pendingVisibilityMutex);
+        m_pendingVisibility.clear();
+    }
 }
+
+// ----------------------------------------------------------------------------
 
 bool LODRenderer::hasLayer(const std::string& layerName) const
 {
     return m_layers.count(layerName) > 0;
 }
 
-void LODRenderer::applyRenderParams(
-    const std::string& layerName, const mp2p_icp::render_params_point_layer_t& rp)
+bool LODRenderer::isBuildingLayer(const std::string& layerName) const
+{
+    std::lock_guard<std::mutex> lk(m_buildingMutex);
+    auto                        it = m_building.find(layerName);
+    return it != m_building.end() && !it->second->load();
+}
+
+// ----------------------------------------------------------------------------
+
+void LODRenderer::setLayerVisible(const std::string& layerName, bool visible)
 {
     auto it = m_layers.find(layerName);
     if (it == m_layers.end())
     {
+        // Layer not yet spliced in — store for later application.
+        std::lock_guard<std::mutex> lk(m_pendingVisibilityMutex);
+        m_pendingVisibility[layerName] = visible;
         return;
     }
-    it->second.pointSize = rp.pointSize;
-    // Propagate point size to all node clouds (DFS).
-    if (!it->second.tree)
+    it->second.visible = visible;
+    if (it->second.tree)
+    {
+        it->second.tree->sceneNode()->setVisibility(visible);
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+void LODRenderer::applyRenderParams(
+    const std::string& layerName, const mp2p_icp::render_params_point_layer_t& rp)
+{
+    auto it = m_layers.find(layerName);
+    if (it == m_layers.end() || !it->second.tree)
     {
         return;
     }
+    it->second.pointSize = rp.pointSize;
+
     std::vector<LODNode*> stack;
     stack.push_back(&it->second.tree->root());
     while (!stack.empty())
@@ -141,6 +289,8 @@ void LODRenderer::applyRenderParams(
     }
 }
 
+// ----------------------------------------------------------------------------
+
 void LODRenderer::reattachSceneNode(
     const std::string& layerName, mrpt::opengl::CSetOfObjects& glVizMap)
 {
@@ -151,6 +301,8 @@ void LODRenderer::reattachSceneNode(
     }
     glVizMap.insert(it->second.tree->sceneNode());
 }
+
+// ----------------------------------------------------------------------------
 
 void LODRenderer::rebuildColors(const std::string& layerName, const mrpt::maps::CPointsMap& pts)
 {
@@ -170,52 +322,92 @@ float LODRenderer::approxProjectedDiameter(
     return calcProjectedDiameter(bbox, cam, viewportH);
 }
 
+// ----------------------------------------------------------------------------
+
 void LODRenderer::visit(
     LODNode& node, LODTree& tree, const mrpt::gui::CGlCanvasBase& cam, int viewportW, int viewportH,
     BudgetState& budget)
 {
-    (void)viewportW;
-
     if (!node.glRepPoints)
     {
         return;
     }
 
-    // Frustum cull: rough AABB check against camera distance.
-    // (Full frustum cull requires projection matrices; use distance heuristic for now.)
-
+    // Cheap projected-size cull: if the node's bbox maps to less than half a
+    // pixel, hide it and stop recursing.
     const float screenSz = approxProjectedDiameter(node.bbox, cam, viewportH);
+    (void)viewportW;
 
-    const bool  interacting  = config.interacting;
+    if (screenSz < 0.5f)
+    {
+        if (node.gpuResident)
+        {
+            node.glRepPoints->setVisibility(false);
+        }
+        ++budget.nodesCulled;
+        return;
+    }
+
     const float coarseThresh = config.coarseScreenSizePx;
     const float fineThresh   = config.fineScreenSizePx;
 
-    const bool shouldDescend =
-        !node.isLeaf() && (screenSz >= fineThresh) &&
-        (budget.usedPoints + static_cast<size_t>(node.totalPoints) < budget.frameBudget);
+    const size_t repCount = node.repIndices.size();
+    const bool   budgetOk = (budget.usedPoints + repCount <= budget.frameBudget);
 
-    if (!shouldDescend || screenSz < coarseThresh)
+    // Natural stopping conditions: leaf node or projected size below coarse
+    // threshold.  At these stops we show the rep cloud and hide any finer
+    // resident descendants (zoom-out cleanup).
+    const bool naturalStop = node.isLeaf() || (screenSz < coarseThresh);
+
+    // Interaction stop: while the camera is moving, show coarse nodes to keep
+    // rendering fast.  Fine-grained children are only shown when idle.
+    const bool interactionStop = config.interacting && (screenSz < fineThresh);
+
+    // Budget-forced stop: if descending would (likely) push us over budget,
+    // stop here and render the rep cloud.  This is critical: returning without
+    // rendering would leave a hole; rendering the coarser rep keeps the region
+    // covered.  We use this node's repCount as a coarse proxy for "would the
+    // subtree fit?" — it understates by ~8x but at least prevents the silent
+    // hole at the cost of an occasional over-coarse region.
+    const bool budgetStop = !budgetOk;
+
+    const bool shouldDescend = !naturalStop && !interactionStop && !budgetStop;
+
+    if (!shouldDescend)
     {
-        // Render this node's rep cloud.
-        if (!node.gpuResident)
+        // Show this node's rep cloud and hide any finer descendants that
+        // might already be resident.
+        if (!node.gpuResident && node.glRepPoints)
         {
-            // Upload when not interacting and we have upload budget.
-            if (!interacting && budget.uploaded + node.repIndices.size() <= budget.uploadBudget)
+            // Upload policy:
+            //  - While interacting: never upload (keep motion smooth);
+            //    skip this node (caller's ancestor will still be visible).
+            //  - While idle: upload up to uploadBudget points per frame.
+            //    Beyond that, defer; we'll get more next idle frame.
+            if (config.interacting)
             {
-                tree.sceneNode()->insert(node.glRepPoints);
-                node.gpuResident = true;
-                budget.uploaded += node.repIndices.size();
-            }
-            else
-            {
-                // Not yet resident -- skip this node this frame.
+                ++budget.nodesDeferred;
                 return;
             }
+            if (budget.uploaded + repCount > budget.uploadBudget && budget.uploaded > 0)
+            {
+                // Already uploaded something this frame and this would exceed
+                // the cap; defer so we don't stutter.  (We allow the very
+                // first upload of the frame even if it alone exceeds the cap,
+                // so single-shot large nodes still progress.)
+                ++budget.nodesDeferred;
+                return;
+            }
+            tree.sceneNode()->insert(node.glRepPoints);
+            node.gpuResident = true;
+            budget.uploaded += repCount;
         }
-        node.glRepPoints->setVisibility(true);
-        budget.usedPoints += node.repIndices.size();
 
-        // Hide all children below this node.
+        node.glRepPoints->setVisibility(true);
+        budget.usedPoints += repCount;
+        ++budget.nodesShown;
+
+        // Hide finer-grained descendants.
         std::vector<LODNode*> hideStack;
         for (auto& child : node.children)
         {
@@ -228,7 +420,7 @@ void LODRenderer::visit(
         {
             LODNode* n = hideStack.back();
             hideStack.pop_back();
-            if (n->glRepPoints && n->gpuResident)
+            if (n->gpuResident && n->glRepPoints)
             {
                 n->glRepPoints->setVisibility(false);
             }
@@ -243,7 +435,8 @@ void LODRenderer::visit(
         return;
     }
 
-    // Descend: hide this node's rep cloud and recurse into children.
+    // Descend: this node's rep cloud is superseded by its children.
+    ++budget.nodesDescended;
     if (node.gpuResident)
     {
         node.glRepPoints->setVisibility(false);
@@ -258,26 +451,103 @@ void LODRenderer::visit(
     }
 }
 
+// ----------------------------------------------------------------------------
+
+void LODRenderer::joinFinishedBuildThreads()
+{
+    std::lock_guard<std::mutex> lk(m_buildThreadsMutex);
+    auto                        it = m_buildThreads.begin();
+    while (it != m_buildThreads.end())
+    {
+        if (it->done->load() && it->thread.joinable())
+        {
+            it->thread.join();
+            it = m_buildThreads.erase(it);
+        }
+        else if (!it->thread.joinable())
+        {
+            it = m_buildThreads.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 void LODRenderer::update(const mrpt::gui::CGlCanvasBase& cam, int viewportW, int viewportH)
 {
-    // Splice in any trees that finished building since last frame.
+    // Splice completed trees into the active layer map (GL thread).
     {
         std::lock_guard<std::mutex> lk(m_pendingMutex);
         for (auto& pl : m_pending)
         {
-            // Insert the layer's scene node into glVizMap.
             pl.glVizMap->insert(pl.tree->sceneNode());
 
+            // Apply point size to every node cloud.
+            {
+                std::vector<LODNode*> stack;
+                stack.push_back(&pl.tree->root());
+                while (!stack.empty())
+                {
+                    LODNode* node = stack.back();
+                    stack.pop_back();
+                    if (node->glRepPoints)
+                    {
+                        node->glRepPoints->setPointSize(pl.initialPointSize);
+                    }
+                    for (auto& child : node->children)
+                    {
+                        if (child)
+                        {
+                            stack.push_back(child.get());
+                        }
+                    }
+                }
+            }
+
             LayerEntry entry;
-            entry.tree             = std::move(pl.tree);
-            entry.pointSize        = 2.0f;
-            entry.visible          = true;
+            entry.tree      = std::move(pl.tree);
+            entry.pointSize = pl.initialPointSize;
+            entry.visible   = true;
+
+            // Apply any pending visibility override.
+            {
+                std::lock_guard<std::mutex> lkV(m_pendingVisibilityMutex);
+                auto                        vit = m_pendingVisibility.find(pl.layerName);
+                if (vit != m_pendingVisibility.end())
+                {
+                    entry.visible = vit->second;
+                    m_pendingVisibility.erase(vit);
+                }
+            }
+
+            entry.tree->sceneNode()->setVisibility(entry.visible);
+
+            // Eagerly upload ALL nodes so every level is GPU-resident.
+            // Without this, deeper nodes (level > maxLevel) cannot render
+            // when the camera selects them, producing missing regions and
+            // a hard step from "coarse only" to "everything visible" instead
+            // of progressive refinement.  Total node count for a 40M-point
+            // map with default build params is a few thousand — acceptable.
+            // TODO: revisit if this hurts load time on huge maps; reinstate
+            // an upload budget with a fallback that flips parent visibility
+            // back on when a child can't be shown.
+            eagerUploadTopLevels(
+                entry.tree->root(), *entry.tree->sceneNode(),
+                /*maxLevel=*/std::numeric_limits<int>::max());
+
             m_layers[pl.layerName] = std::move(entry);
+            m_rebuildNeeded.store(true);
         }
         m_pending.clear();
     }
 
-    // Camera motion detection.
+    joinFinishedBuildThreads();
+
+    // --- Camera motion detection (epsilon-based) ---
     CameraState cur;
     cur.px   = cam.getCameraPointingX();
     cur.py   = cam.getCameraPointingY();
@@ -285,16 +555,29 @@ void LODRenderer::update(const mrpt::gui::CGlCanvasBase& cam, int viewportW, int
     cur.az   = cam.getAzimuthDegrees();
     cur.el   = cam.getElevationDegrees();
     cur.zoom = cam.getZoomDistance();
-    // Note: CGlCanvasBase::getAzimuthDegrees / getElevationDegrees / getZoomDistance
-    // are available in mrpt 2.x CGlCanvasBase.
+
+    // Seed prevCam on the very first frame to avoid a false "moved" event
+    // caused by comparing the real camera position against the zero-initialized state.
+    if (m_firstUpdate)
+    {
+        m_prevCam     = cur;
+        m_firstUpdate = false;
+    }
+
+    constexpr float kEpsPos  = 1e-4f;
+    constexpr float kEpsAng  = 1e-3f;
+    constexpr float kEpsZoom = 1e-4f;
 
     const bool moved =
-        (cur.px != m_prevCam.px || cur.py != m_prevCam.py || cur.pz != m_prevCam.pz ||
-         cur.az != m_prevCam.az || cur.el != m_prevCam.el || cur.zoom != m_prevCam.zoom);
+        (std::abs(cur.px - m_prevCam.px) > kEpsPos || std::abs(cur.py - m_prevCam.py) > kEpsPos ||
+         std::abs(cur.pz - m_prevCam.pz) > kEpsPos || std::abs(cur.az - m_prevCam.az) > kEpsAng ||
+         std::abs(cur.el - m_prevCam.el) > kEpsAng ||
+         std::abs(cur.zoom - m_prevCam.zoom) > kEpsZoom);
 
+    const bool wasInteracting = config.interacting;
     if (moved)
     {
-        m_movingFrames = 3;
+        m_movingFrames = config.movingFramesHyst;
     }
     else if (m_movingFrames > 0)
     {
@@ -303,11 +586,20 @@ void LODRenderer::update(const mrpt::gui::CGlCanvasBase& cam, int viewportW, int
     config.interacting = (m_movingFrames > 0);
     m_prevCam          = cur;
 
-    // Per-frame budget.
+    if (config.interacting != wasInteracting)
+    {
+        std::cout << "[LODRenderer] interacting=" << config.interacting
+                  << "  layers=" << m_layers.size() << "\n"
+                  << std::flush;
+    }
+
+    // --- Per-frame budget ---
     BudgetState budget;
     budget.frameBudget =
-        config.interacting ? static_cast<size_t>(config.frameBudgetPoints * config.interactingRatio)
-                           : config.frameBudgetPoints;
+        config.interacting
+            ? static_cast<size_t>(
+                  static_cast<double>(config.frameBudgetPoints) * config.interactingRatio)
+            : config.frameBudgetPoints;
     budget.uploadBudget = config.interacting ? 0 : config.uploadBudgetPoints;
     budget.usedPoints   = 0;
     budget.uploaded     = 0;
@@ -319,5 +611,17 @@ void LODRenderer::update(const mrpt::gui::CGlCanvasBase& cam, int viewportW, int
             continue;
         }
         visit(entry.tree->root(), *entry.tree, cam, viewportW, viewportH, budget);
+    }
+
+    // Throttled debug summary: print once per ~60 frames.
+    static uint64_t s_frameCount = 0;
+    if ((++s_frameCount % 60) == 0)
+    {
+        std::cout << "[LODRenderer] frame=" << s_frameCount << " interacting=" << config.interacting
+                  << " shown=" << budget.nodesShown << " deferred=" << budget.nodesDeferred
+                  << " descended=" << budget.nodesDescended << " culled=" << budget.nodesCulled
+                  << " usedPts=" << budget.usedPoints << " uploaded=" << budget.uploaded
+                  << " budget=" << budget.frameBudget << " layers=" << m_layers.size() << "\n"
+                  << std::flush;
     }
 }

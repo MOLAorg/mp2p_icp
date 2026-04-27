@@ -69,7 +69,11 @@ class LODTree
    public:
     struct BuildParams
     {
-        size_t   leafPointTarget  = 32000;  // stop splitting when count <= this
+        // Cap on rep-cloud size at any node (leaf or inner).  Keeping leaves
+        // and inner nodes at the same point-count cap avoids the per-level
+        // density jump that produces visible "blocky" rendering when the
+        // budget forces a coarser ancestor to replace a leaf.
+        size_t   leafPointTarget  = 16000;  // stop splitting when count <= this
         uint32_t maxDepth         = 12;
         size_t   pointsPerNode    = 16000;  // rep-set size for inner nodes
         bool     useParallelBuild = true;  // TBB if available
