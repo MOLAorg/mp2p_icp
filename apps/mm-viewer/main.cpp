@@ -16,6 +16,8 @@
 // using this:
 #include <mrpt/gui/CDisplayWindowGUI.h>
 
+#include "LODRenderer.h"
+
 // other deps:
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mrpt/3rdparty/tclap/CmdLine.h>
@@ -67,6 +69,12 @@ static TCLAP::MultiArg<std::string> arg_add3dScenes(
     "s", "add-3d-scene", "Adds an extra 3D scene file (*.3dscene) for visualization.", false,
     "scene.3dscene", cmd);
 
+static TCLAP::SwitchArg argLOD(
+    "", "lod",
+    "Enable octree LOD progressive rendering for large point-cloud layers "
+    "(>= 2M points). Builds an LODTree on load and renders with LOD per frame.",
+    cmd, false);
+
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
 
@@ -78,6 +86,12 @@ mrpt::opengl::CSetOfObjects::Ptr glTrajectory;
 mrpt::opengl::CSetOfObjects::Ptr glVizObjects;
 
 mrpt::gui::CDisplayWindowGUI::Ptr win;
+
+// LOD renderer (only active when --lod flag is set).
+LODRenderer gLOD;
+
+// Min point count to use LOD for a layer.
+constexpr size_t LOD_THRESHOLD = 2'000'000;
 
 std::array<nanogui::TextBox*, 2> lbMapStats                   = {nullptr, nullptr};
 nanogui::CheckBox*               cbApplyGeoRef                = nullptr;
@@ -821,6 +835,26 @@ void processCameraTravelling()
     t += dt;
 }
 
+/** Build LOD trees for all large point-cloud layers in theMap.
+ *  Must be called on the GL thread (or before the GL thread starts).
+ *  Call gLOD.clear(glVizMap) first when reloading a map.
+ */
+void buildLODForCurrentMap()
+{
+    if (!argLOD.getValue())
+    {
+        return;
+    }
+    for (const auto& [name, map] : theMap.layers)
+    {
+        auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
+        if (pts && pts->size() >= LOD_THRESHOLD)
+        {
+            gLOD.addLayer(name, *pts, *glVizMap);
+        }
+    }
+}
+
 void main_show_gui()
 {
     using namespace std::string_literals;
@@ -909,10 +943,12 @@ void main_show_gui()
                             return;
                         }
 
+                        gLOD.clear(*glVizMap);
                         loadMapFile(fil);
                         updateGuiAfterLoadingNewMap();
                         win->performLayout();
                         rebuild_3d_view();
+                        buildLODForCurrentMap();
                     }
                     catch (const std::exception& e)
                     {
@@ -1544,6 +1580,7 @@ void main_show_gui()
 
     // Build 3D:
     rebuild_3d_view();
+    buildLODForCurrentMap();
 
     // Main loop
     // ---------------------
@@ -1553,6 +1590,10 @@ void main_show_gui()
     win->addLoopCallback(
         [&]()
         {
+            if (argLOD.getValue())
+            {
+                gLOD.update(win->camera(), win->width(), win->height());
+            }
             updateMouseCoordinates();
             updateCameraLookCoordinates();
             observeViewOptions();
@@ -1669,7 +1710,23 @@ void rebuild_3d_view(bool force_rebuild_view)
         prevRenderParams = rpMap;
         glVizMap->clear();
 
-        auto glPts = theMap.get_visualization(rpMap);
+        // Build a copy of rpMap without LOD-managed layers so that
+        // get_visualization does not generate redundant GL objects for them.
+        mp2p_icp::render_params_t rpNonLOD = rpMap;
+        for (auto it = rpNonLOD.points.perLayer.begin();
+             it != rpNonLOD.points.perLayer.end();)
+        {
+            if (gLOD.hasLayer(it->first))
+            {
+                it = rpNonLOD.points.perLayer.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        auto glPts = theMap.get_visualization(rpNonLOD);
 
         // Show all or selected layers:
         rpMap.points.allLayers.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
@@ -1678,6 +1735,42 @@ void rebuild_3d_view(bool force_rebuild_view)
         glVizMap->insert(glMapCorner);
         glVizMap->insert(glTrajectory);
         glVizMap->insert(glVizObjects);
+
+        // Re-attach LOD scene nodes (they were removed by glVizMap->clear()).
+        // Also propagate render params and rebuild colors for each LOD layer.
+        for (const auto& [lyName, cb] : cbLayersByName)
+        {
+            if (!gLOD.hasLayer(lyName))
+            {
+                continue;
+            }
+            auto itLayer = theMap.layers.find(lyName);
+            if (itLayer == theMap.layers.end())
+            {
+                continue;
+            }
+
+            // Re-insert this layer's LOD scene node into glVizMap.
+            gLOD.reattachSceneNode(lyName, *glVizMap);
+
+            // Push updated render params (point size, color mode).
+            auto itRp = rpMap.points.perLayer.find(lyName);
+            if (itRp != rpMap.points.perLayer.end())
+            {
+                gLOD.applyRenderParams(lyName, itRp->second);
+            }
+
+            // Rebuild colors when colorization params changed.
+            if (force_rebuild_view)
+            {
+                auto pts =
+                    std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itLayer->second);
+                if (pts)
+                {
+                    gLOD.rebuildColors(lyName, *pts);
+                }
+            }
+        }
     }
 
     // XY plane of the map: leave in the "map" frame or "enu" frame, whatever is the root,
