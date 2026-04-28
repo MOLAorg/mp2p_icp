@@ -63,6 +63,17 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
 
     LambdaParams lmbParams;
 
+    // Precompute whitening matrices (L^T with L L^T = cov_inv) for each
+    // cov2cov pairing once, so the LLT decomposition is not redone per
+    // finite-difference sample inside errorLambda.
+    std::vector<Eigen::Matrix3d> cov2cov_L_T;
+    cov2cov_L_T.reserve(in.paired_cov2cov.size());
+    for (const auto& p : in.paired_cov2cov)
+    {
+        const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
+        cov2cov_L_T.emplace_back(Eigen::LLT<Eigen::Matrix3d>(cov_inv).matrixU());
+    }
+
     auto errorLambda = [&](const mrpt::math::CMatrixDouble61& x, const LambdaParams&,
                            mrpt::math::CVectorDouble&         err)
     {
@@ -141,11 +152,11 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
             const mrpt::math::CVectorFixedDouble<3> ret =
                 mp2p_icp::error_point2point(p.local, p.global, pose);
 
-            const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
-
-            // Apply the inverse covariance weighting (Mahalanobis distance)
+            // Whitening: residual = L^T * e, where L L^T = cov_inv (Cholesky).
+            // This way Jacobian^T * Jacobian directly accumulates the proper
+            // information matrix J^T * cov_inv * J, matching the GN solver.
             err.block<3, 1>(static_cast<int>(base_idx + idx_cov2cov * 3), 0) =
-                cov_inv * ret.asEigen();
+                cov2cov_L_T[idx_cov2cov] * ret.asEigen();
         }
     };
 
@@ -161,7 +172,32 @@ mrpt::math::CMatrixDouble66 mp2p_icp::covariance(
 
     const mrpt::math::CMatrixDouble66 hessian(jacob.asEigen().transpose() * jacob.asEigen());
 
-    const mrpt::math::CMatrixDouble66 cov = hessian.inverse_LLt();
+    mrpt::math::CMatrixDouble66 cov = hessian.inverse_LLt();
+
+    // A-posteriori residual-variance scaling: cov *= chi^2 / (m - n).
+    // This rescales the (often optimistic) inverse-Hessian by the empirical
+    // unit-weight variance. It is only meaningful when residuals are
+    // dimensionally homogeneous and properly whitened (unit-variance under
+    // the assumed noise model), which here holds only for the
+    // paired_cov2cov-only case (residuals pre-multiplied by L^T).
+    // Mixing pt2pt distances (m), plane normals (rad), etc., would make
+    // chi^2 dimensionally inconsistent, so skip the scaling otherwise.
+    const bool onlyCov2Cov = !in.paired_cov2cov.empty() && in.paired_pt2pt.empty() &&
+                             in.paired_pt2ln.empty() && in.paired_pt2pl.empty() &&
+                             in.paired_pl2pl.empty() && in.paired_ln2ln.empty();
+    if (onlyCov2Cov)
+    {
+        mrpt::math::CVectorDouble errAtOpt;
+        errorLambda(xInitial, lmbParams, errAtOpt);
+        const auto   m    = static_cast<int>(errAtOpt.size());
+        const double chi2 = errAtOpt.asEigen().squaredNorm();
+        const int    dof  = m - 6;
+        if (dof > 0 && std::isfinite(chi2))
+        {
+            const double sigma2 = chi2 / static_cast<double>(dof);
+            cov.asEigen() *= sigma2;
+        }
+    }
 
     return cov;
 }
