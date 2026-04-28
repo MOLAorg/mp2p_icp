@@ -23,6 +23,7 @@
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/Results.h>
 #include <mp2p_icp/metricmap.h>
+#include <mrpt/poses/CPose3DPDFGaussianInf.h>
 #include <mrpt/serialization/CSerializable.h>
 #if MRPT_VERSION >= 0x020f07
 #include <mrpt/io/compression_options.h>
@@ -52,6 +53,9 @@ class LogRecord : public mrpt::serialization::CSerializable
     metric_map_t::ConstPtr pcGlobal, pcLocal;
 
     mrpt::math::TPose3D initialGuessLocalWrtGlobal;
+
+    /** Optional prior pose constraint passed to align(). */
+    std::optional<mrpt::poses::CPose3DPDFGaussianInf> prior;
 
     mp2p_icp::Parameters          icpParameters;
     mp2p_icp::Results             icpResult;
