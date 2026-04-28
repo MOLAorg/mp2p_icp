@@ -52,38 +52,43 @@ constexpr int         SMALL_FONT_SIZE    = 12;
 constexpr int         WINDOW_FIXED_WIDTH = 400;
 
 // =========== Declare supported cli switches ===========
-static TCLAP::CmdLine cmd(APP_NAME);
+namespace
+{
+TCLAP::CmdLine cmd(APP_NAME);
 
-static TCLAP::ValueArg<std::string> argExtension(
+TCLAP::ValueArg<std::string> argExtension(
     "e", "file-extension", "Filename extension to look for. Default is `icplog`", false, "icplog",
     "icplog", cmd);
 
-static TCLAP::ValueArg<std::string> argSearchDir(
+TCLAP::ValueArg<std::string> argSearchDir(
     "d", "directory", "Directory in which to search for *.icplog files.", false, ".", ".", cmd);
 
-static TCLAP::ValueArg<std::string> argSingleFile(
+TCLAP::ValueArg<std::string> argSingleFile(
     "f", "file", "Load just this one single log *.icplog file.", false, "log.icplog", "log.icplog",
     cmd);
 
-static TCLAP::ValueArg<std::string> arg_plugins(
+TCLAP::ValueArg<std::string> arg_plugins(
     "l", "load-plugins", "One or more (comma separated) *.so files to load as plugins", false,
     "foobar.so", "foobar.so", cmd);
 
-static TCLAP::ValueArg<double> argAutoPlayPeriod(
+TCLAP::ValueArg<double> argAutoPlayPeriod(
     "", "autoplay-period",
     "The period (in seconds) between timestamps to load and show in autoplay "
     "mode.",
     false, 0.1, "period [seconds]", cmd);
 
-static TCLAP::ValueArg<double> argMinQuality(
+TCLAP::ValueArg<double> argMinQuality(
     "q", "min-quality",
     "Minimum ICP quality (range [0,1], i.e. 0%-100%) to load a log file. "
     "Files whose ICP result quality is below this threshold are skipped.",
     false, 0.0, "quality [0,1]", cmd);
+}  // namespace
 
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
 
+namespace
+{
 auto                              glVizICP = mrpt::opengl::CSetOfObjects::Create();
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
@@ -148,8 +153,12 @@ class DelayedLoadLog
     {
         if (!log_)
         {
-            // Load now:
-            log_ = mp2p_icp::LogRecord::LoadFromFile(filename_);
+            log_.emplace();
+            if (!log_->load_from_file(filename_))
+            {
+                log_.reset();
+                THROW_EXCEPTION_FMT("Failed to load log file: '%s'", filename_.c_str());
+            }
         }
 
         return log_.value();
@@ -167,7 +176,9 @@ class DelayedLoadLog
 
 std::vector<DelayedLoadLog> logRecords;
 
-static void rebuild_3d_view(bool regenerateMaps = true);
+}  // namespace
+
+void rebuild_3d_view(bool regenerateMaps = true);
 
 namespace
 {
@@ -907,6 +918,7 @@ double conditionNumber(const MATRIX& m)
 // rebuild_3d_view
 // ==============================
 void rebuild_3d_view(bool regenerateMaps)
+try
 {
     using namespace std::string_literals;
 
@@ -1303,14 +1315,23 @@ void rebuild_3d_view(bool regenerateMaps)
         gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
     }
 }
+catch (const std::exception& e)
+{
+    std::cerr << "[rebuild_3d_view] Exception: " << mrpt::exception_to_str(e) << std::endl;
+    if (lbICPStats[0])
+        lbICPStats[0]->setValue(std::string("ERROR: ") + mrpt::exception_to_str(e).substr(0, 80));
+}
 
 #else  // MRPT_HAS_NANOGUI
-static void main_show_gui()
+namespace
+{
+void main_show_gui()
 {
     THROW_EXCEPTION(
         "This application requires a version of MRPT built with nanogui "
         "support.");
 }
+}  // namespace
 
 #endif  // MRPT_HAS_NANOGUI
 
