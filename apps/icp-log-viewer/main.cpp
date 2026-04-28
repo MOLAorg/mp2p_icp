@@ -120,8 +120,11 @@ nanogui::CheckBox* cbViewPairings_pt2pl   = nullptr;
 nanogui::CheckBox* cbViewPairings_pt2ln   = nullptr;
 nanogui::CheckBox* cbViewPairings_cov2cov = nullptr;
 
+nanogui::CheckBox* cbViewPriorEllipsoid = nullptr;
+
 nanogui::TextBox *tbLogPose = nullptr, *tbInitialGuess = nullptr, *tbInit2Final = nullptr,
-                 *tbCovariance = nullptr, *tbConditionNumber = nullptr, *tbPairings = nullptr;
+                 *tbCovariance = nullptr, *tbConditionNumber = nullptr, *tbPairings = nullptr,
+                 *tbPriorMean = nullptr, *tbPriorInfo = nullptr;
 
 nanogui::Slider* slPairingsPl2PlSize         = nullptr;
 nanogui::Slider* slPairingsPl2LnSize         = nullptr;
@@ -520,6 +523,21 @@ void main_show_gui()
     tbInitialGuess->setFontSize(14);
     tbInitialGuess->setEditable(true);
     tbInitialGuess->setAlignment(nanogui::TextBox::Alignment::Left);
+    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
+
+    tab1->add<nanogui::Label>("Prior mean pose (if any):")->setFontSize(MID_FONT_SIZE);
+    tbPriorMean = tab1->add<nanogui::TextBox>();
+    tbPriorMean->setFontSize(MID_FONT_SIZE);
+    tbPriorMean->setEditable(false);
+    tbPriorMean->setAlignment(nanogui::TextBox::Alignment::Left);
+
+    tab1->add<nanogui::Label>("Prior: diagonal sigmas (x y z yaw pitch roll)")
+        ->setFontSize(MID_FONT_SIZE);
+    tbPriorInfo = tab1->add<nanogui::TextBox>();
+    tbPriorInfo->setFontSize(MID_FONT_SIZE);
+    tbPriorInfo->setEditable(false);
+    tbPriorInfo->setAlignment(nanogui::TextBox::Alignment::Left);
+    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
 
     // Save map buttons:
     auto lambdaSave = [&](const mp2p_icp::metric_map_t& m)
@@ -737,6 +755,10 @@ void main_show_gui()
     cbColorizeGlobalMap = tab5->add<nanogui::CheckBox>("Recolorize global map");
     cbColorizeGlobalMap->setCallback([&](bool) { rebuild_3d_view(); });
 
+    cbViewPriorEllipsoid = tab5->add<nanogui::CheckBox>("View prior ellipsoid");
+    cbViewPriorEllipsoid->setChecked(true);
+    cbViewPriorEllipsoid->setCallback([&](bool) { rebuild_3d_view(); });
+
     // ----
     w->add<nanogui::Label>(" ");  // separator
     w->add<nanogui::Button>("Quit", ENTYPO_ICON_ARROW_BOLD_LEFT)
@@ -828,6 +850,7 @@ void main_show_gui()
         LOAD_CB_STATE(cbViewPairings_pt2pl);
         LOAD_CB_STATE(cbViewPairings_pt2ln);
         LOAD_CB_STATE(cbViewPairings_cov2cov);
+        LOAD_CB_STATE(cbViewPriorEllipsoid);
 
         LOAD_SL_STATE(slPairingsPl2PlSize);
         LOAD_SL_STATE(slPairingsPl2LnSize);
@@ -861,6 +884,7 @@ void main_show_gui()
         SAVE_CB_STATE(cbViewPairings_cov2cov);
         SAVE_CB_STATE(cbViewPairings_pt2pl);
         SAVE_CB_STATE(cbViewPairings_pt2ln);
+        SAVE_CB_STATE(cbViewPriorEllipsoid);
 
         SAVE_SL_STATE(slPairingsPl2PlSize);
         SAVE_SL_STATE(slPairingsPl2LnSize);
@@ -972,6 +996,22 @@ try
     lbICPStats[4]->setValue("Local: "s + lr.pcLocal->contents_summary());
 
     tbInitialGuess->setValue(lr.initialGuessLocalWrtGlobal.asString());
+
+    // Prior:
+    if (lr.prior.has_value())
+    {
+        tbPriorMean->setValue(lr.prior->mean.asString());
+
+        std::string s;
+        const auto  cov = mrpt::math::CMatrixDouble66(lr.prior->cov_inv.inverse());
+        for (int i = 0; i < 6; i++) s += mrpt::format("%.03f ", std::sqrt(cov(i, i)));
+        tbPriorInfo->setValue(s);
+    }
+    else
+    {
+        tbPriorMean->setValue("(none)");
+        tbPriorInfo->setValue("(none)");
+    }
 
     tbLogPose->setValue(lr.icpResult.optimal_tf.mean.asString());
 
@@ -1101,6 +1141,22 @@ try
     glCornerToCov->setCovMatrixAndMean(
         relativePose.cov.blockCopy<3, 3>(0, 0), relativePose.mean.asVectorVal().head<3>());
     glVizICP->insert(glCornerToCov);
+
+    // Prior ellipsoid (yellow, at prior mean, translational part only):
+    if (lr.prior.has_value() && cbViewPriorEllipsoid->checked())
+    {
+        const auto priorCov = mrpt::math::CMatrixDouble66(lr.prior->cov_inv.inverse());
+
+        auto glPriorEllipsoid = mrpt::opengl::CEllipsoid3D::Create();
+        glPriorEllipsoid->set3DsegmentsCount(16);
+        glPriorEllipsoid->enableDrawSolid3D(true);
+        glPriorEllipsoid->setColor_u8(0xff, 0xff, 0x00, 0x50);
+        glPriorEllipsoid->setCovMatrixAndMean(
+            priorCov.blockCopy<3, 3>(0, 0), lr.prior->mean.asVectorVal().head<3>());
+        glPriorEllipsoid->setName("Prior");
+        glPriorEllipsoid->enableShowName(true);
+        glVizICP->insert(glPriorEllipsoid);
+    }
 
     // GLOBAL PC:
     mp2p_icp::render_params_t rpGlobal;
