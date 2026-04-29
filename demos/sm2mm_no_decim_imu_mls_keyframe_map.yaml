@@ -42,7 +42,7 @@ generators:
         renderOpts:
           color.A: 0.25 # [0,1] Use this alpha value for points, RGB from colormap
           colormap: "cmHOT" # cmJET, cmHOT, cmGRAYSCALE
-          recolorByPointField: "z" # x,y,z,ring, intensity, ambient, etc.
+          recolorByPointField: "intensity" # x,y,z,ring, intensity, ambient, etc.
           max_points_per_kf: 100000 # Max number of points to render per keyframe
           max_overall_points: 100000 # Max number of points to render overall (e.g. to avoid FoxGlove WS overflow)
           #point_size: 1.0  # superseded by visualization.local_map_point_size when run inside MOLA-LIO
