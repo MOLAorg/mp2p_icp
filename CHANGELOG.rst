@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.9.1 (2026-04-29)
+------------------
 * Merge pull request `#59 <https://github.com/MOLAorg/mp2p_icp/issues/59>`_ from MOLAorg/fix/cov2cov-covariance-whitening
   Fix cov2cov whitening and add residual-variance scaling in covariance()
 * Fix cov2cov whitening and add residual-variance scaling in covariance()
