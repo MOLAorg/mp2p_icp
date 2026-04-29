@@ -2,6 +2,28 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#59 <https://github.com/MOLAorg/mp2p_icp/issues/59>`_ from MOLAorg/fix/cov2cov-covariance-whitening
+  Fix cov2cov whitening and add residual-variance scaling in covariance()
+* Fix cov2cov whitening and add residual-variance scaling in covariance()
+  The cov2cov branch in covariance.cpp whitened residuals with the full
+  information matrix (cov_inv * e), so the assembled Hessian became
+  J^T * cov_inv^2 * J instead of J^T * cov_inv * J. Combined with hundreds
+  of pairings this drove |cov| down to ~1e-20 and made the estimate
+  unusable.
+  - Use the Cholesky factor L^T (with L L^T = cov_inv) to whiten the
+  cov2cov residual, matching what optimal_tf_gauss_newton accumulates.
+  - Multiply the inverse-Hessian by chi^2 / (m - 6), the standard
+  a-posteriori unit-weight variance, to rescale the (otherwise
+  optimistic) result by the empirical residual level.
+* Merge pull request `#58 <https://github.com/MOLAorg/mp2p_icp/issues/58>`_ from MOLAorg/feat/icp-viewer-show-prior
+  feat: icp-logs now store the prior SE(3) PDF
+* feat: icp-logs now store the prior SE(3) PDF
+* icp-log-viewer: safer against exceptions in gui thread
+* demo sm2mm files: ignore_accelerometer=true in all deskew stages by default (prevent noisy maps from low-quality IMUs)
+* Contributors: Jose Luis Blanco-Claraco
+
 2.9.0 (2026-04-22)
 ------------------
 * Merge pull request `#57 <https://github.com/MOLAorg/mp2p_icp/issues/57>`_ from MOLAorg/feat/deskew-filter-ignore-acc
