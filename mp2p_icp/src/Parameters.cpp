@@ -27,7 +27,7 @@ const bool MP2P_ICP_GENERATE_DEBUG_FILES =
     mrpt::get_env<bool>("MP2P_ICP_GENERATE_DEBUG_FILES", false);
 
 // Implementation of the CSerializable virtual interface:
-uint8_t Parameters::serializeGetVersion() const { return 2; }
+uint8_t Parameters::serializeGetVersion() const { return 3; }
 void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << maxIterations << minAbsStep_trans << minAbsStep_rot;
@@ -35,6 +35,10 @@ void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
     out << debugPrintIterationProgress;
     out << decimationDebugFiles;
     out << saveIterationDetails << decimationIterationDetails;  // v2
+    const uint8_t covMethod = static_cast<uint8_t>(covariance_params.method);
+    out << covMethod << covariance_params.defaultPointSigma << covariance_params.floor_sigma_xyz
+        << covariance_params.floor_sigma_angles << covariance_params.finDif_xyz
+        << covariance_params.finDif_angles;  // v3
 }
 void Parameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version)
 {
@@ -45,12 +49,27 @@ void Parameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t versio
         case 0:
         case 1:
         case 2:
+        case 3:
         {
             in >> maxIterations >> minAbsStep_trans >> minAbsStep_rot;
             in >> generateDebugFiles >> debugFileNameFormat;
             in >> debugPrintIterationProgress;
-            if (version >= 1) in >> decimationDebugFiles;
-            if (version >= 2) in >> saveIterationDetails >> decimationIterationDetails;
+            if (version >= 1)
+            {
+                in >> decimationDebugFiles;
+            }
+            if (version >= 2)
+            {
+                in >> saveIterationDetails >> decimationIterationDetails;
+            }
+            if (version >= 3)
+            {
+                uint8_t covMethod = 0;
+                in >> covMethod >> covariance_params.defaultPointSigma >>
+                    covariance_params.floor_sigma_xyz >> covariance_params.floor_sigma_angles >>
+                    covariance_params.finDif_xyz >> covariance_params.finDif_angles;
+                covariance_params.method = static_cast<CovarianceParameters::Method>(covMethod);
+            }
         }
         break;
         default:
@@ -92,6 +111,11 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
         }
     }
 
+    if (p.has("covariance"))
+    {
+        covariance_params.load_from(p["covariance"]);
+    }
+
     generateDebugFiles = generateDebugFiles || MP2P_ICP_GENERATE_DEBUG_FILES;
 }
 
@@ -106,4 +130,8 @@ void Parameters::save_to(mrpt::containers::yaml& p) const
     MCP_SAVE(p, decimationDebugFiles);
     MCP_SAVE(p, saveIterationDetails);
     MCP_SAVE(p, decimationIterationDetails);
+
+    mrpt::containers::yaml covYaml = mrpt::containers::yaml::Map();
+    covariance_params.save_to(covYaml);
+    p["covariance"] = covYaml;
 }

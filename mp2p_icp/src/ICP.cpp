@@ -397,11 +397,13 @@ void ICP::align(
     result.optimalScale    = state.currentSolution.optimalScale;
     result.finalPairings   = std::move(state.currentPairings);
 
-    // Covariance:
-    mp2p_icp::CovarianceParameters covParams;
+    // Covariance of the estimated SE(3) registration:
+    {
+        mrpt::system::CTimeLoggerEntry tleCov(profiler_, "align.5b_covariance");
 
-    result.optimal_tf.cov =
-        mp2p_icp::covariance(result.finalPairings, result.optimal_tf.mean, covParams);
+        result.optimal_tf.cov =
+            mp2p_icp::covariance(result.finalPairings, result.optimal_tf.mean, p.covariance_params);
+    }
 
     // Clean-up global map icp preparation:
     for (const auto& [layer, mmap] : pcGlobal.layers)
