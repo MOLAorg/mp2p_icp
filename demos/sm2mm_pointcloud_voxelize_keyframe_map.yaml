@@ -95,11 +95,7 @@ filters:
       # one or more layers to remove
       pointcloud_layer_to_remove: ["raw", "deskewed", "decimated"]
 
-# -------------------------------------------------------------------
-# 3) Final, overall filter pipeline to apply to the whole metric map
-# -------------------------------------------------------------------
-final_filters:
-  # Specific map for localization with the GICP pipeline
+  # Insert each scan as a keyframe in the "localmap" layer, specific localization with the GICP pipeline:
   - class_name: mp2p_icp_filters::FilterMerge
     params:
       input_pointcloud_layer: "filtered"
@@ -109,5 +105,10 @@ final_filters:
     params:
       # one or more layers to remove
       pointcloud_layer_to_remove: ["filtered"]
+
+# -------------------------------------------------------------------
+# 3) Final, overall filter pipeline to apply to the whole metric map
+# -------------------------------------------------------------------
+#final_filters:
 
 
