@@ -481,7 +481,7 @@ void main_show_gui()
     tbInit2Final->setEditable(false);
     tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
 
-    tab1->add<nanogui::Label>("Uncertainty: diagonal sigmas (x y z yaw pitch roll)")
+    tab1->add<nanogui::Label>("Uncertainty: diagonal sigmas (x y z [m] yaw pitch roll [deg])")
         ->setFontSize(MID_FONT_SIZE);
     tbCovariance = tab1->add<nanogui::TextBox>();
     tbCovariance->setFontSize(MID_FONT_SIZE);
@@ -531,7 +531,7 @@ void main_show_gui()
     tbPriorMean->setEditable(false);
     tbPriorMean->setAlignment(nanogui::TextBox::Alignment::Left);
 
-    tab1->add<nanogui::Label>("Prior: diagonal sigmas (x y z yaw pitch roll)")
+    tab1->add<nanogui::Label>("Prior: diagonal sigmas (x y z [m] yaw pitch roll [deg])")
         ->setFontSize(MID_FONT_SIZE);
     tbPriorInfo = tab1->add<nanogui::TextBox>();
     tbPriorInfo->setFontSize(MID_FONT_SIZE);
@@ -1004,7 +1004,18 @@ try
 
         std::string s;
         const auto  cov = mrpt::math::CMatrixDouble66(lr.prior->cov_inv.inverse());
-        for (int i = 0; i < 6; i++) s += mrpt::format("%.03f ", std::sqrt(cov(i, i)));
+        for (int i = 0; i < 6; i++)
+        {
+            const auto sigma = std::sqrt(cov(i, i));
+            if (i < 3)
+            {
+                s += mrpt::format("%.02fm ", sigma);
+            }
+            else
+            {
+                s += mrpt::format("%.02fd ", mrpt::RAD2DEG(sigma));
+            }
+        }
         tbPriorInfo->setValue(s);
     }
     else
@@ -1101,7 +1112,15 @@ try
         std::string s;
         for (int i = 0; i < 6; i++)
         {
-            s += mrpt::format("%.02f ", std::sqrt(relativePose.cov(i, i)));
+            auto sigma = std::sqrt(relativePose.cov(i, i));
+            if (i < 3)
+            {
+                s += mrpt::format("%.02fm ", sigma);
+            }
+            else
+            {
+                s += mrpt::format("%.02fd ", mrpt::RAD2DEG(sigma));
+            }
         }
 
         s += mrpt::format(
