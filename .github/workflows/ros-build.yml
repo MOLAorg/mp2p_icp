@@ -1,89 +1,123 @@
 # Based on GTSAM file (by @ProfFan)
 name: CI Build colcon
 
-on: [push]
+on: [ push ]
 
 jobs:
-  build_docker: # On Linux, iterates on all ROS 1 and ROS 2 distributions.
+  build_docker:
+    # On Linux, iterates on all ROS 2 distributions.
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
+    continue-on-error: ${{ matrix.allow_failure == true }}
     strategy:
       matrix:
-        # Define the Docker image(s) associated with each ROS distribution.
-        # The include syntax allows additional variables to be defined, like
-        # docker_image in this case. See documentation:
-        # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#example-including-configurations-in-a-matrix-build
-        #
-        # Platforms are defined in REP 3 and REP 2000:
-        # https://ros.org/reps/rep-0003.html
-        # https://ros.org/reps/rep-2000.html
         include:
           # Humble Hawksbill (May 2022 - May 2027)
           - docker_image: ubuntu:jammy
             ros_distribution: humble
-            use_ros2-testing: false
+            use_ros_testing: false
 
           - docker_image: ubuntu:jammy
             ros_distribution: humble
-            use_ros2-testing: true
+            use_ros_testing: true
 
           # Jazzy (2024 - ??)
           - docker_image: ubuntu:noble
             ros_distribution: jazzy
-            use_ros2-testing: false
+            use_ros_testing: false
 
           - docker_image: ubuntu:noble
             ros_distribution: jazzy
-            use_ros2-testing: true
-
-          # Rolling Ridley (No End-Of-Life)
-          #- docker_image: ubuntu:noble
-          #  ros_distribution: rolling
-          #  use_ros2-testing: false
-
-          - docker_image: ubuntu:noble
-            ros_distribution: rolling
-            use_ros2-testing: true
+            use_ros_testing: true
+            coverage_run: true
 
           # Same as above, but disable TBB
           - docker_image: ubuntu:noble
-            ros_distribution: rolling
-            use_ros2-testing: true
+            ros_distribution: jazzy
+            use_ros_testing: true
             disable_tbb: true
+            # Rolling Ridley (No End-Of-Life)
+            # TODO: migrate to ubuntu:resolute once rolling packages are published there.
+            # Track: https://discourse.openrobotics.org/t/preparing-for-rolling-sync-2026-04-23/54223
+            #- docker_image: ubuntu:noble
+            #  ros_distribution: rolling
+            #  use_ros_testing: false
 
-          - docker_image: ubuntu:noble
-            ros_distribution: rolling
-            use_ros2-testing: true
-            coverage_run: true
+            #- docker_image: ubuntu:noble
+            #  ros_distribution: rolling
+            #  use_ros_testing: true
+
+            #- docker_image: ubuntu:noble
+            #  ros_distribution: rolling
+            #  use_ros_testing: true
+            #  coverage_run: true
+
+            # Lyrical Luth (May 2026 - May 2031, LTS)
+            # Beta packages available on resolute; GA release expected May 22, 2026.
+            # allow_failure until GA is released.
+            #- docker_image: ubuntu:resolute
+            #  ros_distribution: lyrical
+            #  use_ros_testing: true
+            #  allow_failure: true
 
     container:
       image: ${{ matrix.docker_image }}
 
     steps:
-      - name: Install Git
+      - name: Checkout
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          apt-get update
-          apt-get install -y git
-          git --version  # should be >= 2.18
+          apt-get -y update
+          apt-get -y install git curl gnupg2 ca-certificates
+          git clone https://$TOKEN@github.com/$GITHUB_REPOSITORY.git --recursive "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git checkout $GITHUB_SHA
+          git submodule update --init --recursive
 
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
+      # apt-key was removed in Ubuntu 26.04 (Resolute Raccoon). For resolute-based
+      # builds we set up the ROS repo manually before setup-ros runs, which would
+      # otherwise call apt-key internally and fail.
+      - name: Setup ROS apt repository (Ubuntu 26.04+)
+        if: matrix.docker_image == 'ubuntu:resolute'
+        run: |
+          curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+            -o /usr/share/keyrings/ros-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+            http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+            | tee /etc/apt/sources.list.d/ros2.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+            http://packages.ros.org/ros2-testing/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+            | tee /etc/apt/sources.list.d/ros2-testing.list > /dev/null
+          apt-get update
 
       - name: setup ROS environment
+        if: matrix.docker_image != 'ubuntu:resolute'
         uses: ros-tooling/setup-ros@v0.7
         with:
           required-ros-distributions: ${{ matrix.ros_distribution }}
-          use-ros2-testing: ${{ matrix.use_ros2-testing }}
+          use-ros2-testing: ${{ matrix.use_ros_testing }}
+
+      # On resolute, setup-ros can't be used (calls apt-key which is gone).
+      # Install the equivalent packages manually instead.
+      - name: Setup ROS environment (Ubuntu 26.04+)
+        if: matrix.docker_image == 'ubuntu:resolute'
+        run: |
+          apt-get install -y \
+            ros-${{ matrix.ros_distribution }}-ros-base \
+            python3-rosdep \
+            python3-colcon-common-extensions \
+            python3-colcon-mixin \
+            ros-dev-tools
+          rosdep init || true
+          rosdep update
 
       - name: Install rosdep dependencies
         run: |
           . /opt/ros/*/setup.sh
           rosdep update
-          rosdep install --from-paths . --ignore-src -r -y
+          rosdep install --from-paths . --ignore-src -y
 
       - name: Install lcov for coverage analysis
         if: matrix.coverage_run == true
@@ -101,10 +135,9 @@ jobs:
             EXTRA_CMAKE_ARGS="$EXTRA_CMAKE_ARGS -DMP2PICP_USE_TBB=OFF"
           fi
 
-          # 2. Inject Coverage Build Type
+          # Inject Coverage Build Type
           if [ "${{ matrix.coverage_run }}" = "true" ]; then
             echo "Enabling Coverage build type..."
-            # This flag forces the use of the gcov flags defined in CMakeLists.txt
             EXTRA_CMAKE_ARGS="$EXTRA_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Coverage"
           fi
 
@@ -118,7 +151,6 @@ jobs:
       - name: Run unit tests
         run: |
           . /opt/ros/*/setup.sh
-          # Run tests regardless of coverage setting, as they are required to generate the .gcda files
           colcon test --event-handlers console_direct+
           colcon test-result --verbose
 
@@ -146,7 +178,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.coverage_run == true
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage_filtered.info
