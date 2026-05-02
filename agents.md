@@ -199,6 +199,7 @@ Tests use gtest. Each filter, matcher, solver, and serializer has its own test f
 - Parameters follow the `Parameterizable` interface: `initialize(mrpt::containers::yaml)`
 - Always use braces `{}` for all `if`/`for`/`while` blocks
 - Coordinate frame naming: `T_A_to_B` = pose of {B} as seen from {A}; `composePoint` transforms FROM the local (B) frame TO the reference (A) frame
+- Don't use long hyphens. Use American spelling.
 
 ---
 

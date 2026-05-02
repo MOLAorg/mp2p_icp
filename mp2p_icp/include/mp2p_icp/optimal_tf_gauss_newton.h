@@ -58,6 +58,22 @@ struct OptimalTF_GN_Parameters
     RobustKernel kernel      = RobustKernel::None;
     double       kernelParam = 1.0;
 
+    /** Generalized (tempered) Bayesian scaling for the cov-to-cov data block:
+     *  the cov2cov contribution to H and g is multiplied by `cov2cov_alpha`.
+     *  α=1 keeps the standard MAP cost; α<1 down-weights the data likelihood
+     *  (e.g. α=1/N turns it into a "mean residual" form). Useful when many
+     *  cov-to-cov pairings carry correlated information that the per-pair
+     *  modeled covariances do not capture, and the prior is otherwise drowned. */
+    double cov2cov_alpha = 1.0;
+
+    /** If true (default) and a prior is provided, automatically balance the
+     *  cov2cov data block against the prior using a Birge-ratio-style global
+     *  scale of the modeled per-pair covariances:
+     *    κ = max(1, χ²_cc / (3·N_cc − 6))
+     *  evaluated at each iteration's current residuals; the cov2cov block of
+     *  H and g is then scaled by 1/κ. Has no effect when the prior is absent. */
+    bool cov2cov_auto_balance_with_prior = true;
+
     bool verbose = false;
 };
 

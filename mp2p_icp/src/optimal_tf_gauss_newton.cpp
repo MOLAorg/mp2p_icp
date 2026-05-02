@@ -198,6 +198,11 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         //
         // ============== cov-to-cov ===============
         //
+        // Accumulate the cov2cov block separately so we can apply a global
+        // scale (generalized-Bayes α and/or Birge-ratio κ) before adding to H/g.
+        Eigen::Matrix<double, 6, 6> H_cc    = Eigen::Matrix<double, 6, 6>::Zero();
+        Eigen::Matrix<double, 6, 1> g_cc    = Eigen::Matrix<double, 6, 1>::Zero();
+        double                      chi2_cc = 0;  // sum of Mahalanobis squared norms
 #if defined(MP2P_HAS_TBB)
         const auto [H_tbb_cov2cov, g_tbb_cov2cov, errNormSqr_tbb_cov2cov] = tbb::parallel_reduce(
             // Range
@@ -243,9 +248,9 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             // 2nd lambda: Parallel reduction
             [](const Result& a, const Result& b) -> Result { return a + b; });
 
-        H.noalias() += H_tbb_cov2cov;
-        g.noalias() += g_tbb_cov2cov;
-        errNormSqr += errNormSqr_tbb_cov2cov;
+        H_cc    = H_tbb_cov2cov;
+        g_cc    = g_tbb_cov2cov;
+        chi2_cc = errNormSqr_tbb_cov2cov;
 #else
         // Cov-to-cov:
         for (size_t idx_pairing = 0; idx_pairing < nCov2Cov; idx_pairing++)
@@ -270,15 +275,32 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
-            errNormSqr += weight * retSqrNorm;
+            chi2_cc += weight * retSqrNorm;
 
             const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
 
             // Whitening: multiply by Σ^{-1/2}
-            g.noalias() += weight * Ji.transpose() * cov_inv * err_i;
-            H.noalias() += weight * Ji.transpose() * cov_inv * Ji;
+            g_cc.noalias() += weight * Ji.transpose() * cov_inv * err_i;
+            H_cc.noalias() += weight * Ji.transpose() * cov_inv * Ji;
         }
 #endif
+        // Generalized-Bayes / Birge-ratio scaling of the cov2cov data block,
+        // to keep a meaningful balance against the prior when many cov2cov
+        // pairings carry correlated information not captured by their per-pair
+        // modeled covariances. See OptimalTF_GN_Parameters docs.
+        {
+            double cc_scale = gnParams.cov2cov_alpha;
+            if (gnParams.cov2cov_auto_balance_with_prior && gnParams.prior.has_value() &&
+                nCov2Cov >= 3)
+            {
+                const double dof   = std::max(1.0, 3.0 * static_cast<double>(nCov2Cov) - 6.0);
+                const double kappa = std::max(1.0, chi2_cc / dof);
+                cc_scale /= kappa;
+            }
+            H.noalias() += cc_scale * H_cc;
+            g.noalias() += cc_scale * g_cc;
+            errNormSqr += cc_scale * chi2_cc;
+        }
         //
         // ============== Point-to-line ===============
         //
