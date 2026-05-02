@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.10.0 (2026-05-02)
+-------------------
 * CI: Update actions for new ROS rolling
 * icp-log-viewer: better formatting of uncertainties
 * demo sm2mm file: store as independent keyframes
