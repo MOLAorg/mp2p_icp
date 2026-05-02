@@ -1174,6 +1174,7 @@ try
             priorCov.blockCopy<3, 3>(0, 0), lr.prior->mean.asVectorVal().head<3>());
         glPriorEllipsoid->setName("Prior");
         glPriorEllipsoid->enableShowName(true);
+        glVizICP->setLocation(relativePose.mean.translation());
         glVizICP->insert(glPriorEllipsoid);
     }
 
