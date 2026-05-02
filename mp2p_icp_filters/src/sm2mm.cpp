@@ -171,49 +171,64 @@ void mp2p_icp_filters::simplemap_to_metricmap(
             "cannot be set simultaneously.");
     }
 
-    // Determine the decimation stride (step size)
-    size_t stride = 1;
+    // Build the ordered list of KF indices that will actually be processed.
+    // For decimate_maximum_frame_count we pre-scan to count data-bearing frames
+    // (those with at least one non-comment observation) so that the stride is
+    // computed over the real observable count, not the raw keyframe count.
+    // This matters when many keyframes carry only metadata observations.
+    std::vector<size_t> kfsToProcess;
 
-    if (options.decimate_every_nth_frame.has_value())
-    {
-        stride = std::max<size_t>(1, *options.decimate_every_nth_frame);
-    }
-    else if (options.decimate_maximum_frame_count.has_value())
+    if (options.decimate_maximum_frame_count.has_value())
     {
         const size_t maxCount = *options.decimate_maximum_frame_count;
         if (maxCount == 0)
         {
-            return;  // No frames to process
+            return;
         }
 
-        const size_t totalInRange = (nKFs > curKF) ? (nKFs - curKF) : 0;
-
-        if (totalInRange > maxCount)
+        // Pre-scan: find indices of keyframes that carry at least one data observation.
+        std::vector<size_t> validIndices;
+        for (size_t i = curKF; i < nKFs; ++i)
         {
-            // To spread 'maxCount' frames evenly across 'totalInRange',
-            // we calculate the stride as ceil(total / maxCount).
-            stride = static_cast<size_t>(
-                std::ceil(static_cast<double>(totalInRange) / static_cast<double>(maxCount)));
+            const auto& [p, sf, tw] = sm.get(i);
+            for (const auto& obs : *sf)
+            {
+                if (obs && !IS_CLASS(*obs, mrpt::obs::CObservationComment))
+                {
+                    validIndices.push_back(i);
+                    break;
+                }
+            }
+        }
+
+        const size_t validCount = validIndices.size();
+        const size_t stride =
+            (validCount > maxCount) ? std::max<size_t>(1, validCount / maxCount) : 1;
+
+        for (size_t j = 0; j < validCount && kfsToProcess.size() < maxCount; j += stride)
+        {
+            kfsToProcess.push_back(validIndices[j]);
+        }
+    }
+    else
+    {
+        // decimate_every_nth_frame or no decimation: fill sequentially with stride.
+        const size_t stride = options.decimate_every_nth_frame.has_value()
+                                  ? std::max<size_t>(1, *options.decimate_every_nth_frame)
+                                  : 1;
+        for (size_t i = curKF; i < nKFs; i += stride)
+        {
+            kfsToProcess.push_back(i);
         }
     }
 
-    size_t       processedKFs = 0;
-    const size_t startIdx     = curKF;
+    size_t processedKFs = 0;
 
-    for (; curKF < nKFs; curKF++)
+    const size_t totalToProcess = kfsToProcess.size();
+
+    for (const size_t kfIdx : kfsToProcess)
     {
-        // Apply decimation logic
-        if ((curKF - startIdx) % stride != 0)
-        {
-            continue;
-        }
-
-        // Extra safety check for the frame count limit
-        if (options.decimate_maximum_frame_count.has_value() &&
-            processedKFs >= *options.decimate_maximum_frame_count)
-        {
-            break;
-        }
+        curKF = kfIdx;
 
         // Get KF data:
         const auto& [pose, sf, twist] = sm.get(curKF);
@@ -307,27 +322,27 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         }
 #endif
 
+        processedKFs++;
+
         // progress bar:
         if (options.showProgressBar)
         {
-            const size_t N  = nKFs;
-            const double pc = static_cast<double>(curKF) / static_cast<double>(N);
+            const double pc = totalToProcess > 0 ? static_cast<double>(processedKFs) /
+                                                       static_cast<double>(totalToProcess)
+                                                 : 1.0;
 
             const double tNow      = mrpt::Clock::nowDouble();
             const double ETA       = pc > 0 ? (tNow - tStart) * (1.0 / pc - 1) : .0;
             const double totalTime = ETA + (tNow - tStart);
 
-            std::cout << "\033[A\33[2KT\r"  // VT100 codes: cursor up and clear
-                                            // line
+            std::cout << "\033[A\33[2KT\r"  // VT100 codes: cursor up and clear line
                       << mrpt::system::progress(pc, 30)
                       << mrpt::format(
-                             " %6zu/%6zu (%.02f%%) ETA=%s / T=%s\n", curKF, N, 100 * pc,
+                             " %6zu/%6zu (%.02f%%) ETA=%s / T=%s\n", curKF, nKFs, 100 * pc,
                              mrpt::system::formatTimeInterval(ETA).c_str(),
                              mrpt::system::formatTimeInterval(totalTime).c_str());
             std::cout.flush();
         }
-
-        processedKFs++;
     }  // end for each KF.
 
     // Final optional filtering:
