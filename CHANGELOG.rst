@@ -2,6 +2,17 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* CI: Update actions for new ROS rolling
+* icp-log-viewer: better formatting of uncertainties
+* demo sm2mm file: store as independent keyframes
+* Merge pull request `#60 <https://github.com/MOLAorg/mp2p_icp/issues/60>`_ from MOLAorg/feat/censi3d-covariance
+  Feat: Censi3D covariance method
+* feat: Add new covariance method (Censi, 3D version)
+* demo sm2mm files: add Keyframe map variant
+* Contributors: Jose Luis Blanco-Claraco
+
 2.9.1 (2026-04-29)
 ------------------
 * Merge pull request `#59 <https://github.com/MOLAorg/mp2p_icp/issues/59>`_ from MOLAorg/fix/cov2cov-covariance-whitening
