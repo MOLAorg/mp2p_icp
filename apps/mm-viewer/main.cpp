@@ -95,23 +95,28 @@ nanogui::ComboBox*               cmbRecolorizeByField         = nullptr;
 nanogui::CheckBox*               cbShowGroundGrid             = nullptr;
 nanogui::Slider*                 slPointSize                  = nullptr;
 nanogui::Slider*                 slTrajectoryThickness        = nullptr;
-nanogui::Slider*                 slMidDepthField              = nullptr;
-nanogui::Slider*                 slThicknessDepthField        = nullptr;
+nanogui::Slider*                 slClipNear                   = nullptr;
+nanogui::Slider*                 slClipFar                    = nullptr;
+nanogui::TextBox*                edClipNear                   = nullptr;
+nanogui::TextBox*                edClipFar                    = nullptr;
+nanogui::Label*                  lbClipNear                   = nullptr;
+nanogui::Label*                  lbClipFar                    = nullptr;
+nanogui::CheckBox*               cbDepthLogScale              = nullptr;
 nanogui::Slider*                 slCameraFOV                  = nullptr;
 nanogui::Label*                  lbCameraFOV                  = nullptr;
 nanogui::Label*                  lbMousePos                   = nullptr;
 nanogui::ComboBox*               cbMouseUnits                 = nullptr;
 nanogui::Button*                 btnCopyCoords                = nullptr;
 nanogui::Label*                  lbCameraPointing             = nullptr;
-nanogui::Label *                 lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
-               *lbDepthFieldThickness = nullptr, *lbPointSize = nullptr;
-nanogui::Label*    lbTrajectoryThick = nullptr;
-nanogui::Widget*   panelLayers       = nullptr;
-nanogui::ComboBox* cbTravellingKeys  = nullptr;
-nanogui::TextBox*  edAnimFPS         = nullptr;
-nanogui::Slider*   slAnimProgress    = nullptr;
-nanogui::Button *  btnAnimate = nullptr, *btnAnimStop = nullptr;
-nanogui::ComboBox* cbTravellingInterp = nullptr;
+nanogui::Label*                  lbDepthFieldValues           = nullptr;
+nanogui::Label*                  lbPointSize                  = nullptr;
+nanogui::Label*                  lbTrajectoryThick            = nullptr;
+nanogui::Widget*                 panelLayers                  = nullptr;
+nanogui::ComboBox*               cbTravellingKeys             = nullptr;
+nanogui::TextBox*                edAnimFPS                    = nullptr;
+nanogui::Slider*                 slAnimProgress               = nullptr;
+nanogui::Button *                btnAnimate = nullptr, *btnAnimStop = nullptr;
+nanogui::ComboBox*               cbTravellingInterp = nullptr;
 
 std::vector<std::string>                  layerNames;
 std::vector<std::string>                  knownPointFields;
@@ -530,6 +535,36 @@ void updateGuiAfterLoadingNewMap()
     // and point cloud fields:
     ASSERT_(cmbRecolorizeByField);
     cmbRecolorizeByField->setItems(knownPointFields);
+
+    // Auto-range clip sliders from map Z bounds (linear mode only):
+    if (!cbDepthLogScale->checked())
+    {
+        float zMin = std::numeric_limits<float>::max();
+        float zMax = -std::numeric_limits<float>::max();
+        for (const auto& [name, map] : theMap.layers)
+        {
+            const auto* pc = mp2p_icp::MapToPointsMap(*map);
+            if (!pc || pc->empty())
+            {
+                continue;
+            }
+            const auto bb = pc->boundingBox();
+            zMin          = std::min(zMin, bb.min.z);
+            zMax          = std::max(zMax, bb.max.z);
+        }
+        if (zMin < zMax)
+        {
+            const float margin = std::max(1.0f, 0.1f * (zMax - zMin));
+            const float rMin   = zMin - margin;
+            const float rMax   = zMax + margin;
+            slClipNear->setRange({rMin, rMax});
+            slClipFar->setRange({rMin, rMax});
+            slClipNear->setValue(zMin);
+            slClipFar->setValue(zMax);
+            edClipNear->setValue(mrpt::format("%.2f", zMin));
+            edClipFar->setValue(mrpt::format("%.2f", zMax));
+        }
+    }  // end linear auto-range
 }
 
 void rebuildCamTravellingCombo()
@@ -686,6 +721,59 @@ void camTravellingStop()
     camTravellingCurrentTime.reset();
     btnAnimate->setEnabled(true);
     btnAnimStop->setEnabled(false);
+}
+
+// Clip plane calculation is delegated to be done in the idle loop so it's refreshed as the
+// user zooms/pans, etc. since the camera data is needed for the "linear" mode.
+void updateCameraClipDistances()
+{
+    std::lock_guard<std::mutex> lck(win->background_scene_mtx);
+    // clip planes:
+    float clipNear, clipFar;
+    if (cbDepthLogScale->checked())
+    {
+        const auto depthFieldMid       = std::pow(10.0, slClipNear->value());
+        const auto depthFieldThickness = std::pow(10.0, slClipFar->value());
+        clipNear = static_cast<float>(std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness));
+        clipFar  = static_cast<float>(depthFieldMid + 0.5 * depthFieldThickness);
+    }
+    else
+    {
+        // Linear mode: slider values are world Z coordinates.
+        // Convert to frustum distances using the camera elevation and zoom.
+
+        const float elDeg   = win->camera().getElevationDegrees();
+        const float sinEl   = std::sin(mrpt::DEG2RAD(elDeg));
+        const float cameraZ = static_cast<float>(win->camera().getCameraPointingZ()) +
+                              win->camera().getZoomDistance() * sinEl;
+
+        const float orthoFactor = win->camera().isCameraProjective() ? 1.0f : 2.0f;
+        const float zFloor      = orthoFactor * slClipNear->value();  // near in world Z = floor
+        const float zCeiling    = orthoFactor * slClipFar->value();  // far in world Z = ceiling
+
+        if (std::abs(sinEl) > 0.05f)
+        {
+            clipFar  = std::max(0.01f, (cameraZ - zFloor) / sinEl);
+            clipNear = std::max(0.01f, std::min(clipFar - 0.01f, (cameraZ - zCeiling) / sinEl));
+        }
+        else
+        {
+            // Near-horizontal view: fall back to direct distance values
+            clipNear = std::max(0.01f, std::abs(zFloor));
+            clipFar  = std::max(clipNear + 0.01f, std::abs(zCeiling));
+        }
+    }
+
+    const float cameraFOV = slCameraFOV->value();
+    win->camera().setCameraFOV(cameraFOV);
+    win->camera().setMaximumZoom(std::max<float>(1000.0f, 3.0f * clipFar));
+
+    lbDepthFieldValues->setCaption(
+        mrpt::format("Frustum: near=%.02g far=%.02g", clipNear, clipFar));
+
+    lbCameraFOV->setCaption(mrpt::format("Camera FOV: %.02f deg", cameraFOV));
+
+    win->background_scene->getViewport()->setViewportClipDistances(clipNear, clipFar);
 }
 
 void processCameraTravelling()
@@ -1032,28 +1120,117 @@ void main_show_gui()
         pn->setLayout(
             new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
 
-        lbDepthFieldMid = pn->add<nanogui::Label>("Center depth clip plane:");
-        lbDepthFieldMid->setFontSize(MID_FONT_SIZE);
+        cbDepthLogScale = pn->add<nanogui::CheckBox>("Log scale");
+        cbDepthLogScale->setFontSize(MID_FONT_SIZE);
+        cbDepthLogScale->setChecked(true);
+        cbDepthLogScale->setCallback(
+            [&](bool logMode)
+            {
+                if (logMode)
+                {
+                    slClipNear->setRange({-2.0f, 3.0f});
+                    slClipNear->setValue(0.1f);
+                    slClipFar->setRange({-2.0f, 6.0f});
+                    slClipFar->setValue(4.0f);
+                    lbClipNear->setCaption("Frustum center (log10 m):");
+                    lbClipFar->setCaption("Frustum thickness (log10 m):");
+                }
+                else
+                {
+                    slClipNear->setRange({-5.0f, 25.0f});
+                    slClipNear->setValue(-5.0f);
+                    slClipFar->setRange({-5.0f, 25.0f});
+                    slClipFar->setValue(25.0f);
+                    lbClipNear->setCaption("Floor clip (near, m):");
+                    lbClipFar->setCaption("Ceiling clip (far, m):");
+                }
+                edClipNear->setValue(mrpt::format("%.2f", slClipNear->value()));
+                edClipFar->setValue(mrpt::format("%.2f", slClipFar->value()));
+                rebuild_3d_view();
+            });
 
-        slMidDepthField = pn->add<nanogui::Slider>();
-        slMidDepthField->setRange({-2.0, 3.0});
-        slMidDepthField->setValue(1.0f);
-        slMidDepthField->setCallback([&](float) { rebuild_3d_view(); });
+        lbDepthFieldValues = pn->add<nanogui::Label>(" ");
+        lbDepthFieldValues->setFontSize(MID_FONT_SIZE);
     }
 
     {
         auto pn = tab1->add<nanogui::Widget>();
         pn->setLayout(
-            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
 
-        lbDepthFieldThickness = pn->add<nanogui::Label>("Max-Min depth thickness:");
-        lbDepthFieldThickness->setFontSize(MID_FONT_SIZE);
+        lbClipNear = pn->add<nanogui::Label>("Floor clip (near, m):");
+        lbClipNear->setFontSize(MID_FONT_SIZE);
 
-        slThicknessDepthField = pn->add<nanogui::Slider>();
-        slThicknessDepthField->setRange({-2.0, 6.0});
-        slThicknessDepthField->setValue(3.0);
-        slThicknessDepthField->setCallback([&](float) { rebuild_3d_view(); });
+        slClipNear = pn->add<nanogui::Slider>();
+        slClipNear->setCallback(
+            [&](float v)
+            {
+                edClipNear->setValue(mrpt::format("%.2f", v));
+                rebuild_3d_view();
+            });
+
+        edClipNear = pn->add<nanogui::TextBox>(mrpt::format("%.2f", slClipNear->value()));
+        edClipNear->setFontSize(MID_FONT_SIZE);
+        edClipNear->setFixedWidth(60);
+        edClipNear->setFormat("[-0-9\\.]*");
+        edClipNear->setEditable(true);
+        edClipNear->setCallback(
+            [&](const std::string& s) -> bool
+            {
+                try
+                {
+                    const float v = std::stof(s);
+                    slClipNear->setValue(
+                        std::clamp(v, slClipNear->range().first, slClipNear->range().second));
+                    rebuild_3d_view();
+                    return true;
+                }
+                catch (...)
+                {
+                    return false;
+                }
+            });
     }
+
+    {
+        auto pn = tab1->add<nanogui::Widget>();
+        pn->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
+
+        lbClipFar = pn->add<nanogui::Label>("Ceiling clip (far, m):");
+        lbClipFar->setFontSize(MID_FONT_SIZE);
+
+        slClipFar = pn->add<nanogui::Slider>();
+        slClipFar->setCallback(
+            [&](float v)
+            {
+                edClipFar->setValue(mrpt::format("%.2f", v));
+                rebuild_3d_view();
+            });
+
+        edClipFar = pn->add<nanogui::TextBox>(mrpt::format("%.2f", slClipFar->value()));
+        edClipFar->setFontSize(MID_FONT_SIZE);
+        edClipFar->setFixedWidth(60);
+        edClipFar->setFormat("[-0-9\\.]*");
+        edClipFar->setEditable(true);
+        edClipFar->setCallback(
+            [&](const std::string& s) -> bool
+            {
+                try
+                {
+                    const float v = std::stof(s);
+                    slClipFar->setValue(
+                        std::clamp(v, slClipFar->range().first, slClipFar->range().second));
+                    rebuild_3d_view();
+                    return true;
+                }
+                catch (...)
+                {
+                    return false;
+                }
+            });
+    }
+
     {
         auto pn = tab1->add<nanogui::Widget>();
         pn->setLayout(
@@ -1066,9 +1243,6 @@ void main_show_gui()
         slCameraFOV->setValue(90.0f);
         slCameraFOV->setCallback([&](float) { rebuild_3d_view(); });
     }
-    lbDepthFieldValues = tab1->add<nanogui::Label>(" ");
-    lbDepthFieldValues->setFontSize(MID_FONT_SIZE);
-
     {
         auto pn = tab1->add<nanogui::Widget>();
         pn->setLayout(
@@ -1274,6 +1448,9 @@ void main_show_gui()
             return false;
         });
 
+    // Auto-set slider ranges:
+    cbDepthLogScale->callback()(cbDepthLogScale->checked());
+
     updateGuiAfterLoadingNewMap();
 
     // --------------------------------------------------------------
@@ -1308,12 +1485,13 @@ void main_show_gui()
         LOAD_CB_STATE(cbKeepNativeCloudColors);
         LOAD_CB_STATE(cbAutoBBoxOutliers);
         LOAD_CB_STATE(cbShowGroundGrid);
+        LOAD_CB_STATE(cbDepthLogScale);
 
         LOAD_SL_STATE(slPointSize);
         LOAD_SL_STATE(slAutoBBoxOutliersPercentile);
         LOAD_SL_STATE(slTrajectoryThickness);
-        LOAD_SL_STATE(slMidDepthField);
-        LOAD_SL_STATE(slThicknessDepthField);
+        LOAD_SL_STATE(slClipNear);
+        LOAD_SL_STATE(slClipFar);
         LOAD_SL_STATE(slCameraFOV);
 
         win->camera().setCameraPointing(
@@ -1338,12 +1516,13 @@ void main_show_gui()
         SAVE_CB_STATE(cbKeepNativeCloudColors);
         SAVE_CB_STATE(cbAutoBBoxOutliers);
         SAVE_CB_STATE(cbShowGroundGrid);
+        SAVE_CB_STATE(cbDepthLogScale);
 
         SAVE_SL_STATE(slPointSize);
         SAVE_SL_STATE(slAutoBBoxOutliersPercentile);
         SAVE_SL_STATE(slTrajectoryThickness);
-        SAVE_SL_STATE(slMidDepthField);
-        SAVE_SL_STATE(slThicknessDepthField);
+        SAVE_SL_STATE(slClipNear);
+        SAVE_SL_STATE(slClipFar);
         SAVE_SL_STATE(slCameraFOV);
 
         appCfg.write("", "cam_x", win->camera().getCameraPointingX());
@@ -1379,6 +1558,7 @@ void main_show_gui()
             observeViewOptions();
             updateMiniCornerView();
             processCameraTravelling();
+            updateCameraClipDistances();
         });
 
     nanogui::mainloop(1000 /*idleLoopPeriod ms*/, 25 /* minRepaintPeriod ms */);
@@ -1628,30 +1808,9 @@ void rebuild_3d_view(bool force_rebuild_view)
         std::lock_guard<std::mutex> lck(win->background_scene_mtx);
         win->camera().setCameraProjective(!cbViewOrtho->checked() && !cbView2D->checked());
 
-        // clip planes:
-        const auto depthFieldMid       = std::pow(10.0, slMidDepthField->value());
-        const auto depthFieldThickness = std::pow(10.0, slThicknessDepthField->value());
-
-        const auto clipNear =
-            static_cast<float>(std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness));
-        const auto clipFar = static_cast<float>(depthFieldMid + 0.5 * depthFieldThickness);
-
-        const float cameraFOV = slCameraFOV->value();
-        win->camera().setCameraFOV(cameraFOV);
-        win->camera().setMaximumZoom(std::max<float>(1000.0f, 3.0f * clipFar));
-
-        lbDepthFieldValues->setCaption(
-            mrpt::format("Depth field: near=%g far=%g", clipNear, clipFar));
-        lbDepthFieldMid->setCaption(mrpt::format("Frustum center: %.03g", depthFieldMid));
-        lbDepthFieldThickness->setCaption(
-            mrpt::format("Frustum thickness: %.03g", depthFieldThickness));
-
-        lbDepthFieldValues->setCaption(
-            mrpt::format("Frustum: near=%.02g far=%.02g", clipNear, clipFar));
-
-        lbCameraFOV->setCaption(mrpt::format("Camera FOV: %.02f deg", cameraFOV));
-
-        win->background_scene->getViewport()->setViewportClipDistances(clipNear, clipFar);
+        // Clip plane calculation is delegated to be done in the idle loop so it's refreshed as the
+        // user zooms/pans, etc. since the camera data is needed for the "linear" mode.
+        // See updateCameraClipDistances();
     }
 }
 
