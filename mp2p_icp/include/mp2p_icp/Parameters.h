@@ -104,6 +104,13 @@ struct Parameters : public mrpt::serialization::CSerializable
      * at the prescribed iteration, ICP will be aborted. */
     std::map<uint32_t, double> quality_checkpoints = {{50U, 0.05}, {100U, 0.10}};
 
+    /** If true (default=false), a final matcher pass is run with ICP_ITERATION set to
+     *  maxIterations before evaluating quality. This ensures the quality score
+     *  reflects pairings at the final (tightest) threshold, regardless of how
+     *  early the solver converged. Set to false only to reproduce legacy
+     *  behavior. */
+    bool force_final_pairings_for_quality = false;
+
     /** @} */
 
     /** Parameters for the post-optimization SE(3) covariance estimation

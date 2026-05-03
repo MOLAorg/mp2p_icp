@@ -90,6 +90,7 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
     MCP_LOAD_OPT(p, decimationDebugFiles);
     MCP_LOAD_OPT(p, saveIterationDetails);
     MCP_LOAD_OPT(p, decimationIterationDetails);
+    MCP_LOAD_OPT(p, force_final_pairings_for_quality);
 
     if (p.has("quality_checkpoints"))
     {
@@ -130,6 +131,7 @@ void Parameters::save_to(mrpt::containers::yaml& p) const
     MCP_SAVE(p, decimationDebugFiles);
     MCP_SAVE(p, saveIterationDetails);
     MCP_SAVE(p, decimationIterationDetails);
+    MCP_SAVE(p, force_final_pairings_for_quality);
 
     mrpt::containers::yaml covYaml = mrpt::containers::yaml::Map();
     covariance_params.save_to(covYaml);
