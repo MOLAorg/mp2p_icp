@@ -2,6 +2,22 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* FIX: sm2mm pipeline for keyframe maps need valid KF poses
+* FIX: copy/paste error in guard against missing layer
+* mm-viewer: UI now has an easier near/far clipping plane tool
+* chore: map contents as string made less verbose (hide full covariance)
+* Merge pull request `#63 <https://github.com/MOLAorg/mp2p_icp/issues/63>`_ from MOLAorg/feat/optional-final-run-quality-matchers
+  feat: optional last run of matchers with final ICP_ITERATION for adaptive thresholds to see final thresholds
+* feat: optional last run of matchers with final ICP_ITERATION for adaptive thresholds to see final thresholds
+* fix: wrong decimation applied in sm2mm filters
+* Merge pull request `#62 <https://github.com/MOLAorg/mp2p_icp/issues/62>`_ from MOLAorg/feat/prior-weight-mitigations
+  feat: Implement Birge-ratio auto-balance for cov2cov and prior weighting
+* feat: Implement Birge-ratio auto-balance for cov2cov and prior weighting
+* fix: icp-log-viewer didn't show the prior covariance at its correct location
+* Contributors: Jose Luis Blanco-Claraco
+
 2.10.0 (2026-05-02)
 -------------------
 * CI: Update actions for new ROS rolling
