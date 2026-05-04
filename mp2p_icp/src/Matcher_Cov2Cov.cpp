@@ -46,7 +46,7 @@ bool Matcher_Cov2Cov::impl_match(
         }
 
         auto itGlobal = pcGlobal.layers.find(globalLayerName);
-        if (itGlobal == pcLocal.layers.end())
+        if (itGlobal == pcGlobal.layers.end())
         {
             THROW_EXCEPTION_FMT(
                 "Global layer '%s' not found trying to matching local layer '%s'",
