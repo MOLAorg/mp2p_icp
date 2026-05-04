@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.10.1 (2026-05-04)
+-------------------
 * FIX: sm2mm pipeline for keyframe maps need valid KF poses
 * FIX: copy/paste error in guard against missing layer
 * mm-viewer: UI now has an easier near/far clipping plane tool
