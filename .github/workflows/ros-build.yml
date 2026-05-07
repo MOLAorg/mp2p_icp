@@ -6,6 +6,7 @@ on: [ push ]
 jobs:
   build_docker:
     # On Linux, iterates on all ROS 2 distributions.
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -14,41 +15,50 @@ jobs:
       matrix:
         include:
           # Humble Hawksbill (May 2022 - May 2027)
-          - docker_image: ubuntu:jammy
+          - name: humble stable
+            docker_image: ubuntu:jammy
             ros_distribution: humble
             use_ros_testing: false
 
-          - docker_image: ubuntu:jammy
+          - name: humble testing
+            docker_image: ubuntu:jammy
             ros_distribution: humble
             use_ros_testing: true
 
           # Jazzy (2024 - ??)
-          - docker_image: ubuntu:noble
+          - name: jazzy stable
+            docker_image: ubuntu:noble
             ros_distribution: jazzy
             use_ros_testing: false
 
-          - docker_image: ubuntu:noble
+          - name: jazzy testing + coverage
+            docker_image: ubuntu:noble
             ros_distribution: jazzy
             use_ros_testing: true
             coverage_run: true
 
           # Same as above, but disable TBB
-          - docker_image: ubuntu:noble
+          - name: jazzy testing no-tbb
+            docker_image: ubuntu:noble
             ros_distribution: jazzy
             use_ros_testing: true
             disable_tbb: true
+            
             # Rolling Ridley (No End-Of-Life)
             # TODO: migrate to ubuntu:resolute once rolling packages are published there.
             # Track: https://discourse.openrobotics.org/t/preparing-for-rolling-sync-2026-04-23/54223
-            #- docker_image: ubuntu:noble
+            #- name: rolling stable
+            #  docker_image: ubuntu:noble
             #  ros_distribution: rolling
             #  use_ros_testing: false
 
-            #- docker_image: ubuntu:noble
+            #- name: rolling testing
+            #  docker_image: ubuntu:noble
             #  ros_distribution: rolling
             #  use_ros_testing: true
 
-            #- docker_image: ubuntu:noble
+            #- name: rolling testing + coverage
+            #  docker_image: ubuntu:noble
             #  ros_distribution: rolling
             #  use_ros_testing: true
             #  coverage_run: true
@@ -56,7 +66,8 @@ jobs:
             # Lyrical Luth (May 2026 - May 2031, LTS)
             # Beta packages available on resolute; GA release expected May 22, 2026.
             # allow_failure until GA is released.
-            #- docker_image: ubuntu:resolute
+            #- name: lyrical testing (allow failure)
+            #  docker_image: ubuntu:resolute
             #  ros_distribution: lyrical
             #  use_ros_testing: true
             #  allow_failure: true
