@@ -332,17 +332,28 @@ void metric_map_t::get_visualization_map_layer(
         // use its own default renderer:
         map->getVisualizationInto(o);
 
-        // apply the point size, if possible:
-        if (auto glPtsCol = o.getByClass<mrpt::opengl::CPointCloudColoured>(); glPtsCol)
+        // apply the point size to ALL point cloud objects (a map type such as
+        // KeyframePointCloudMap inserts one object per keyframe):
+        for (size_t ith = 0;; ith++)
         {
+            auto glPtsCol = o.getByClass<mrpt::opengl::CPointCloudColoured>(ith);
+            if (!glPtsCol)
+            {
+                break;
+            }
             glPtsCol->setPointSize(p.pointSize);
             if (p.force_alpha_channel)
             {
                 glPtsCol->setAllPointsAlpha(p.color.A);
             }
         }
-        else if (auto glPts = o.getByClass<mrpt::opengl::CPointCloud>(); glPts)
+        for (size_t ith = 0;; ith++)
         {
+            auto glPts = o.getByClass<mrpt::opengl::CPointCloud>(ith);
+            if (!glPts)
+            {
+                break;
+            }
             glPts->setPointSize(p.pointSize);
         }
 
