@@ -112,7 +112,7 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
 
     /** The class name for output layer if it does not exist and needs to be
      * created */
-    std::string output_layer_class = "mrpt::maps::CPointsMapXYZI";
+    std::string output_layer_class = "mrpt::maps::CGenericPointsMap";
 
     /** Whether to skip throwing an exception if the input layer does not
      * contain timestamps.

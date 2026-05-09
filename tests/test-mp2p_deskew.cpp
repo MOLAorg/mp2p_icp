@@ -29,7 +29,6 @@
 #include <mrpt/obs/CObservationComment.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
-#include <mrpt/version.h>
 
 #include <random>
 
@@ -658,12 +657,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         methods.push_back(mp2p_icp_filters::MotionCompensationMethod::IMUh);
 #endif
 
-        const std::vector<std::string> outputMapClasses = {
-#if MRPT_VERSION < 0x030000
-            "mrpt::maps::CPointsMapXYZIRT",
-#endif
-            "mrpt::maps::CGenericPointsMap"
-        };
+        const std::vector<std::string> outputMapClasses = {"mrpt::maps::CGenericPointsMap"};
 
         const std::vector<std::pair<float, float>> test_velocities = {
             {0.0f, 1e-6f},  // stationary
