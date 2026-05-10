@@ -18,5 +18,5 @@ find \
     mp2p_icp_filters \
     mp2p_icp_common \
     tests \
-    -iname "*.h" -o -iname "*.hpp" -o -iname "*.cpp" -o -iname "*.c" \
-  -print0 | xargs -0 clang-format-14 "${MODE[@]}"
+    \( -iname "*.h" -o -iname "*.hpp" -o -iname "*.cpp" -o -iname "*.c" \) \
+  -print0 | xargs -0 -r -t clang-format-14 "${MODE[@]}"
