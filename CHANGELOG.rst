@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.10.2 (2026-05-11)
+-------------------
 * Merge pull request `#65 <https://github.com/MOLAorg/mp2p_icp/issues/65>`_ from MOLAorg/simplify-ci
   CI: simplify CI scripts and docker install
 * chore: don't use anymore map classes deprecated and to be removed in mrpt 3.0.0
