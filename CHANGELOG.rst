@@ -2,6 +2,18 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#65 <https://github.com/MOLAorg/mp2p_icp/issues/65>`_ from MOLAorg/simplify-ci
+  CI: simplify CI scripts and docker install
+* chore: don't use anymore map classes deprecated and to be removed in mrpt 3.0.0
+* fix: maps creating multiple CPointsCloud won't have all with pointSize honored
+* Merge pull request `#64 <https://github.com/MOLAorg/mp2p_icp/issues/64>`_ from MOLAorg/bump-cmake
+  bump min req cmake version to 3.22
+* CI: Use sensible names for jobs matrix
+* bump min req cmake version to 3.22
+* Contributors: Jose Luis Blanco-Claraco
+
 2.10.1 (2026-05-04)
 -------------------
 * FIX: sm2mm pipeline for keyframe maps need valid KF poses
