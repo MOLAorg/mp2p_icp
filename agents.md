@@ -11,6 +11,9 @@ Quick-start reference for AI agents and new contributors.
 - **Maintainer**: Jose Luis Blanco-Claraco
 - **Minimum MRPT**: 2.15.4
 
+Whenever a change is done to the library by an AI agent, keep this document up-to-date so it
+always reflects the current state.
+
 ---
 
 ## Repository layout
@@ -200,6 +203,7 @@ Tests use gtest. Each filter, matcher, solver, and serializer has its own test f
 - Always use braces `{}` for all `if`/`for`/`while` blocks
 - Coordinate frame naming: `T_A_to_B` = pose of {B} as seen from {A}; `composePoint` transforms FROM the local (B) frame TO the reference (A) frame
 - Don't use long hyphens. Use American spelling.
+- Don't use static, prefer anynomous namespaces.
 
 ---
 
