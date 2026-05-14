@@ -105,7 +105,7 @@ if (mola_metric_maps_FOUND)
   mp2p_add_test(mp2p_gicp_pipeline_benchmark EXTRA_LIBS mp2p_icp_filters)
   target_link_libraries(test-mp2p_gicp_pipeline_benchmark mola::mola_metric_maps)
 else()
-  message(WARNING
+  message(STATUS
     "mola_metric_maps not found: skipping test "
     "'test-mp2p_gicp_pipeline_benchmark'.")
 endif()
