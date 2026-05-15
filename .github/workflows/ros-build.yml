@@ -138,6 +138,12 @@ jobs:
           rosdep update
           rosdep install --from-paths . --ignore-src -y
 
+      - name: Install extra test dependencies (jazzy coverage)
+        if: matrix.coverage_run == true && matrix.ros_distribution == 'jazzy'
+        run: |
+          apt-get update
+          apt-get install -y ros-${{ matrix.ros_distribution }}-mola-metric-maps
+
       - name: Install lcov for coverage analysis
         if: matrix.coverage_run == true
         run: |

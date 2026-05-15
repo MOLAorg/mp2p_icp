@@ -38,6 +38,13 @@
   <!-- depend>mola_test_datasets</depend>  -->
 
   <test_depend condition="$ROS_VERSION == 1">catkin</test_depend>
+  <!-- Optional test dependency for the end-to-end GICP pipeline benchmark
+       ('test-mp2p_gicp_pipeline_benchmark'). Cannot be declared as a real
+       <test_depend> because mola_metric_maps depends back on mp2p_icp, which
+       would create a circular package ordering. The CMake side does a
+       find_package(mola_metric_maps QUIET) and skips the test if not found.
+       <test_depend>mola_metric_maps</test_depend>
+  -->
 
   <doc_depend>doxygen</doc_depend>
 
