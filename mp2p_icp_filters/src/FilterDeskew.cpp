@@ -192,12 +192,10 @@ void correctPointsLoop(const CorrectPointsArguments& args)
     ASSERT_(Ts != nullptr);
     ASSERT_EQUAL_(Ts->size(), xs.size());
 
-    if constexpr (method != MotionCompensationMethod::Linear)
-    {
-        ASSERTMSG_(
-            !reconstructed_trajectory.empty(),
-            "FilterDeskew: It seems the local velocity buffer is empty, cannot do deskew!");
-    }
+    // Note: emptiness of reconstructed_trajectory is checked by the caller
+    // (FilterDeskew::filter), which gracefully bypasses deskew with a
+    // throttled warning instead of throwing, to keep robustness against
+    // transient sensor data gaps.
 
     // Is it worth to first build a cache with unique point stamps to pose corrections?
     // From initial benchmarking, it seems it doesn't...
@@ -590,6 +588,38 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             break;
         }
     };
+
+    // Graceful degradation: if an IMU-based method was selected but the local
+    // velocity buffer yielded no trajectory (e.g., a transient sensor data
+    // gap), skip deskew for this scan rather than throwing. Points are copied
+    // through uncorrected, with a throttled WARN trace so users can see it
+    // happening without flooding the log.
+    const bool needsTrajectory = (method == MotionCompensationMethod::IMU) ||
+                                 (method == MotionCompensationMethod::IMUh) ||
+                                 (method == MotionCompensationMethod::IMUt);
+
+    if (needsTrajectory && reconstructed_trajectory.empty())
+    {
+        thread_local double last_warning_t = 0;
+        const auto          tNow           = mrpt::Clock::nowDouble();
+        if (tNow - last_warning_t > 5.0)
+        {
+            last_warning_t = tNow;
+            MRPT_LOG_WARN_STREAM(
+                "Local velocity buffer is empty (likely a transient sensor "
+                "data gap); skipping deskew for this scan. Points will be "
+                "passed through uncorrected.");
+        }
+
+        if (!in_place)
+        {
+            // Resize back: we will let insertAnotherMap handle the append
+            // (which manages size and per-point fields consistently).
+            outPc->resize(n0);
+            outPc->insertAnotherMap(inPc, mrpt::poses::CPose3D::Identity());
+        }
+        return;
+    }
 
     // Prepare call arguments:
     const CorrectPointsArguments args = {

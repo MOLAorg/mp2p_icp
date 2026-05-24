@@ -44,6 +44,7 @@ endfunction()
 
 if (mola_imu_preintegration_FOUND)
 mp2p_add_test(mp2p_deskew EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_deskew_empty_buffer EXTRA_LIBS mp2p_icp_filters)
 endif()
 
 #mp2p_add_test(mp2p_matcher_pt2pl)  # TODO: This now requires a NP metric map to run the test
