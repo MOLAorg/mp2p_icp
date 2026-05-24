@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.10.3 (2026-05-24)
+-------------------
 * Merge pull request `#67 <https://github.com/MOLAorg/mp2p_icp/issues/67>`_ from MOLAorg/fix/deskew-empty-trajectory
   FIX: robust against temporary lack of IMU in Deskew
 * Merge pull request `#66 <https://github.com/MOLAorg/mp2p_icp/issues/66>`_ from MOLAorg/add-gicp-benchmark
@@ -59,7 +59,7 @@ Forthcoming
   The cov2cov branch in covariance.cpp whitened residuals with the full
   information matrix (cov_inv * e), so the assembled Hessian became
   J^T * cov_inv^2 * J instead of J^T * cov_inv * J. Combined with hundreds
-  of pairings this drove |cov| down to ~1e-20 and made the estimate
+  of pairings this drove det(cov) down to ~1e-20 and made the estimate
   unusable.
   - Use the Cholesky factor L^T (with L L^T = cov_inv) to whiten the
   cov2cov residual, matching what optimal_tf_gauss_newton accumulates.
