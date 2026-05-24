@@ -2,6 +2,16 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#67 <https://github.com/MOLAorg/mp2p_icp/issues/67>`_ from MOLAorg/fix/deskew-empty-trajectory
+  FIX: robust against temporary lack of IMU in Deskew
+* Merge pull request `#66 <https://github.com/MOLAorg/mp2p_icp/issues/66>`_ from MOLAorg/add-gicp-benchmark
+  test: add new end-to-end gicp test as benchmark
+* test: add new end-to-end gicp test as benchmark
+* fix: icp-log-viewer bug in translations if view prior was enabled
+* Contributors: Jose Luis Blanco-Claraco
+
 2.10.2 (2026-05-11)
 -------------------
 * Merge pull request `#65 <https://github.com/MOLAorg/mp2p_icp/issues/65>`_ from MOLAorg/simplify-ci
