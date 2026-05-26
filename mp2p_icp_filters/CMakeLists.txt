@@ -36,6 +36,7 @@ set(LIB_SRCS
   src/FilterMLS.cpp
   src/FilterNormalizeIntensity.cpp
   src/FilterPoleDetector.cpp
+  src/FilterPolygon2D.cpp
   src/FilterRemoveByVoxelOccupancy.cpp
   src/FilterRemovePointCloudField.cpp
   src/FilterRenameLayer.cpp
@@ -77,6 +78,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterMLS.h
   include/mp2p_icp_filters/FilterNormalizeIntensity.h
   include/mp2p_icp_filters/FilterPoleDetector.h
+  include/mp2p_icp_filters/FilterPolygon2D.h
   include/mp2p_icp_filters/FilterRemoveByVoxelOccupancy.h
   include/mp2p_icp_filters/FilterRenameLayer.h
   include/mp2p_icp_filters/FilterRemovePointCloudField.h

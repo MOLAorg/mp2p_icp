@@ -831,6 +831,42 @@ This is done by analyzing the min/max Z-span in 2D grid cells.
 
 ---
 
+Filter: `FilterPolygon2D`
+-------------------------
+
+**Description**: Splits a point cloud into points **inside** and **outside** an arbitrary 2D polygon (defined in the XY plane), optionally further constrained by a Z range. Unlike :cpp:class:`FilterBoundingBox`, the cropping region can be a general (possibly non-convex) polygon, which is useful to match footprints that are not axis-aligned rectangles.
+
+**Parameters**:
+
+* **input\_pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): The input point cloud layer name.
+
+* **inside\_pointcloud\_layer** (:cpp:type:`std::string`, optional): The output layer name for points **INSIDE** the polygon. If empty, these points are discarded.
+
+* **outside\_pointcloud\_layer** (:cpp:type:`std::string`, optional): The output layer name for points **OUTSIDE** the polygon. If empty, these points are discarded.
+
+* **polygon** (:cpp:type:`float[][2]`): The list of polygon vertices in the XY plane, as a sequence of :math:`[x, y]` pairs. At least 3 vertices are required.
+
+* **z\_min** (:cpp:type:`double`, default: :math:`-\infty`): Minimum :math:`z` (inclusive) kept for points inside the polygon footprint.
+
+* **z\_max** (:cpp:type:`double`, default: :math:`+\infty`): Maximum :math:`z` (inclusive) kept for points inside the polygon footprint.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterPolygon2D
+        params:
+          input_pointcloud_layer: 'raw'
+          inside_pointcloud_layer: 'inside'
+          outside_pointcloud_layer: 'outside'
+          polygon: [[0.0, 0.0], [10.0, 0.0], [10.0, 5.0], [0.0, 5.0]]
+          z_min: 0.3
+          z_max: 2.0
+
+|
+
+---
+
 Filter: `FilterRemoveByVoxelOccupancy`
 --------------------------------------
 
