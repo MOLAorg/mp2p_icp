@@ -2,6 +2,7 @@ ignore:
   - "3rdparty/"
   - "apps/"
   - "demos/"
+  - "tests/"
 
 # Pull Request Comment Configuration (Optional)
 # This controls the comment that Codecov posts on your pull requests.
