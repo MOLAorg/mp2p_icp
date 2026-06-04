@@ -30,7 +30,7 @@ generators:
       #process_sensor_labels_regex: '.*'
 
       metric_map_definition:
-        # Any class derived from mrpt::maps::CMetricMap https://docs.mrpt.org/reference/latest/group_mrpt_maps_grp.html
+        # Any class derived from mrpt::maps::CMetricMap https://docs.mrpt.org/reference/stable/group_mrpt_maps_grp.html
         class: mola::KeyframePointCloudMap
         plugin: "libmola_metric_maps.so" # Import additional custom user-defined map classes (search in LD_LIBRARY_PATH)
         creationOpts:

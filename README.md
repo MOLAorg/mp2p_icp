@@ -43,7 +43,7 @@ The full repository also includes these applications (see [apps/](https://github
  
  * **[txt2mm](https://docs.mola-slam.org/latest/app_txt2mm.html)**: Converts plain-text point cloud data (TXT/CSV) into metric map (`.mm`) files. Supports multiple formats: XYZ, XYZI, XYZIRT, XYZRGB, with configurable column mapping and layer names.
  
- * **[sm2mm](https://docs.mola-slam.org/latest/app_sm2mm.html)**: Converts a [simple map](https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html) (`.simplemap`) from a SLAM mapping session into a metric map (`.mm`) using a configurable processing pipeline. Essential for post-processing SLAM outputs into structured metric representations.
+ * **[sm2mm](https://docs.mola-slam.org/latest/app_sm2mm.html)**: Converts a [simple map](https://docs.mrpt.org/reference/stable/class_mrpt_maps_CSimpleMap.html) (`.simplemap`) from a SLAM mapping session into a metric map (`.mm`) using a configurable processing pipeline. Essential for post-processing SLAM outputs into structured metric representations.
 
 ### Data Export Tools
  * **[mm2ply](https://docs.mola-slam.org/latest/app_mm2ply.html)**: Exports metric map layers to PLY point cloud files. Supports both ASCII and binary formats, selective field export, and preserves all point attributes (coordinates, colors, intensities, etc.).
@@ -68,7 +68,7 @@ The full repository also includes these applications (see [apps/](https://github
  * **[icp-run](https://docs.mola-slam.org/latest/app_icp-run.html)**: Standalone program to execute ICP pipelines from the command line.
 
 ### SimpleMaps Manipulation
- * **[sm-cli](https://docs.mola-slam.org/latest/app_sm-cli.html)**: Swiss-army knife for [simple map](https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html) (`.simplemap`) manipulation. Commands include: `info` (analyze contents), `cut` (extract by keyframe index), `trim` (extract by bounding box), `join` (merge maps), `level` (make horizontal), `tf` (apply SE(3) transform), `export-keyframes` (save trajectories as TUM), and `export-rawlog` (convert to RawLog format).
+ * **[sm-cli](https://docs.mola-slam.org/latest/app_sm-cli.html)**: Swiss-army knife for [simple map](https://docs.mrpt.org/reference/stable/class_mrpt_maps_CSimpleMap.html) (`.simplemap`) manipulation. Commands include: `info` (analyze contents), `cut` (extract by keyframe index), `trim` (extract by bounding box), `join` (merge maps), `level` (make horizontal), `tf` (apply SE(3) transform), `export-keyframes` (save trajectories as TUM), and `export-rawlog` (convert to RawLog format).
 
 
 ## Key Features and Components

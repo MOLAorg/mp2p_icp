@@ -65,7 +65,7 @@ How to install the C++ mp2p_icp libraries and :ref:`applications <mp2p_icp_appli
         .. tab-set::
             .. tab-item:: Building MRPT from sources
 
-                Follow the `installation instructions <https://docs.mrpt.org/reference/latest/compiling.html>`_ for MRPT
+                Follow the `installation instructions <https://docs.mrpt.org/reference/stable/compiling.html>`_ for MRPT
 
             .. tab-item:: Get from ROS 2
                 :selected:
