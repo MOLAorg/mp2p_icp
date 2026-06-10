@@ -14,6 +14,7 @@
 
 #include <mrpt/core/exceptions.h>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -41,8 +42,10 @@ EyePos computeEyePos(const mrpt::gui::CGlCanvasBase& cam)
 }
 
 // Approximate projected diameter of a bounding box in pixels.
-// Distance is measured from the camera EYE (not the pivot) so off-pivot
-// nodes get correct projected sizes during orbit.
+// Distance is measured from the camera EYE to the CLOSEST point of the bbox:
+// using the bbox center underestimates the size of large nearby nodes (their
+// center can be far away while the cell extends right up to the camera),
+// which made them refuse to refine and look blocky.
 float calcProjectedDiameter(
     const mrpt::math::TBoundingBoxf& bbox, const mrpt::gui::CGlCanvasBase& cam, int viewportH)
 {
@@ -51,18 +54,17 @@ float calcProjectedDiameter(
     const float dz   = bbox.max.z - bbox.min.z;
     const float diag = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-    const float cx = 0.5f * (bbox.min.x + bbox.max.x);
-    const float cy = 0.5f * (bbox.min.y + bbox.max.y);
-    const float cz = 0.5f * (bbox.min.z + bbox.max.z);
-
     const EyePos eye = computeEyePos(cam);
-    const float  ddx = cx - eye.x;
-    const float  ddy = cy - eye.y;
-    const float  ddz = cz - eye.z;
-    float        dist = std::sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+    const float  qx  = std::clamp(eye.x, bbox.min.x, bbox.max.x);
+    const float  qy  = std::clamp(eye.y, bbox.min.y, bbox.max.y);
+    const float  qz  = std::clamp(eye.z, bbox.min.z, bbox.max.z);
 
-    // Floor at a small positive value to avoid div-by-zero when the eye
-    // happens to fall inside the bbox.
+    const float ddx  = qx - eye.x;
+    const float ddy  = qy - eye.y;
+    const float ddz  = qz - eye.z;
+    float       dist = std::sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+
+    // Eye inside (or touching) the bbox: force maximum detail.
     if (dist < 1e-3f)
     {
         dist = 1e-3f;
@@ -324,129 +326,88 @@ float LODRenderer::approxProjectedDiameter(
 
 // ----------------------------------------------------------------------------
 
-void LODRenderer::visit(
-    LODNode& node, LODTree& tree, const mrpt::gui::CGlCanvasBase& cam, int viewportW, int viewportH,
-    BudgetState& budget)
+void LODRenderer::hideSubtree(LODNode& node)
 {
-    if (!node.glRepPoints)
+    if (!node.subtreeShown)
     {
         return;
     }
-
-    // Cheap projected-size cull: if the node's bbox maps to less than half a
-    // pixel, hide it and stop recursing.
-    const float screenSz = approxProjectedDiameter(node.bbox, cam, viewportH);
-    (void)viewportW;
-
-    if (screenSz < 0.5f)
-    {
-        if (node.gpuResident)
-        {
-            node.glRepPoints->setVisibility(false);
-        }
-        ++budget.nodesCulled;
-        return;
-    }
-
-    const float coarseThresh = config.coarseScreenSizePx;
-    const float fineThresh   = config.fineScreenSizePx;
-
-    const size_t repCount = node.repIndices.size();
-    const bool   budgetOk = (budget.usedPoints + repCount <= budget.frameBudget);
-
-    // Natural stopping conditions: leaf node or projected size below coarse
-    // threshold.  At these stops we show the rep cloud and hide any finer
-    // resident descendants (zoom-out cleanup).
-    const bool naturalStop = node.isLeaf() || (screenSz < coarseThresh);
-
-    // Interaction stop: while the camera is moving, show coarse nodes to keep
-    // rendering fast.  Fine-grained children are only shown when idle.
-    const bool interactionStop = config.interacting && (screenSz < fineThresh);
-
-    // Budget-forced stop: if descending would (likely) push us over budget,
-    // stop here and render the rep cloud.  This is critical: returning without
-    // rendering would leave a hole; rendering the coarser rep keeps the region
-    // covered.  We use this node's repCount as a coarse proxy for "would the
-    // subtree fit?" — it understates by ~8x but at least prevents the silent
-    // hole at the cost of an occasional over-coarse region.
-    const bool budgetStop = !budgetOk;
-
-    const bool shouldDescend = !naturalStop && !interactionStop && !budgetStop;
-
-    if (!shouldDescend)
-    {
-        // Show this node's rep cloud and hide any finer descendants that
-        // might already be resident.
-        if (!node.gpuResident && node.glRepPoints)
-        {
-            // Upload policy:
-            //  - While interacting: never upload (keep motion smooth);
-            //    skip this node (caller's ancestor will still be visible).
-            //  - While idle: upload up to uploadBudget points per frame.
-            //    Beyond that, defer; we'll get more next idle frame.
-            if (config.interacting)
-            {
-                ++budget.nodesDeferred;
-                return;
-            }
-            if (budget.uploaded + repCount > budget.uploadBudget && budget.uploaded > 0)
-            {
-                // Already uploaded something this frame and this would exceed
-                // the cap; defer so we don't stutter.  (We allow the very
-                // first upload of the frame even if it alone exceeds the cap,
-                // so single-shot large nodes still progress.)
-                ++budget.nodesDeferred;
-                return;
-            }
-            tree.sceneNode()->insert(node.glRepPoints);
-            node.gpuResident = true;
-            budget.uploaded += repCount;
-        }
-
-        node.glRepPoints->setVisibility(true);
-        budget.usedPoints += repCount;
-        ++budget.nodesShown;
-
-        // Hide finer-grained descendants.
-        std::vector<LODNode*> hideStack;
-        for (auto& child : node.children)
-        {
-            if (child)
-            {
-                hideStack.push_back(child.get());
-            }
-        }
-        while (!hideStack.empty())
-        {
-            LODNode* n = hideStack.back();
-            hideStack.pop_back();
-            if (n->gpuResident && n->glRepPoints)
-            {
-                n->glRepPoints->setVisibility(false);
-            }
-            for (auto& child : n->children)
-            {
-                if (child)
-                {
-                    hideStack.push_back(child.get());
-                }
-            }
-        }
-        return;
-    }
-
-    // Descend: this node's rep cloud is superseded by its children.
-    ++budget.nodesDescended;
-    if (node.gpuResident)
+    node.subtreeShown = false;
+    node.wasDescended = false;
+    if (node.gpuResident && node.glRepPoints)
     {
         node.glRepPoints->setVisibility(false);
     }
-
     for (auto& child : node.children)
     {
         if (child)
         {
-            visit(*child, tree, cam, viewportW, viewportH, budget);
+            hideSubtree(*child);
+        }
+    }
+}
+
+void LODRenderer::visit(
+    LODNode& node, LODTree& tree, const mrpt::gui::CGlCanvasBase& cam, int viewportW, int viewportH,
+    BudgetState& budget)
+{
+    (void)viewportW;
+    (void)tree;
+
+    const float screenSz = approxProjectedDiameter(node.bbox, cam, viewportH);
+
+    // Projected-size cull: hide the whole subtree.
+    if (screenSz < config.cullScreenSizePx)
+    {
+        hideSubtree(node);
+        ++budget.nodesCulled;
+        return;
+    }
+
+    // Additive refinement: ALWAYS show this node's own points; descendants
+    // only add finer detail on top, they never replace these points.
+    if (node.gpuResident && node.glRepPoints)
+    {
+        node.glRepPoints->setVisibility(true);
+        budget.usedPoints += node.repIndices.size();
+        ++budget.nodesShown;
+    }
+    node.subtreeShown = true;
+
+    float descendThresh = config.descendScreenSizePx;
+    if (config.interacting)
+    {
+        descendThresh *= config.interactingDescendScale;
+    }
+    if (node.wasDescended)
+    {
+        descendThresh *= config.descendHysteresis;
+    }
+
+    const bool budgetOk = (budget.usedPoints < budget.frameBudget);
+    const bool descend  = !node.isLeaf() && budgetOk && (screenSz > descendThresh);
+
+    if (descend)
+    {
+        node.wasDescended = true;
+        ++budget.nodesDescended;
+        for (auto& child : node.children)
+        {
+            if (child)
+            {
+                visit(*child, tree, cam, viewportW, viewportH, budget);
+            }
+        }
+    }
+    else
+    {
+        node.wasDescended = false;
+        for (auto& child : node.children)
+        {
+            if (child)
+            {
+                hideSubtree(*child);
+            }
         }
     }
 }
@@ -595,14 +556,7 @@ void LODRenderer::update(const mrpt::gui::CGlCanvasBase& cam, int viewportW, int
 
     // --- Per-frame budget ---
     BudgetState budget;
-    budget.frameBudget =
-        config.interacting
-            ? static_cast<size_t>(
-                  static_cast<double>(config.frameBudgetPoints) * config.interactingRatio)
-            : config.frameBudgetPoints;
-    budget.uploadBudget = config.interacting ? 0 : config.uploadBudgetPoints;
-    budget.usedPoints   = 0;
-    budget.uploaded     = 0;
+    budget.frameBudget = config.frameBudgetPoints;
 
     for (auto& [layerName, entry] : m_layers)
     {
@@ -618,9 +572,8 @@ void LODRenderer::update(const mrpt::gui::CGlCanvasBase& cam, int viewportW, int
     if ((++s_frameCount % 60) == 0)
     {
         std::cout << "[LODRenderer] frame=" << s_frameCount << " interacting=" << config.interacting
-                  << " shown=" << budget.nodesShown << " deferred=" << budget.nodesDeferred
-                  << " descended=" << budget.nodesDescended << " culled=" << budget.nodesCulled
-                  << " usedPts=" << budget.usedPoints << " uploaded=" << budget.uploaded
+                  << " shown=" << budget.nodesShown << " descended=" << budget.nodesDescended
+                  << " culled=" << budget.nodesCulled << " usedPts=" << budget.usedPoints
                   << " budget=" << budget.frameBudget << " layers=" << m_layers.size() << "\n"
                   << std::flush;
     }

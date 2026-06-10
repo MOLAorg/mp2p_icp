@@ -28,20 +28,35 @@
 
 struct LODRendererConfig
 {
-    // Idle frame budget.  Effectively a safety net: the screen-size LOD
-    // criterion (coarse/fineScreenSizePx) is what should bound rendering on
-    // normal maps.  Setting this too low forces budget-coarsening, where one
-    // subtree shows a coarse ancestor while neighbours show finer reps, and
-    // that asymmetry is visible as "blocks" of mismatched density.  100M is
-    // larger than any map we expect to fully refine; lower if your GPU
-    // becomes the bottleneck on huge maps.
-    size_t frameBudgetPoints  = 100000000;
-    size_t uploadBudgetPoints = 500000;  // new pts uploaded per idle frame
-    float  coarseScreenSizePx = 64.0f;  // below: show rep cloud, stop descent
-    float  fineScreenSizePx   = 512.0f;  // above: descend into children
-    bool   interacting        = false;
-    float  interactingRatio   = 0.25f;  // frame-budget scale while camera moves
-    int    movingFramesHyst   = 5;  // frames of hysteresis for interacting flag
+    // Additive refinement: each visited node ADDS its own (disjoint) points on
+    // top of its ancestors' points.  Crossing a LOD threshold only adds or
+    // removes the finest sprinkle of points, so there is no parent/child swap
+    // and no visible popping of whole blocks.
+
+    // Hard cap on points rendered per frame; descent simply stops when the
+    // budget is exhausted (safe: ancestors already cover the region).
+    size_t frameBudgetPoints = 50000000;
+
+    // Hide a subtree when its bbox projects smaller than this (pixels).
+    float cullScreenSizePx = 2.0f;
+
+    // Descend into children while the node's bbox projects larger than this
+    // (pixels).  With ~16k points per node, a node at this size has a mean
+    // on-screen point spacing of descendScreenSizePx/sqrt(16k) ~ px/126.
+    float descendScreenSizePx = 600.0f;
+
+    // While the camera moves, descend threshold is scaled by this (> 1 means
+    // slightly coarser rendering; with additive refinement only the finest
+    // detail drops out, which is barely noticeable).
+    float interactingDescendScale = 1.5f;
+
+    // Per-node hysteresis: a node that descended last frame keeps descending
+    // until its projected size falls below descend*this (< 1), preventing
+    // flicker right at the threshold.
+    float descendHysteresis = 0.85f;
+
+    bool interacting      = false;  // set by camera-motion detector
+    int  movingFramesHyst = 5;  // frames of hysteresis for interacting flag
 };
 
 /** Manages all LOD trees for one loaded metric map.
@@ -165,11 +180,8 @@ class LODRenderer
     struct BudgetState
     {
         size_t frameBudget    = 0;
-        size_t uploadBudget   = 0;
         size_t usedPoints     = 0;
-        size_t uploaded       = 0;
         size_t nodesShown     = 0;
-        size_t nodesDeferred  = 0;
         size_t nodesCulled    = 0;
         size_t nodesDescended = 0;
     };
@@ -177,6 +189,10 @@ class LODRenderer
     void visit(
         LODNode& node, LODTree& tree, const mrpt::gui::CGlCanvasBase& cam, int viewportW,
         int viewportH, BudgetState& budget);
+
+    /** Hide every visible rep cloud in this subtree (early-outs on the
+     *  subtreeShown flag, so repeated calls on hidden subtrees are free). */
+    static void hideSubtree(LODNode& node);
 
     static float approxProjectedDiameter(
         const mrpt::math::TBoundingBoxf& bbox, const mrpt::gui::CGlCanvasBase& cam, int viewportH);

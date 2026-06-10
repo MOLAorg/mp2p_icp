@@ -99,7 +99,7 @@ geocentric → mrpt::topography::geocentricToGeodetic() → WGS-84 lat/lon/alt
 | `mm-filter` | Apply filter pipelines to .mm files |
 | `mm-info` | Print .mm file summary |
 | `mm-georef` | Inject/extract georeferencing from .mm files |
-| `mm-viewer` | GUI viewer for .mm files |
+| `mm-viewer` | GUI viewer for .mm files; `--lod` enables octree LOD (additive refinement) for layers >= 2M points |
 | `sm2mm` | Convert SLAM CSimpleMap → .mm |
 | `sm-cli` | Manipulate CSimpleMap files (cut, join, export…) |
 | `icp-run` | Run ICP pipeline from CLI |

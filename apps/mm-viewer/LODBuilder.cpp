@@ -38,8 +38,7 @@ struct BuildContext
     const mrpt::maps::CPointsMap* src    = nullptr;
     const LODTree::BuildParams*   params = nullptr;
     LODTree::ProgressCallback     onProgress;
-    std::mt19937                  rng{42};
-    uint32_t                      maxDepthSeen = 0;
+    std::atomic<uint32_t>         maxDepthSeen{0};
 };
 
 /** Fill glRepPoints of a node from its repIndices.
@@ -111,25 +110,6 @@ void fillGLCloud(LODNode& node, const mrpt::maps::CPointsMap& src)
     node.glRepPoints = cloud;
 }
 
-// Select a uniform random subsample of 'count' indices from 'pool'.
-std::vector<uint32_t> randomSubsample(
-    const std::vector<uint32_t>& pool, size_t count, std::mt19937& rng)
-{
-    if (pool.size() <= count)
-    {
-        return pool;
-    }
-    // Fisher-Yates partial shuffle to pick 'count' from pool.
-    std::vector<uint32_t> tmp = pool;
-    for (size_t i = 0; i < count; ++i)
-    {
-        std::uniform_int_distribution<size_t> dist(i, tmp.size() - 1);
-        std::swap(tmp[i], tmp[dist(rng)]);
-    }
-    tmp.resize(count);
-    return tmp;
-}
-
 void buildRecursive(
     std::unique_ptr<LODNode>& nodePtr, std::vector<uint32_t>& indices,
     const mrpt::math::TBoundingBoxf& bbox, uint32_t level, BuildContext& ctx)
@@ -141,9 +121,10 @@ void buildRecursive(
     node.totalPoints = static_cast<uint64_t>(indices.size());
     node.bbox        = bbox;
 
-    if (level > ctx.maxDepthSeen)
+    // Track max depth (atomic max for the TBB-parallel build path).
+    uint32_t prevMax = ctx.maxDepthSeen.load();
+    while (level > prevMax && !ctx.maxDepthSeen.compare_exchange_weak(prevMax, level))
     {
-        ctx.maxDepthSeen = level;
     }
 
     const bool isLeaf =
@@ -151,7 +132,7 @@ void buildRecursive(
 
     if (isLeaf)
     {
-        // Leaf: rep set is all points.
+        // Leaf: owns every point that reached it.
         node.repIndices = std::move(indices);
         fillGLCloud(node, *ctx.src);
 
@@ -163,18 +144,33 @@ void buildRecursive(
         return;
     }
 
-    // Partition indices into 8 octants.
+    // Inner node: keep a uniform random subset as this node's OWN points
+    // (additive refinement); the remainder is pushed down to the octants.
+    // Local RNG so sibling subtrees built in parallel never share state.
+    std::mt19937 rng(static_cast<uint32_t>(indices.size() * 2654435761u + level));
+
+    const size_t k = std::min(ctx.params->pointsPerNode, indices.size());
+    for (size_t i = 0; i < k; ++i)
+    {
+        std::uniform_int_distribution<size_t> dist(i, indices.size() - 1);
+        std::swap(indices[i], indices[dist(rng)]);
+    }
+    node.repIndices.assign(indices.begin(), indices.begin() + static_cast<std::ptrdiff_t>(k));
+    fillGLCloud(node, *ctx.src);
+
+    // Partition the REMAINING indices into 8 octants.
     const mrpt::math::TPoint3Df center(
         0.5f * (bbox.min.x + bbox.max.x), 0.5f * (bbox.min.y + bbox.max.y),
         0.5f * (bbox.min.z + bbox.max.z));
 
     std::array<std::vector<uint32_t>, 8> childIdx;
 
-    for (const uint32_t i : indices)
+    for (size_t ii = k; ii < indices.size(); ++ii)
     {
-        float x = 0;
-        float y = 0;
-        float z = 0;
+        const uint32_t i = indices[ii];
+        float          x = 0;
+        float          y = 0;
+        float          z = 0;
         ctx.src->getPoint(i, x, y, z);
         const int ox = (x >= center.x) ? 1 : 0;
         const int oy = (y >= center.y) ? 1 : 0;
@@ -231,64 +227,6 @@ void buildRecursive(
         }
     }
 
-    // Compute this node's rep set from children's rep sets, drawing from each
-    // child proportionally to that child's TOTAL point count (not to its
-    // rep-set size).  Sampling uniformly over the pooled rep indices would
-    // over-represent children that subdivided more (their rep set equals the
-    // leaf cap regardless of how many points actually live there), which
-    // produces visible density bias near the root.
-    uint64_t totalSubtreePts = 0;
-    for (int ci = 0; ci < 8; ++ci)
-    {
-        if (node.children[ci])
-        {
-            totalSubtreePts += node.children[ci]->totalPoints;
-        }
-    }
-
-    node.repIndices.clear();
-    if (totalSubtreePts > 0)
-    {
-        const size_t target = ctx.params->pointsPerNode;
-        node.repIndices.reserve(target);
-        size_t remaining = target;
-        for (int ci = 0; ci < 8; ++ci)
-        {
-            if (!node.children[ci])
-            {
-                continue;
-            }
-            const auto& crep = node.children[ci]->repIndices;
-            if (crep.empty())
-            {
-                continue;
-            }
-            // Quota for this child, proportional to its total points.
-            const double frac =
-                static_cast<double>(node.children[ci]->totalPoints) /
-                static_cast<double>(totalSubtreePts);
-            size_t quota = static_cast<size_t>(std::round(frac * target));
-            // Cap by child's rep size and by remaining budget.
-            quota = std::min(quota, crep.size());
-            quota = std::min(quota, remaining);
-            if (quota == 0)
-            {
-                continue;
-            }
-            auto picked = randomSubsample(crep, quota, ctx.rng);
-            for (uint32_t idx : picked)
-            {
-                node.repIndices.push_back(idx);
-            }
-            remaining -= quota;
-            if (remaining == 0)
-            {
-                break;
-            }
-        }
-    }
-    fillGLCloud(node, *ctx.src);
-
     const uint64_t built = ++g_nodesBuilt;
     if (ctx.onProgress && (built % 500 == 0))
     {
@@ -325,7 +263,7 @@ void LODTree::build(
 
     buildRecursive(m_root, allIndices, bbox, 0, ctx);
 
-    m_depth = ctx.maxDepthSeen;
+    m_depth = ctx.maxDepthSeen.load();
 
     if (onProgress)
     {

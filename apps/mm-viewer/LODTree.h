@@ -22,29 +22,32 @@
 #include <memory>
 #include <vector>
 
-/** One node of the octree LOD structure.
+/** One node of the octree LOD structure (additive refinement).
  *
- *  Each node stores representative (decimated) points for its spatial cell,
- *  plus up to 8 child octants. All CPointCloudColoured objects are owned by
- *  the tree (via the flat node store in LODTree).
+ *  Each node owns a DISJOINT subsample of the points inside its cell: showing
+ *  a node adds detail on top of its ancestors, it never replaces them.  The
+ *  union of repIndices over a node and all its descendants is exactly the set
+ *  of source points inside the node's cell.
  */
 struct LODNode
 {
     mrpt::math::TBoundingBoxf bbox;
     uint32_t                  level       = 0;
-    uint64_t                  totalPoints = 0;
+    uint64_t                  totalPoints = 0;  // count of points in this subtree
 
-    /** Decimated representative cloud for this node. Created at build time. */
+    /** GL cloud holding exactly this node's own (disjoint) point subset. */
     mrpt::opengl::CPointCloudColoured::Ptr glRepPoints;
 
-    /** Original point indices (into the source CPointsMap) for this node's rep set. */
+    /** Original point indices (into the source CPointsMap) owned by this node. */
     std::vector<uint32_t> repIndices;
 
     /** 8 octants; index == nullptr means absent / leaf. */
     std::array<std::unique_ptr<LODNode>, 8> children{};
 
     // --- per-frame runtime state ---
-    bool gpuResident = false;  // has glRepPoints been inserted into the scene?
+    bool gpuResident  = false;  // has glRepPoints been inserted into the scene?
+    bool subtreeShown = false;  // any rep cloud visible in this subtree?
+    bool wasDescended = false;  // descended last frame (for LOD hysteresis)
 
     bool isLeaf() const
     {
@@ -69,13 +72,12 @@ class LODTree
    public:
     struct BuildParams
     {
-        // Cap on rep-cloud size at any node (leaf or inner).  Keeping leaves
-        // and inner nodes at the same point-count cap avoids the per-level
-        // density jump that produces visible "blocky" rendering when the
-        // budget forces a coarser ancestor to replace a leaf.
-        size_t   leafPointTarget  = 16000;  // stop splitting when count <= this
+        // Additive scheme: each inner node keeps pointsPerNode points sampled
+        // uniformly from its cell and pushes the rest down to its octants.
+        // Leaves keep everything that reaches them.
+        size_t   leafPointTarget  = 32000;  // stop splitting when count <= this
         uint32_t maxDepth         = 12;
-        size_t   pointsPerNode    = 16000;  // rep-set size for inner nodes
+        size_t   pointsPerNode    = 16000;  // points OWNED per inner node
         bool     useParallelBuild = true;  // TBB if available
     };
 
