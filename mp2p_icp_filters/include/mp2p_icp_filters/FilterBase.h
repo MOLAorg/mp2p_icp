@@ -88,6 +88,12 @@ class FilterBase : public mrpt::rtti::CObject,  // RTTI support
      *  This is loaded from the `name` key in the YAML configuration block.
      */
     std::string name;
+
+    /** If false, the filter is skipped in apply_filter_pipeline().
+     *  Loaded from the `enabled` key in the YAML params block (default: true).
+     *  Compatible with mola_yaml `${ENV_VAR|1}` expressions for env-based toggling.
+     */
+    bool enabled = true;
 };
 
 /** A sequence of filters */

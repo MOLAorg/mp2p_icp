@@ -32,12 +32,11 @@
 using namespace mp2p_icp_filters;
 
 // Helper: count output points in shells between r_min and r_max
-static size_t count_in_shell(
-    const mrpt::maps::CPointsMap& pc, float r_min, float r_max)
+static size_t count_in_shell(const mrpt::maps::CPointsMap& pc, float r_min, float r_max)
 {
-    const auto& xs = pc.getPointsBufferRef_x();
-    const auto& ys = pc.getPointsBufferRef_y();
-    const auto& zs = pc.getPointsBufferRef_z();
+    const auto& xs    = pc.getPointsBufferRef_x();
+    const auto& ys    = pc.getPointsBufferRef_y();
+    const auto& zs    = pc.getPointsBufferRef_z();
     size_t      count = 0;
     for (size_t i = 0; i < xs.size(); i++)
     {
@@ -75,15 +74,12 @@ static void test_near_denser_than_far()
 
             // Near shell
             pc->insertPointFast(
-                r_near * cosEl * std::cos(az),
-                r_near * cosEl * std::sin(az),
+                r_near * cosEl * std::cos(az), r_near * cosEl * std::sin(az),
                 r_near * std::sin(el));
 
             // Far shell
             pc->insertPointFast(
-                r_far * cosEl * std::cos(az),
-                r_far * cosEl * std::sin(az),
-                r_far * std::sin(el));
+                r_far * cosEl * std::cos(az), r_far * cosEl * std::sin(az), r_far * std::sin(el));
         }
     }
 
@@ -96,7 +92,7 @@ static void test_near_denser_than_far()
     mrpt::containers::yaml      p;
     p["input_pointcloud_layer"]  = "raw";
     p["output_pointcloud_layer"] = "out";
-    p["vertical_fov_rad"]        = 1.0;   // ~57 deg
+    p["vertical_fov_rad"]        = 1.0;  // ~57 deg
     p["num_scan_lines"]          = 64;
     p["bin_width"]               = 1.0;
     p["min_voxel_size"]          = 0.01;
@@ -117,8 +113,8 @@ static void test_near_denser_than_far()
 
     std::cout << "Near shell (r=" << r_near << "m): " << near_count
               << " pts, density=" << near_density << "\n";
-    std::cout << "Far  shell (r=" << r_far << "m): " << far_count
-              << " pts, density=" << far_density << "\n";
+    std::cout << "Far  shell (r=" << r_far << "m): " << far_count << " pts, density=" << far_density
+              << "\n";
 
     // Near voxel size = bin_i * fov / (lines-1) with bin_i ~5 => v ~ 5*1.0/63 = 0.079 m
     // Far  voxel size => bin_i ~20 => v ~ 20*1.0/63 = 0.317 m
@@ -166,8 +162,8 @@ static void test_auto_derive_from_ring()
     mrpt::containers::yaml      p;
     p["input_pointcloud_layer"]  = "raw";
     p["output_pointcloud_layer"] = "out";
-    p["vertical_fov_rad"]        = 0;   // auto
-    p["num_scan_lines"]          = 0;   // auto
+    p["vertical_fov_rad"]        = 0;  // auto
+    p["num_scan_lines"]          = 0;  // auto
     p["bin_width"]               = 1.0;
     p["min_voxel_size"]          = 0.01;
     p["max_voxel_size"]          = 5.0;
@@ -195,8 +191,7 @@ static void test_output_never_exceeds_input()
     for (int i = 0; i < 5000; i++)
     {
         pc->insertPointFast(
-            static_cast<float>(i % 70) * 0.15f,
-            static_cast<float>((i / 70) % 70) * 0.15f,
+            static_cast<float>(i % 70) * 0.15f, static_cast<float>((i / 70) % 70) * 0.15f,
             static_cast<float>(i % 20) * 0.5f);
     }
 
@@ -224,6 +219,68 @@ static void test_output_never_exceeds_input()
     std::cout << "[Test Passed] Output never exceeds input\n";
 }
 
+// Test 4: min_input_points_per_voxel drops sparse voxels
+static void test_min_input_points_per_voxel()
+{
+    // Build a cloud with two regions:
+    //   - "dense" zone: many points packed into the same voxels at ~5 m range
+    //   - "sparse" zone: one point per voxel at ~15 m range
+    // With min_input_points_per_voxel=10, the sparse zone should be dropped.
+    auto pc = mrpt::maps::CSimplePointsMap::Create();
+
+    // Dense zone: 20x20 grid of points, 3 cm spacing => ~400 points, all map to
+    // the same voxel neighbourhood at 5 m (voxel ~ 5*1.0/63 ~ 0.08 m, so many
+    // of these will share a voxel).
+    for (int ia = 0; ia < 20; ia++)
+    {
+        for (int ib = 0; ib < 20; ib++)
+        {
+            pc->insertPointFast(
+                5.0f + ia * 0.01f,  // tightly clustered in x
+                ib * 0.01f,  // tight y spread
+                0.0f);
+        }
+    }
+
+    // Sparse zone: 1 isolated point per voxel at 15 m, spread far apart so each
+    // ends up in its own voxel.
+    for (int i = 0; i < 30; i++)
+    {
+        pc->insertPointFast(15.0f + i * 1.0f, 0.0f, 0.0f);
+    }
+
+    mp2p_icp::metric_map_t map;
+    map.layers["raw"] = pc;
+
+    FilterDecimateRangeAdaptive filter;
+    mrpt::containers::yaml      p;
+    p["input_pointcloud_layer"]     = "raw";
+    p["output_pointcloud_layer"]    = "out";
+    p["vertical_fov_rad"]           = 1.0;
+    p["num_scan_lines"]             = 64;
+    p["bin_width"]                  = 1.0;
+    p["min_voxel_size"]             = 0.05;
+    p["max_voxel_size"]             = 5.0;
+    p["min_input_points_per_voxel"] = 10u;
+
+    filter.initialize(p);
+    filter.filter(map);
+
+    auto outPtr = map.layer<mrpt::maps::CPointsMap>("out");
+    ASSERT_(outPtr);
+
+    const size_t dense_out  = count_in_shell(*outPtr, 4.0f, 6.0f);
+    const size_t sparse_out = count_in_shell(*outPtr, 14.0f, 50.0f);
+
+    std::cout << "min_input_points_per_voxel=10 test: dense_out=" << dense_out
+              << " sparse_out=" << sparse_out << "\n";
+
+    ASSERTMSG_(dense_out > 0, "Dense zone must produce output points");
+    ASSERTMSG_(sparse_out == 0, "Sparse zone (1 pt/voxel) must be fully suppressed");
+
+    std::cout << "[Test Passed] min_input_points_per_voxel filters sparse voxels\n";
+}
+
 int main()
 {
     try
@@ -231,6 +288,7 @@ int main()
         test_near_denser_than_far();
         test_auto_derive_from_ring();
         test_output_never_exceeds_input();
+        test_min_input_points_per_voxel();
 
         std::cout << "\nAll FilterDecimateRangeAdaptive tests passed!\n";
     }
