@@ -207,6 +207,17 @@ Tests use gtest. Each filter, matcher, solver, and serializer has its own test f
 
 ---
 
+## Update rules
+
+- Use American spelling, do not use en/em dashes, don't sign commits as an AI agent.
+- Honor clang-format-14 and clang-tidy; in particular, don't declare multiple variables 
+  in the same line, prefer "if (x) {\n ...;\n }" to single line statements.
+- If you update or create a new `mp2p_icp_filters` class, keep it in synch with `docs/source/mp2p_icp_filters.rst` and 
+  with `~/code/mp2p-pipeline-editor-sources` if it exists (read its `README.md` file).
+
+
+---
+
 ## Related MOLA packages (same workspace)
 
 - `mola_state_estimation/mola_georeferencing` — `mola-mm-add-geodetic` tool that adds per-point lat/lon/alt double fields to .mm layers (prerequisite for mm2las geodetic fast path)
