@@ -30,8 +30,9 @@ namespace mp2p_icp_filters
 {
 /** Range-adaptive voxel decimation following EllipseLIO (arXiv:2605.21150, Eqs. 1-3).
  *
- * The input cloud is split into 1-m-wide radial bins. Within bin `i` (points
- * in [i, i+1) m), the voxel size is set to the scan-line separation at that
+ * The input cloud is split into configurable-width radial bins (see
+ * `bin_width`). Within bin `i` (points in [i*bin_width, (i+1)*bin_width) m),
+ * the voxel size is set to the scan-line separation at that
  * range:
  *
  *   v_i = (i+1) * vertical_fov_rad / (num_scan_lines - 1)

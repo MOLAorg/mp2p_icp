@@ -20,10 +20,13 @@
  */
 
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/FilterBoundingBox.h>
 #include <mp2p_icp_filters/FilterByIntensity.h>
 #include <mp2p_icp_filters/FilterMLS.h>
+#include <mp2p_icp_filters/FilterRenameLayer.h>
 #include <mrpt/maps/CGenericPointsMap.h>
+#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/TPlane.h>
 #include <mrpt/math/ops_containers.h>
 #include <mrpt/system/filesystem.h>
@@ -620,6 +623,108 @@ void test_FilterMLS_DistinctCloudProjection()
     std::cout << "Success ✅ (avg z: " << avg_z << ")" << std::endl;
 }
 
+// ---------------------------------------------------------------------------
+// Tests for FilterBase::enabled
+// ---------------------------------------------------------------------------
+
+// Helper: create a map with a "raw" layer of N points
+mp2p_icp::metric_map_t makeMapWithNPoints(size_t n)
+{
+    auto pc = mrpt::maps::CSimplePointsMap::Create();
+    for (size_t i = 0; i < n; i++)
+    {
+        pc->insertPointFast(static_cast<float>(i), 0.0f, 0.0f);
+    }
+    mp2p_icp::metric_map_t m;
+    m.layers["raw"] = pc;
+    return m;
+}
+
+void test_FilterBase_enabled_bool_true()
+{
+    // A filter with enabled: true (default) must run
+    auto map = makeMapWithNPoints(10);
+
+    FilterBase::Ptr        f = std::make_shared<FilterRenameLayer>();
+    mrpt::containers::yaml p;
+    p["input_layer"]  = "raw";
+    p["output_layer"] = "renamed";
+    p["enabled"]      = true;
+    f->initialize(p);
+
+    ASSERT_(f->enabled);
+
+    mp2p_icp_filters::FilterPipeline pipeline = {f};
+    mp2p_icp_filters::apply_filter_pipeline(pipeline, map);
+
+    ASSERTMSG_(map.layers.count("renamed") != 0, "Enabled filter must have produced output layer");
+    std::cout << "[test_FilterBase_enabled_bool_true] Passed\n";
+}
+
+void test_FilterBase_enabled_bool_false()
+{
+    // A filter with enabled: false must be skipped
+    auto map = makeMapWithNPoints(10);
+
+    FilterBase::Ptr        f = std::make_shared<FilterRenameLayer>();
+    mrpt::containers::yaml p;
+    p["input_layer"]  = "raw";
+    p["output_layer"] = "renamed";
+    p["enabled"]      = false;
+    f->initialize(p);
+
+    ASSERT_(!f->enabled);
+
+    mp2p_icp_filters::FilterPipeline pipeline = {f};
+    mp2p_icp_filters::apply_filter_pipeline(pipeline, map);
+
+    ASSERTMSG_(
+        map.layers.count("renamed") == 0, "Disabled filter must NOT have produced output layer");
+    std::cout << "[test_FilterBase_enabled_bool_false] Passed\n";
+}
+
+void test_FilterBase_enabled_string_zero()
+{
+    // enabled: "0" must disable the filter (for mola_yaml ${ENV_VAR|1} pattern)
+    auto map = makeMapWithNPoints(10);
+
+    FilterBase::Ptr        f = std::make_shared<FilterRenameLayer>();
+    mrpt::containers::yaml p;
+    p["input_layer"]  = "raw";
+    p["output_layer"] = "renamed";
+    p["enabled"]      = "0";  // string "0" from ${ENV_VAR|0}
+    f->initialize(p);
+
+    ASSERT_(!f->enabled);
+
+    mp2p_icp_filters::FilterPipeline pipeline = {f};
+    mp2p_icp_filters::apply_filter_pipeline(pipeline, map);
+
+    ASSERTMSG_(map.layers.count("renamed") == 0, "enabled='0' must disable the filter");
+    std::cout << "[test_FilterBase_enabled_string_zero] Passed\n";
+}
+
+void test_FilterBase_enabled_string_one()
+{
+    // enabled: "1" must keep the filter active
+    auto map = makeMapWithNPoints(10);
+
+    FilterBase::Ptr        f = std::make_shared<FilterRenameLayer>();
+    mrpt::containers::yaml p;
+    p["input_layer"]  = "raw";
+    p["output_layer"] = "renamed";
+    p["enabled"]      = "1";  // string "1" from ${ENV_VAR|1}
+    f->initialize(p);
+
+    ASSERT_(f->enabled);
+
+    mp2p_icp_filters::FilterPipeline pipeline = {f};
+    mp2p_icp_filters::apply_filter_pipeline(pipeline, map);
+
+    ASSERTMSG_(map.layers.count("renamed") != 0, "enabled='1' must keep the filter active");
+    std::cout << "[test_FilterBase_enabled_string_one] Passed\n";
+}
+
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -637,6 +742,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             test_FilterMLS_PlanarCloud,
             test_FilterMLS_QuadraticSurface,
             test_FilterMLS_DistinctCloudProjection,
+            test_FilterBase_enabled_bool_true,
+            test_FilterBase_enabled_bool_false,
+            test_FilterBase_enabled_string_zero,
+            test_FilterBase_enabled_string_one,
         };
 
         int failures = 0;

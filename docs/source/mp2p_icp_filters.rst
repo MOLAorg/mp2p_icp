@@ -5,10 +5,41 @@
 Point cloud **Filters** in ``mp2p_icp`` are used to modify or extract part of the information from an input point cloud.
 This can involve tasks like removing noise, downsampling, segmenting points into different layers based on properties
 (like intensity or curvature), or adjusting per-point attributes (like timestamps or intensity).
-All filters inherit from :cpp:class:`mp2p_icp_filters::FilterBase` and can be configured either programmatically 
+All filters inherit from :cpp:class:`mp2p_icp_filters::FilterBase` and can be configured either programmatically
 or via a YAML file using the **filter pipeline** API, e.g.
-:cpp:class:`mp2p_icp_filters::filter_pipeline_from_yaml()` 
+:cpp:class:`mp2p_icp_filters::filter_pipeline_from_yaml()`
 or :cpp:class:`mp2p_icp_filters::filter_pipeline_from_yaml_file()`.
+
+**Common parameters** (available on every filter):
+
+* **name** (:cpp:type:`std::string`, optional): A custom name for the filter, used in log output and profiler entries.
+
+* **enabled** (:cpp:type:`bool`, default: ``true``): When ``false``, the filter is silently skipped in
+  :cpp:func:`mp2p_icp_filters::apply_filter_pipeline`. Accepts ``true``/``false`` YAML booleans and
+  string values ``"1"``/``"0"`` (so that ``mola_yaml`` ``${ENV_VAR|1}`` expressions work transparently
+  for environment-based toggling):
+
+  .. code-block:: yaml
+
+      # Export MOLA_RANGE_ADAPTIVE_FILTER=1 in the shell to activate the new filter and
+      # deactivate the old one. Default (unset): old uniform filter is active.
+      filters:
+        - class_name: mp2p_icp_filters::FilterDecimateRangeAdaptive
+          params:
+            enabled: '${MOLA_RANGE_ADAPTIVE_FILTER|0}'  # off by default; set to "1" to enable
+            input_pointcloud_layer: 'raw'
+            output_pointcloud_layer: 'decimated'
+            bin_width: 1.0
+            min_voxel_size: 0.05
+            max_voxel_size: 2.0
+
+        - class_name: mp2p_icp_filters::FilterDecimateVoxels
+          params:
+            enabled: '$(test "${MOLA_RANGE_ADAPTIVE_FILTER:-0}" = "1" && echo 0 || echo 1)'
+            input_pointcloud_layer: 'raw'
+            output_pointcloud_layer: 'decimated'
+            voxel_filter_resolution: 0.2
+            decimate_method: 'DecimateMethod::VoxelAverage'
 
 .. note::
 

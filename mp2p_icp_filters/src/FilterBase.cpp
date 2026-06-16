@@ -41,6 +41,30 @@ void FilterBase::initialize(const mrpt::containers::yaml& cfg_block)
     {
         mrpt::system::COutputLogger::setLoggerName(name);
     }
+
+    // Load the optional enabled flag (default: true).
+    // Accepts bool literals (true/false) and string "0"/"1" so that
+    // mola_yaml ${ENV_VAR|1} expansions work transparently.
+    if (cfg_block.has("enabled"))
+    {
+        const auto& ev = cfg_block["enabled"];
+        if (ev.isScalar())
+        {
+            const std::string vs = ev.as<std::string>();
+            if (vs == "0" || vs == "false" || vs == "False" || vs == "FALSE")
+            {
+                enabled = false;
+            }
+            else
+            {
+                enabled = true;
+            }
+        }
+        else
+        {
+            enabled = ev.as<bool>();
+        }
+    }
 }
 
 void mp2p_icp_filters::apply_filter_pipeline(
@@ -50,6 +74,11 @@ void mp2p_icp_filters::apply_filter_pipeline(
     for (const auto& f : filters)
     {
         ASSERT_(f.get() != nullptr);
+
+        if (!f->enabled)
+        {
+            continue;
+        }
 
         // Optional profiler:
         std::optional<mrpt::system::CTimeLoggerEntry> tle;

@@ -31,8 +31,9 @@
 #include <vector>
 
 #if defined(MP2P_HAS_TBB)
-#include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
+#include <tbb/parallel_for.h>
+
 #include <mutex>
 #endif
 
@@ -95,6 +96,11 @@ void FilterDecimateRangeAdaptive::initialize_filter(const mrpt::containers::yaml
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params.load_from_yaml(c);
 
+    ASSERTMSG_(params.bin_width > 0, "FilterDecimateRangeAdaptive: bin_width must be > 0.");
+    ASSERTMSG_(
+        params.min_voxel_size <= params.max_voxel_size,
+        "FilterDecimateRangeAdaptive: min_voxel_size must be <= max_voxel_size.");
+
     MRPT_END
 }
 
@@ -111,17 +117,17 @@ void FilterDecimateRangeAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         mrpt::format(
             "Input point cloud layer '%s' was not found.", params.input_pointcloud_layer.c_str()));
 
-    const auto& pc = *pcPtr;
-    const auto& xs = pc.getPointsBufferRef_x();
-    const auto& ys = pc.getPointsBufferRef_y();
-    const auto& zs = pc.getPointsBufferRef_z();
+    const auto&  pc = *pcPtr;
+    const auto&  xs = pc.getPointsBufferRef_x();
+    const auto&  ys = pc.getPointsBufferRef_y();
+    const auto&  zs = pc.getPointsBufferRef_z();
     const size_t N  = xs.size();
 
     // --- Auto-derive sensor geometry from ring channel ---
     const auto* ptrRing = pc.getPointsBufferRef_uint16_field("ring");
 
-    double       fov_rad    = params.vertical_fov_rad;
-    unsigned int num_lines  = params.num_scan_lines;
+    double       fov_rad   = params.vertical_fov_rad;
+    unsigned int num_lines = params.num_scan_lines;
 
     if (ptrRing && !ptrRing->empty() && ptrRing->size() == N)
     {
@@ -149,8 +155,14 @@ void FilterDecimateRangeAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
                 const double rxy = std::sqrt(
                     static_cast<double>(xs[i]) * xs[i] + static_cast<double>(ys[i]) * ys[i]);
                 const double el = std::atan2(static_cast<double>(zs[i]), rxy);
-                if (el < el_min) { el_min = el; }
-                if (el > el_max) { el_max = el; }
+                if (el < el_min)
+                {
+                    el_min = el;
+                }
+                if (el > el_max)
+                {
+                    el_max = el;
+                }
             }
             fov_rad = el_max - el_min;
         }
@@ -196,17 +208,22 @@ void FilterDecimateRangeAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     mp2p_icp::warn_on_field_padding_mismatch(pc, *outPc, *this);
 
     // --- Radial binning ---
-    const double   bin_w     = params.bin_width;
-    const double   theta     = fov_rad;
-    const double   beta_m1   = static_cast<double>(num_lines - 1u);
+    const double bin_w   = params.bin_width;
+    const double theta   = fov_rad;
+    const double beta_m1 = static_cast<double>(num_lines - 1u);
 
     // For each bin index, build a voxel hash of first-point indices.
     // Collect bin indices needed:
     const size_t num_bins =
         (max_r <= 0) ? 1u : (static_cast<size_t>(std::ceil(max_r / bin_w)) + 1u);
 
-    // Per-bin voxel maps: bin_idx -> (VoxelKey -> first_point_index)
-    std::vector<std::unordered_map<VoxelKey, size_t, VoxelKeyHash>> bin_voxels(num_bins);
+    // Per-bin voxel maps: bin_idx -> (VoxelKey -> {count, first_point_index})
+    struct VoxelEntry
+    {
+        size_t count     = 0;
+        size_t first_idx = 0;
+    };
+    std::vector<std::unordered_map<VoxelKey, VoxelEntry, VoxelKeyHash>> bin_voxels(num_bins);
 
     for (size_t i = 0; i < N; i++)
     {
@@ -227,16 +244,18 @@ void FilterDecimateRangeAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         }
 
         // Eq. 1: v_i = (bin_i + 1) * theta / (beta - 1)
-        const double v_raw =
-            static_cast<double>(bin_i + 1u) * theta / beta_m1;
-        const double v = std::clamp(v_raw, params.min_voxel_size, params.max_voxel_size);
+        const double v_raw = static_cast<double>(bin_i + 1u) * theta / beta_m1;
+        const double v     = std::clamp(v_raw, params.min_voxel_size, params.max_voxel_size);
 
         const int32_t cx = static_cast<int32_t>(std::floor(x / v));
         const int32_t cy = static_cast<int32_t>(std::floor(y / v));
         const int32_t cz = static_cast<int32_t>(std::floor(z / v));
 
-        bin_voxels[bin_i].emplace(VoxelKey{cx, cy, cz}, i);
-        // emplace does nothing if key already exists — keeps first point
+        auto [it, inserted] = bin_voxels[bin_i].emplace(VoxelKey{cx, cy, cz}, VoxelEntry{1, i});
+        if (!inserted)
+        {
+            it->second.count++;
+        }
     }
 
     // --- Collect survivors into output (Eq. 3: union of bin outputs) ---
@@ -245,7 +264,11 @@ void FilterDecimateRangeAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     {
         for (const auto& kv : vmap)
         {
-            outPc->insertPointFrom(kv.second, ctx);
+            if (kv.second.count < params.min_input_points_per_voxel)
+            {
+                continue;
+            }
+            outPc->insertPointFrom(kv.second.first_idx, ctx);
             total_voxels++;
         }
     }
@@ -253,9 +276,8 @@ void FilterDecimateRangeAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     outPc->mark_as_modified();
 
     MRPT_LOG_DEBUG_STREAM(
-        "Input=" << N << " output_voxels=" << total_voxels
-                 << " fov_rad=" << fov_rad << " num_lines=" << num_lines
-                 << " num_bins=" << num_bins);
+        "Input=" << N << " output_voxels=" << total_voxels << " fov_rad=" << fov_rad
+                 << " num_lines=" << num_lines << " num_bins=" << num_bins);
 
     MRPT_END
 }
