@@ -34,6 +34,7 @@
 #include <mp2p_icp_filters/FilterCurvature.h>
 #include <mp2p_icp_filters/FilterDecimate.h>
 #include <mp2p_icp_filters/FilterDecimateAdaptive.h>
+#include <mp2p_icp_filters/FilterDecimateRangeAdaptive.h>
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
 #include <mp2p_icp_filters/FilterDeleteLayer.h>
 #include <mp2p_icp_filters/FilterDeskew.h>
@@ -77,6 +78,7 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::FilterCurvature));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterDecimate));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterDecimateAdaptive));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterDecimateRangeAdaptive));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterDecimateVoxels));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterDeleteLayer));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterDeskew));

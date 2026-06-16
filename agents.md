@@ -150,7 +150,7 @@ filters:
       range_max: 50.0
 ```
 
-Key filter categories: decimation, outlier removal, range/ring/intensity gating, deskew, edge/plane extraction, layer management.
+Key filter categories: decimation (including range-adaptive EllipseLIO-style), outlier removal, range/ring/intensity gating, deskew, edge/plane extraction, layer management.
 
 ---
 

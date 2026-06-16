@@ -404,6 +404,72 @@ Filter: `FilterDecimateAdaptive`
 
 ---
 
+Filter: `FilterDecimateRangeAdaptive`
+--------------------------------------
+
+**Description**: Range-adaptive voxel decimation following EllipseLIO (arXiv:2605.21150, Eqs. 1-3).
+The input cloud is split into radial bins of width ``bin_width`` meters. Within bin ``i`` (points
+at distance ``[i, i+1) * bin_width`` from the sensor), the voxel size is set to the estimated
+scan-line separation at that range:
+
+.. math::
+
+   v_i = \mathrm{clamp}\!\left(\frac{(i+1)\cdot\theta}{\beta-1},\; v_{\min},\; v_{\max}\right)
+
+where :math:`\theta` is the vertical field-of-view (rad) and :math:`\beta` is the number of scan
+lines.  Each bin is independently voxelised (first point per voxel), and the outputs are unioned.
+
+Effect: near surfaces are kept at high density while distant points are aggressively decimated,
+retaining geometric fidelity across scale and preventing divergence of ICP on large-scale scenes.
+
+**Auto-derivation**: When ``vertical_fov_rad`` or ``num_scan_lines`` are set to 0, they are
+automatically estimated from the ``ring`` channel of the input cloud (if present).  This lets a
+single YAML config work across heterogeneous LiDAR sensors without retuning.
+
+**Parameters**:
+
+* **input\_pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): Input point cloud layer.
+
+* **output\_pointcloud\_layer** (:cpp:type:`std::string`): Output layer for the decimated cloud.
+
+* **vertical\_fov\_rad** (:cpp:type:`double`, default: `0`): LiDAR vertical field-of-view in
+  radians. If 0, auto-derived from the elevation spread of points carrying a ``ring`` channel.
+
+* **num\_scan\_lines** (:cpp:type:`unsigned int`, default: `0`): Number of scan lines (rings).
+  If 0, auto-derived as ``max(ring_id) + 1`` from the cloud's ring channel.
+
+* **bin\_width** (:cpp:type:`double`, default: `1.0`): Radial bin width in meters.
+
+* **max\_range** (:cpp:type:`double`, default: `0`): Maximum range (m). 0 means use the farthest
+  point in the cloud.
+
+* **min\_voxel\_size** (:cpp:type:`double`, default: `0.05`): Minimum voxel size clamp (m).
+
+* **max\_voxel\_size** (:cpp:type:`double`, default: `2.0`): Maximum voxel size clamp (m).
+
+* **min\_input\_points\_per\_voxel** (:cpp:type:`unsigned int`, default: `1`): Minimum number of
+  points a voxel must contain to produce an output point.
+
+* **parallelization\_grain\_size** (:cpp:type:`size\_t`, default: `16384`): TBB grain size.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterDecimateRangeAdaptive
+        params:
+          input_pointcloud_layer: 'raw'
+          output_pointcloud_layer: 'decimated'
+          vertical_fov_rad: 0        # auto from rings
+          num_scan_lines: 0          # auto from ring channel
+          bin_width: 1.0
+          min_voxel_size: 0.05
+          max_voxel_size: 2.0
+
+|
+
+---
+
 Filter: `FilterDecimateVoxels`
 ------------------------------
 
