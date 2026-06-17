@@ -27,23 +27,28 @@ generators:
       #process_sensor_labels_regex: '.*'
 
       metric_map_definition:
-        # Any class derived from mrpt::maps::CMetricMap https://docs.mrpt.org/reference/stable/group_mrpt_maps_grp.html
+        # Any class derived from mrpt::maps::CMetricMap https://docs.mrpt.org/reference/latest/group_mrpt_maps_grp.html
         class: mola::KeyframePointCloudMap
         plugin: "libmola_metric_maps.so" # Import additional custom user-defined map classes (search in LD_LIBRARY_PATH)
         creationOpts:
           max_search_keyframes: 3
-          k_correspondences_for_cov: 20
+          k_correspondences_for_cov: 10
+          min_correspondences_for_cov: 5
+          max_distance_for_cov: 1.0
+          use_view_direction_filter: false #true
+          max_view_angle_deg: 120
+          rotation_distance_weight: 2.0
+          num_diverse_keyframes: 1 # Must be < max_search_keyframes
         insertOpts:
           remove_frames_farther_than: 0 # [m]
         likelihoodOpts: ~ # none required
         renderOpts:
           color.A: 0.25 # [0,1] Use this alpha value for points, RGB from colormap
-          colormap: "cmHOT" # cmJET, cmHOT, cmGRAYSCALE
+          colormap: "cmJET" # cmJET, cmHOT, cmGRAYSCALE
           recolorByPointField: "intensity" # x,y,z,ring, intensity, ambient, etc.
           max_points_per_kf: 100000 # Max number of points to render per keyframe
           max_overall_points: 100000 # Max number of points to render overall (e.g. to avoid FoxGlove WS overflow)
           #point_size: 1.0  # superseded by visualization.local_map_point_size when run inside MOLA-LIO
-
 
 # --------------------------------------------------------
 # 2) Per local frame filtering
@@ -71,14 +76,13 @@ filters:
       # IMPORTANT: In the context of sm2mm, de-skew happens with points already in global coordinates
       # so we need the robot pose to correct points:
       points_already_global: true
-      robot_pose:
-        [robot_x, robot_y, robot_z, robot_yaw, robot_pitch, robot_roll]
+      robot_pose: [robot_x, robot_y, robot_z, robot_yaw, robot_pitch, robot_roll]
 
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       input_pointcloud_layer: "deskewed"
       output_pointcloud_layer: "decimated"
-      voxel_filter_resolution: 0.02 # [m]
+      voxel_filter_resolution: 0.04 # [m]
       decimate_method: DecimateMethod::FirstPoint
 
   - class_name: mp2p_icp_filters::FilterByRange
@@ -86,7 +90,7 @@ filters:
       input_pointcloud_layer: "decimated"
       output_layer_outside: "filtered"
       range_min: 0.0
-      range_max: 5.0
+      range_max: 3.0
       # Measure distances from the moving robot pose:
       center: [robot_x, robot_y, robot_z]
 
@@ -113,5 +117,4 @@ filters:
 # 3) Final, overall filter pipeline to apply to the whole metric map
 # -------------------------------------------------------------------
 #final_filters:
-
 
