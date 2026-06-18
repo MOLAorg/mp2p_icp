@@ -21,6 +21,7 @@
 #pragma once
 
 #include <mrpt/maps/CPointsMap.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/system/COutputLogger.h>
 
 #include <string>
@@ -50,5 +51,24 @@ namespace mp2p_icp
 bool warn_on_field_padding_mismatch(
     const mrpt::maps::CPointsMap& src, const mrpt::maps::CPointsMap& dst,
     const mrpt::system::COutputLogger& logger);
+
+/** Rotates the per-point view-direction unit vector fields
+ *  (`view_x`, `view_y`, `view_z`) of \a pts in place by the rotation part of
+ *  \a tf, leaving the point coordinates untouched.
+ *
+ *  This must be called whenever a point cloud carrying these fields is
+ *  re-expressed in a different frame of reference (e.g. via
+ *  `CPointsMap::insertAnotherMap()`), since that operation transforms the XYZ
+ *  coordinates but copies all other registered fields verbatim, which would
+ *  otherwise leave the view vectors expressed in the wrong frame.
+ *
+ *  If \a pts does not have all three fields, or \a tf is the identity
+ *  transformation, this is a no-op.
+ *
+ *  \param pts  Point cloud to modify in place.
+ *  \param tf   Transformation whose rotation part is applied to the view
+ *              vectors.
+ */
+void rotateViewDirectionFields(mrpt::maps::CPointsMap& pts, const mrpt::poses::CPose3D& tf);
 
 }  // namespace mp2p_icp

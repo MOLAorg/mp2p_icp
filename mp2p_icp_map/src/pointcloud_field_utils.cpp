@@ -96,3 +96,30 @@ bool mp2p_icp::warn_on_field_padding_mismatch(
 
     return any;
 }
+
+void mp2p_icp::rotateViewDirectionFields(
+    mrpt::maps::CPointsMap& pts, const mrpt::poses::CPose3D& tf)
+{
+    auto* vx = pts.getPointsBufferRef_float_field("view_x");
+    auto* vy = pts.getPointsBufferRef_float_field("view_y");
+    auto* vz = pts.getPointsBufferRef_float_field("view_z");
+
+    if (vx == nullptr || vy == nullptr || vz == nullptr)
+    {
+        return;
+    }
+
+    if (tf == mrpt::poses::CPose3D::Identity())
+    {
+        return;
+    }
+
+    const size_t n = pts.size();
+    for (size_t i = 0; i < n; i++)
+    {
+        const auto v = tf.rotateVector({(*vx)[i], (*vy)[i], (*vz)[i]}).cast<float>();
+        (*vx)[i]     = v.x;
+        (*vy)[i]     = v.y;
+        (*vz)[i]     = v.z;
+    }
+}
