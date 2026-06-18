@@ -19,6 +19,7 @@
  * @date   Jan 12, 2024
  */
 
+#include <mp2p_icp/pointcloud_field_utils.h>
 #include <mp2p_icp_filters/FilterMerge.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CSimplePointsMap.h>
@@ -103,14 +104,21 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
     // Copy the input layer here, as seen from the robot (hence the "-"):
     const auto robotPose = mrpt::poses::CPose3D(params.robot_pose);
 
+    // insertAnotherMap() transforms the point XYZ coordinates by the given
+    // pose, but copies all other registered fields verbatim. If the cloud
+    // carries view-direction unit vectors (view_x/y/z), those must be
+    // rotated too, or they will end up expressed in the wrong frame.
     if (params.input_layer_in_local_coordinates)
     {
-        pts->insertAnotherMap(pcPtr, mrpt::poses::CPose3D::Identity());
+        const auto appliedTf = mrpt::poses::CPose3D::Identity();
+        pts->insertAnotherMap(pcPtr, appliedTf);
+        mp2p_icp::rotateViewDirectionFields(*pts, appliedTf);
     }
     else
     {
         const auto invRobotPose = -robotPose;
         pts->insertAnotherMap(pcPtr, invRobotPose);
+        mp2p_icp::rotateViewDirectionFields(*pts, invRobotPose);
     }
 
     // Merge into map:
