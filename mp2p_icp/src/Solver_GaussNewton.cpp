@@ -36,6 +36,8 @@ void Solver_GaussNewton::initialize(const mrpt::containers::yaml& params)
 
     DECLARE_PARAMETER_OPT(params, robustKernelParam);
 
+    MCP_LOAD_OPT(params, robustKernelPriorRefBlend);
+
     if (params.has("pair_weights")) pairWeights.load_from(params["pair_weights"]);
 }
 
@@ -53,6 +55,7 @@ bool Solver_GaussNewton::impl_optimal_pose(
     gnParams.pairWeights            = pairWeights;
     gnParams.kernel                 = robustKernel;
     gnParams.kernelParam            = robustKernelParam;
+    gnParams.kernelPriorRefBlend    = robustKernelPriorRefBlend;
     gnParams.prior                  = sc.prior;
 
     ASSERT_(sc.guessRelativePose.has_value());

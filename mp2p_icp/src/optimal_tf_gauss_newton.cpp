@@ -50,6 +50,32 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     const robust_sqrt_weight_func_t robustSqrtWeightFunc =
         mp2p_icp::create_robust_kernel(gnParams.kernel, gnParams.kernelParam);
 
+    // Approach B: prior-referenced robust kernel.
+    // When enabled, the residual that feeds the robust kernel is blended between
+    // the current linearization point and the residual predicted at the prior
+    // mean pose, so factors that are inconsistent with the prior Gaussian get
+    // down-weighted regardless of the (possibly already corrupted) current
+    // iterate. Inert when no prior, no kernel, or blend==0.
+    const bool usePriorKernelRef = static_cast<bool>(robustSqrtWeightFunc) &&
+                                   gnParams.prior.has_value() && gnParams.kernelPriorRefBlend > 0;
+    const double               priorRefBlend = std::clamp(gnParams.kernelPriorRefBlend, 0.0, 1.0);
+    const mrpt::poses::CPose3D priorRefPose =
+        usePriorKernelRef ? gnParams.prior->mean : mrpt::poses::CPose3D::Identity();
+
+    // Returns the robust square-root weight multiplier for a factor, given its
+    // residual squared-norm at the current iterate and at the prior mean pose.
+    const auto robustWeight = [&](double curSqrNorm, double priorSqrNorm) -> double
+    {
+        if (!robustSqrtWeightFunc)
+        {
+            return 1.0;
+        }
+        const double arg = usePriorKernelRef
+                               ? (1.0 - priorRefBlend) * curSqrNorm + priorRefBlend * priorSqrNorm
+                               : curSqrNorm;
+        return robustSqrtWeightFunc(arg);
+    };
+
     const auto nPt2Pt   = in.paired_pt2pt.size();
     const auto nCov2Cov = in.paired_cov2cov.size();
     const auto nPt2Ln   = in.paired_pt2ln.size();
@@ -133,12 +159,16 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                         w.pt2pt = cur_point_block_weights->second;
                     }
 
-                    // Apply robust kernel?
+                    // Apply robust kernel? (optionally prior-referenced)
                     double weight = w.pt2pt, retSqrNorm = ret.asEigen().squaredNorm();
-                    if (robustSqrtWeightFunc)
+                    double priorSqrNorm = retSqrNorm;
+                    if (usePriorKernelRef)
                     {
-                        weight *= robustSqrtWeightFunc(retSqrNorm);
+                        priorSqrNorm = mp2p_icp::error_point2point(p.local, p.global, priorRefPose)
+                                           .asEigen()
+                                           .squaredNorm();
                     }
+                    weight *= robustWeight(retSqrNorm, priorSqrNorm);
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
@@ -178,12 +208,16 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 w.pt2pt = cur_point_block_weights->second;
             }
 
-            // Apply robust kernel?
+            // Apply robust kernel? (optionally prior-referenced)
             double weight = w.pt2pt, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
+            double priorSqrNorm = retSqrNorm;
+            if (usePriorKernelRef)
             {
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+                priorSqrNorm = mp2p_icp::error_point2point(p.local, p.global, priorRefPose)
+                                   .asEigen()
+                                   .squaredNorm();
             }
+            weight *= robustWeight(retSqrNorm, priorSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
@@ -224,14 +258,18 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
                     const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
 
-                    // Apply robust kernel?
+                    // Apply robust kernel? (optionally prior-referenced)
                     double weight     = 1.0;
                     double retSqrNorm = ret.transpose() * cov_inv * ret.asEigen();
 
-                    if (robustSqrtWeightFunc)
+                    double priorSqrNorm = retSqrNorm;
+                    if (usePriorKernelRef)
                     {
-                        weight *= robustSqrtWeightFunc(retSqrNorm);
+                        const auto pr =
+                            mp2p_icp::error_point2point(p.local, p.global, priorRefPose);
+                        priorSqrNorm = pr.transpose() * cov_inv * pr.asEigen();
                     }
+                    weight *= robustWeight(retSqrNorm, priorSqrNorm);
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
@@ -264,14 +302,17 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             const Eigen::Matrix3d cov_inv = p.cov_inv.asEigen().cast<double>();
 
-            // Apply robust kernel?
+            // Apply robust kernel? (optionally prior-referenced)
             double weight     = 1.0;
             double retSqrNorm = ret.transpose() * cov_inv * ret.asEigen();
 
-            if (robustSqrtWeightFunc)
+            double priorSqrNorm = retSqrNorm;
+            if (usePriorKernelRef)
             {
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+                const auto pr = mp2p_icp::error_point2point(p.local, p.global, priorRefPose);
+                priorSqrNorm  = pr.transpose() * cov_inv * pr.asEigen();
             }
+            weight *= robustWeight(retSqrNorm, priorSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
@@ -312,12 +353,14 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_point2line(p, result.optimalPose, J1);
 
-            // Apply robust kernel?
+            // Apply robust kernel? (optionally prior-referenced)
             double weight = w.pt2ln, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
+            double priorSqrNorm = retSqrNorm;
+            if (usePriorKernelRef)
             {
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+                priorSqrNorm = mp2p_icp::error_point2line(p, priorRefPose).asEigen().squaredNorm();
             }
+            weight *= robustWeight(retSqrNorm, priorSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
@@ -339,12 +382,14 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CVectorFixedDouble<4>       ret =
                 mp2p_icp::error_line2line(p, result.optimalPose, J1);
 
-            // Apply robust kernel?
+            // Apply robust kernel? (optionally prior-referenced)
             double weight = w.ln2ln, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
+            double priorSqrNorm = retSqrNorm;
+            if (usePriorKernelRef)
             {
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+                priorSqrNorm = mp2p_icp::error_line2line(p, priorRefPose).asEigen().squaredNorm();
             }
+            weight *= robustWeight(retSqrNorm, priorSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector4d err_i = ret.asEigen();
@@ -376,12 +421,15 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     mrpt::math::CVectorFixedDouble<3>       ret =
                         mp2p_icp::error_point2plane(p, result.optimalPose, J1);
 
-                    // Apply robust kernel?
+                    // Apply robust kernel? (optionally prior-referenced)
                     double weight = w.pt2pl, retSqrNorm = ret.asEigen().squaredNorm();
-                    if (robustSqrtWeightFunc)
+                    double priorSqrNorm = retSqrNorm;
+                    if (usePriorKernelRef)
                     {
-                        weight *= robustSqrtWeightFunc(retSqrNorm);
+                        priorSqrNorm =
+                            mp2p_icp::error_point2plane(p, priorRefPose).asEigen().squaredNorm();
                     }
+                    weight *= robustWeight(retSqrNorm, priorSqrNorm);
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
@@ -409,12 +457,14 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_point2plane(p, result.optimalPose, J1);
 
-            // Apply robust kernel?
+            // Apply robust kernel? (optionally prior-referenced)
             double weight = w.pt2pl, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
+            double priorSqrNorm = retSqrNorm;
+            if (usePriorKernelRef)
             {
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+                priorSqrNorm = mp2p_icp::error_point2plane(p, priorRefPose).asEigen().squaredNorm();
             }
+            weight *= robustWeight(retSqrNorm, priorSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
@@ -436,12 +486,14 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_plane2plane(p, result.optimalPose, J1);
 
-            // Apply robust kernel?
+            // Apply robust kernel? (optionally prior-referenced)
             double weight = w.pl2pl, retSqrNorm = ret.asEigen().squaredNorm();
-            if (robustSqrtWeightFunc)
+            double priorSqrNorm = retSqrNorm;
+            if (usePriorKernelRef)
             {
-                weight *= robustSqrtWeightFunc(retSqrNorm);
+                priorSqrNorm = mp2p_icp::error_plane2plane(p, priorRefPose).asEigen().squaredNorm();
             }
+            weight *= robustWeight(retSqrNorm, priorSqrNorm);
 
             const Eigen::Vector3d err_i = ret.asEigen();
             errNormSqr += weight * retSqrNorm;
