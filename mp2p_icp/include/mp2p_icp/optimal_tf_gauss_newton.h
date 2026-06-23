@@ -58,6 +58,21 @@ struct OptimalTF_GN_Parameters
     RobustKernel kernel      = RobustKernel::None;
     double       kernelParam = 1.0;
 
+    /** Reference used to evaluate the residual that feeds the robust kernel,
+     *  blended between the current linearization point (β=0) and the residual
+     *  predicted at the prior mean pose (β=1):
+     *
+     *    refSqrNorm = (1-β)·‖r_i(x)‖² + β·‖r_i(prior.mean)‖²
+     *
+     *  β=0 (default) reproduces the classic behavior, where a factor is judged
+     *  only by how much it diverges from the *current* iterate. With β>0 each
+     *  factor is (partially) judged by how much it diverges from the prior
+     *  Gaussian, so correspondences inconsistent with the prior are
+     *  down-weighted even if they look fine at a (possibly already corrupted)
+     *  current iterate. Has no effect when no prior is given, no robust kernel
+     *  is selected, or β=0. Range: [0,1]. */
+    double kernelPriorRefBlend = 0.0;
+
     /** Generalized (tempered) Bayesian scaling for the cov-to-cov data block:
      *  the cov2cov contribution to H and g is multiplied by `cov2cov_alpha`.
      *  α=1 keeps the standard MAP cost; α<1 down-weights the data likelihood

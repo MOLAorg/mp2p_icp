@@ -42,6 +42,11 @@ class Solver_GaussNewton : public Solver
     double       robustKernelParam = 1.0;
     bool         innerLoopVerbose  = false;  //!< Prints GN inner loop details
 
+    /** Blend [0,1] for the robust kernel residual reference between the current
+     *  linearization point (0, default) and the prior mean pose (1). See
+     *  OptimalTF_GN_Parameters::kernelPriorRefBlend. */
+    double robustKernelPriorRefBlend = 0.0;
+
     void initialize(const mrpt::containers::yaml& params) override;
 
    protected:
