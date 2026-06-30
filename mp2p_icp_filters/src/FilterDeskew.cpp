@@ -550,8 +550,31 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
                     }
                 }
 
-                reconstructed_trajectory =
-                    mola::imu::trajectory_from_buffer(sample_history, imu_params, use_higher_order);
+                // Defense-in-depth: trajectory_from_buffer() reports insufficient
+                // sensor data by returning an empty trajectory, which is handled
+                // gracefully below. Catch any other unexpected exception too and
+                // funnel it into the same skip path, so a transient integration
+                // failure never crashes the whole pipeline.
+                try
+                {
+                    reconstructed_trajectory = mola::imu::trajectory_from_buffer(
+                        sample_history, imu_params, use_higher_order);
+                }
+                catch (const std::exception& e)
+                {
+                    reconstructed_trajectory.clear();
+
+                    thread_local double last_warning_t = 0;
+                    const auto          tNow           = mrpt::Clock::nowDouble();
+                    if (tNow - last_warning_t > 5.0)
+                    {
+                        last_warning_t = tNow;
+                        MRPT_LOG_WARN_STREAM(
+                            "Exception while reconstructing trajectory for deskew; "
+                            "skipping deskew for this scan. Details: "
+                            << e.what());
+                    }
+                }
             }
 
 #if 0  // For *really* in-depth debugging
