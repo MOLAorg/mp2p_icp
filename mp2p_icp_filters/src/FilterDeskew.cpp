@@ -503,6 +503,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     const mrpt::math::TTwist3D* constant_twist = nullptr;
 
+    // Set if trajectory reconstruction threw: used below to avoid emitting a
+    // second, misleading "empty buffer" warning for the same failure.
+    bool trajectory_reconstruction_failed = false;
+
     switch (method)
     {
         case MotionCompensationMethod::IMU:
@@ -550,8 +554,32 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
                     }
                 }
 
-                reconstructed_trajectory =
-                    mola::imu::trajectory_from_buffer(sample_history, imu_params, use_higher_order);
+                // Defense-in-depth: trajectory_from_buffer() reports insufficient
+                // sensor data by returning an empty trajectory, which is handled
+                // gracefully below. Catch any other unexpected exception too and
+                // funnel it into the same skip path, so a transient integration
+                // failure never crashes the whole pipeline.
+                try
+                {
+                    reconstructed_trajectory = mola::imu::trajectory_from_buffer(
+                        sample_history, imu_params, use_higher_order);
+                }
+                catch (const std::exception& e)
+                {
+                    trajectory_reconstruction_failed = true;
+                    reconstructed_trajectory.clear();
+
+                    thread_local double last_warning_t = 0;
+                    const auto          tNow           = mrpt::Clock::nowDouble();
+                    if (tNow - last_warning_t > 5.0)
+                    {
+                        last_warning_t = tNow;
+                        MRPT_LOG_WARN_STREAM(
+                            "Exception while reconstructing trajectory for deskew; "
+                            "skipping deskew for this scan. Details: "
+                            << e.what());
+                    }
+                }
             }
 
 #if 0  // For *really* in-depth debugging
@@ -600,15 +628,21 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     if (needsTrajectory && reconstructed_trajectory.empty())
     {
-        thread_local double last_warning_t = 0;
-        const auto          tNow           = mrpt::Clock::nowDouble();
-        if (tNow - last_warning_t > 5.0)
+        // Skip this warning if reconstruction threw: the catch above already
+        // logged the actual cause, and blaming an empty buffer here would be
+        // misleading.
+        if (!trajectory_reconstruction_failed)
         {
-            last_warning_t = tNow;
-            MRPT_LOG_WARN_STREAM(
-                "Local velocity buffer is empty (likely a transient sensor "
-                "data gap); skipping deskew for this scan. Points will be "
-                "passed through uncorrected.");
+            thread_local double last_warning_t = 0;
+            const auto          tNow           = mrpt::Clock::nowDouble();
+            if (tNow - last_warning_t > 5.0)
+            {
+                last_warning_t = tNow;
+                MRPT_LOG_WARN_STREAM(
+                    "Local velocity buffer is empty (likely a transient sensor "
+                    "data gap); skipping deskew for this scan. Points will be "
+                    "passed through uncorrected.");
+            }
         }
 
         if (!in_place)
