@@ -503,6 +503,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     const mrpt::math::TTwist3D* constant_twist = nullptr;
 
+    // Set if trajectory reconstruction threw: used below to avoid emitting a
+    // second, misleading "empty buffer" warning for the same failure.
+    bool trajectory_reconstruction_failed = false;
+
     switch (method)
     {
         case MotionCompensationMethod::IMU:
@@ -562,6 +566,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
                 }
                 catch (const std::exception& e)
                 {
+                    trajectory_reconstruction_failed = true;
                     reconstructed_trajectory.clear();
 
                     thread_local double last_warning_t = 0;
@@ -623,15 +628,21 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     if (needsTrajectory && reconstructed_trajectory.empty())
     {
-        thread_local double last_warning_t = 0;
-        const auto          tNow           = mrpt::Clock::nowDouble();
-        if (tNow - last_warning_t > 5.0)
+        // Skip this warning if reconstruction threw: the catch above already
+        // logged the actual cause, and blaming an empty buffer here would be
+        // misleading.
+        if (!trajectory_reconstruction_failed)
         {
-            last_warning_t = tNow;
-            MRPT_LOG_WARN_STREAM(
-                "Local velocity buffer is empty (likely a transient sensor "
-                "data gap); skipping deskew for this scan. Points will be "
-                "passed through uncorrected.");
+            thread_local double last_warning_t = 0;
+            const auto          tNow           = mrpt::Clock::nowDouble();
+            if (tNow - last_warning_t > 5.0)
+            {
+                last_warning_t = tNow;
+                MRPT_LOG_WARN_STREAM(
+                    "Local velocity buffer is empty (likely a transient sensor "
+                    "data gap); skipping deskew for this scan. Points will be "
+                    "passed through uncorrected.");
+            }
         }
 
         if (!in_place)
