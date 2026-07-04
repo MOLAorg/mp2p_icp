@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.11.0 (2026-07-04)
+-------------------
 * Merge pull request `#72 <https://github.com/MOLAorg/mp2p_icp/issues/72>`_ from MOLAorg/fix/filterdeskew-graceful-imu-anchor
   fix(FilterDeskew): never let IMU trajectory errors crash the pipeline
 * Merge pull request `#71 <https://github.com/MOLAorg/mp2p_icp/issues/71>`_ from MOLAorg/feat/prior-referenced-robust-kernel
