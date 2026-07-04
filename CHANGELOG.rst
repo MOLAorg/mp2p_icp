@@ -2,6 +2,26 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#72 <https://github.com/MOLAorg/mp2p_icp/issues/72>`_ from MOLAorg/fix/filterdeskew-graceful-imu-anchor
+  fix(FilterDeskew): never let IMU trajectory errors crash the pipeline
+* Merge pull request `#71 <https://github.com/MOLAorg/mp2p_icp/issues/71>`_ from MOLAorg/feat/prior-referenced-robust-kernel
+  Prior-referenced robust kernel for the Gauss-Newton solver
+* Merge pull request `#70 <https://github.com/MOLAorg/mp2p_icp/issues/70>`_ from MOLAorg/fix/filtermerge-view-vector-rotation
+  Fix view-direction vector frame mismatch in FilterMerge
+* chore: demo sm2mm files updated for LIO localization maps
+* demos: add sm2mm_pointcloud_voxelize_merged_keyframe_map.yaml
+* Merge pull request `#69 <https://github.com/MOLAorg/mp2p_icp/issues/69>`_ from MOLAorg/feat/filter-decimate-range-adaptive
+  feat: FilterDecimateRangeAdaptive (EllipseLIO range-adaptive scan filter)
+* feat: add FilterBase::enabled for env-based pipeline toggling
+  Adds an `enabled` boolean field to FilterBase (default: true)
+* feat: add FilterDecimateRangeAdaptive (EllipseLIO range-adaptive scan filter)
+* Fix build status badge for ROS 2 Lyrical arm64
+* docs: add ROS 2 Lyrical badge row, update Rolling to Ubuntu 26.04 (resolute)
+* Merge pull request `#68 <https://github.com/MOLAorg/mp2p_icp/issues/68>`_ from MOLAorg/feature/filter-polygon-2d
+* Contributors: Jose Luis Blanco-Claraco
+
 2.10.3 (2026-05-24)
 -------------------
 * Merge pull request `#67 <https://github.com/MOLAorg/mp2p_icp/issues/67>`_ from MOLAorg/fix/deskew-empty-trajectory
