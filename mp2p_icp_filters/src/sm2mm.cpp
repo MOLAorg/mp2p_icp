@@ -202,11 +202,17 @@ void mp2p_icp_filters::simplemap_to_metricmap(
         }
 
         const size_t validCount = validIndices.size();
-        const size_t stride =
-            (validCount > maxCount) ? std::max<size_t>(1, validCount / maxCount) : 1;
+        const size_t numToPick  = std::min(validCount, maxCount);
 
-        for (size_t j = 0; j < validCount && kfsToProcess.size() < maxCount; j += stride)
+        // Evenly spread numToPick picks across the full [0, validCount) range
+        // (using a floating-point stride, not a truncated integer one) so the
+        // selection always reaches the end of the trajectory, regardless of
+        // whether validCount is an exact multiple of maxCount.
+        for (size_t k = 0; k < numToPick; ++k)
         {
+            const size_t j = (numToPick > 1)
+                                 ? (k * (validCount - 1) + (numToPick - 1) / 2) / (numToPick - 1)
+                                 : 0;
             kfsToProcess.push_back(validIndices[j]);
         }
     }
