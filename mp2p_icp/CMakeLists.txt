@@ -12,7 +12,9 @@ project(mp2p_icp NONE)
 if("$ENV{ROS_VERSION}" STREQUAL "1")
   find_package(catkin REQUIRED)
   catkin_metapackage()
+else()
+  # ROS2: this metapackage has no code of its own, but colcon expects an
+  # 'install' target to exist for "cmake" build_type packages; declare a
+  # no-op one to avoid a spurious colcon warning.
+  install(CODE "")
 endif()
-# ROS2: nothing to do here, this metapackage has no code of its own.
-# colcon registers plain "cmake" build_type packages (like this one and
-# mp2p_icp_core/mp2p_icp_viz) in the ament index without needing ament_cmake.

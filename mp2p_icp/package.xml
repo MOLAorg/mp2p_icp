@@ -18,13 +18,10 @@
 
   <url type="website">https://github.com/MOLAorg/mp2p_icp</url>
 
-  <build_depend>ros_environment</build_depend>  <!-- Required for ROS_VERSION -->
-
-  <buildtool_depend>cmake</buildtool_depend>
   <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
 
-  <depend>mp2p_icp_core</depend>
-  <depend>mp2p_icp_viz</depend>
+  <exec_depend>mp2p_icp_core</exec_depend>
+  <exec_depend>mp2p_icp_viz</exec_depend>
 
   <export>
     <metapackage/>

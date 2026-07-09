@@ -6,7 +6,7 @@ Quick-start reference for AI agents and new contributors.
 
 **mp2p_icp** (Multi Primitive-to-Primitive ICP) is a C++ library and CLI toolkit for point cloud registration and map building. It is part of the [MOLA](https://github.com/MOLAorg/mola) framework.
 
-- **Version**: 2.7.1 (March 2026)
+- **Version**: 2.11.0
 - **License**: BSD-3-Clause
 - **Maintainer**: Jose Luis Blanco-Claraco
 - **Minimum MRPT**: 2.15.4
