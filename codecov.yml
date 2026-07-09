@@ -1,8 +1,9 @@
 ignore:
-  - "3rdparty/"
-  - "apps/"
-  - "demos/"
-  - "tests/"
+  - "mp2p_icp_core/3rdparty/"
+  - "mp2p_icp_core/apps/"
+  - "mp2p_icp_core/demos/"
+  - "mp2p_icp_core/tests/"
+  - "mp2p_icp_viz/apps/"
 
 # Pull Request Comment Configuration (Optional)
 # This controls the comment that Codecov posts on your pull requests.
