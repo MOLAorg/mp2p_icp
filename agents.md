@@ -35,7 +35,7 @@ mp2p_icp/                    (repo root)
 │   └── scripts/                 # formatter.sh, etc.
 ├── mp2p_icp_viz/              # ROS package: GUI apps (mm-viewer, icp-log-viewer)
 │   └── apps/
-├── mp2p_icp/                  # metapackage (backward compat): depends on both above
+├── mp2p_icp/                  # metapackage (backward compat, build_type cmake, no code): depends on both above
 └── docs/                      # Sphinx documentation source
 ```
 
