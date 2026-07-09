@@ -453,13 +453,27 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     const auto* Ts = inPc->getPointsBufferRef_float_field("t");
 
-    // No timestamps available or deskewing disabled:
-    const bool noTimestamps   = !Ts || Ts->empty();
+    // A "t" field with all points sharing the exact same value (e.g. an
+    // idealized "flash" LiDAR simulator that captures the whole cloud at a
+    // single instant, such as MVSIM's Lidar3D) carries zero span: there is
+    // nothing to compensate for (every point really was captured at the same
+    // time), so treat it exactly like "no timestamps" below rather than
+    // falling through to the IMU/twist reconstruction path with a
+    // degenerate, zero-width time window (that path would need a *span* of
+    // per-point times to reconstruct a sub-scan trajectory, and a zero-width
+    // window is fragile to float/double rounding in the reference-time
+    // comparison, causing deskew to spuriously "fail" every single scan).
+    const bool hasZeroTimeSpan = Ts && !Ts->empty() &&
+                                 (*std::max_element(Ts->cbegin(), Ts->cend()) ==
+                                  *std::min_element(Ts->cbegin(), Ts->cend()));
+
+    // No (meaningful) timestamps available, or deskewing disabled:
+    const bool noTimestamps   = !Ts || Ts->empty() || hasZeroTimeSpan;
     const bool deskewDisabled = (method == MotionCompensationMethod::None);
 
     if (noTimestamps || deskewDisabled)
     {
-        if (silently_ignore_no_timestamps || deskewDisabled)
+        if (silently_ignore_no_timestamps || deskewDisabled || hasZeroTimeSpan)
         {
             if (!in_place)
             {
