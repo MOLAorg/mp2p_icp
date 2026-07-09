@@ -29,6 +29,7 @@
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/opengl/CPointCloudColoured.h>
+#include <mrpt/opengl/CSetOfLines.h>
 #include <mrpt/opengl/stock_objects.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
 #include <mrpt/serialization/CArchive.h>
@@ -38,7 +39,9 @@
 #include <mrpt/topography/conversions.h>
 #include <mrpt/version.h>
 
+#include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include "../libcfgpath/cfgpath.h"
 
@@ -66,6 +69,12 @@ static TCLAP::ValueArg<std::string> arg_tumTrajectory(
 static TCLAP::MultiArg<std::string> arg_add3dScenes(
     "s", "add-3d-scene", "Adds an extra 3D scene file (*.3dscene) for visualization.", false,
     "scene.3dscene", cmd);
+
+static TCLAP::ValueArg<std::string> arg_georefPolygon(
+    "g", "georef-polygon",
+    "Overlay a polygon given by a text file with one \"lat,lon\" vertex (WGS84 degrees) per "
+    "line. Ignored if the loaded map has no georeferencing information.",
+    false, "polygon.txt", "polygon.txt", cmd);
 
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
@@ -158,6 +167,93 @@ static bool load_plugins(const std::string& plugins)
         return false;
     }
     return true;
+}
+
+/** Reads a text file with one "lat,lon" (WGS84 degrees) vertex per line
+ * (fields may be separated by a comma or by whitespace; blank lines and
+ * lines starting with '#' are ignored).
+ */
+std::vector<mrpt::math::TPoint2D> readLatLonPolygonFile(const std::string& filePath)
+{
+    std::vector<mrpt::math::TPoint2D> latLonPoints;
+
+    std::ifstream f(filePath);
+    ASSERTMSG_(
+        f.is_open(), mrpt::format("Cannot open georef polygon file: '%s'", filePath.c_str()));
+
+    std::string line;
+    while (std::getline(f, line))
+    {
+        // normalize comma separators into whitespace:
+        for (char& c : line)
+        {
+            if (c == ',')
+            {
+                c = ' ';
+            }
+        }
+
+        std::istringstream iss(line);
+        std::string        firstTok;
+        if (!(iss >> firstTok) || firstTok.empty() || firstTok[0] == '#')
+        {
+            continue;  // blank or comment line
+        }
+
+        double lat = 0, lon = 0;
+        std::istringstream(firstTok) >> lat;
+        if (!(iss >> lon))
+        {
+            std::cerr << "Warning: malformed line in georef polygon file, skipping: \"" << line
+                      << "\"\n";
+            continue;
+        }
+
+        latLonPoints.emplace_back(lat, lon);
+    }
+
+    return latLonPoints;
+}
+
+/** Builds a closed polygon outline, in the metric map's local ("map") frame,
+ * from a set of WGS84 lat/lon vertices, using the loaded map's
+ * georeferencing information.
+ */
+mrpt::opengl::CSetOfObjects::Ptr buildGeorefPolygonLayer(
+    const std::vector<mrpt::math::TPoint2D>&      latLonPoints,
+    const mp2p_icp::metric_map_t::Georeferencing& georef)
+{
+    auto glLayer = mrpt::opengl::CSetOfObjects::Create();
+
+    std::vector<mrpt::math::TPoint3D> mapPoints;
+    mapPoints.reserve(latLonPoints.size());
+    for (const auto& ll : latLonPoints)
+    {
+        const mrpt::topography::TGeodeticCoords geodeticPt(
+            ll.x /*lat*/, ll.y /*lon*/, georef.geo_coord.height);
+
+        mrpt::math::TPoint3D enuPt;
+        mrpt::topography::geodeticToENU_WGS84(geodeticPt, enuPt, georef.geo_coord);
+
+        mapPoints.push_back(georef.T_enu_to_map.mean.inverseComposePoint(enuPt));
+    }
+
+    if (mapPoints.size() >= 2)
+    {
+        auto glLines = mrpt::opengl::CSetOfLines::Create();
+        glLines->setColor_u8(0xff, 0xd0, 0x00, 0xff);
+        glLines->setLineWidth(3.0f);
+
+        for (size_t i = 0; i < mapPoints.size(); i++)
+        {
+            const auto& p0 = mapPoints[i];
+            const auto& p1 = mapPoints[(i + 1) % mapPoints.size()];
+            glLines->appendLine(p0, p1);
+        }
+        glLayer->insert(glLines);
+    }
+
+    return glLayer;
 }
 
 bool loadMapFile(const std::string& mapFile)
@@ -830,6 +926,36 @@ void main_show_gui()
         if (!loadMapFile(argMapFile.getValue()))
         {
             return;
+        }
+    }
+
+    // Optional georeferenced polygon overlay (needs the map's georeferencing info, so
+    // it must be handled once the map above has been loaded):
+    if (arg_georefPolygon.isSet())
+    {
+        if (!theMap.georeferencing.has_value())
+        {
+            std::cerr << "Warning: --georef-polygon given, but the loaded map has no "
+                         "georeferencing information. Ignoring it.\n";
+        }
+        else
+        {
+            try
+            {
+                const auto latLonPoints = readLatLonPolygonFile(arg_georefPolygon.getValue());
+
+                ExtraVizLayer evl;
+                evl.fileName = mrpt::system::extractFileName(arg_georefPolygon.getValue());
+                evl.glObjects =
+                    buildGeorefPolygonLayer(latLonPoints, theMap.georeferencing.value());
+                evl.glObjects->setName(evl.fileName);
+
+                extraVizLayers.push_back(evl);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "Warning: could not load georef polygon: " << e.what() << "\n";
+            }
         }
     }
 
