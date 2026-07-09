@@ -40,13 +40,13 @@ struct cli_flags
 
     // Option handles, kept to reproduce TCLAP's isSet() semantics exactly
     // (distinguishing "not passed" from "passed with the default value").
-    CLI::Option* opt_from          = nullptr;
-    CLI::Option* opt_to            = nullptr;
-    CLI::Option* opt_min_corner    = nullptr;
-    CLI::Option* opt_max_corner    = nullptr;
-    CLI::Option* opt_output        = nullptr;
-    CLI::Option* opt_output_twist  = nullptr;
-    CLI::Option* opt_verbosity     = nullptr;
+    CLI::Option* opt_from         = nullptr;
+    CLI::Option* opt_to           = nullptr;
+    CLI::Option* opt_min_corner   = nullptr;
+    CLI::Option* opt_max_corner   = nullptr;
+    CLI::Option* opt_output       = nullptr;
+    CLI::Option* opt_output_twist = nullptr;
+    CLI::Option* opt_verbosity    = nullptr;
 
     cli_flags()
     {

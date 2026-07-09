@@ -40,9 +40,9 @@ int main(int argc, char** argv)
     cmd.add_option("-i,--input", argInput, "KITTI .bin pointcloud file.")->required();
     cmd.add_option("-o,--output", argOutput, "Output file to write to.")->required();
     cmd.add_option("-l,--layer", argLayer, "Target layer name (Default: \"raw\").");
-    auto* optID    = cmd.add_option("--id", argID, "Metric map numeric ID (Default: none).");
-    auto* optLabel = cmd.add_option(
-        "--label", argLabel, "Metric map label string (Default: none).");
+    auto* optID = cmd.add_option("--id", argID, "Metric map numeric ID (Default: none).");
+    auto* optLabel =
+        cmd.add_option("--label", argLabel, "Metric map label string (Default: none).");
 
     CLI11_PARSE(cmd, argc, argv);
 

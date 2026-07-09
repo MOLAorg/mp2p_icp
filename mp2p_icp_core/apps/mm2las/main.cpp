@@ -1168,8 +1168,7 @@ int main(int argc, char** argv)
         "--export-fields", argExportFields,
         "Comma-separated list of fields to export (e.g., 'x,y,z,intensity,rgb'). "
         "If not provided, all available fields will be exported as Extended VLRs.");
-    cmd.add_option(
-        "--system-id", argSystemId, "System Identifier for LAS header (max 32 chars)");
+    cmd.add_option("--system-id", argSystemId, "System Identifier for LAS header (max 32 chars)");
     cmd.add_option(
         "--generating-software", argGeneratingSoftware,
         "Generating Software for LAS header (max 32 chars)");

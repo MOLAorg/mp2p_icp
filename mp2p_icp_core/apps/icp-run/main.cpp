@@ -47,8 +47,8 @@ static std::string argYamlConfigFileFiltersGlobal;
 static std::string argCfgNameFiltersGlobal = "filters";
 static std::string argCfgNameFiltersLocal  = "filters";
 static std::string argInitialGuess         = "[0 0 0 0 0 0]";
-static bool         argGenerateDebugFiles   = false;
-static bool         argProfile              = false;
+static bool        argGenerateDebugFiles   = false;
+static bool        argProfile              = false;
 static std::string arg_plugins;
 
 static void defineCliArgs()

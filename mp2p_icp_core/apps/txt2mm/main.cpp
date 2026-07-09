@@ -55,7 +55,7 @@ struct Cli
     int argIndexT   = 5;
 
     std::optional<uint64_t> argID;
-    std::string              argLabel;
+    std::string             argLabel;
 
     Cli()
     {
