@@ -204,7 +204,9 @@ std::vector<mrpt::math::TPoint2D> readLatLonPolygonFile(const std::string& fileP
         std::istringstream(firstTok) >> lat;
         if (!(iss >> lon))
         {
-            continue;  // malformed line, skip it
+            std::cerr << "Warning: malformed line in georef polygon file, skipping: \"" << line
+                      << "\"\n";
+            continue;
         }
 
         latLonPoints.emplace_back(lat, lon);
@@ -938,14 +940,22 @@ void main_show_gui()
         }
         else
         {
-            const auto latLonPoints = readLatLonPolygonFile(arg_georefPolygon.getValue());
+            try
+            {
+                const auto latLonPoints = readLatLonPolygonFile(arg_georefPolygon.getValue());
 
-            ExtraVizLayer evl;
-            evl.fileName  = mrpt::system::extractFileName(arg_georefPolygon.getValue());
-            evl.glObjects = buildGeorefPolygonLayer(latLonPoints, theMap.georeferencing.value());
-            evl.glObjects->setName(evl.fileName);
+                ExtraVizLayer evl;
+                evl.fileName = mrpt::system::extractFileName(arg_georefPolygon.getValue());
+                evl.glObjects =
+                    buildGeorefPolygonLayer(latLonPoints, theMap.georeferencing.value());
+                evl.glObjects->setName(evl.fileName);
 
-            extraVizLayers.push_back(evl);
+                extraVizLayers.push_back(evl);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "Warning: could not load georef polygon: " << e.what() << "\n";
+            }
         }
     }
 
