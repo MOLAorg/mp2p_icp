@@ -31,6 +31,9 @@
 #include <mrpt/obs/CRawlog.h>
 #include <mrpt/system/datetime.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/os.h>
+
+#include <stdexcept>
 
 // CLI flags:
 static TCLAP::CmdLine cmd("icp-run");
@@ -108,6 +111,10 @@ static TCLAP::SwitchArg argGenerateDebugFiles(
     cmd);
 
 static TCLAP::SwitchArg argProfile("", "profiler", "Enables the ICP profiler.", cmd);
+
+static TCLAP::ValueArg<std::string> arg_plugins(
+    "l", "load-plugins", "One or more (comma separated) *.so files to load as plugins", false,
+    "foobar.so", "foobar.so", cmd);
 
 // To avoid reading the same .rawlog file twice:
 static std::map<std::string, mrpt::obs::CRawlog::Ptr> rawlogsCache;
@@ -226,6 +233,19 @@ static mp2p_icp::metric_map_t::Ptr load_input_pc(const std::string& filename, bo
 
 void runIcp()
 {
+    // Load plugins first: custom map/observation classes (e.g. from a plugin
+    // .so) must be registered before any .mm/.rawlog file gets deserialized.
+    if (arg_plugins.isSet())
+    {
+        std::string errMsg;
+        const auto  plugins = arg_plugins.getValue();
+        std::cout << "Loading plugin(s): " << plugins << std::endl;
+        if (!mrpt::system::loadPluginModules(plugins, errMsg))
+        {
+            throw std::runtime_error(errMsg);
+        }
+    }
+
     const auto cfg = mrpt::containers::yaml::FromFile(argYamlConfigFile.getValue());
 
     // ------------------------------
