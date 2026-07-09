@@ -1,6 +1,5 @@
 [![CI ROS](https://github.com/MOLAorg/mp2p_icp/actions/workflows/ros-build.yml/badge.svg)](https://github.com/MOLAorg/mp2p_icp/actions/workflows/ros-build.yml)
 [![CI Check clang-format](https://github.com/MOLAorg/mp2p_icp/actions/workflows/check-clang-format.yml/badge.svg)](https://github.com/MOLAorg/mp2p_icp/actions/workflows/check-clang-format.yml)
-[![CircleCI](https://img.shields.io/circleci/build/gh/MOLAorg/mp2p_icp/develop.svg)](https://circleci.com/gh/MOLAorg/mp2p_icp) 
 [![codecov](https://codecov.io/gh/MOLAorg/mp2p_icp/graph/badge.svg?token=DK35PMKR3T)](https://codecov.io/gh/MOLAorg/mp2p_icp)
 [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://docs.mola-slam.org/latest/module-mp2p-icp.html)
 
@@ -35,9 +34,15 @@ The project provides these C++ libraries:
  * `mp2p_icp`: With ICP algorithms, matchers (point-to-point, point-to-plane, point-to-line, covariance-to-covariance, adaptive), solvers (Horn, OLAE, Gauss-Newton), and quality evaluators. It depends on `mp2p_icp_map`.
  * `mp2p_icp_filters`: With point cloud filtering and manipulation algorithms including decimation, voxelization, statistical outlier removal, edge/plane extraction, and various geometric transformations. It depends on `mp2p_icp_map`.
 
+These libraries and their CLI apps (below, except the GUI ones) live in the **`mp2p_icp_core`** ROS package,
+which has no GUI/display dependencies. The two GUI apps (`mm-viewer`, `icp-log-viewer`) live in the
+**`mp2p_icp_viz`** package instead. The **`mp2p_icp`** package is a metapackage that depends on both, so
+`apt install ros-$ROS_DISTRO-mp2p-icp` (or `<depend>mp2p_icp</depend>`) still gets everything, exactly as before
+this split — use `mp2p_icp_core` directly if you only need the headless libraries/apps.
+
 ## Command-Line Applications
 
-The full repository also includes these applications (see [apps/](https://github.com/MOLAorg/mp2p_icp/tree/develop/apps) directory):
+The full repository also includes these applications (see [mp2p_icp_core/apps/](https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/apps) and [mp2p_icp_viz/apps/](https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_viz/apps) directories):
 
 ### Data Conversion Tools
  * **[kitti2mm](https://docs.mola-slam.org/latest/app_kitti2mm.html)**: Converts KITTI dataset LIDAR binary files (`.bin`) with (X,Y,Z, Intensity) data into mp2p_icp metric map files (`.mm`). Supports custom layer names, numeric IDs, and label strings.

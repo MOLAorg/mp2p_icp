@@ -18,17 +18,34 @@ always reflects the current state.
 
 ## Repository layout
 
+Since mid-2026 this repo hosts 3 sibling ROS packages, split so that headless consumers
+don't need to pull in GUI/display dependencies (`mrpt_libgui`):
+
 ```
-mp2p_icp/
-├── mp2p_icp_common/   # Base utilities, Parameterizable class
-├── mp2p_icp_map/      # metric_map_t container, .mm file I/O, georeferencing
-├── mp2p_icp/          # ICP algorithms, Matchers, Solvers, QualityEvaluators
-├── mp2p_icp_filters/  # 38+ filters, 2 generators, voxel grid utilities
-├── apps/              # 15 CLI applications (see below)
-├── tests/             # 50+ gtest unit tests
-├── demos/             # Example configs, demo point clouds
-└── docs/              # Sphinx documentation source
+mp2p_icp/                    (repo root)
+├── mp2p_icp_core/            # ROS package: headless libs + CLI apps, no GUI deps
+│   ├── mp2p_icp_common/       # Base utilities, Parameterizable class
+│   ├── mp2p_icp_map/          # metric_map_t container, .mm file I/O, georeferencing
+│   ├── mp2p_icp/               # ICP algorithms, Matchers, Solvers, QualityEvaluators
+│   ├── mp2p_icp_filters/       # 38+ filters, 2 generators, voxel grid utilities
+│   ├── apps/                   # 13 headless CLI applications (see below)
+│   ├── tests/                  # 50+ gtest unit tests
+│   ├── demos/                  # Example configs, demo point clouds
+│   ├── 3rdparty/                # robin-map (vendored, header-only, private dep)
+│   └── scripts/                 # formatter.sh, etc.
+├── mp2p_icp_viz/              # ROS package: GUI apps (mm-viewer, icp-log-viewer)
+│   └── apps/
+├── mp2p_icp/                  # metapackage (backward compat): depends on both above
+└── docs/                      # Sphinx documentation source
 ```
+
+Standalone (non-colcon) plain-CMake builds are no longer supported; build via colcon
+in a ROS workspace. Each library still exports its own CMake config (e.g.
+`find_package(mp2p_icp_map REQUIRED)` + `mola::mp2p_icp_map`, unchanged), so consumers can
+depend on individual libraries directly. New downstream ROS packages that only need the
+headless libraries/CLI apps should use `<depend>mp2p_icp_core</depend>` (no `mrpt_libgui`);
+`<depend>mp2p_icp</depend>` still pulls in everything (core + GUI apps), unchanged, via the
+metapackage.
 
 ---
 
@@ -90,23 +107,25 @@ geocentric → mrpt::topography::geocentricToGeodetic() → WGS-84 lat/lon/alt
 
 ## CLI applications
 
-| App | Purpose |
-|-----|---------|
-| `mm2las` | Export layers → LAS 1.4 (Point Format 8); supports `--frame map\|enu\|geodetic` |
-| `mm2ply` | Export layers → PLY |
-| `mm2txt` | Export layers → CSV/TXT |
-| `mm2grid` | Generate grid maps from point clouds |
-| `mm-filter` | Apply filter pipelines to .mm files |
-| `mm-info` | Print .mm file summary |
-| `mm-georef` | Inject/extract georeferencing from .mm files |
-| `mm-viewer` | GUI viewer for .mm files |
-| `sm2mm` | Convert SLAM CSimpleMap → .mm |
-| `sm-cli` | Manipulate CSimpleMap files (cut, join, export…) |
-| `icp-run` | Run ICP pipeline from CLI |
-| `icp-log-viewer` | Debug ICP sessions interactively |
-| `kitti2mm` | Convert KITTI .bin → .mm |
-| `txt2mm` | Convert TXT/CSV point clouds → .mm |
-| `rawlog-filter` | Filter MRPT RawLog files |
+CLI argument parsing uses CLI11 (`find_package(CLI11 REQUIRED)`, `CLI11::CLI11`), not TCLAP.
+
+| App | Package | Purpose |
+|-----|---------|---------|
+| `mm2las` | mp2p_icp_core | Export layers → LAS 1.4 (Point Format 8); supports `--frame map\|enu\|geodetic` |
+| `mm2ply` | mp2p_icp_core | Export layers → PLY |
+| `mm2txt` | mp2p_icp_core | Export layers → CSV/TXT |
+| `mm2grid` | mp2p_icp_core | Generate grid maps from point clouds |
+| `mm-filter` | mp2p_icp_core | Apply filter pipelines to .mm files |
+| `mm-info` | mp2p_icp_core | Print .mm file summary |
+| `mm-georef` | mp2p_icp_core | Inject/extract georeferencing from .mm files |
+| `mm-viewer` | mp2p_icp_viz | GUI viewer for .mm files (needs `mrpt_libgui`) |
+| `sm2mm` | mp2p_icp_core | Convert SLAM CSimpleMap → .mm |
+| `sm-cli` | mp2p_icp_core | Manipulate CSimpleMap files (cut, join, export…) |
+| `icp-run` | mp2p_icp_core | Run ICP pipeline from CLI |
+| `icp-log-viewer` | mp2p_icp_viz | Debug ICP sessions interactively (needs `mrpt_libgui`) |
+| `kitti2mm` | mp2p_icp_core | Convert KITTI .bin → .mm |
+| `txt2mm` | mp2p_icp_core | Convert TXT/CSV point clouds → .mm |
+| `rawlog-filter` | mp2p_icp_core | Filter MRPT RawLog files |
 
 ### `mm2las` geodetic export (`--frame geodetic`)
 
@@ -157,11 +176,16 @@ Key filter categories: decimation (including range-adaptive EllipseLIO-style), o
 ## Build system
 
 ```bash
-# ROS 2 workspace build
+# ROS 2 workspace build (metapackage: builds everything, same as before the split)
 cd ~/ros2_ws
 colcon build --packages-select mp2p_icp
 
-# CMake options of interest
+# Or build just the headless libs/apps (no mrpt_libgui pulled in):
+colcon build --packages-select mp2p_icp_core
+# Or just the GUI apps (depends on mp2p_icp_core):
+colcon build --packages-select mp2p_icp_viz
+
+# CMake options of interest (mp2p_icp_core)
 -DMP2PICP_BUILD_TESTING=ON      # unit tests (default ON)
 -DMP2PICP_BUILD_APPLICATIONS=ON # CLI apps (default ON)
 -DMP2PICP_USE_TBB=ON            # TBB parallelism (auto-detected)
@@ -175,19 +199,25 @@ SIMD-optimized translation units are compiled separately with `-mavx` / `-msse2`
 
 | Dependency | Notes |
 |-----------|-------|
-| MRPT ≥ 2.15.4 | containers, tfest, maps, gui, topography — mandatory |
+| MRPT ≥ 2.15.4 | containers, tfest, maps, topography — mandatory in mp2p_icp_core (no `gui` component: opengl/system/expr come transitively via maps→obs and tfest→poses→bayes→config). `gui` is only required by mp2p_icp_viz. |
+| CLI11 | CLI argument parsing for all apps (rosdep key `cli11`) |
 | TBB | Optional; enables parallel ICP iterations |
-| mola_common | CMake scripts; fetched as git submodule |
+| mola_common | CMake scripts; resolved via `find_package(mola_common REQUIRED)`, provided by the ROS/colcon workspace (no longer vendored as a submodule) |
 | mola_imu_preintegration | Optional; advanced deskew in FilterDeskew |
+
+Note: the `mp2p_icp` (ICP algorithms) library used to publicly link `mrpt::gui` solely for
+an interactive debug feature in `QualityEvaluator_RangeImageSimilarity` (`debug_show_all_in_window`,
+opened 4 `CDisplayWindow`s). That feature has been removed; only the headless
+`debug_save_all_matrices` (file-dump) option remains.
 
 ---
 
 ## Testing
 
 ```bash
-colcon test --packages-select mp2p_icp
+colcon test --packages-select mp2p_icp_core
 # or directly:
-ctest --test-dir build/mp2p_icp -V
+ctest --test-dir build/mp2p_icp_core -V
 ```
 
 Tests use gtest. Each filter, matcher, solver, and serializer has its own test file in `tests/`.

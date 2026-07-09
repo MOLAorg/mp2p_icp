@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<!-- Metapackage kept for backward compatibility: anyone with
+     <depend>mp2p_icp</depend> (or `apt install ros-$ROS_DISTRO-mp2p-icp`)
+     keeps getting the exact same set of libraries and applications as
+     before this repo was split into mp2p_icp_core (headless libs + CLI
+     apps) and mp2p_icp_viz (GUI apps). New consumers that only need the
+     headless C++ libraries should depend on mp2p_icp_core directly to
+     avoid pulling in mrpt_libgui.
+-->
+<package format="3">
+  <name>mp2p_icp</name>
+  <version>2.11.0</version>
+  <description>Metapackage for mp2p_icp: depends on mp2p_icp_core (headless libraries and CLI applications) and mp2p_icp_viz (GUI applications).</description>
+
+  <maintainer email="joseluisblancoc@gmail.com">Jose-Luis Blanco-Claraco</maintainer>
+  <license file="COPYING">BSD-3-Clause</license>
+
+  <url type="website">https://github.com/MOLAorg/mp2p_icp</url>
+
+  <build_depend>ros_environment</build_depend>  <!-- Required for ROS_VERSION -->
+
+  <buildtool_depend>cmake</buildtool_depend>
+  <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
+
+  <depend>mp2p_icp_core</depend>
+  <depend>mp2p_icp_viz</depend>
+
+  <export>
+    <metapackage/>
+    <build_type condition="$ROS_VERSION == 1">catkin</build_type>
+    <build_type condition="$ROS_VERSION == 2">cmake</build_type>
+  </export>
+</package>

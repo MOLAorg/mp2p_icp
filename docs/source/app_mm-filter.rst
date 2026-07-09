@@ -33,7 +33,7 @@ The tool can operate in two modes:
     -p <pipeline.yaml>,  --pipeline <pipeline.yaml>
         YAML file with the mp2p_icp_filters pipeline to load. It must contain
         a `filters:` section. See the app README for examples:
-        https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/mm-filter
+        https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/apps/mm-filter
 
     -l <foobar.so>,  --load-plugins <foobar.so>
         One or more (comma separated) *.so files to load as plugins

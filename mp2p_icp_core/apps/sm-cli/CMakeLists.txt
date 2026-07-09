@@ -1,0 +1,27 @@
+project(sm-cli)
+
+find_package(mrpt-maps REQUIRED)
+find_package(mrpt-obs REQUIRED)
+find_package(CLI11 REQUIRED)
+
+mola_add_executable(
+  TARGET ${PROJECT_NAME}
+  SOURCES
+    sm-cli-main.cpp
+    sm-cli.h
+    sm-cli-cut.cpp
+    sm-cli-export-kfs.cpp
+    sm-cli-export-rawlog.cpp
+    sm-cli-info.cpp
+    sm-cli-join.cpp
+    sm-cli-level.cpp
+    sm-cli-tf.cpp
+    sm-cli-trim.cpp
+  LINK_LIBRARIES
+    mp2p_icp_filters
+    mrpt::maps
+    mrpt::obs
+    CLI11::CLI11
+)
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_ICP_VERSION=\"${MP2P_ICP_VERSION}\")

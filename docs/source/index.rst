@@ -33,6 +33,15 @@ Install mp2p_icp
 
 How to install the C++ mp2p_icp libraries and :ref:`applications <mp2p_icp_applications>`:
 
+.. note::
+
+    Since this repository was split into the ``mp2p_icp_core`` (headless libraries and CLI
+    applications, no GUI dependencies), ``mp2p_icp_viz`` (GUI applications: ``mm-viewer``,
+    ``icp-log-viewer``), and ``mp2p_icp`` (metapackage, depends on both) ROS packages,
+    standalone (non-colcon) plain-CMake builds are no longer supported. Build within a ROS
+    workspace, either the whole thing via the ``mp2p_icp`` metapackage, or just
+    ``mp2p_icp_core`` if you only need the headless libraries/apps.
+
 .. tab-set::
     .. tab-item:: From ROS
         :selected:
@@ -43,57 +52,11 @@ How to install the C++ mp2p_icp libraries and :ref:`applications <mp2p_icp_appli
 
             sudo apt install ros-${ROS_DISTRO}-mp2p-icp
 
-
-    .. tab-item:: Compile (no ROS)
-
-        Get the sources
-        -------------------
-
-        Clone the project git repository and its submodules:
+        To only install the headless libraries and CLI applications (no GUI dependencies):
 
         .. code-block:: bash
 
-            mkdir -p ~/code/mp2p_icp && cd ~/code/mp2p_icp
-            git clone --recurse-submodules https://github.com/MOLAorg/mp2p_icp.git
-
-        Get the build dependencies
-        ----------------------------
-        - A C++17 compiler
-        - CMake >=3.4
-        - MRPT >= 2.11.5
-
-        .. tab-set::
-            .. tab-item:: Building MRPT from sources
-
-                Follow the `installation instructions <https://docs.mrpt.org/reference/stable/compiling.html>`_ for MRPT
-
-            .. tab-item:: Get from ROS 2
-                :selected:
-
-                .. code-block:: bash
-
-                    sudo apt install ros-$ROS_DISTRO-mrpt2
-
-            .. tab-item:: Get from PPA
-
-                .. code-block:: bash
-
-                    # MRPT, from this PPA, or from its ROS package, or build from sources if preferred:
-                    sudo add-apt-repository ppa:joseluisblancoc/mrpt
-                    sudo apt update
-                    sudo apt install libmrpt-dev mrpt-apps
-
-
-        Compile
-        ---------------------
-        Classic cmake stuff:
-
-        .. code-block:: bash
-
-            mkdir build-Release
-            cmake -B build-Release -S . -DCMAKE_BUILD_TYPE=Release
-            cmake --build build-Release
-            (cd build-Release  && make test)  # to run tests
+            sudo apt install ros-${ROS_DISTRO}-mp2p-icp-core
 
     .. tab-item:: Compile (with colcon)
 
@@ -104,8 +67,14 @@ How to install the C++ mp2p_icp libraries and :ref:`applications <mp2p_icp_appli
             mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
             git clone --recurse-submodules https://github.com/MOLAorg/mp2p_icp.git
             cd ~/ros2_ws/
-            colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+            colcon build --symlink-install --packages-up-to mp2p_icp --cmake-args -DCMAKE_BUILD_TYPE=Release
             . install/setup.bash
+
+        Or, to only build the headless libraries/apps:
+
+        .. code-block:: bash
+
+            colcon build --symlink-install --packages-up-to mp2p_icp_core --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 Demos
 =================
@@ -117,9 +86,9 @@ icp-run demos
 
     # 2D icp with point-to-point pairings only:
     icp-run \
-      --input-local demos/local_001.mm \
-      --input-global demos/global_001.mm \
-      -c demos/icp-settings-2d-lidar-example-point2point.yaml \
+      --input-local mp2p_icp_core/demos/local_001.mm \
+      --input-global mp2p_icp_core/demos/global_001.mm \
+      -c mp2p_icp_core/demos/icp-settings-2d-lidar-example-point2point.yaml \
       --generate-debug-log
 
     # Inspect the debug log:
@@ -130,9 +99,9 @@ icp-run demos
 
     # 2D icp with point-to-line pairings:
     icp-run \
-      --input-local demos/local_001.mm \
-      --input-global demos/global_001.mm \
-      -c demos/icp-settings-2d-lidar-example-point2line.yaml \
+      --input-local mp2p_icp_core/demos/local_001.mm \
+      --input-global mp2p_icp_core/demos/global_001.mm \
+      -c mp2p_icp_core/demos/icp-settings-2d-lidar-example-point2line.yaml \
       --generate-debug-log
 
     # Inspect the debug log:

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<!-- This is a ROS package file, intended to allow this library to be built
+     side-by-side to ROS packages in a catkin/ament environment.
+-->
+<package format="3">
+  <name>mp2p_icp_viz</name>
+  <version>2.11.0</version>
+  <description>GUI applications for mp2p_icp: mm-viewer (interactive *.mm map viewer) and icp-log-viewer (ICP log inspector). Kept in a separate package from mp2p_icp_core so headless consumers don't need to pull in mrpt_libgui.</description>
+
+  <maintainer email="joseluisblancoc@gmail.com">Jose-Luis Blanco-Claraco</maintainer>
+  <license file="COPYING">BSD-3-Clause</license>
+
+  <url type="website">https://github.com/MOLAorg/mp2p_icp</url>
+
+  <build_depend>ros_environment</build_depend>  <!-- Required for ROS_VERSION -->
+
+  <buildtool_depend>cmake</buildtool_depend>
+  <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
+
+  <depend>mola_common</depend>
+  <depend>mp2p_icp_core</depend>
+  <depend>mrpt_libgui</depend>
+  <depend>cli11</depend>
+
+  <test_depend condition="$ROS_VERSION == 1">catkin</test_depend>
+
+  <export>
+    <build_type condition="$ROS_VERSION == 1">catkin</build_type>
+    <build_type condition="$ROS_VERSION == 2">cmake</build_type>
+  </export>
+</package>

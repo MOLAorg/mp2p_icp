@@ -131,7 +131,7 @@ CLI Reference
        default generator will be used and no filtering will be applied, which
        might be ok in some cases. See the app README for examples:
 
-       https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm
+       https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/apps/sm2mm
 
    -l <foobar.so>,  --load-plugins <foobar.so>
        One or more (comma separated) ``*.so`` files to load as plugins, e.g.
