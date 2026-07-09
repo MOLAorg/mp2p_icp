@@ -1278,6 +1278,35 @@ void main_show_gui()
             });
     }
 
+    {
+        auto lb = tab1->add<nanogui::Label>("Set view along axis:");
+        lb->setFontSize(MID_FONT_SIZE);
+
+        auto pn = tab1->add<nanogui::Widget>();
+        pn->setLayout(
+            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
+
+        auto addViewButton = [&](const std::string& caption, float az, float el)
+        {
+            auto* btn = pn->add<nanogui::Button>(caption);
+            btn->setFontSize(MID_FONT_SIZE);
+            btn->setCallback(
+                [az, el]()
+                {
+                    cbView2D->setChecked(false);
+                    win->camera().setAzimuthDegrees(az);
+                    win->camera().setElevationDegrees(el);
+                });
+        };
+
+        addViewButton("+X", 0.0f, 0.0f);
+        addViewButton("-X", 180.0f, 0.0f);
+        addViewButton("+Y", 90.0f, 0.0f);
+        addViewButton("-Y", -90.0f, 0.0f);
+        addViewButton("+Z", -90.0f, 90.0f);
+        addViewButton("-Z", -90.0f, -90.0f);
+    }
+
     cbApplyGeoRef = tab1->add<nanogui::CheckBox>("Apply georeferenced pose (if available)");
     cbApplyGeoRef->setFontSize(MID_FONT_SIZE);
     cbApplyGeoRef->setCallback([&](bool) { rebuild_3d_view(); });
