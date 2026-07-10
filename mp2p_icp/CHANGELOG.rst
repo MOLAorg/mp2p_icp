@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.12.0 (2026-07-10)
+-------------------
 * add missing changelogs
 * fix colcon warnings
 * metapackage should be pure cmake too

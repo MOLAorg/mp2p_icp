@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.12.0 (2026-07-10)
+-------------------
 * add missing changelogs
 * Merge pull request `#74 <https://github.com/MOLAorg/mp2p_icp/issues/74>`_ from MOLAorg/split-core-viz-packages
   Split repo into mp2p_icp_core (headless) + mp2p_icp_viz (GUI) + mp2p_icp (metapackage)
