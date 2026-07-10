@@ -9,12 +9,15 @@ cmake_minimum_required(VERSION 3.22...3.31)
 
 project(mp2p_icp NONE)
 
-if("$ENV{ROS_VERSION}" STREQUAL "1")
-  find_package(catkin REQUIRED)
-  catkin_metapackage()
-else()
-  # ROS2: this metapackage has no code of its own, but colcon expects an
-  # 'install' target to exist for "cmake" build_type packages; declare a
-  # no-op one to avoid a spurious colcon warning.
-  install(CODE "")
-endif()
+# This is a meta package, there are no targets.
+# Install files:
+install(DIRECTORY
+  #rviz2
+  DESTINATION
+    share/${PROJECT_NAME}
+)
+
+# Silent warning on unused variable:
+set(ignored ${CMAKE_EXPORT_COMPILE_COMMANDS})
+unset(ignored)
+
