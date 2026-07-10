@@ -1,0 +1,814 @@
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Changelog for package mp2p_icp_viz
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2.11.0 (2026-07-04)
+-------------------
+* Merge pull request `#72 <https://github.com/MOLAorg/mp2p_icp/issues/72>`_ from MOLAorg/fix/filterdeskew-graceful-imu-anchor
+  fix(FilterDeskew): never let IMU trajectory errors crash the pipeline
+* Merge pull request `#71 <https://github.com/MOLAorg/mp2p_icp/issues/71>`_ from MOLAorg/feat/prior-referenced-robust-kernel
+  Prior-referenced robust kernel for the Gauss-Newton solver
+* Merge pull request `#70 <https://github.com/MOLAorg/mp2p_icp/issues/70>`_ from MOLAorg/fix/filtermerge-view-vector-rotation
+  Fix view-direction vector frame mismatch in FilterMerge
+* chore: demo sm2mm files updated for LIO localization maps
+* demos: add sm2mm_pointcloud_voxelize_merged_keyframe_map.yaml
+* Merge pull request `#69 <https://github.com/MOLAorg/mp2p_icp/issues/69>`_ from MOLAorg/feat/filter-decimate-range-adaptive
+  feat: FilterDecimateRangeAdaptive (EllipseLIO range-adaptive scan filter)
+* feat: add FilterBase::enabled for env-based pipeline toggling
+  Adds an `enabled` boolean field to FilterBase (default: true)
+* feat: add FilterDecimateRangeAdaptive (EllipseLIO range-adaptive scan filter)
+* Fix build status badge for ROS 2 Lyrical arm64
+* docs: add ROS 2 Lyrical badge row, update Rolling to Ubuntu 26.04 (resolute)
+* Merge pull request `#68 <https://github.com/MOLAorg/mp2p_icp/issues/68>`_ from MOLAorg/feature/filter-polygon-2d
+* Contributors: Jose Luis Blanco-Claraco
+
+2.10.3 (2026-05-24)
+-------------------
+* Merge pull request `#67 <https://github.com/MOLAorg/mp2p_icp/issues/67>`_ from MOLAorg/fix/deskew-empty-trajectory
+  FIX: robust against temporary lack of IMU in Deskew
+* Merge pull request `#66 <https://github.com/MOLAorg/mp2p_icp/issues/66>`_ from MOLAorg/add-gicp-benchmark
+  test: add new end-to-end gicp test as benchmark
+* test: add new end-to-end gicp test as benchmark
+* fix: icp-log-viewer bug in translations if view prior was enabled
+* Contributors: Jose Luis Blanco-Claraco
+
+2.10.2 (2026-05-11)
+-------------------
+* Merge pull request `#65 <https://github.com/MOLAorg/mp2p_icp/issues/65>`_ from MOLAorg/simplify-ci
+  CI: simplify CI scripts and docker install
+* chore: don't use anymore map classes deprecated and to be removed in mrpt 3.0.0
+* fix: maps creating multiple CPointsCloud won't have all with pointSize honored
+* Merge pull request `#64 <https://github.com/MOLAorg/mp2p_icp/issues/64>`_ from MOLAorg/bump-cmake
+  bump min req cmake version to 3.22
+* CI: Use sensible names for jobs matrix
+* bump min req cmake version to 3.22
+* Contributors: Jose Luis Blanco-Claraco
+
+2.10.1 (2026-05-04)
+-------------------
+* FIX: sm2mm pipeline for keyframe maps need valid KF poses
+* FIX: copy/paste error in guard against missing layer
+* mm-viewer: UI now has an easier near/far clipping plane tool
+* chore: map contents as string made less verbose (hide full covariance)
+* Merge pull request `#63 <https://github.com/MOLAorg/mp2p_icp/issues/63>`_ from MOLAorg/feat/optional-final-run-quality-matchers
+  feat: optional last run of matchers with final ICP_ITERATION for adaptive thresholds to see final thresholds
+* feat: optional last run of matchers with final ICP_ITERATION for adaptive thresholds to see final thresholds
+* fix: wrong decimation applied in sm2mm filters
+* Merge pull request `#62 <https://github.com/MOLAorg/mp2p_icp/issues/62>`_ from MOLAorg/feat/prior-weight-mitigations
+  feat: Implement Birge-ratio auto-balance for cov2cov and prior weighting
+* feat: Implement Birge-ratio auto-balance for cov2cov and prior weighting
+* fix: icp-log-viewer didn't show the prior covariance at its correct location
+* Contributors: Jose Luis Blanco-Claraco
+
+2.10.0 (2026-05-02)
+-------------------
+* CI: Update actions for new ROS rolling
+* icp-log-viewer: better formatting of uncertainties
+* demo sm2mm file: store as independent keyframes
+* Merge pull request `#60 <https://github.com/MOLAorg/mp2p_icp/issues/60>`_ from MOLAorg/feat/censi3d-covariance
+  Feat: Censi3D covariance method
+* feat: Add new covariance method (Censi, 3D version)
+* demo sm2mm files: add Keyframe map variant
+* Contributors: Jose Luis Blanco-Claraco
+
+2.9.1 (2026-04-29)
+------------------
+* Merge pull request `#59 <https://github.com/MOLAorg/mp2p_icp/issues/59>`_ from MOLAorg/fix/cov2cov-covariance-whitening
+  Fix cov2cov whitening and add residual-variance scaling in covariance()
+* Fix cov2cov whitening and add residual-variance scaling in covariance()
+  The cov2cov branch in covariance.cpp whitened residuals with the full
+  information matrix (cov_inv * e), so the assembled Hessian became
+  J^T * cov_inv^2 * J instead of J^T * cov_inv * J. Combined with hundreds
+  of pairings this drove det(cov) down to ~1e-20 and made the estimate
+  unusable.
+  - Use the Cholesky factor L^T (with L L^T = cov_inv) to whiten the
+  cov2cov residual, matching what optimal_tf_gauss_newton accumulates.
+  - Multiply the inverse-Hessian by chi^2 / (m - 6), the standard
+  a-posteriori unit-weight variance, to rescale the (otherwise
+  optimistic) result by the empirical residual level.
+* Merge pull request `#58 <https://github.com/MOLAorg/mp2p_icp/issues/58>`_ from MOLAorg/feat/icp-viewer-show-prior
+  feat: icp-logs now store the prior SE(3) PDF
+* feat: icp-logs now store the prior SE(3) PDF
+* icp-log-viewer: safer against exceptions in gui thread
+* demo sm2mm files: ignore_accelerometer=true in all deskew stages by default (prevent noisy maps from low-quality IMUs)
+* Contributors: Jose Luis Blanco-Claraco
+
+2.9.0 (2026-04-22)
+------------------
+* Merge pull request `#57 <https://github.com/MOLAorg/mp2p_icp/issues/57>`_ from MOLAorg/feat/deskew-filter-ignore-acc
+  FilterDeskew: add new option "ignore_accelerometer"
+* Merge pull request `#55 <https://github.com/MOLAorg/mp2p_icp/issues/55>`_ from MOLAorg/feat/mm-viewer-read-bin-files
+  mm-viewer: can be also open .bin files with serialized CGenericPointsMap
+* Merge pull request `#54 <https://github.com/MOLAorg/mp2p_icp/issues/54>`_ from MOLAorg/feat/mm-apps-plugins
+  mm-info, mm2grid, mm2las, mm2ply, mm2txt now have a --load-plugins flag
+* Optimization in PointCloudToVoxelGridSingle
+* Add <stdexcept> to all required files (don't depend on transitive includes)
+* mm-info, mm2grid, mm2las, mm2ply, mm2txt now have a --load-plugins flag
+* Merge branch 'generator-generic-cloud' into develop
+* cloud rendering: Implement observing the autoBoundingBoxOutliersPercentile
+* Merge pull request `#53 <https://github.com/MOLAorg/mp2p_icp/issues/53>`_ from MOLAorg/generator-generic-cloud
+  Generator: creates CGenericPointsMap by default; add sanity checks in most filters
+* remove more old mrpt version guards
+* New sanity check function: warn_on_field_padding_mismatch()
+* FilterDeskew: guard against new MRPT behavior to keep all field lengths in sync
+* Add sanity checks in filters
+* Bump minimum MRPT version to 2.15.4 (and remove now old dead code)
+* Generator new param 'filterOutPointsAtZero', set to true in demo pipelines
+* Generator: now has a param 'default_pointcloud_class' which defaults to 'CGenericPointsMap'
+* Code clean up (remove now dead code; mrpt backwards compatibility)
+* Merge pull request `#52 <https://github.com/MOLAorg/mp2p_icp/issues/52>`_ from MOLAorg/icp-log-viewer-quality-filter
+  icp-log-viewer: add --min-quality filter CLI flag
+* Contributors: Jose Luis Blanco-Claraco
+
+2.8.1 (2026-04-06)
+------------------
+* Merge pull request `#51 <https://github.com/MOLAorg/mp2p_icp/issues/51>`_ from MOLAorg/fix/new-mrpt-api
+  Update to build against mrpt >=2.15.13
+* Update to build against mrpt >=2.15.13 (pointcloud field names as std::string instead of string_view)
+* Contributors: Jose Luis Blanco-Claraco
+
+2.8.0 (2026-04-01)
+------------------
+* BUGFIX: Fix potential crash (regression in former voxel parallelization)
+* Merge pull request `#50 <https://github.com/MOLAorg/mp2p_icp/issues/50>`_ from MOLAorg/fix/ram-usage
+  Fix/ram usage
+* Process points by chunks to limit RAM usage
+* reduce memory allocations in voxel views
+* Smarter usage of reserve() in tsl maps
+* Add agents.md
+* Merge pull request `#49 <https://github.com/MOLAorg/mp2p_icp/issues/49>`_ from MOLAorg/mm2las/georef
+  mm2las: export flag '--frame geodetic' for georeferenced clouds
+* Use geodetic coords cache
+* Correctly honor exportGeodetic
+* mm2las: Add sanity checks
+* Fix: X=lon, Y=lat coord order for WKT2
+* mm2las: export flag '--frame geodetic' for georeferenced clouds
+* Contributors: Jose Luis Blanco-Claraco
+
+2.7.1 (2026-03-08)
+------------------
+* Merge pull request `#48 <https://github.com/MOLAorg/mp2p_icp/issues/48>`_ from MOLAorg/fix/filter-adaptive-avoid-fpe
+  FIX: Avoid potential division by zero in FilterDecimateAdaptive
+* Update minimum required MRPT version 2.15.0
+* FIX: Avoid potential division by zero in FilterDecimateAdaptive
+* Merge pull request `#47 <https://github.com/MOLAorg/mp2p_icp/issues/47>`_ from MOLAorg/fix/georef-yaml-missing-fields
+  FIX: georeferencing yaml serialization missed orientation fields
+* FIX: georeferencing yaml serialization missed orientation fields
+* Merge pull request `#46 <https://github.com/MOLAorg/mp2p_icp/issues/46>`_ from MOLAorg/feat/sm2mm-in-enu-frame
+  sm2mm: new  feature to directly use georef as input and produce maps (and apply filters!) in ENU frame
+* sm2mm: new  feature to directly use georef as input and produce maps in ENU frame
+* Contributors: Jose Luis Blanco-Claraco
+
+2.7.0 (2026-03-03)
+------------------
+* Merge pull request `#45 <https://github.com/MOLAorg/mp2p_icp/issues/45>`_ from MOLAorg/feat/mm2grid
+  Add new cli app: mm2grid
+* Add new cli app: mm2grid
+* Merge pull request `#44 <https://github.com/MOLAorg/mp2p_icp/issues/44>`_ from MOLAorg/feat/view-vector
+  Generators now optionally generate a 'view' direction vector per point
+* FilterMLS: now uses the view-direction vectors to ensure normals point outwards
+* Generator: add safety consistency check
+* Generators are now also included into sm2mm profiler
+* Generators now optionally generate a 'view' direction vector per point
+* mm-viewer: FIX: show/hide all buttons did not apply to extra viz layers
+* mm-georef: Fix creation of empty output map if input didn't exist
+* mm2txt: Fix wrong console message saying mm-info instead of mm2txt
+* mm-viewer UI: show XY grid plane at the root frame of reference (ENU or map)
+* Merge pull request `#43 <https://github.com/MOLAorg/mp2p_icp/issues/43>`_ from MOLAorg/feat/export-enu-frame
+  Export tools now accept "--frame enu" to generate XYZ data in ENU frame
+* Export tools now accept "--frame enu" to generate XYZ data in ENU frame
+* Contributors: Jose Luis Blanco-Claraco
+
+2.6.0 (2026-02-16)
+------------------
+* Merge pull request `#42 <https://github.com/MOLAorg/mp2p_icp/issues/42>`_ from MOLAorg/feat/filter-remove-several-point-fields
+  FilterRemovePointCloudField now accepts multiple fields
+* FilterRemovePointCloudField now accepts multiple fields
+* Merge pull request `#41 <https://github.com/MOLAorg/mp2p_icp/issues/41>`_ from MOLAorg/feat/functor-save-log-file
+  Add functor_should_generate_debug_file to override the decision of whether to write .icplog files
+* Add functor_should_generate_debug_file to override the decision of whether to write .icplog files
+* Merge pull request `#40 <https://github.com/MOLAorg/mp2p_icp/issues/40>`_ from MOLAorg/feat/new-clear-remove-field-filters
+  Add new filters: FilterClear and FilterRemovePointCloudField
+* Add new filters: FilterClear and FilterRemovePointCloudField
+* docs: refer to the online pipeline editor
+* docs: add missing docs for FilterRenameLayer
+* Contributors: Jose Luis Blanco-Claraco
+
+2.5.0 (2026-02-04)
+------------------
+* Merge pull request `#39 <https://github.com/MOLAorg/mp2p_icp/issues/39>`_ from MOLAorg/feat/permit-missing-externals
+  sm2mm: Add optional flag --permit-missing-externals
+* sm2mm: Add optional flag --permit-missing-externals
+* Merge pull request `#38 <https://github.com/MOLAorg/mp2p_icp/issues/38>`_ from MOLAorg/feat/mls-optimizations
+  FilterMLS performance optimizations
+* Merge pull request `#37 <https://github.com/MOLAorg/mp2p_icp/issues/37>`_ from MOLAorg/feat/use-zstd
+  Use ZStd compression by default (for MRPT>=2.15.7)
+* docs: sm2mm add "--compression-method"
+* Explicitly include mrpt/core/Clock.h where used
+* Use ZStd compression by default (for MRPT>=2.15.7)
+* Merge pull request `#36 <https://github.com/MOLAorg/mp2p_icp/issues/36>`_ from MOLAorg/feat/mm2txt-missing-fields-dont-emit
+  mm2txt, mm2ply: don't emit columns of zeros for missing user-given fields
+* Merge pull request `#35 <https://github.com/MOLAorg/mp2p_icp/issues/35>`_ from MOLAorg/feat/mm2txt-ignore-fields
+  mm2txt and mm2ply: Add new option --ignore-missing-fields
+* Merge pull request `#34 <https://github.com/MOLAorg/mp2p_icp/issues/34>`_ from MOLAorg/feat/mm2txt-mm2ply-more-precision
+  Exploit the maximum float32/float64 precision in exported txt formats
+* Merge pull request `#33 <https://github.com/MOLAorg/mp2p_icp/issues/33>`_ from MOLAorg/feat/sm2mm-new-options
+  Feat/sm2mm-new-options
+* sm2mm cli app: add new flags for downsampling options
+* sm2mm: add new downsample options and refactor into update_velocity_buffer_from_obs()
+* Contributors: Jose Luis Blanco-Claraco
+
+2.4.1 (2026-01-27)
+------------------
+* Add more unit tests
+* Update README to keep it in sync with the provided apps and libraries
+* Merge pull request `#29 <https://github.com/MOLAorg/mp2p_icp/issues/29>`_ from MOLAorg/fix/cov
+  Fix bugs in covariance estimation for some cases
+* fix covariance estimation bugs; add unit tests for cov2cov
+* Update commit for mola_common
+* Merge pull request `#28 <https://github.com/MOLAorg/mp2p_icp/issues/28>`_ from MOLAorg/feat/mm-viewer-3d-layers
+  mm-viewer: add CLI flags to load overlaid 3D scenes for visualization
+* mm-viewer: add CLI flags to load overlaid 3D scenes for visualization
+* Contributors: Jose Luis Blanco-Claraco
+
+2.4.0 (2026-01-21)
+------------------
+* Merge pull request `#27 <https://github.com/MOLAorg/mp2p_icp/issues/27>`_ from MOLAorg/feat/new-filter-voxel-sor
+* Add new unit test for class factory
+* Add new FilterVoxelSOR filter
+* Merge pull request `#26 <https://github.com/MOLAorg/mp2p_icp/issues/26>`_ from MOLAorg/feat/mm2las
+* Add mm2las CLI tool
+* Contributors: Jose Luis Blanco-Claraco
+
+2.3.1 (2026-01-14)
+------------------
+* Merge pull request `#25 <https://github.com/MOLAorg/mp2p_icp/issues/25>`_ from MOLAorg/feat/naive-decimate
+  Add trivial FilterDecimate for fast downsampling without spatial awareness
+* lint fixes
+* Add trivial FilterDecimate for fast downsampling without spatial awareness
+* Parameterizable: add virtual base dtor
+* Remove the NormalizeIntensity stage in the demo pipelines; visualization does that already
+* docs: fill missing manpages
+* docs: add sm2mm pipelines page
+* Clarify map layers and simple maps descriptions
+  Updated references to CMetricMap and CGenericPointsMap in the documentation for clarity and accuracy.
+* Contributors: Jose Luis Blanco-Claraco
+
+2.3.0 (2026-01-08)
+------------------
+* Merge pull request `#24 <https://github.com/MOLAorg/mp2p_icp/issues/24>`_ from MOLAorg/feat/mm2txt-select-fields
+  mm2txt and mm2ply now have a --export-fields flag
+* mm2txt and mm2ply now have a --export-fields flag
+* Merge pull request `#23 <https://github.com/MOLAorg/mp2p_icp/issues/23>`_ from MOLAorg/fix/some-deprecations
+  Fix usage of deprecated cloud types
+* Provide shortcut names for common cloud field names
+* More deprecated cloud usage
+* FIX bug: FilterDecimateVoxel, if using flatten, did not propagate all input cloud fields
+* Fix usage of some deprecated cloud types
+* FilterSOR: create output layers even if input is empty
+* FilterDeskew: propagate input fields even if the cloud is empty
+* FilterByExpression: show debug-level stats
+* FilterNormalizeIntensity: do not throw on empty clouds
+* Merge pull request `#22 <https://github.com/MOLAorg/mp2p_icp/issues/22>`_ from MOLAorg/feat/new-filters
+  Add new filter FilterRenameLayer
+* Added filter FilterRenameLayer
+* mm2txt: prepare for deprecated classes in 3.0.0
+* FilterAdjustTimestamps: new method 'None' to bypass filter
+* Fix: sm2mm did not attach to ParameterSource the final_filter elements
+* sm2mm: did not observe the optional profiler parameter for the final_filter stage
+* Fix: FilterMLS did not properly copy all point fields when using upsampling
+* Fix: FilterAbsoluteTimestamp now also works for accumulated points in one layer
+* Contributors: Jose Luis Blanco-Claraco
+
+2.2.1 (2026-01-06)
+------------------
+* Merge pull request `#21 <https://github.com/MOLAorg/mp2p_icp/issues/21>`_ from MOLAorg/feat/abs-stamp-filter
+  Added new filter: FilterAbsoluteTimestamp
+* Fix the logic of the FilterEdgePlane filter parameters
+* Added new filter: FilterAbsoluteTimestamp
+* mm2txt: also export uint8 fields (missing in last release)
+* Merge pull request `#20 <https://github.com/MOLAorg/mp2p_icp/issues/20>`_ from MOLAorg/feat/more-unit-tests
+  More unit tests
+* Add generators unit tests
+* More unit tests
+* Contributors: Jose Luis Blanco-Claraco
+
+2.2.0 (2025-12-28)
+------------------
+* docs: explain FilterSOR
+* Merge pull request `#19 <https://github.com/MOLAorg/mp2p_icp/issues/19>`_ from MOLAorg/feat/mm2ply
+  Add mm2ply CLI tool
+* Merge pull request `#18 <https://github.com/MOLAorg/mp2p_icp/issues/18>`_ from MOLAorg/feat/new-sor-filter
+  Add FilterSOR: Statistical Outlier Rejection
+* More unit tests: cover MLS
+* Merge pull request `#17 <https://github.com/MOLAorg/mp2p_icp/issues/17>`_ from MOLAorg/feat/filter-by-expr
+  Add new filter: FilterByExpression
+* More code coverage; fix protected-level initialize methods
+* Add new filter: FilterByExpression
+* FIX: missing uint8 fields in Deskew
+* sanityCheck: also check all double/uint8 fields
+* ui: fix case without geo-ref
+* mm-viewer: show lat/lon coordinates for mouse selected points
+* mm-viewer: GUI now shows the ENU & map miniviews for orientation hints
+* mm-viewer: handle special coloring channel groups 'rgb' and 'rgbf'
+* clean non used code in deskew test
+* map viz: use new mrpt 2.15.3 coloring modes
+* sm2mm: auto-guess lazy-load externals directory for .simplemap files
+* mm-viewer: implement colorize clouds by any field
+* MLS filter: add 'output_layer_class' parameter
+* mm2txt: export all fields of CGenericPointsMap layers
+* Merge pull request `#16 <https://github.com/MOLAorg/mp2p_icp/issues/16>`_ from MOLAorg/fix/generic-cloud-deskew-fields
+  Add test for missing fields in generic cloud deskew
+* FIX: correctly register arbitrary pointcloud fields into output clouds
+* Add test for missing fields in generic cloud deskew
+* sm2mm: FIx console message on "FinalFilters" did not obey verbosity level
+* Fix clang-tidy warnings
+* Contributors: Jose Luis Blanco-Claraco
+
+2.1.2 (2025-11-28)
+------------------
+* mm-viewer: Automatic retry to load maps if missing plugins, trying to reload with libmola_metric_maps.so
+* Enable coverage run for noble docker image
+* Add new unit tests
+* docs: fix broken formatting of filters page
+* Merge pull request `#14 <https://github.com/MOLAorg/mp2p_icp/issues/14>`_ 
+  deskew filter: refactoring to handle arbitrary point fields
+* get code ready for API update in MRPT 2.15.3
+* Fix build w/o imu library
+* mm-viewer: add keystrokes shift+cursor arrows to move up/down
+* Add Codecov badge to README
+* MLS filter: add progress report logging
+* Contributors: Jose Luis Blanco-Claraco
+
+2.1.1 (2025-11-08)
+------------------
+* FIX: SanityCheck was triggering as errors optional pointcloud fields in XYZIRT clouds
+* FIX: Throw exception instead of crashing if FilterDeskew is invoked with an empty local velocity buffer
+* Fix yaml file for not using mola_yaml extensions
+* Add more sm2mm demo pipelines
+* Contributors: Jose Luis Blanco-Claraco
+
+2.1.0 (2025-10-28)
+------------------
+* Merge pull request `#13 <https://github.com/MOLAorg/mp2p_icp/issues/13>`_ from MOLAorg/fix/filterdecimate-bug
+* Add unit test for FilterDecimateVoxel
+* mm-viewer: ensure proper order of opengl object destruction
+* Add more debug traces for Filters
+* Generator: Add more info on layer contents in debug traces
+* FIX: Avoid crash in FilterVoxelSlice if there are no points in the ROI
+* Merge pull request `#12 <https://github.com/MOLAorg/mp2p_icp/issues/12>`_ from MOLAorg/feat/mls
+  Implemented MLS filter
+* Merge pull request `#11 <https://github.com/MOLAorg/mp2p_icp/issues/11>`_ from MOLAorg/feat/use-faster-insertion
+  Use the faster insertion-with-context in MRPT 2.15.0
+* Update to build using CGenericPointsMap in upcoming MRPT >=2.15
+* Merge pull request `#10 <https://github.com/MOLAorg/mp2p_icp/issues/10>`_ from MOLAorg/fix/ci
+* Upgrade CircleCI images to u24.04
+* Fix build out of ROS and w/o IMU preintegration
+* Update mola_common version
+* Fix: Warning message missing new line
+* FilterDecimateVoxels: add new parameter 'minimum_points_per_voxel'
+* Fix docs typo
+* Update docs for Deskew filter
+* Update README.md badges
+* Contributors: Jose Luis Blanco-Claraco
+
+2.0.0 (2025-10-13)
+------------------
+* Merge pull request `#9 <https://github.com/MOLAorg/mp2p_icp/issues/9>`_ from MOLAorg/feature/better-lio
+  Better LIO
+* sm2mm cli app: add --profiler flag
+* demo sm2mm pipelines: add deskew method entry
+* CI: Add another pipeline without TBB
+* FIX: bug in non-TBB serial implementation of GN optimizer
+* CI: add running unit tests
+* FIX: potential crash in FilterDeskew
+* Add deskew unit tests
+* Add unit test for cov2cov optimizer
+* Add 'name' property to all generators and filters for disaggregated stats
+* Allow building without the IMU library
+* Update mola_common to 0.5.1
+* clang-tidy fixes
+* Remove dead code
+* Refactor errorTerm for pt2pt for better reusability
+* mm-viewer: add combo box to select intensity colormap
+* Add docs for filters
+* BUGFIX: FilterMerge would lost all point fields except XYZ
+* Remove external libpointmatcher
+* Update formatter script
+* icp log viewer: more options for cov2cov visualization
+* Define virtual API MetricMapMergeCapable
+* fix bug in FilterByIntensity params parser
+* Render cov2cov pairings
+* FilterByRange new parameter: metric_l_infinity
+* FilterDecimateAdaptive now exploits parallelization
+* Progress visualizing cov2cov pairings
+* New cov2cov ICP optimizer
+* Implement a new Cov2Cov matcher
+* Make Matcher_Points_Base::transform_local_to_global() to use TBB, and remove unused parameters
+* Add [[nodiscard]] to estimate_points_eigen()
+* BBox filter: fix target layer must be same type than input
+* Use fractional integers for faster sampling
+* New FPS filter
+* Remove FilterDecimateVoxelsQuadratic
+* Style: public 'params\_' rename as 'params'
+* New interface 'IcpPrepareCapable'
+* Add new virtual interface NearestPointWithCovCapable
+* Refactor mp2p_icp_map into mp2p_icp_common for IMU-related parts
+* Finished integration of new IMU API package
+* Depend on imu external library
+* Move code out to the imu preintegration package
+* Move LocalVelocityBuffer to the IMU repository
+* Add [[nodiscard]] to icp_pipeline_from_yaml()
+* deskew filter: new option 'in_place' to avoid allocating a new cloud whenever possible
+* Finish implementation of higher-order IMU interpolator
+* Implement trajectory reconstruction for deskew
+* cmake files: prefer spaces indentation
+* Add imu preintegration package as dependency
+* FilterNormalizeIntensity can now use a fixed min/max range given by hand
+* Docs: update mp2p_icp_basics for better searchability of simplemaps
+* New option to set pointcloud alpha channel
+* Contributors: Jose Luis Blanco-Claraco
+
+1.8.0 (2025-08-26)
+------------------
+* Modernize and unify license notes in all files
+* Merge pull request `#8 <https://github.com/MOLAorg/mp2p_icp/issues/8>`_ from MOLAorg/feat/precise-deskew
+  Precise scan deskew:
+  - Implement LocalVelocityBuffer inside ParameterSource's
+  - Update LocalVelocityBuffer from IMU data from Generators.
+  - Export / Import LocalVelocityBuffer to/from YAML
+  - Implement precise cloud undistortion in FilterDeskew
+  - Use precise cloud undistortion in the context of sm2mm.
+* sm2mm: Use local velocity buffer if available
+* add serialization to velocity buffer
+* Generators now handle IMU readings and forward them to the velocity buffer
+* Update to latest mola_common for embedded builds
+* linter: clang-tidy fixes
+* fix param name for better consistency
+* feature: Option to use std::map instead of tsl robin_map in voxelization filters
+* docs: fill txt2mm man page
+* Feature: txt2mm new import format 'xyzrgb_normalized'
+* remove code to support older MRPT versions; code style clean ups
+* Fix: FilterAdjustTimestamps may trigger exception if input cloud is empty
+* Contributors: Jose Luis Blanco-Claraco
+
+1.7.1 (2025-06-20)
+------------------
+* docs: Populate sm2mm app page
+* New feature: all pipeline modules now has an optional "plugin" YAML field to load them from user-provided plugins.
+* Update REAME ROS badges
+* Contributors: Jose Luis Blanco-Claraco
+
+1.7.0 (2025-06-02)
+------------------
+* metric map data type: add new metadata YAML field
+* Update broken link to ROS Index
+* docs: change references to default branch master->develop
+* Default generator: more details in debug traces when ignoring an observation
+* Update package license tag to "BSD-3-Clause"
+* Integrate vscode with colcon custom settings and clang-tidy
+* Fix build unit tests with older gcc versions
+* Drop apparently useless build dep
+* Contributors: Jose Luis Blanco-Claraco
+
+1.6.7 (2025-04-03)
+------------------
+* mm-georef cli app: support reading/writing georef info in YAML format
+* georeferencing metadata now can be read/writen as YAML files
+* clang-format: switch to column limit=100
+* Update to robin-map v1.4.0
+* Contributors: Jose Luis Blanco-Claraco
+
+1.6.6 (2025-02-26)
+------------------
+* Docs: add page for mm-georef
+* docs: Update 2025 paper citation
+* print metric_map_t as string: show lat/lon coordinates in a format directly compatible with Google Map searches.
+* New cli tool: mm-georef, to manipulate the geo-referencing metadata of metric map files
+* Contributors: Jose Luis Blanco-Claraco
+
+1.6.5 (2025-01-28)
+------------------
+* Add GitHub actions
+* Add pole-detector filter
+* mm-filter app: add --load-plugins flag too
+* Add sanity check assert in FilterDeskew
+* Contributors: Jose Luis Blanco-Claraco
+
+1.6.4 (2024-12-18)
+------------------
+* merge two docs pages in one to shorten the docs TOC
+* Update README.md: Mark ROS2 Iron as EOL
+* Also use TBB for parallel solving point-to-plane pairings
+* Contributors: Jose Luis Blanco-Claraco
+
+1.6.3 (2024-11-11)
+------------------
+* icp-log-viewer: also reduce GUI refresh rate
+* mm-viewer: avoid useless GUI refresh (CPU usage reduction)
+* txt2mm: Add input filter xyzrgb
+* mm-viewer: add a 'fit view to map' button
+* New cli app rawlog-filter
+* FilterCurvature: better handling scans with <=3 points in some rings
+* new subcommand 'sm-cli tf'
+* Contributors: Jose Luis Blanco-Claraco
+
+1.6.2 (2024-09-14)
+------------------
+* Expose << and >> operators for geo-reference data structures
+* Fix missing build_dep
+* Contributors: Jose Luis Blanco-Claraco
+
+1.6.1 (2024-09-11)
+------------------
+* Fix missing catkin buildtoo_depend for ROS1 builds
+* Update RTTI macros for upcoming MRPT 2.14.0
+* Contributors: Jose Luis Blanco-Claraco
+
+1.6.0 (2024-09-08)
+------------------
+* Port Point2Plane matcher to use the new NN-for-planes API
+* mp2p_icp_map library: add NearestPlaneCapable virtual API
+* cmake: move from glob expressions to explicit lists of source files
+* clarify eigenvalues order in headers
+* Contributors: Jose Luis Blanco-Claraco
+
+1.5.6 (2024-09-07)
+------------------
+* sm2mm cli: show map contents before writing to disk
+* add another demo sm2mm file for the mola tutorials
+* Add another sm2mm demo file w/o deskew for the mola mapping tutorial
+* Matcher_Point2Plane: fix build error in armhf
+* Fix build with embedded mola_common
+* README: Add ROS badges for all architectures
+* Contributors: Jose Luis Blanco-Claraco
+
+1.5.5 (2024-08-27)
+------------------
+* Explicitly add tbb as dependency in package.xml
+* Depend on new mrpt_lib packages (deprecate mrpt2)
+* FIX: build errors in armhf arch
+* Contributors: Jose Luis Blanco-Claraco
+
+1.5.4 (2024-08-20)
+------------------
+* Do not use Eigen::Vector for compatibility with Eigen3 <3.4 in ROS Noetic
+* Contributors: Jose Luis Blanco-Claraco
+
+1.5.3 (2024-08-20)
+------------------
+* Re-add ROS1 Noetic as supported distribution
+* Generator sanity check asserts: more informative error messages
+* sm-cli: new command 'join' to merge simplemaps
+* icp-log-viewer UI: new keybind 'I' to switch initial/final pose
+* icp-log-viewer UI: add option to visualize voxelmaps empty space
+* Contributors: Jose Luis Blanco-Claraco
+
+1.5.2 (2024-07-24)
+------------------
+* Add sm2mm yaml example for dynamic/static obstacles
+* Update sample sm2mm pipelines to use de-skew
+* docs: add mm-filter example
+* Fix pointcloud ptr typo
+* More safety sanity checks added in mm-viewer and sm2mm
+* BUGFIX: Generator should not create empty maps for GPS observations
+* Contributors: Jose Luis Blanco-Claraco, Raúl Aguilera López
+
+1.5.1 (2024-07-03)
+------------------
+* Update docs
+* ICP: Add optional functors for before-logging maps
+* icp-log-viewer UI: fix potential out-of-range exception when autoplay is on
+* FilterAdjustTimestamps: add new param 'time_offset' useful for multiple LiDARs setups
+* Contributors: Jose Luis Blanco-Claraco
+
+1.5.0 (2024-06-21)
+------------------
+* ICP: Add optional user-provided per-iteration hooks
+* Add new filter: FilterByRing
+* Add new filter: FilterAdjustTimestamps
+* Add sanity checks for point cloud fields.
+* Fix typo in default class for FilterDeskew
+* generators API: add bool return type to detect if observation was actually processed
+* generic Generator: handle velodyne observations so timestamps are generated
+* Contributors: Jose Luis Blanco-Claraco
+
+1.4.3 (2024-06-11)
+------------------
+* Add pointcloud_sanity_check() auxiliary function
+* Generator: more DEBUG level traces
+* BUGFIX: FilterDeskew generated buggy output points if the input does not contain timestamps
+* Add sanity checks for point cloud fields
+* ICP log records now also store the dynamic variables. icp-log-viewer displays them.
+* ICP log files: automatically create output directory if it does not exist
+* Update ros2 badges (added Jazzy)
+* Contributors: Jose Luis Blanco-Claraco
+
+1.4.2 (2024-05-28)
+------------------
+* mm-viewer: add check-all, check-none to layer filters
+* Add new filter: FilterRemoveByVoxelOccupancy
+* mm-viewer: camera travelling keyframes-based animations
+* mm-viewer: navigate the map with keyboard arrows; add a load button
+* mm-viewer: can now also draws a TUM trajectory overlaid with the map
+* UI apps: smoother rendering
+* icp-log-viewer and mm-viewer: the UI now has a XYZ corner overlay
+* sm-cli: command "export-kfs" now has an optional flag '--output-twist'
+* FilterDeskew: ignore empty input maps
+* More debug-level traces
+* deskew filter: Fix case of variable names in docs
+* sm-cli app: Add new command 'trim' to cut simplemaps by bounding box
+* mm-viewer: show mouse pointing coordinates
+* Contributors: Jose Luis Blanco-Claraco
+
+1.4.1 (2024-05-19)
+------------------
+* Fix build for older mrpt versions
+* ICP pipelines: Implement loading ``quality_checkpoints`` parameter from YAML config file
+* Quality evaluators: add the option for 'hard discard'
+* Update QualityEvaluator_Voxels to use prebuilt voxel layers from input maps. Add unit tests.
+* BUGFIX: Fix deserializing georeferenced .mm files stored in <1.4.0 format
+* ICP: quality evaluators can now have formulas in their parameters too
+* mm-viewer and icp-log-viewer: extend zoom range so maps of tens of kms can be viewed at once
+* Contributors: Jose Luis Blanco-Claraco
+
+1.4.0 (2024-05-06)
+------------------
+* Update commit for robin-map to latest version (patch contributed upstream)
+* icp-log-viewer: UI now has a slider for each map point size
+* ICP: Add a new quality_checkpoint parameter to early abort ICP attempts
+* georeferenced maps: T_enu_to_map now has a covariance field
+* mm-viewer: display ENU frame too
+* Contributors: Jose Luis Blanco-Claraco
+
+1.3.3 (2024-04-30)
+------------------
+* Add minimum_input_points_to_filter option to FilterDecimateVoxels
+* FIX: QualityEvaluator_PairedRatio throws when one of the reference maps is empty
+* FIX BUG: Won't try to match 2D pointclouds if their height is different
+* Clarify comments in metricmap.h about geodetic references
+* Fix printing metric_map_t contents when it only has a gridmap
+* Fix potential dangling references (g++ 13 warning)
+* Fix potential use of uninitialized point index
+* Bump cmake_minimum_required to 3.5
+* Contributors: Jose Luis Blanco-Claraco
+
+1.3.2 (2024-04-22)
+------------------
+* tsl::robin_map library is no longer exposed neither in the public API nor as public headers (PIMPL pattern)
+  This is to prevent Debian-level collisions with other packages also exposing it.
+* add first icp-log-viewer docs
+* Contributors: Jose Luis Blanco-Claraco
+
+1.3.1 (2024-04-16)
+------------------
+* mm-viewer and icp-log-viewer: saves UI state in persistent user config file
+* FIX: missing UI refresh when clicking showPairings checkbox
+* renamed apps for less verbose names: icp-run, icp-log-viewer
+* ICP core now defines a variable ICP_ITERATION for use in programmable formulas in pipelines
+* icp-log-viewer: much faster rendering of ICP iteration details
+* mm-viewer: fix bug in calculation of bounding box
+* Merge docs with main MOLA repo
+* Contributors: Jose Luis Blanco-Claraco
+
+1.3.0 (2024-03-10)
+------------------
+* mm-viewer: new options to visualize georeferenced maps
+* New sm-cli commands: --cut, --export-keyframes, --export-rawlog
+* propagate cmake deps downstream
+* metric_map_t: add georeferencing optional field
+* mm-filter: add --rename operation
+* GetOrCreatePointLayer() moved to its own header and uses shared ptrs
+* FilterMerge: add param input_layer_in_local_coordinates
+* Contributors: Jose Luis Blanco-Claraco
+
+1.2.0 (2024-02-16)
+------------------
+* Add new apps: sm-cli, mm-info, txt2mm, mm2txt, mm-filter
+* Improved documentation.
+* new filter FilterByIntensity
+* FilterNormalizeIntensity: add option for intensity range memory
+* FilterByRange: renamed params to simplify them (removed param 'keep_between')
+* FIX: missing intensity channel in decimate voxel when using some decimation methods
+* sm-cli: new subcommand 'level' to maximize the 'horizontality' of built maps
+* add optional profiler to filter pipelines
+* Contributors: Jose Luis Blanco-Claraco
+
+1.1.1 (2024-02-07)
+------------------
+* MergeFilter: now also handles CVoxelMap as inputs
+* more memory efficient defaults
+* FilterCurvature: now based on ring_id channel
+* Use hash map min_factor to speed up clear()s
+* add missing hash reserve
+* PointCloudToVoxelGridSingle: Fix wrong initialization of point count
+* Contributors: Jose Luis Blanco-Claraco
+
+1.1.0 (2024-01-25)
+------------------
+* FilterDecimateVoxels: Replace 3 bool parameters with an enum
+* Fix clang warnings
+* Save and visualize ICP step partial solutions
+* QualityEvaluator_PairedRatio: now does not require parameters
+* Add filter: Bonxai VoxelMap -> 2D gridmap. Bayesian filtering of voxel columns
+* Generator: allow defining custom metric maps directly in the YAML configuration
+* Contributors: Jose Luis Blanco-Claraco
+
+1.0.0 (2024-01-20)
+------------------
+* Gauss-Newton solver: Add optional prior term
+* Added FilterMerge and modifications to allow sm2mm to build any type maps
+* sm2mm: add option for lazy-load external directory
+* Decimate filter: add flatten_to option to efficiently convert 3D->2D point clouds
+* FilterBoundingBox: parameter name changed for clearer split of inside / outside bbox
+* Deskew: add option to bypass de-skew operation
+* bump minimum required mrpt version
+* Better coloring; add option to export mm layers
+* Use new mrpt api to propagate point properties; add final_filter stage to sm2mm
+* sm2mm: add verbosity flag
+* bbox filter: allow processing variables too
+* Introduce robot\_{x,y,z} variables
+* Better mm-viewer; update sm2mm demo file
+* Progress with RST docs
+* Add missing robotPose argument to generators; progress with mm-viewer
+* Add sm2mm app
+* Add FILE attribute to license tag
+* More dynamic parameters
+* fix print format
+* Add Deskew filter
+* update CI to u22.04
+* Introduce Parameterizable interface
+* New layers: create of the same input cloud type
+* Add FilterCurvature
+* filter: optional additional layer for deleted points
+* FIX: important error in robust gradient
+* expose GN params as public
+* new generators and filters
+* Filters: use tsl robin_map, faster than std::unordered_map
+* prefer nn_radius_search() to exploit nanoflann rknn
+* Minor UI updates
+* gui: autoplay
+* estimate_points_eigen.h moved to the mp2p_icp_map library
+* Solvers: add option to select by correction magnitude
+* add [[nodiscard]] to generator API
+* Add specialized implementation of voxelize for 1 pt/vx
+* add Cauchy robust kernel
+* Add support for TBB for parallelization
+* add angularThresholdFactor; add max plane-to-pt distance
+* viewer UI: show number of points per layer
+* Prefer Teschner's spatial hash
+* Use nn_single_search() when possible
+* viewer: add follow local checkbox
+* Add new filter: FilterDecimateVoxelsQuadratic
+* FilterDecimateVoxels: new option use_closest_to_voxel_average
+* FilterDecimateVoxels: new param use_random_point_within_voxel
+* less unnecesary mem allocs
+* generator: create map layers first, then filter by observation name/class filter
+* port to NN radius search
+* add "enabled" property to base Matcher class
+* Solvers: add property 'enabled'
+* Add robust kernels to GN solver
+* Add optional profiler to ICP
+* New parameter decimationDebugFiles
+* Add plugin option to viewer
+* VoxelFilter: is now ~7 times faster and does not need a bounding box parameter, thanks to using an associative container.
+* viewer: add new flag -f to load one single log file
+* viewer: increase slider range for max far plane
+* Options to recolorize maps in icp log viewer
+* Fix regression in rendering options for point clouds
+* Matcher: new parameter bounding_box_intersection_check_epsilon
+* New env var MP2P_ICP_GENERATE_DEBUG_FILES can be use to override generation of icp log files
+* BUGFIX: Ignored sensorPose for Generator::filterPointCloud()
+* Allow ICP matching against voxel metric map types
+* mp2p_icp_filters::Generator now can create a map from a generic INI file (e.g. voxelmaps)
+* fix references to old `pointcloud_t` -> `metric_map_t`
+* Remove support for MRPT<2.4.0
+* Contributors: Jose Luis Blanco-Claraco
+
+0.2.2 (2023-09-08)
+------------------
+* Fix missing cmake dependencies between libraries
+* Update mola_common
+* Refactor into a new small library mp2p_icp_map with just the metric_map_t class
+* sync mola_common submodule
+* Update submodule mola_common
+* Remove redundant section
+* Update ROS badges
+* Contributors: Jose Luis Blanco-Claraco
+
+0.2.1 (2023-09-02)
+------------------
+
+* Update copyright date
+* Update to new name of mola_common
+* update ros badges
+* Contributors: Jose Luis Blanco-Claraco
+
+0.2.0 (2023-08-24)
+------------------
+* First release as MOLA submodule.
+
+0.1.0 (2023-06-14)
+------------------
+* First official release of the mp2p_icp libraries
+* Contributors: FranciscoJManasAlvarez, Jose Luis Blanco-Claraco
