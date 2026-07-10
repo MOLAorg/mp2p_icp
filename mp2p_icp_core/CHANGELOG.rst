@@ -2,6 +2,59 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* add missing changelogs
+* Merge pull request `#74 <https://github.com/MOLAorg/mp2p_icp/issues/74>`_ from MOLAorg/split-core-viz-packages
+  Split repo into mp2p_icp_core (headless) + mp2p_icp_viz (GUI) + mp2p_icp (metapackage)
+* fix: apply clang-format-14 to TCLAP->CLI11 converted files
+  Address CI failure: several files from the TCLAP-to-CLI11 conversion
+  weren't run through clang-format-14 before the previous commit.
+* Split repo into mp2p_icp_core (headless) + mp2p_icp_viz (GUI) + mp2p_icp (metapackage)
+  Consumers that only need the headless C++ libraries and CLI apps no
+  longer need to pull in mrpt_libgui (nanogui/GLFW/X11) or build the GUI
+  apps. mp2p_icp remains as a backward-compatible metapackage depending
+  on both, so existing <depend>mp2p_icp</depend> consumers are unaffected.
+  - mp2p_icp_core: mp2p_icp_common/map/filters + the ICP algorithms lib +
+  13 headless CLI apps. Root find_package(MRPT COMPONENTS ...) drops
+  "gui"; mrpt::opengl/system/expr remain available transitively via
+  maps->obs and tfest->poses->bayes->config.
+  - mp2p_icp_viz: mm-viewer and icp-log-viewer, the only two apps that
+  actually use mrpt::gui (sm-cli's dependency on it was vestigial and
+  dropped instead).
+  - Removed the one real GUI leak in the mp2p_icp (ICP) library: an
+  interactive CDisplayWindow debug feature in
+  QualityEvaluator_RangeImageSimilarity (debug_show_all_in_window),
+  which was the only reason that library linked mrpt::gui at all. The
+  headless debug_save_all_matrices option remains.
+  - Dropped the mola_common git submodule and its standalone-build
+  bootstrap logic; standalone (non-colcon) plain-CMake builds are no
+  longer supported, matching every other MOLAorg package in this
+  ecosystem (find_package(mola_common REQUIRED) via the ROS workspace).
+  robin-map stays vendored (no rosdep key, private dep of filters).
+  - Replaced TCLAP with CLI11 for all CLI apps' argument parsing
+  (rosdep key "cli11", same pattern already used elsewhere in
+  MOLAorg repos). Behavior-preserving: same flags, defaults, and help
+  text everywhere.
+  - Removed .circleci/config.yml: its bare-cmake + PPA-installed
+  libmrpt-dev jobs tested exactly the standalone-build path being
+  dropped, and can't provide mola_common without reintroducing the
+  bootstrap complexity just removed from CMakeLists. The colcon-based
+  GH Actions jobs (humble/jazzy) are now the CI.
+  - Updated docs (agents.md, README.md, docs/source/index.rst) and
+  check-clang-format.yml/formatter.sh for the new layout.
+  Verified: mp2p_icp_core, mp2p_icp_viz, mp2p_icp all build via colcon;
+  all 104 mp2p_icp_core tests pass; mp2p_icp_core binaries have zero
+  GUI/nanogui/GLFW linkage; mm-viewer still loads and renders a real
+  georeferenced .mm file; a real downstream consumer (mola_metric_maps)
+  builds unmodified against the new layout.
+  Note: mp2p_icp/CMakeLists.txt shows as "modified" rather than
+  deleted+added in the diff -- this is a git rename-detection artifact
+  from the old mp2p_icp/ (ICP library) subfolder and the new mp2p_icp/
+  (metapackage) folder sharing the same repo-relative path after the
+  library moved one level deeper into mp2p_icp_core/mp2p_icp/.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.11.0 (2026-07-04)
 -------------------
 * Merge pull request `#72 <https://github.com/MOLAorg/mp2p_icp/issues/72>`_ from MOLAorg/fix/filterdeskew-graceful-imu-anchor
