@@ -32,7 +32,16 @@ int commandTf()
     // Take second unlabeled argument:
     const std::string inFile  = lstCmds.at(1);
     const std::string outFile = lstCmds.at(2);
-    const std::string strTf   = lstCmds.at(3);
+    std::string       strTf   = lstCmds.at(3);
+
+    // CLI11 silently strips a leading/trailing bracket pair from
+    // variadic option values (its list syntax), so a "[x y z ...]"
+    // argument may arrive here without brackets. Re-add them, since
+    // CPose3D::fromString() requires them.
+    if (strTf.empty() || strTf.front() != '[')
+    {
+        strTf = "[" + strTf + "]";
+    }
 
     mrpt::maps::CSimpleMap sm = read_input_sm_from_cli(inFile);
 
