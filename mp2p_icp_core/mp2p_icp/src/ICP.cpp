@@ -566,9 +566,10 @@ void ICP::save_log_file(const LogRecord& log, const Parameters& p)
         filename = std::regex_replace(filename, std::regex(expr), value);
     }
 
-    // make sure directory exist:
+    // make sure directory exist (an empty baseDir means "current directory",
+    // which always exists: createDirectory("") would throw):
     const auto baseDir = mrpt::system::extractFileDirectory(filename);
-    if (!mrpt::system::directoryExists(baseDir))
+    if (!baseDir.empty() && !mrpt::system::directoryExists(baseDir))
     {
         const bool ok = mrpt::system::createDirectory(baseDir);
         if (!ok)
