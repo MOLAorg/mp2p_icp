@@ -10,6 +10,7 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CSimpleMap.h>
 #include <mrpt/math/TBoundingBox.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/system/filesystem.h>
 
 #include "sm-cli.h"
@@ -41,8 +42,18 @@ int commandInfo()
     std::map<std::string, std::string> obsTypes;
     std::map<std::string, size_t>      obsCount;
 
+    // First (chronologically oldest, per CSimpleMap's insertion order) keyframe's pose, useful to
+    // recover the actual absolute orientation a map was built with (e.g. after IMU-based pitch/roll
+    // leveling overrode the initial seed at mapping time):
+    std::optional<mrpt::poses::CPose3D> kf0Pose;
+
     for (const auto& [pose, sf, twist] : sm)
     {
+        if (!kf0Pose)
+        {
+            kf0Pose = pose->getMeanVal();
+        }
+
         if (twist.has_value())
         {
             hasTwist = true;
@@ -79,6 +90,7 @@ int commandInfo()
     std::cout << "\n";
     std::cout << "size_bytes:           " << sizeBytes << "\n";
     std::cout << "keyframe_count:       " << sm.size() << "\n";
+    std::cout << "kf0_pose_xyzypr_deg:  " << (kf0Pose ? kf0Pose->asString() : "None") << "\n";
     std::cout << "has_twist:            " << (hasTwist ? "true" : "false") << "\n";
     std::cout << "kf_bounding_box_min:  " << bbox.min.asString() << "\n";
     std::cout << "kf_bounding_box_max:  " << bbox.max.asString() << "\n";
