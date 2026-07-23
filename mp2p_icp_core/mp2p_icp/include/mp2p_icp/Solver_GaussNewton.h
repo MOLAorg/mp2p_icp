@@ -47,6 +47,14 @@ class Solver_GaussNewton : public Solver
      *  OptimalTF_GN_Parameters::kernelPriorRefBlend. */
     double robustKernelPriorRefBlend = 0.0;
 
+    /** Scaling of the cov-to-cov data block against the prior. See
+     *  OptimalTF_GN_Parameters::cov2cov_alpha. */
+    double cov2cov_alpha = 1.0;
+
+    /** Automatic Birge-ratio balancing of the cov2cov block against the prior.
+     *  See OptimalTF_GN_Parameters::cov2cov_auto_balance_with_prior. */
+    bool cov2cov_auto_balance_with_prior = true;
+
     void initialize(const mrpt::containers::yaml& params) override;
 
    protected:

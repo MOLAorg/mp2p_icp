@@ -38,6 +38,9 @@ void Solver_GaussNewton::initialize(const mrpt::containers::yaml& params)
 
     MCP_LOAD_OPT(params, robustKernelPriorRefBlend);
 
+    MCP_LOAD_OPT(params, cov2cov_alpha);
+    MCP_LOAD_OPT(params, cov2cov_auto_balance_with_prior);
+
     if (params.has("pair_weights")) pairWeights.load_from(params["pair_weights"]);
 }
 
@@ -51,12 +54,14 @@ bool Solver_GaussNewton::impl_optimal_pose(
     out = OptimalTF_Result();
 
     OptimalTF_GN_Parameters gnParams;
-    gnParams.maxInnerLoopIterations = maxIterations;
-    gnParams.pairWeights            = pairWeights;
-    gnParams.kernel                 = robustKernel;
-    gnParams.kernelParam            = robustKernelParam;
-    gnParams.kernelPriorRefBlend    = robustKernelPriorRefBlend;
-    gnParams.prior                  = sc.prior;
+    gnParams.maxInnerLoopIterations          = maxIterations;
+    gnParams.pairWeights                     = pairWeights;
+    gnParams.kernel                          = robustKernel;
+    gnParams.kernelParam                     = robustKernelParam;
+    gnParams.kernelPriorRefBlend             = robustKernelPriorRefBlend;
+    gnParams.cov2cov_alpha                   = cov2cov_alpha;
+    gnParams.cov2cov_auto_balance_with_prior = cov2cov_auto_balance_with_prior;
+    gnParams.prior                           = sc.prior;
 
     ASSERT_(sc.guessRelativePose.has_value());
     gnParams.linearizationPoint = mrpt::poses::CPose3D(sc.guessRelativePose.value());
