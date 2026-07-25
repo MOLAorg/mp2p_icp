@@ -34,6 +34,41 @@
 
 using namespace mp2p_icp;
 
+namespace
+{
+/** Skew-symmetric matrix of a 3-vector, i.e. [v]_x such that [v]_x·w = v × w */
+Eigen::Matrix3d skewSymmetric(const Eigen::Vector3d& v)
+{
+    Eigen::Matrix3d S;
+    // clang-format off
+    S <<     0, -v.z(),  v.y(),
+         v.z(),      0, -v.x(),
+        -v.y(),  v.x(),      0;
+    // clang-format on
+    return S;
+}
+
+/** Orthonormal basis (3x2) of the plane orthogonal to the unit vector u. */
+Eigen::Matrix<double, 3, 2> orthonormalComplement(const Eigen::Vector3d& u)
+{
+    // Seed with the canonical axis least aligned with u, for conditioning:
+    int seedAxis = 0;
+    u.cwiseAbs().minCoeff(&seedAxis);
+    Eigen::Vector3d seed = Eigen::Vector3d::Zero();
+    seed[seedAxis]       = 1.0;
+
+    Eigen::Vector3d b1 = u.cross(seed);
+    b1.normalize();
+    Eigen::Vector3d b2 = u.cross(b1);
+    b2.normalize();
+
+    Eigen::Matrix<double, 3, 2> B;
+    B.col(0) = b1;
+    B.col(1) = b2;
+    return B;
+}
+}  // namespace
+
 bool mp2p_icp::optimal_tf_gauss_newton(
     const Pairings& in, OptimalTF_Result& result, const OptimalTF_GN_Parameters& gnParams)
 {
@@ -75,6 +110,26 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                                : curSqrNorm;
         return robustSqrtWeightFunc(arg);
     };
+
+    // Gravity term: precompute the (rotation-independent) horizontal basis B
+    // of the plane orthogonal to the map-frame gravity direction, plus the
+    // normalized body-frame "up". Only the Jacobian below depends on the
+    // current rotation, so this part is hoisted out of the iteration loop.
+    std::optional<std::pair<Eigen::Matrix<double, 3, 2>, Eigen::Vector3d>> gravityBasis;
+    if (gnParams.gravityPrior.has_value())
+    {
+        const auto& gp = *gnParams.gravityPrior;
+        ASSERTMSG_(gp.sigma_rad > 0, "gravityPrior.sigma_rad must be >0");
+
+        const Eigen::Vector3d u_b_raw(gp.up_body.x, gp.up_body.y, gp.up_body.z);
+        const Eigen::Vector3d u_m_raw(gp.up_map.x, gp.up_map.y, gp.up_map.z);
+        ASSERTMSG_(
+            u_b_raw.norm() > 1e-6 && u_m_raw.norm() > 1e-6,
+            "gravityPrior up_body/up_map must be non-null vectors");
+
+        const Eigen::Vector3d u_m = u_m_raw.normalized();
+        gravityBasis = std::make_pair(orthonormalComplement(u_m), u_b_raw.normalized());
+    }
 
     const auto nPt2Pt   = in.paired_pt2pt.size();
     const auto nCov2Cov = in.paired_cov2cov.size();
@@ -532,6 +587,42 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
             g.noalias() += (df_de2.transpose() * priorInf.asEigen()) * err_i.asEigen();
             H.noalias() += (df_de2.transpose() * priorInf.asEigen()) * df_de2.asEigen();
+        }
+
+        // Gravity ("verticality") term: a rank-2, yaw-free tilt observation.
+        //
+        // Residual: the horizontal component of the predicted "up" vector,
+        //   r(R) = B^T · (R · u_b)  in R^2,
+        // with B (3x2) an orthonormal basis of the plane orthogonal to u_m.
+        // r = 0 exactly when R·u_b is parallel to u_m, i.e. when the solution
+        // is level; for small tilt ‖r‖ is the tilt angle [rad].
+        //
+        // The solver applies increments on the right, P <- P · Exp(eps), so
+        //   d(B^T · R · Exp(w) · u_b)/dw |w=0 = -B^T · R · [u_b]_x
+        // and translations do not enter the residual at all.
+        //
+        // Weighting is ISOTROPIC (1/sigma^2 · I_2): that is what makes the
+        // cost invariant to rotation about gravity. The induced 6x6
+        // information J^T·W·J then has rank 2, zero translation block, and
+        // null space exactly span(u_b) = rotation about the gravity axis,
+        // so yaw stays free at ANY attitude (not only near yaw=0).
+        if (gravityBasis.has_value())
+        {
+            const auto& [B, u_b] = *gravityBasis;
+
+            const Eigen::Matrix3d R = result.optimalPose.getRotationMatrix().asEigen();
+
+            const Eigen::Vector2d r_g = B.transpose() * (R * u_b);
+
+            // 2x6 Jacobian: [ 0 (translation) | -B^T·R·[u_b]_x (rotation) ]
+            Eigen::Matrix<double, 2, 6> Jg = Eigen::Matrix<double, 2, 6>::Zero();
+            Jg.block<2, 3>(0, 3).noalias() = -B.transpose() * R * skewSymmetric(u_b);
+
+            const double w_g =
+                1.0 / (gnParams.gravityPrior->sigma_rad * gnParams.gravityPrior->sigma_rad);
+
+            g.noalias() += w_g * Jg.transpose() * r_g;
+            H.noalias() += w_g * Jg.transpose() * Jg;
         }
 
         // ============ Termination criterion =============

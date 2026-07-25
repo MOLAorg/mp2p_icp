@@ -62,6 +62,7 @@ bool Solver_GaussNewton::impl_optimal_pose(
     gnParams.cov2cov_alpha                   = cov2cov_alpha;
     gnParams.cov2cov_auto_balance_with_prior = cov2cov_auto_balance_with_prior;
     gnParams.prior                           = sc.prior;
+    gnParams.gravityPrior                    = sc.gravityPrior;
 
     ASSERT_(sc.guessRelativePose.has_value());
     gnParams.linearizationPoint = mrpt::poses::CPose3D(sc.guessRelativePose.value());
