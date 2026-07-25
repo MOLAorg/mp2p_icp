@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/GravityPrior.h>
 #include <mp2p_icp/IterTermReason.h>
 #include <mp2p_icp/LogRecord.h>
 #include <mp2p_icp/Matcher.h>
@@ -64,12 +65,18 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
     /** Register (align) two point clouds (possibly after having been
      * preprocessed to extract features, etc.) and returns the relative pose of
      * pcLocal with respect to pcGlobal.
+     *
+     * \param gravityPrior Optional gravity ("verticality") observation. Unlike
+     *        `prior`, it constrains only the two tilt DOFs and leaves rotation
+     *        about gravity (yaw) and all translations free. See
+     *        mp2p_icp::GravityPrior.
      */
     virtual void align(
         const metric_map_t& pcLocal, const metric_map_t& pcGlobal,
         const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p, Results& result,
         const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior           = std::nullopt,
-        const mrpt::optional_ref<LogRecord>&                     outputDebugInfo = std::nullopt);
+        const mrpt::optional_ref<LogRecord>&                     outputDebugInfo = std::nullopt,
+        const std::optional<GravityPrior>&                       gravityPrior    = std::nullopt);
 
     /** @name Module: Solver instances
      * @{ */

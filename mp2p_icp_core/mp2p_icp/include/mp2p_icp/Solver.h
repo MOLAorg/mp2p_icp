@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/GravityPrior.h>
 #include <mp2p_icp/OptimalTF_Result.h>
 #include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/Parameterizable.h>
@@ -54,6 +55,12 @@ struct SolverContext
      * value means the solution must be close to those coordinates.
      */
     std::optional<mrpt::poses::CPose3DPDFGaussianInf> prior;
+
+    /** Optional gravity ("verticality") observation, INDEPENDENT of `prior`:
+     *  a yaw-free, rank-2 tilt constraint that leaves rotation about gravity
+     *  and all three translations exactly free. See mp2p_icp::GravityPrior.
+     */
+    std::optional<GravityPrior> gravityPrior;
 
     // room for optional solver-specific context:
     mutable std::map<const Solver*, std::map<std::string, std::any>> perSolverPersistentData;

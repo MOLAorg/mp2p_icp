@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/GravityPrior.h>
 #include <mp2p_icp/OptimalTF_Result.h>
 #include <mp2p_icp/PairWeights.h>
 #include <mp2p_icp/Pairings.h>
@@ -41,8 +42,24 @@ struct OptimalTF_GN_Parameters
      *  and an inverse covariance (information) matrix, i.e. zeros in the
      * diagonal mean that those prior coordinates should be ignored, a large
      * value means the solution must be close to those coordinates.
+     *
+     * \note The information matrix is applied to the residual
+     * `log(P_prior^-1 · P_cur)` and is therefore expressed in the SE(3) **Lie**
+     * tangent: entries [0..2] are x,y,z and [3..5] are the rotation-VECTOR
+     * components (w_x, w_y, w_z), i.e. approximately (roll, pitch, yaw) axes.
+     * This is NOT MRPT's (x, y, z, yaw, pitch, roll) Euler ordering used by
+     * CPose3DPDFGaussian elsewhere: the two swap indices 3 and 5.
      */
     std::optional<mrpt::poses::CPose3DPDFGaussianInf> prior;
+
+    /** Optional gravity ("verticality") observation, INDEPENDENT of `prior`:
+     *  a yaw-free, rank-2 tilt constraint that never touches translation.
+     *  See mp2p_icp::GravityPrior for the residual and its properties.
+     *
+     *  Being a function of the current rotation, its linearization is rebuilt
+     *  at every Gauss-Newton iteration (unlike a fixed `prior` information).
+     */
+    std::optional<GravityPrior> gravityPrior;
 
     /** Minimum SE(3) change to stop iterating. */
     double minDelta = 1e-7;
