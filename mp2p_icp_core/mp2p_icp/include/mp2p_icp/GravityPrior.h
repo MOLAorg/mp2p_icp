@@ -20,6 +20,8 @@
 #pragma once
 
 #include <mrpt/math/TPoint3D.h>  // TVector3D
+#include <mrpt/serialization/CArchive.h>
+#include <mrpt/typemeta/TTypeName.h>
 
 namespace mp2p_icp
 {
@@ -70,8 +72,23 @@ struct GravityPrior
     /** Standard deviation [rad] of the tilt observation. Smaller means a
      *  stronger, closer-to-mandatory leveling constraint. */
     double sigma_rad = 0.02;
+
+    DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::GravityPrior)
 };
 
 /** @} */
 
 }  // namespace mp2p_icp
+
+namespace mrpt::serialization
+{
+/** Serialization of mp2p_icp::GravityPrior, so that the verticality
+ *  observation actually handed to the solver can be recovered from an
+ *  `.icplog` afterwards. Without it the only way to know the effective
+ *  `sigma_rad` (which `adaptive_sigma` changes at run time) is to re-run with
+ *  debug-level logging enabled.
+ */
+CArchive& operator<<(CArchive& out, const mp2p_icp::GravityPrior& obj);
+CArchive& operator>>(CArchive& in, mp2p_icp::GravityPrior& obj);
+
+}  // namespace mrpt::serialization

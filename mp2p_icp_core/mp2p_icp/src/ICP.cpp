@@ -77,6 +77,7 @@ void ICP::align(
         currentLog->pcLocal                    = pcLocal.get_shared_from_this_or_clone();
         currentLog->initialGuessLocalWrtGlobal = initialGuessLocalWrtGlobal;
         currentLog->prior                      = prior;
+        currentLog->gravityPrior               = gravityPrior;
         currentLog->icpParameters              = p;
     }
 
