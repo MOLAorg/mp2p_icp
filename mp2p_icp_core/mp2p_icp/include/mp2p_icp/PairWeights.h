@@ -33,11 +33,7 @@ namespace mp2p_icp
  */
 struct PairWeights
 {
-    /** Weight of point-to-point pairs. Note that finer control of weights
-     * can be achieved with `Pairings::point_weights`, so this `pt2pt` field
-     * will be honored only if `Pairings::point_weights` is empty.
-     */
-    double pt2pt = 1.0;
+    double pt2pt = 1.0;  //!< Weight of point-to-point pairs
 
     double pt2ln = 1.0;  //!< Weight of point-to-line pairs
     double pt2pl = 1.0;  //!< Weight of point-to-plane pairs

@@ -30,7 +30,7 @@
 
 using namespace mp2p_icp;
 
-static const uint8_t SERIALIZATION_VERSION = 2;
+static const uint8_t SERIALIZATION_VERSION = 3;
 
 Pairings::~Pairings() = default;
 
@@ -38,9 +38,10 @@ void Pairings::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out.WriteAs<uint8_t>(SERIALIZATION_VERSION);
     out << paired_pt2pt;
-    out << paired_pt2ln << paired_pt2pl << paired_ln2ln << paired_pl2pl << point_weights;
+    out << paired_pt2ln << paired_pt2pl << paired_ln2ln << paired_pl2pl;
     out << potential_pairings;  // v1
     out << paired_cov2cov;  // v2
+    // v3: per-point weights removed (unused, superseded by PairWeights::pt2pt)
 }
 
 void Pairings::serializeFrom(mrpt::serialization::CArchive& in)
@@ -51,7 +52,14 @@ void Pairings::serializeFrom(mrpt::serialization::CArchive& in)
 
     ASSERT_LE_(readVersion, SERIALIZATION_VERSION);
     in >> paired_pt2pt;
-    in >> paired_pt2ln >> paired_pt2pl >> paired_ln2ln >> paired_pl2pl >> point_weights;
+    in >> paired_pt2ln >> paired_pt2pl >> paired_ln2ln >> paired_pl2pl;
+    if (readVersion < 3)
+    {
+        // Removed in v3: per-point weights. Read and discard, for backward
+        // compatibility with older serialized icplog files.
+        std::vector<std::pair<std::size_t, double>> unusedPointWeights;
+        in >> unusedPointWeights;
+    }
     if (readVersion >= 1)
     {
         in >> potential_pairings;

@@ -32,7 +32,7 @@ matchers:
       # If "pointLayerMatches" is not defined, layers will be matched against
       # those with the same name in both maps:
       #pointLayerMatches:
-      #  - {global: "2d_lidar", local: "2d_lidar", weight: 1.0}
+      #  - {global: "2d_lidar", local: "2d_lidar"}
 
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio
