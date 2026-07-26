@@ -24,7 +24,10 @@
 
 #include <cstdlib>
 #include <limits>  // std::numeric_limits
+#include <map>
 #include <optional>
+#include <set>
+#include <string>
 #include <vector>
 
 namespace mp2p_icp
@@ -41,16 +44,15 @@ class Matcher_Points_Base : public Matcher
    public:
     Matcher_Points_Base() = default;
 
-    /** Weights for each potential Local->Global point layer matching.
-     * If empty, the output Pairings::point_weights
-     * will left empty (=all points have equal weight).
-     * \note Note: this field can be loaded from a configuration file via
-     * initializeLayerWeights().
+    /** Explicit set of local point layers to match against each global point
+     * layer. If empty, each `local` layer is matched against the `global`
+     * layer with the identical name.
+     * \note This field can be loaded from a configuration file, see
+     * initialize().
      *
-     * \note Map is: w["globalLayer"]["localLayer"]=weight;
-     *
+     * \note Map is: layers["globalLayer"] = {"localLayer1", "localLayer2", ...};
      */
-    std::map<std::string, std::map<std::string, double>> weight_pt2pt_layers;
+    std::map<std::string, std::set<std::string>> pt2pt_layer_matches;
 
     /** Whether to allow matching *local* points that have been already matched
      * by a former Matcher instance in the pipeline. */
@@ -69,8 +71,11 @@ class Matcher_Points_Base : public Matcher
 
     /** Common parameters to all derived classes:
      *
-     * - `pointLayerMatches`: Optional map of layer names to relative weights.
-     *  Refer to example YAML files.
+     * - `pointLayerMatches`: Optional sequence of explicit `{global, local}`
+     *  layer-name pairs to match against each other. Refer to example YAML
+     *  files. A legacy `weight` key is still accepted for backward
+     *  compatibility but is ignored; use the solver's `pair_weights.pt2pt`
+     *  instead.
      *
      * - `allowMatchAlreadyMatchedPoints`: Optional (Default=false). Whether to
      * find matches for local points which were already paired by other matcher

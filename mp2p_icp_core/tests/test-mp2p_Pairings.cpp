@@ -30,6 +30,7 @@
 #include <mrpt/opengl/CTexturedPlane.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/serialization/CArchive.h>
+#include <mrpt/serialization/stl_serialization.h>
 
 #include <iostream>
 
@@ -96,7 +97,6 @@ void test_Pairings_Serialization()
 
     // Metadata
     p1.potential_pairings = 100;
-    p1.point_weights.emplace_back(0, 1.5);  // Index 0 has weight 1.5
 
     // 2. Serialize
     // ---------------------------------------------------
@@ -119,7 +119,6 @@ void test_Pairings_Serialization()
     ASSERT_EQUAL_(p1.paired_pl2pl.size(), p2.paired_pl2pl.size());
 
     ASSERT_EQUAL_(p1.potential_pairings, p2.potential_pairings);
-    ASSERT_EQUAL_(p1.point_weights.size(), p2.point_weights.size());
 
     // Deep check one element
     const auto& pt1 = p1.paired_pt2pt[0];
@@ -127,12 +126,48 @@ void test_Pairings_Serialization()
     ASSERT_NEAR_(pt1.global.x, pt2.global.x, 1e-6);
     ASSERT_EQUAL_(pt1.globalIdx, pt2.globalIdx);
 
-    const auto& w1 = p1.point_weights[0];
-    const auto& w2 = p2.point_weights[0];
-    ASSERT_EQUAL_(w1.first, w2.first);
-    ASSERT_NEAR_(w1.second, w2.second, 1e-6);
-
     std::cout << "[Test Passed] Pairings Serialization\n";
+}
+
+void test_Pairings_BackwardCompatDeserialization()
+{
+    // Manually craft a v2-format stream (as produced before
+    // Pairings::point_weights was removed) to check that old serialized
+    // icplog files can still be read.
+    mrpt::io::CMemoryStream mem;
+    auto                    arch = mrpt::serialization::archiveFrom(mem);
+
+    mrpt::tfest::TMatchingPairList pt2pt;
+    {
+        mrpt::tfest::TMatchingPair pair;
+        pair.global = {1.0, 2.0, 3.0};
+        pair.local  = {1.1, 2.1, 3.1};
+        pt2pt.push_back(pair);
+    }
+    MatchedPointLineList  pt2ln;
+    MatchedPointPlaneList pt2pl;
+    MatchedLineList       ln2ln;
+    MatchedPlaneList      pl2pl;
+    // Old-format per-point weights block, no longer used by current code:
+    std::vector<std::pair<std::size_t, double>> point_weights;
+    point_weights.emplace_back(1, 2.5);
+    const uint64_t          potential_pairings = 42;
+    MatchedPointWithCovList cov2cov;
+
+    arch.WriteAs<uint8_t>(2);  // old SERIALIZATION_VERSION
+    arch << pt2pt;
+    arch << pt2ln << pt2pl << ln2ln << pl2pl << point_weights;
+    arch << potential_pairings;
+    arch << cov2cov;
+
+    mem.Seek(0);
+    Pairings p;
+    arch >> p;  // must not throw despite the now-removed point_weights block
+
+    ASSERT_EQUAL_(p.paired_pt2pt.size(), 1ULL);
+    ASSERT_EQUAL_(p.potential_pairings, 42ULL);
+
+    std::cout << "[Test Passed] Pairings backward-compat deserialization (v2)\n";
 }
 
 void test_Pairings_PushBack()
@@ -254,6 +289,7 @@ int main()
     try
     {
         test_Pairings_Serialization();
+        test_Pairings_BackwardCompatDeserialization();
         test_Pairings_PushBack();
         test_Pairings_Viz();
         return 0;

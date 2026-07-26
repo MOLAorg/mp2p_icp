@@ -32,7 +32,7 @@ matchers:
       runFromIteration: 0  # "from 0 to 0" means "all"
       runUpToIteration: 0
       pointLayerMatches:
-        - {global: "raw", local: "decimated", weight: 1.0}
+        - {global: "raw", local: "decimated"}
 #  - class: mp2p_icp::Matcher_Point2Plane
 #    params:
 #      distanceThreshold: 0.40
@@ -41,7 +41,7 @@ matchers:
 #      runFromIteration: 0  # "from 0 to 0" means "all"
 #      runUpToIteration: 0
 #      pointLayerMatches:
-#        - {global: "raw", local: "decimated", weight: 1.0}
+#        - {global: "raw", local: "decimated"}
 
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio

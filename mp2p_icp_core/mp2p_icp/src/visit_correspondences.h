@@ -58,17 +58,6 @@ void visit_correspondences(
 
     VisitCorrespondencesStats stats;
 
-    // weight of points, block by block:
-    auto point_weights = in.point_weights;
-    if (point_weights.empty())
-    {
-        // Default, equal weights:
-        point_weights.emplace_back(nPt2Pt, 1.0);
-    }
-
-    auto        cur_point_block_weights = point_weights.begin();
-    std::size_t cur_point_block_start   = 0;
-
     // Normalized weights for attitude "waXX":
     double waPoints, waLines, waPlanes;
     {
@@ -118,14 +107,6 @@ void visit_correspondences(
             // point-to-point pairing:  normalize(point-centroid)
             const auto& p = in.paired_pt2pt[i];
             wi            = waPoints;
-
-            if (i >= cur_point_block_start + cur_point_block_weights->first)
-            {
-                ASSERT_(cur_point_block_weights != point_weights.end());
-                ++cur_point_block_weights;  // move to next block
-                cur_point_block_start = i;
-            }
-            wi *= cur_point_block_weights->second;
             // (solution will be normalized via w_sum a the end)
 
             bi = p.global - ct_global;

@@ -140,10 +140,6 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
     auto w = gnParams.pairWeights;
 
-    const bool  has_per_pt_weight       = !in.point_weights.empty();
-    auto        cur_point_block_weights = in.point_weights.begin();
-    std::size_t cur_point_block_start   = 0;
-
     for (size_t iter = 0; iter < gnParams.maxInnerLoopIterations; iter++)
     {
         // Note: Using Matrix<N,1> instead of Vector<N> for compatibility
@@ -202,18 +198,6 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                     mrpt::math::CVectorFixedDouble<3>       ret =
                         mp2p_icp::error_point2point(p.local, p.global, result.optimalPose, J1);
 
-                    // Get point weight:
-                    if (has_per_pt_weight)
-                    {
-                        if (idx_pt >= cur_point_block_start + cur_point_block_weights->first)
-                        {
-                            ASSERT_(cur_point_block_weights != in.point_weights.end());
-                            ++cur_point_block_weights;  // move to next block
-                            cur_point_block_start = idx_pt;
-                        }
-                        w.pt2pt = cur_point_block_weights->second;
-                    }
-
                     // Apply robust kernel? (optionally prior-referenced)
                     double weight = w.pt2pt, retSqrNorm = ret.asEigen().squaredNorm();
                     double priorSqrNorm = retSqrNorm;
@@ -250,18 +234,6 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             mrpt::math::CMatrixFixed<double, 3, 12> J1;
             mrpt::math::CVectorFixedDouble<3>       ret =
                 mp2p_icp::error_point2point(p.local, p.global, result.optimalPose, J1);
-
-            // Get point weight:
-            if (has_per_pt_weight)
-            {
-                if (idx_pt >= cur_point_block_start + cur_point_block_weights->first)
-                {
-                    ASSERT_(cur_point_block_weights != in.point_weights.end());
-                    ++cur_point_block_weights;  // move to next block
-                    cur_point_block_start = idx_pt;
-                }
-                w.pt2pt = cur_point_block_weights->second;
-            }
 
             // Apply robust kernel? (optionally prior-referenced)
             double weight = w.pt2pt, retSqrNorm = ret.asEigen().squaredNorm();

@@ -108,12 +108,6 @@ struct Pairings
     /// is `this->size() / double(potential_pairings)`.
     uint64_t potential_pairings = 0;
 
-    /** *Individual* weights for paired_pt2pt: each entry specifies how many
-     * points have the given (mapped second value) weight, in the same order as
-     * stored in paired_pt2pt. If empty, all points will have equal weights.
-     */
-    std::vector<std::pair<std::size_t, double>> point_weights;
-
     /** @} */
 
     /** @name Methods

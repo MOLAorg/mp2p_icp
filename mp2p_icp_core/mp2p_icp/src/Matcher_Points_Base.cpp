@@ -41,40 +41,36 @@ bool Matcher_Points_Base::impl_match(
     {
         const auto& glLayerName = glLayerKV.first;
 
-        // List of local layers to match against (and optional weights)
-        std::map<std::string, std::optional<double>> localLayers;
+        // List of local layers to match against this global layer:
+        std::set<std::string> localLayers;
 
-        if (!weight_pt2pt_layers.empty())
+        if (!pt2pt_layer_matches.empty())
         {
-            const auto itGlob = weight_pt2pt_layers.find(glLayerName);
-            // If we have weights and this layer is not listed, Skip it:
-            if (itGlob == weight_pt2pt_layers.end())
+            const auto itGlob = pt2pt_layer_matches.find(glLayerName);
+            // If explicit matches are given and this layer is not listed,
+            // skip it:
+            if (itGlob == pt2pt_layer_matches.end())
             {
                 continue;
             }
 
-            for (const auto& kv : itGlob->second)
-            {
-                localLayers[kv.first] = kv.second;
-            }
+            localLayers = itGlob->second;
         }
         else
         {
             // Default: match by identical layer names:
-            localLayers[glLayerName] = {};
+            localLayers = {glLayerName};
         }
 
-        for (const auto& localWeight : localLayers)
+        for (const auto& localLayerName : localLayers)
         {
-            const auto& localLayerName = localWeight.first;
-            const bool  hasWeight      = localWeight.second.has_value();
-
             // Look for a matching layer in "local":
             auto itLocal = pcLocal.layers.find(localLayerName);
             if (itLocal == pcLocal.layers.end())
             {
-                // Silently ignore it:
-                if (!hasWeight)
+                // Silently ignore it when relying on the default (implicit)
+                // same-name matching; explicit entries must exist:
+                if (pt2pt_layer_matches.empty())
                 {
                     continue;
                 }
@@ -99,8 +95,6 @@ bool Matcher_Points_Base::impl_match(
                     lcLayerMap->GetRuntimeClass()->className);
             }
 
-            const size_t nBefore = out.paired_pt2pt.size();
-
             // Ensure we have the KD-tree parameters desired by the user:
             if (kdtree_leaf_max_points_.has_value())
             {
@@ -115,14 +109,6 @@ bool Matcher_Points_Base::impl_match(
 
             // matcher implementation:
             implMatchOneLayer(*glLayer, *lcLayer, localPose, ms, glLayerName, localLayerName, out);
-
-            const size_t nAfter = out.paired_pt2pt.size();
-
-            if (hasWeight && nAfter != nBefore)
-            {
-                const double w = localWeight.second.value();
-                out.point_weights.emplace_back(nAfter - nBefore, w);
-            }
         }
     }
     return true;
@@ -137,12 +123,15 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
     {
         auto& p = params["pointLayerMatches"];
 
-        weight_pt2pt_layers.clear();
+        pt2pt_layer_matches.clear();
         ASSERT_(p.isSequence());
 
-        // - {global: "raw", local: "decimated", weight: 1.0}
-        // - {global: "raw", local: "decimated", weight: 1.0}
+        // - {global: "raw", local: "decimated"}
+        // - {global: "raw", local: "decimated"}
         // ...
+        // Note: a "weight" key is also accepted for backward compatibility
+        // with older configuration files, but is ignored: per-layer pt2pt
+        // weighting was removed, use PairWeights::pt2pt instead.
 
         for (const auto& entry : p.asSequence())
         {
@@ -154,9 +143,8 @@ void Matcher_Points_Base::initialize(const mrpt::containers::yaml& params)
 
             const std::string globalLayer = em.at("global").as<std::string>();
             const std::string localLayer  = em.at("local").as<std::string>();
-            const double      w = em.count("weight") != 0 ? em.at("weight").as<double>() : 1.0;
 
-            weight_pt2pt_layers[globalLayer][localLayer] = w;
+            pt2pt_layer_matches[globalLayer].insert(localLayer);
         }
     }
 
