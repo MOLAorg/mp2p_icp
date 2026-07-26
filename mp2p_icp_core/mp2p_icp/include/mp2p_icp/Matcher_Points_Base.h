@@ -71,8 +71,11 @@ class Matcher_Points_Base : public Matcher
 
     /** Common parameters to all derived classes:
      *
-     * - `pointLayerMatches`: Optional map of layer names to relative weights.
-     *  Refer to example YAML files.
+     * - `pointLayerMatches`: Optional sequence of explicit `{global, local}`
+     *  layer-name pairs to match against each other. Refer to example YAML
+     *  files. A legacy `weight` key is still accepted for backward
+     *  compatibility but is ignored; use the solver's `pair_weights.pt2pt`
+     *  instead.
      *
      * - `allowMatchAlreadyMatchedPoints`: Optional (Default=false). Whether to
      * find matches for local points which were already paired by other matcher
