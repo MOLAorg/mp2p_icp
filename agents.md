@@ -279,3 +279,11 @@ Tests use gtest. Each filter, matcher, solver, and serializer has its own test f
 
 - `mola_state_estimation/mola_georeferencing` — `mola-mm-add-geodetic` tool that adds per-point lat/lon/alt double fields to .mm layers (prerequisite for mm2las geodetic fast path)
 - `mola_lidar_odometry` — primary consumer of mp2p_icp for real-time SLAM
+
+---
+
+
+## MRPT3 to-do
+
+Once this package is ported to mrpt3, remove the dependency on glut / freeglut3-dev
+and remove this agents.md section entirely.

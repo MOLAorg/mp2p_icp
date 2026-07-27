@@ -23,6 +23,7 @@
   <depend>mrpt_libgui</depend>
   <depend>cli11</depend>
   <depend>libglfw3-dev</depend>
+  <depend>glut</depend>  <!-- Temporary dep: remove once ported to MRPT3 -->
 
   <test_depend condition="$ROS_VERSION == 1">catkin</test_depend>
 

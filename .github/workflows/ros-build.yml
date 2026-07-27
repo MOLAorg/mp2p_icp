@@ -1,7 +1,7 @@
 # Based on GTSAM file (by @ProfFan)
 name: CI Build colcon
 
-on: [ push ]
+on: [push]
 
 jobs:
   build_docker:
@@ -43,7 +43,7 @@ jobs:
             ros_distribution: jazzy
             use_ros_testing: true
             disable_tbb: true
-            
+
             # Rolling Ridley (No End-Of-Life)
             # TODO: migrate to ubuntu:resolute once rolling packages are published there.
             # Track: https://discourse.openrobotics.org/t/preparing-for-rolling-sync-2026-04-23/54223
