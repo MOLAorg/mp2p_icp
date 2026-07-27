@@ -42,6 +42,13 @@ class ImGuiAppShell
 
   GLFWwindow* windowHandle() const { return window_; }
 
+  /** Optional hook, called once with the dockspace's ImGuiID, only the very first time the
+   *  app runs with no saved docking layout (no `imgui.ini` entry yet) -- lets each app define
+   *  its own default panel arrangement (which is app-specific, so it does not belong in this
+   *  shared shell) via `ImGui::DockBuilderSplitNode()`/`DockBuilderDockWindow()`. Once the
+   *  user rearranges panels, their layout is persisted and this hook is not called again. */
+  std::function<void(unsigned int dockspaceId)> setupDefaultLayout;
+
  private:
   GLFWwindow* window_           = nullptr;
   std::string iniPath_;

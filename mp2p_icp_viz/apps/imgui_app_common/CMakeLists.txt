@@ -5,7 +5,9 @@ project(imgui_app_common LANGUAGES CXX)
 
 add_library(${PROJECT_NAME} STATIC
   src/ImGuiAppShell.cpp
+  src/SimpleFileDialog.cpp
   include/imgui_app_common/ImGuiAppShell.h
+  include/imgui_app_common/SimpleFileDialog.h
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC include)

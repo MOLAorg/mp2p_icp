@@ -3,6 +3,7 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <imgui.h>
+#include <imgui_internal.h>  // DockBuilder* API (default layout on first run)
 
 #include <GLFW/glfw3.h>
 
@@ -89,6 +90,18 @@ void ImGuiAppShell::run(const std::function<void()>& renderFrame)
     ImGui::PopStyleVar(3);
 
     const ImGuiID dockspaceId = ImGui::GetID("MainDockSpace");
+
+    if (setupDefaultLayout && !ImGui::DockBuilderGetNode(dockspaceId))
+    {
+      ImGui::DockBuilderRemoveNode(dockspaceId);
+      ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
+      ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->Size);
+
+      setupDefaultLayout(dockspaceId);
+
+      ImGui::DockBuilderFinish(dockspaceId);
+    }
+
     ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
     ImGui::End();
 
