@@ -156,11 +156,12 @@ Exports WGS-84 lon/lat/alt with EPSG:4979 WKT2 CRS embedded as VLR.
 - 3D rendering goes through `mrpt::imgui::CImGuiSceneView` (ships with `mrpt::gui` &ge; 2.15.19),
   which renders an `mrpt::opengl::Scene` into an ImGui panel with built-in orbit/pan/zoom.
 
-**Known limitation, kept in the code on purpose:** the small "Map frame"/"ENU frame" axis-corner
-gizmo mini-viewports (`FIRST_MINI_VIEW_NAME`/`SECOND_MINI_VIEW_NAME` in `mm-viewer/main.cpp`) are
-still created and kept in sync with the main camera every frame, but are **not currently visible**:
-under MRPT 2.x, `CImGuiSceneView::render()` only renders the scene's `"main"` viewport, not extra
-named ones. This project plans to move to MRPT 3.x soon, which is expected to support rendering
+**Known limitation, kept in the code on purpose:** the small axis-corner gizmo mini-viewports
+(`FIRST_MINI_VIEW_NAME`/`SECOND_MINI_VIEW_NAME` in `mm-viewer/main.cpp`, `MINI_VIEW_NAME` in
+`icp-log-viewer/main.cpp`) are still created and kept in sync with the main camera every frame in
+both apps, but are **not currently visible**: under MRPT 2.x, `CImGuiSceneView::render()` only
+renders the scene's `"main"` viewport, not extra named ones. This project plans to move to MRPT
+3.x soon, which is expected to support rendering
 arbitrary named viewports through the same mechanism — at that point this code should start working
 again unmodified. Do not remove it as dead code in the meantime.
 

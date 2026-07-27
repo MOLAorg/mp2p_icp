@@ -12,4 +12,5 @@ mola_add_executable(
     CLI11::CLI11
     mrpt::gui
     Threads::Threads
+    imgui_app_common
   )
