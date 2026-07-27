@@ -61,6 +61,8 @@ class SimpleFileDialog
     // Unique per instance (derived from `this`), so two SimpleFileDialog objects never share the
     // same ImGui popup ID -- otherwise ImGui would treat them as the very same modal popup.
     std::string popupId_;
+    std::string overwritePopupId_;
+    std::string pendingOverwritePath_;
 };
 
 }  // namespace mp2p_icp_viz

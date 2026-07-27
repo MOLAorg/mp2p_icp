@@ -51,7 +51,9 @@ void SimpleFileDialog::open(
     {
         // Unique per instance so two SimpleFileDialog objects never collide on the same
         // ImGui popup ID (ImGui would otherwise treat them as the very same modal popup).
-        popupId_ = "SimpleFileDialog##popup" + std::to_string(reinterpret_cast<uintptr_t>(this));
+        const auto instanceTag = std::to_string(reinterpret_cast<uintptr_t>(this));
+        popupId_               = "SimpleFileDialog##popup" + instanceTag;
+        overwritePopupId_      = "Overwrite file?##overwrite" + instanceTag;
     }
 
     open_ = true;
@@ -191,10 +193,26 @@ std::optional<std::string> SimpleFileDialog::render()
             }
             else
             {
-                const auto candidate = std::filesystem::path(currentDir_) / typedName_;
-                if (mode_ == Mode::Open && !std::filesystem::exists(candidate))
+                const auto      candidate = std::filesystem::path(currentDir_) / typedName_;
+                std::error_code candidateEc;
+                if (mode_ == Mode::Open)
                 {
-                    errorMsg_ = "File does not exist.";
+                    if (!std::filesystem::is_regular_file(candidate, candidateEc))
+                    {
+                        errorMsg_ = candidateEc ? "Unable to inspect file."
+                                                : "File does not exist or is not a regular file.";
+                    }
+                    else
+                    {
+                        result = candidate.string();
+                    }
+                }
+                else if (std::filesystem::exists(candidate, candidateEc))
+                {
+                    // Ask for explicit confirmation before overwriting -- unlike a native OS
+                    // save dialog, this in-app one has no built-in overwrite protection.
+                    pendingOverwritePath_ = candidate.string();
+                    ImGui::OpenPopup(overwritePopupId_.c_str());
                 }
                 else
                 {
@@ -207,6 +225,24 @@ std::optional<std::string> SimpleFileDialog::render()
         {
             open_ = false;
             ImGui::CloseCurrentPopup();
+        }
+
+        if (ImGui::BeginPopupModal(
+                overwritePopupId_.c_str(), nullptr,
+                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        {
+            ImGui::Text("File already exists:\n%s\n\nOverwrite it?", pendingOverwritePath_.c_str());
+            if (ImGui::Button("Overwrite"))
+            {
+                result = pendingOverwritePath_;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel"))
+            {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
 
         if (result.has_value())
