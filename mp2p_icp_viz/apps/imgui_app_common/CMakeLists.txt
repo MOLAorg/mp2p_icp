@@ -6,12 +6,15 @@ project(imgui_app_common LANGUAGES CXX)
 add_library(${PROJECT_NAME} STATIC
   src/ImGuiAppShell.cpp
   src/SimpleFileDialog.cpp
+  include/imgui_app_common/AsyncTask.h
   include/imgui_app_common/ImGuiAppShell.h
   include/imgui_app_common/SimpleFileDialog.h
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC imgui::imgui)
+find_package(Threads REQUIRED)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC imgui::imgui Threads::Threads)
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)

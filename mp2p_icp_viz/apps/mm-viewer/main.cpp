@@ -19,6 +19,7 @@
 // other deps:
 #include <GLFW/glfw3.h>
 #include <imgui.h>
+#include <imgui_app_common/AsyncTask.h>
 #include <imgui_app_common/ImGuiAppShell.h>
 #include <imgui_app_common/SimpleFileDialog.h>
 #include <imgui_internal.h>  // DockBuilder* API (default docking layout)
@@ -89,6 +90,19 @@ struct ExtraVizLayer
     std::string                      fileName;
     mrpt::opengl::CSetOfObjects::Ptr glObjects;
     bool                             visible = true;
+};
+
+/** Result of loadMapFileWorker(), running on a background thread: a self-contained value (no
+ *  reference to AppState) so it is safe to build off the main/GL thread. Committed to AppState
+ *  on the main thread once ready -- see pollMapLoad(). */
+struct MapLoadResult
+{
+    bool                     success = false;
+    std::string              errorMessage;
+    std::string              mapFileName;
+    mp2p_icp::metric_map_t   map;
+    std::vector<std::string> layerNames;
+    std::vector<std::string> knownPointFields;
 };
 
 /** All mutable application state, replacing the individual nanogui widget
@@ -162,6 +176,23 @@ struct AppState
 
     mp2p_icp_viz::SimpleFileDialog openDialog;
     mp2p_icp_viz::SimpleFileDialog exportDialog;
+
+    // Async map loading (see loadMapFileWorker()/pollMapLoad()): keeps the file I/O off the
+    // main/GL thread so the window manager doesn't consider the app "not responding" while a
+    // large map file is being read.
+    mp2p_icp_viz::AsyncTask<MapLoadResult> mapLoadTask;
+    bool                                   isLoadingMap = false;
+    std::string                            loadingFileName;
+
+    // Bumped every time app.theMap is replaced (successfully or not). Lets an in-flight
+    // vizBuildTask (started for a previous map) recognize its result is now stale once polled.
+    int mapGeneration = 0;
+
+    // Async point-cloud visualization building (see rebuild_3d_view()): same rationale, for
+    // theMap.get_visualization(), which can also take a long time on large maps.
+    mp2p_icp_viz::AsyncTask<mrpt::opengl::CSetOfObjects::Ptr> vizBuildTask;
+    bool                                                      isBuildingViz          = false;
+    int                                                       vizBuildTaskGeneration = -1;
 };
 
 AppState app;
@@ -264,6 +295,8 @@ mrpt::opengl::CSetOfObjects::Ptr buildGeorefPolygonLayer(
     return glLayer;
 }
 
+void updateGuiAfterLoadingNewMap();
+
 void rebuildCamTravellingLabels()
 {
     app.camTravellingLabels.clear();
@@ -278,17 +311,17 @@ void rebuildCamTravellingLabels()
     }
 }
 
-bool loadMapFile(const std::string& mapFile)
+/** Does the actual (potentially slow: disk I/O, decompression, sanity checks) map loading work.
+ *  Deliberately self-contained -- reads/writes only its local `res`, never `app.*` -- so it is
+ *  safe to run on a background thread (see startMapLoad()/pollMapLoad()) instead of blocking the
+ *  main/GL thread, which would otherwise starve glfwPollEvents() for large files and make the
+ *  window manager conclude the app is "not responding". */
+MapLoadResult loadMapFileWorker(const std::string& mapFile)
+try
 {
-    std::cout << "Loading map file: " << mapFile << std::endl;
+    MapLoadResult res;
 
-    app.theMap = mp2p_icp::metric_map_t();  // reset
-    // Clear bookkeeping alongside theMap so any early-return-on-failure below leaves the UI
-    // consistently reflecting "no map", rather than describing the previous (different) map:
-    app.theMapFileName = "unnamed.mm";
-    app.layerNames.clear();
-    app.knownPointFields.clear();
-    app.layerVisible.clear();
+    std::cout << "Loading map file: " << mapFile << std::endl;
 
     if (mrpt::system::extractFileExtension(mapFile) == "bin")
     {
@@ -300,26 +333,28 @@ bool loadMapFile(const std::string& mapFile)
             auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obj);
             if (!pts)
             {
-                std::cerr << "Error: .bin file did not deserialize to a CPointsMap-derived object"
-                          << (obj ? std::string(" (got: ") + obj->GetRuntimeClass()->className + ")"
-                                  : std::string(" (null object)"))
-                          << std::endl;
-                return false;
+                res.errorMessage =
+                    "Error: .bin file did not deserialize to a CPointsMap-derived object" +
+                    (obj ? std::string(" (got: ") + obj->GetRuntimeClass()->className + ")"
+                         : std::string(" (null object)"));
+                std::cerr << res.errorMessage << std::endl;
+                return res;
             }
-            const std::string layerName  = mrpt::system::extractFileName(mapFile);
-            app.theMap.layers[layerName] = pts;
+            const std::string layerName = mrpt::system::extractFileName(mapFile);
+            res.map.layers[layerName]   = pts;
         }
         catch (const std::exception& e)
         {
-            std::cerr << "Error loading .bin file: " << e.what() << std::endl;
-            return false;
+            res.errorMessage = std::string("Error loading .bin file: ") + e.what();
+            std::cerr << res.errorMessage << std::endl;
+            return res;
         }
     }
     else
     {
         std::string loadErrorMsg;
 
-        if (!app.theMap.load_from_file(mapFile, loadErrorMsg))
+        if (!res.map.load_from_file(mapFile, loadErrorMsg))
         {
             bool retry_was_successful = false;
 
@@ -334,27 +369,28 @@ bool loadMapFile(const std::string& mapFile)
 
                 if (!load_plugins("libmola_metric_maps.so"))
                 {
-                    return false;
+                    res.errorMessage = "Failed to load plugin 'libmola_metric_maps.so'";
+                    return res;
                 }
-                retry_was_successful = app.theMap.load_from_file(mapFile, loadErrorMsg);
+                retry_was_successful = res.map.load_from_file(mapFile, loadErrorMsg);
             }
 
             if (!retry_was_successful)
             {
-                std::cerr << "Error loading metric map from file!:\n" << loadErrorMsg << std::endl;
-                return false;
+                res.errorMessage = "Error loading metric map from file!:\n" + loadErrorMsg;
+                std::cerr << res.errorMessage << std::endl;
+                return res;
             }
         }
     }
 
-    app.theMapFileName = mapFile;
+    res.mapFileName = mapFile;
 
-    std::cout << "Loaded map: " << app.theMap.contents_summary() << std::endl;
+    std::cout << "Loaded map: " << res.map.contents_summary() << std::endl;
 
-    app.layerNames.clear();
-    for (const auto& [name, map] : app.theMap.layers)
+    for (const auto& [name, map] : res.map.layers)
     {
-        app.layerNames.push_back(name);
+        res.layerNames.push_back(name);
     }
 
     // Find point cloud field names:
@@ -364,7 +400,7 @@ bool loadMapFile(const std::string& mapFile)
         fields.insert("y");
         fields.insert("z");
 
-        for (const auto& [name, map] : app.theMap.layers)
+        for (const auto& [name, map] : res.map.layers)
         {
             auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
             if (!pts)
@@ -406,15 +442,14 @@ bool loadMapFile(const std::string& mapFile)
             fields.insert("rgbf");
         }
 
-        app.knownPointFields.clear();
         for (const auto& f : fields)
         {
-            app.knownPointFields.push_back(f);
+            res.knownPointFields.push_back(f);
         }
     }
 
     // sanity checks:
-    for (const auto& [name, map] : app.theMap.layers)
+    for (const auto& [name, map] : res.map.layers)
     {
         const auto* pc = mp2p_icp::MapToPointsMap(*map);
         if (!pc)
@@ -426,7 +461,61 @@ bool loadMapFile(const std::string& mapFile)
             sanityPassed, mrpt::format("sanity check did not pass for layer: '%s'", name.c_str()));
     }
 
-    return true;
+    res.success = true;
+    return res;
+}
+catch (const std::exception& e)
+{
+    MapLoadResult res;
+    res.errorMessage = std::string("Error loading map: ") + e.what();
+    std::cerr << res.errorMessage << std::endl;
+    return res;
+}
+
+/** Starts loading `mapFile` on a background thread; see pollMapLoad() for the main-thread
+ * commit. */
+void startMapLoad(const std::string& mapFile)
+{
+    app.isLoadingMap    = true;
+    app.loadingFileName = mapFile;
+    app.mapLoadTask.start([mapFile]() { return loadMapFileWorker(mapFile); });
+}
+
+/** Installs a (successful or failed) load result into AppState. Must run on the main thread.
+ * Does NOT call updateGuiAfterLoadingNewMap() -- callers do that explicitly, since the initial
+ * CLI-arg load (before the GUI even exists) already gets it invoked once, unconditionally,
+ * right after the window is set up. */
+void commitMapLoadResult(MapLoadResult&& res)
+{
+    app.mapGeneration++;  // invalidate any in-flight vizBuildTask started for the old map
+
+    if (!res.success)
+    {
+        // Leave bookkeeping consistent with "no map loaded", rather than describing whatever
+        // (different) map was loaded before this attempt.
+        app.theMap         = mp2p_icp::metric_map_t();
+        app.theMapFileName = "unnamed.mm";
+        app.layerNames.clear();
+        app.knownPointFields.clear();
+        app.layerVisible.clear();
+        return;
+    }
+
+    app.theMap           = std::move(res.map);
+    app.theMapFileName   = res.mapFileName;
+    app.layerNames       = std::move(res.layerNames);
+    app.knownPointFields = std::move(res.knownPointFields);
+}
+
+/** Call once per frame: if a background map load finished, commits it on the main thread. */
+void pollMapLoad()
+{
+    if (auto res = app.mapLoadTask.poll())
+    {
+        app.isLoadingMap = false;
+        commitMapLoadResult(std::move(*res));
+        updateGuiAfterLoadingNewMap();
+    }
 }
 
 /** Transform to show in the selected frame of reference and units: "map", "enu", or "lat/lon" */
@@ -974,21 +1063,47 @@ void rebuild_3d_view()
     }
 
     // Regenerate points opengl representation only if some parameter changed (or a new map
-    // was just loaded, regardless of whether rpMap happens to compare equal to the last one):
+    // was just loaded, regardless of whether rpMap happens to compare equal to the last one).
+    // Built on a background thread (theMap.get_visualization() can take a long time on large
+    // maps) so the main/GL thread keeps pumping events instead of appearing "not responding".
     static std::optional<mp2p_icp::render_params_t> prevRenderParams;
 
-    if (!prevRenderParams.has_value() || prevRenderParams.value() != rpMap || app.forceRebuildViz)
+    const bool needsRebuild =
+        !prevRenderParams.has_value() || prevRenderParams.value() != rpMap || app.forceRebuildViz;
+
+    if (needsRebuild && !app.isBuildingViz)
     {
         app.forceRebuildViz = false;
         prevRenderParams    = rpMap;
-        app.glVizMap->clear();
 
-        auto glPts = app.theMap.get_visualization(rpMap);
+        app.isBuildingViz          = true;
+        app.vizBuildTaskGeneration = app.mapGeneration;
 
-        app.glVizMap->insert(glPts);
-        app.glVizMap->insert(app.glMapCorner);
-        app.glVizMap->insert(app.glTrajectory);
-        app.glVizMap->insert(app.glVizObjects);
+        // Shallow copy: shares the underlying (immutable, once loaded) layer CMetricMap::Ptr
+        // objects, so this is cheap regardless of map size, and safe to read from the
+        // background thread even if the main thread replaces app.theMap in the meantime.
+        const mp2p_icp::metric_map_t mapCopy = app.theMap;
+        app.vizBuildTask.start([mapCopy, rpMap]() { return mapCopy.get_visualization(rpMap); });
+    }
+
+    if (auto glPts = app.vizBuildTask.poll())
+    {
+        app.isBuildingViz = false;
+
+        if (app.vizBuildTaskGeneration == app.mapGeneration)
+        {
+            app.glVizMap->clear();
+            app.glVizMap->insert(*glPts);
+            app.glVizMap->insert(app.glMapCorner);
+            app.glVizMap->insert(app.glTrajectory);
+            app.glVizMap->insert(app.glVizObjects);
+        }
+        else
+        {
+            // Stale: app.theMap was replaced while this build was in flight. Force a fresh
+            // rebuild for the current map on the next frame.
+            app.forceRebuildViz = true;
+        }
     }
 
     if (app.applyGeoRef && app.theMap.georeferencing.has_value())
@@ -1076,6 +1191,8 @@ void renderMapViewerPanel()
 
     const std::string headerLine = app.theMapFileName + "  |  " + app.theMap.contents_summary();
     ImGui::TextWrapped("%s", headerLine.c_str());
+
+    ImGui::BeginDisabled(app.isLoadingMap);
     if (ImGui::Button("Open..."))
     {
         app.openDialog.open(
@@ -1088,6 +1205,17 @@ void renderMapViewerPanel()
     {
         app.exportDialog.open(
             mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"txt", "(*.txt)"}}, "Export layers");
+    }
+    ImGui::EndDisabled();
+
+    if (app.isLoadingMap)
+    {
+        ImGui::TextColored(
+            ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Loading '%s'...", app.loadingFileName.c_str());
+    }
+    else if (app.isBuildingViz)
+    {
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Building 3D visualization...");
     }
 
     ImGui::Separator();
@@ -1372,10 +1500,7 @@ void renderFileDialogs()
 {
     if (auto path = app.openDialog.render(); path.has_value())
     {
-        if (loadMapFile(*path))
-        {
-            updateGuiAfterLoadingNewMap();
-        }
+        startMapLoad(*path);
     }
     if (auto path = app.exportDialog.render(); path.has_value())
     {
@@ -1394,6 +1519,7 @@ void renderSceneWindow()
 void renderFrame()
 {
     handleKeyboard();
+    pollMapLoad();
     processCameraTravelling();
     rebuild_3d_view();
     updateCameraClipDistances();
@@ -1413,10 +1539,15 @@ int mainShowGui()
 
     if (!argMapFile.empty())
     {
-        if (!loadMapFile(argMapFile))
+        // Synchronous here: no GUI window exists yet at this point (still before
+        // app.shell.init() below), so there is nothing for the window manager to consider
+        // "not responding" -- this only matters once a window is on screen and pumping events.
+        auto res = loadMapFileWorker(argMapFile);
+        if (!res.success)
         {
             return 1;
         }
+        commitMapLoadResult(std::move(res));
     }
 
     if (!arg_georefPolygon.empty())
