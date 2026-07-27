@@ -9,6 +9,8 @@
 
 #include <cstdio>
 
+#include "../../libcfgpath/cfgpath.h"
+
 namespace mp2p_icp_viz
 {
 namespace
@@ -50,8 +52,12 @@ bool ImGuiAppShell::init(const std::string& windowTitle, int width, int height)
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-  // Persist the docking layout in a per-app imgui.ini file.
-  iniPath_       = windowTitle + ".imgui.ini";
+  // Persist the docking layout in a per-app imgui.ini file, under the user's config
+  // directory (e.g. ~/.config/<windowTitle>/), not the current working directory.
+  char configDir[MAX_PATH];
+  get_user_config_folder(configDir, sizeof(configDir), windowTitle.c_str());
+  iniPath_       = configDir[0] != '\0' ? std::string(configDir) + windowTitle + ".imgui.ini"
+                                        : windowTitle + ".imgui.ini";
   io.IniFilename = iniPath_.c_str();
 
   ImGui::StyleColorsDark();
