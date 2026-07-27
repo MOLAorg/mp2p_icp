@@ -32,7 +32,7 @@ IMPLEMENTS_MRPT_OBJECT(LogRecord, mrpt::serialization::CSerializable, mp2p_icp)
 using namespace mp2p_icp;
 
 // Implementation of the CSerializable virtual interface:
-uint8_t LogRecord::serializeGetVersion() const { return 2; }
+uint8_t LogRecord::serializeGetVersion() const { return 3; }
 void    LogRecord::serializeTo(mrpt::serialization::CArchive& out) const
 {
     if (pcGlobal)
@@ -59,6 +59,7 @@ void    LogRecord::serializeTo(mrpt::serialization::CArchive& out) const
     out << iterationsDetails;
     out << dynamicVariables;  // added in v1
     out << prior;  // added in v2
+    out << gravityPrior;  // added in v3
 }
 void LogRecord::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version)
 {
@@ -69,6 +70,7 @@ void LogRecord::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version
         case 0:
         case 1:
         case 2:
+        case 3:
         {
             if (in.ReadAs<bool>())
             {
@@ -99,6 +101,15 @@ void LogRecord::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version
             else
             {
                 prior.reset();
+            }
+
+            if (version >= 3)
+            {
+                in >> gravityPrior;
+            }
+            else
+            {
+                gravityPrior.reset();
             }
         }
         break;

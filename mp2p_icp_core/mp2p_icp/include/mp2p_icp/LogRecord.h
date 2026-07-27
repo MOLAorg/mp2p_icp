@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/GravityPrior.h>
 #include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/Results.h>
@@ -56,6 +57,14 @@ class LogRecord : public mrpt::serialization::CSerializable
 
     /** Optional prior pose constraint passed to align(). */
     std::optional<mrpt::poses::CPose3DPDFGaussianInf> prior;
+
+    /** Optional gravity ("verticality") observation passed to align().
+     *  Recorded because its effective `sigma_rad` is not necessarily the
+     *  configured one: callers may widen it at run time (e.g. mola_lidar_odometry's
+     *  `adaptive_sigma`), so the strength the solver actually saw cannot be
+     *  reconstructed from the configuration alone.
+     */
+    std::optional<GravityPrior> gravityPrior;
 
     mp2p_icp::Parameters          icpParameters;
     mp2p_icp::Results             icpResult;

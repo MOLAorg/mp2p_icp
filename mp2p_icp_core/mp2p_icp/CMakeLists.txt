@@ -7,6 +7,7 @@ set(lib_name mp2p_icp) # we cannot use PROJECT_NAME here, since catkin requires 
 set(LIB_SRCS
   src/covariance.cpp
   src/errorTerms.cpp
+  src/GravityPrior.cpp
   src/icp_pipeline_from_yaml.cpp
   src/ICP.cpp
   src/LogRecord.cpp
