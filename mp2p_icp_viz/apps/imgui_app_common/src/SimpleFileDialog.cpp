@@ -2,6 +2,7 @@
 #include <imgui_app_common/SimpleFileDialog.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <system_error>
@@ -10,8 +11,6 @@ namespace mp2p_icp_viz
 {
 namespace
 {
-constexpr const char* kPopupId = "SimpleFileDialog##popup";
-
 bool matchesFilter(const std::filesystem::directory_entry& entry, const FileDialogFilter& filter)
 {
     if (filter.extension.empty())
@@ -48,8 +47,15 @@ void SimpleFileDialog::open(
     }
     currentDir_ = startDir.string();
 
+    if (popupId_.empty())
+    {
+        // Unique per instance so two SimpleFileDialog objects never collide on the same
+        // ImGui popup ID (ImGui would otherwise treat them as the very same modal popup).
+        popupId_ = "SimpleFileDialog##popup" + std::to_string(reinterpret_cast<uintptr_t>(this));
+    }
+
     open_ = true;
-    ImGui::OpenPopup(kPopupId);
+    ImGui::OpenPopup(popupId_.c_str());
 }
 
 std::optional<std::string> SimpleFileDialog::render()
@@ -62,7 +68,7 @@ std::optional<std::string> SimpleFileDialog::render()
     std::optional<std::string> result;
 
     ImGui::SetNextWindowSize(ImVec2(560, 420), ImGuiCond_FirstUseEver);
-    if (ImGui::BeginPopupModal(kPopupId, nullptr, ImGuiWindowFlags_NoSavedSettings))
+    if (ImGui::BeginPopupModal(popupId_.c_str(), nullptr, ImGuiWindowFlags_NoSavedSettings))
     {
         ImGui::TextUnformatted(title_.c_str());
         ImGui::Separator();
@@ -88,7 +94,13 @@ std::optional<std::string> SimpleFileDialog::render()
             std::vector<std::filesystem::directory_entry> files;
             for (const auto& entry : std::filesystem::directory_iterator(currentDir_, ec))
             {
-                if (entry.is_directory())
+                std::error_code statusEc;
+                const bool      isDir = entry.is_directory(statusEc);
+                if (statusEc)
+                {
+                    continue;  // entry status could not be resolved (e.g. broken symlink)
+                }
+                if (isDir)
                 {
                     dirs.push_back(entry);
                 }
@@ -128,7 +140,9 @@ std::optional<std::string> SimpleFileDialog::render()
                         name.c_str(), isSelected, ImGuiSelectableFlags_AllowDoubleClick))
                 {
                     typedName_ = name;
-                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                    // Only Open mode confirms on double-click; Save mode always goes through
+                    // the Save button (and its overwrite/empty-name checks below).
+                    if (mode_ == Mode::Open && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                     {
                         result = (std::filesystem::path(currentDir_) / name).string();
                     }

@@ -159,7 +159,7 @@ struct AppState
     bool        viewPairingsCov2Cov  = true;
     float       pairingsPl2PlSize    = -1.0f;
     float       pairingsPl2LnSize    = -1.0f;
-    float       pairingsCov2CovDecim = 500.0f;  // stored as log10, see slider range below
+    float       pairingsCov2CovDecim = 2.7f;  // stored as log10 (~500), see slider range below
     std::string pairingsSummary      = "None selected (mark one of the checkboxes below)";
 
     // Manual pose tweak (6-DoF):
@@ -186,6 +186,11 @@ struct AppState
     int                            exportWhich = 0;  // 0=local, 1=global
 
     std::optional<size_t> lastIdx;
+
+    // Set when DelayedLoadLog::get() throws for this index, so rebuild_3d_view()/onExport()/
+    // renderManualPanel() don't keep retrying (and re-logging) a load failure every single
+    // frame. Reset whenever the selected index changes.
+    std::optional<size_t> loadFailedIdx;
 };
 
 AppState app;
@@ -327,12 +332,29 @@ try
             app.logRecords.at(*app.lastIdx).dispose();
         }
         app.lastIdx = idx;
+        app.loadFailedIdx.reset();
+    }
+
+    if (app.loadFailedIdx.has_value() && *app.loadFailedIdx == idx)
+    {
+        return;  // already failed to load this record; don't retry (and re-log) every frame
     }
 
     app.glVizICP->clear();
 
     // lazy load from disk happens in the "get()":
     const auto& lr = app.logRecords.at(idx).get();
+
+    if (indexChanged)
+    {
+        // Seed the manual-nudge sliders from this record's own pose, instead of leaving
+        // whatever the previous record's edits left behind (or all-zeros on first load).
+        const auto p = lr.icpResult.optimal_tf.mean.asTPose();
+        for (int i = 0; i < 6; i++)
+        {
+            app.gtPose[i] = static_cast<float>(p[i]);
+        }
+    }
 
     app.statFileName = app.logRecords.at(idx).shortFileName();
 
@@ -626,10 +648,12 @@ try
 catch (const std::exception& e)
 {
     std::cerr << "[rebuild_3d_view] Exception: " << mrpt::exception_to_str(e) << std::endl;
-    app.statFileName = std::string("ERROR: ") + mrpt::exception_to_str(e).substr(0, 80);
+    app.statFileName  = std::string("ERROR: ") + mrpt::exception_to_str(e).substr(0, 80);
+    app.loadFailedIdx = static_cast<size_t>(app.selectorIdx);
 }
 
 void onExport(const std::string& outFile)
+try
 {
     const size_t idx = static_cast<size_t>(app.selectorIdx);
     auto&        lr  = app.logRecords.at(idx).get();
@@ -639,6 +663,10 @@ void onExport(const std::string& outFile)
     {
         std::cerr << "Error saving file: " << outFile << "\n";
     }
+}
+catch (const std::exception& e)
+{
+    std::cerr << "[onExport] Exception: " << mrpt::exception_to_str(e) << std::endl;
 }
 
 /** "Control" window: file selector, navigation, iteration slider, summary stat lines. */
@@ -751,11 +779,6 @@ void renderMapsPanel()
         app.exportDialog.open(
             mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"mm", "(*.mm)"}}, "Export global map");
     }
-    if (auto path = app.exportDialog.render(); path.has_value())
-    {
-        onExport(*path);
-    }
-
     ImGui::Separator();
     ImGui::TextUnformatted("[GLOBAL map] Visible layers:");
     ImGui::PushID("globalLayers");
@@ -844,20 +867,40 @@ void renderManualPanel()
         4.0f, 4.0f, 10.0f, 0.5f * static_cast<float>(M_PI), 0.25f * static_cast<float>(M_PI), 0.5f};
     constexpr const char* labels[6] = {"X", "Y", "Z", "Yaw", "Pitch", "Roll"};
 
-    const size_t idx = static_cast<size_t>(app.selectorIdx);
+    const size_t idx        = static_cast<size_t>(app.selectorIdx);
+    const bool   loadFailed = app.loadFailedIdx.has_value() && *app.loadFailedIdx == idx;
     for (int i = 0; i < 6; i++)
     {
         if (ImGui::SliderFloat(labels[i], &app.gtPose[i], -handTunedRange[i], handTunedRange[i]) &&
-            idx < app.logRecords.size())
+            idx < app.logRecords.size() && !loadFailed)
         {
-            auto& lr                     = app.logRecords.at(idx).get();
-            auto  p                      = lr.icpResult.optimal_tf.mean.asTPose();
-            p[i]                         = app.gtPose[i];
-            lr.icpResult.optimal_tf.mean = mrpt::poses::CPose3D(p);
+            try
+            {
+                auto& lr                     = app.logRecords.at(idx).get();
+                auto  p                      = lr.icpResult.optimal_tf.mean.asTPose();
+                p[i]                         = app.gtPose[i];
+                lr.icpResult.optimal_tf.mean = mrpt::poses::CPose3D(p);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "[renderManualPanel] Exception: " << mrpt::exception_to_str(e)
+                          << std::endl;
+            }
         }
     }
 
     ImGui::End();
+}
+
+/** Rendered at top level, outside any other window's Begin/End -- nesting it inside e.g. "Maps"
+ * would silently cancel an open dialog whenever that window is collapsed (BeginPopupModal()
+ * fails to start, which SimpleFileDialog::render() treats as a dismiss). */
+void renderFileDialogs()
+{
+    if (auto path = app.exportDialog.render(); path.has_value())
+    {
+        onExport(*path);
+    }
 }
 
 void renderSceneWindow()
@@ -880,6 +923,7 @@ void renderFrame()
     renderMapsPanel();
     renderPairingsPanel();
     renderViewPanel();
+    renderFileDialogs();
     renderManualPanel();
     renderSceneWindow();
 }
@@ -940,7 +984,7 @@ int mainShowGui()
         std::cout << "Quality filter: kept " << filteredFiles.size() << " / " << files.size()
                   << " files." << std::endl;
 
-        if (files.empty())
+        if (filteredFiles.empty())
         {
             THROW_EXCEPTION_FMT(
                 "No log files passed --min-quality=%.03f. Lower the threshold or check input logs.",
@@ -1029,6 +1073,11 @@ int mainShowGui()
     // Load/save persistent UI+camera state across sessions:
     char appCfgFile[1024];
     ::get_user_config_file(appCfgFile, sizeof(appCfgFile), APP_NAME);
+    if (appCfgFile[0] == '\0')
+    {
+        std::cerr << "Warning: could not determine a user config file path; "
+                     "UI/camera settings will not be persisted.\n";
+    }
     mrpt::config::CConfigFile appCfg(appCfgFile);
 
     auto& cam              = app.sceneView.camera();

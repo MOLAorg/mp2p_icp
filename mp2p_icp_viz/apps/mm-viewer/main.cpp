@@ -46,7 +46,9 @@
 #include <mrpt/version.h>
 
 #include <CLI/CLI.hpp>
+#include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -148,6 +150,12 @@ struct AppState
     int mouseUnitsIdx        = 0;  // map / enu / lat-lon
 
     bool doFitView = false;
+
+    // Forces regeneration of the cached point-cloud OpenGL representation on the next
+    // rebuild_3d_view() call, even if render_params_t happens to compare equal to the last
+    // build (e.g. after loading a different map whose layers coincidentally share names,
+    // visibility, and render options with the previous one).
+    bool forceRebuildViz = true;
 
     std::string mouseCoordText = "Mouse pointing to: -";
     std::string cameraLookText = "Camera looking at: -";
@@ -275,6 +283,12 @@ bool loadMapFile(const std::string& mapFile)
     std::cout << "Loading map file: " << mapFile << std::endl;
 
     app.theMap = mp2p_icp::metric_map_t();  // reset
+    // Clear bookkeeping alongside theMap so any early-return-on-failure below leaves the UI
+    // consistently reflecting "no map", rather than describing the previous (different) map:
+    app.theMapFileName = "unnamed.mm";
+    app.layerNames.clear();
+    app.knownPointFields.clear();
+    app.layerVisible.clear();
 
     if (mrpt::system::extractFileExtension(mapFile) == "bin")
     {
@@ -422,6 +436,13 @@ std::string transformAndFormatSelectedPoint(const mrpt::math::TPoint3D& pt)
     const bool ptIsENU   = hasGeoref && app.applyGeoRef;
     const int  idx       = hasGeoref ? app.mouseUnitsIdx : 0;
 
+    // `pt` is in the ENU frame when ptIsENU, otherwise it is in the "map" frame -- convert to
+    // ENU once so cases 1/2 (which are only offered when hasGeoref) are correct regardless of
+    // whether "Apply georeferenced pose" is currently checked.
+    const mrpt::math::TPoint3D ptEnu =
+        (!ptIsENU && hasGeoref) ? app.theMap.georeferencing->T_enu_to_map.mean.composePoint(pt)
+                                : pt;
+
     switch (idx)
     {
         case 0:  // show in map
@@ -438,14 +459,14 @@ std::string transformAndFormatSelectedPoint(const mrpt::math::TPoint3D& pt)
             return mrpt::format("X=%6.03f Y=%6.03f Z=%6.03f", ptViz.x, ptViz.y, ptViz.z);
         }
         case 1:  // show in enu
-            return mrpt::format("X=%6.03f Y=%6.03f Z=%6.03f", pt.x, pt.y, pt.z);
+            return mrpt::format("X=%6.03f Y=%6.03f Z=%6.03f", ptEnu.x, ptEnu.y, ptEnu.z);
         case 2:  // show as lat/lon
         {
             try
             {
                 mrpt::topography::TGeocentricCoords geocentricPt;
                 mrpt::topography::ENUToGeocentric(
-                    pt, app.theMap.georeferencing->geo_coord, geocentricPt,
+                    ptEnu, app.theMap.georeferencing->geo_coord, geocentricPt,
                     mrpt::topography::TEllipsoid::Ellipsoid_WGS84());
 
                 mrpt::topography::TGeodeticCoords outCoords;
@@ -632,6 +653,8 @@ void updateMiniCornerView()
 
 void updateGuiAfterLoadingNewMap()
 {
+    app.forceRebuildViz = true;
+
     app.layerVisible.clear();
     for (const auto& name : app.layerNames)
     {
@@ -870,11 +893,21 @@ void handleKeyboard()
 
 void onSaveLayers(const std::string& outFile)
 {
+    const std::filesystem::path base(outFile);
+
     for (const auto& lyName : app.layerNames)
     {
+        if (auto itV = app.layerVisible.find(lyName); itV == app.layerVisible.end() || !itV->second)
+        {
+            continue;  // not a marked (visible) layer
+        }
         if (auto itL = app.theMap.layers.find(lyName); itL != app.theMap.layers.end())
         {
-            itL->second->saveMetricMapRepresentationToFile(outFile);
+            // One file per layer: writing every layer to the same outFile would clobber all
+            // but the last one.
+            const auto perLayerFile = base.parent_path() / (base.stem().string() + "_" + lyName +
+                                                            base.extension().string());
+            itL->second->saveMetricMapRepresentationToFile(perLayerFile.string());
         }
     }
 }
@@ -897,7 +930,9 @@ void rebuild_3d_view()
             }
         }
 
-        if (!app.layerVisible[lyName])
+        const auto itV       = app.layerVisible.find(lyName);
+        const bool isVisible = (itV == app.layerVisible.end()) ? true : itV->second;
+        if (!isVisible)
         {
             continue;  // hidden
         }
@@ -938,12 +973,14 @@ void rebuild_3d_view()
         rp.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0x80);
     }
 
-    // Regenerate points opengl representation only if some parameter changed:
+    // Regenerate points opengl representation only if some parameter changed (or a new map
+    // was just loaded, regardless of whether rpMap happens to compare equal to the last one):
     static std::optional<mp2p_icp::render_params_t> prevRenderParams;
 
-    if (!prevRenderParams.has_value() || prevRenderParams.value() != rpMap)
+    if (!prevRenderParams.has_value() || prevRenderParams.value() != rpMap || app.forceRebuildViz)
     {
-        prevRenderParams = rpMap;
+        app.forceRebuildViz = false;
+        prevRenderParams    = rpMap;
         app.glVizMap->clear();
 
         auto glPts = app.theMap.get_visualization(rpMap);
@@ -1051,18 +1088,6 @@ void renderMapViewerPanel()
     {
         app.exportDialog.open(
             mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"txt", "(*.txt)"}}, "Export layers");
-    }
-
-    if (auto path = app.openDialog.render(); path.has_value())
-    {
-        if (loadMapFile(*path))
-        {
-            updateGuiAfterLoadingNewMap();
-        }
-    }
-    if (auto path = app.exportDialog.render(); path.has_value())
-    {
-        onSaveLayers(*path);
     }
 
     ImGui::Separator();
@@ -1281,20 +1306,17 @@ void renderTravellingPanel()
 
     ImGui::TextUnformatted("Define camera travelling paths");
 
-    ImGui::SetNextItemWidth(-1);
-    if (!app.camTravellingLabels.empty())
+    // Plain read-only list (not a combo): keyframes cannot currently be selected, jumped to,
+    // or deleted individually, so an interactive-looking widget would be misleading.
+    ImGui::TextUnformatted("Keyframes:");
+    if (ImGui::BeginChild("##travellingKeys", ImVec2(0, 100), true))
     {
-        const int   selected = static_cast<int>(app.camTravellingLabels.size()) - 1;
-        const char* preview  = app.camTravellingLabels[static_cast<size_t>(selected)].c_str();
-        if (ImGui::BeginCombo("##travellingKeys", preview))
+        for (const auto& label : app.camTravellingLabels)
         {
-            for (size_t i = 0; i < app.camTravellingLabels.size(); i++)
-            {
-                ImGui::Selectable(app.camTravellingLabels[i].c_str(), false);
-            }
-            ImGui::EndCombo();
+            ImGui::TextUnformatted(label.c_str());
         }
     }
+    ImGui::EndChild();
 
     ImGui::InputFloat("New keyframe time [s]", &app.newKeyframeTime);
     ImGui::SameLine();
@@ -1327,7 +1349,10 @@ void renderTravellingPanel()
     }
     ImGui::EndDisabled();
 
-    ImGui::InputFloat("Animation FPS", &app.animFPS);
+    if (ImGui::InputFloat("Animation FPS", &app.animFPS))
+    {
+        app.animFPS = std::clamp(app.animFPS, 1.0f, 240.0f);
+    }
 
     const char* interpItems[] = {"Linear", "Spline"};
     ImGui::Combo("Interpolation", &app.travellingInterpIdx, interpItems, 2);
@@ -1337,6 +1362,25 @@ void renderTravellingPanel()
     ImGui::EndDisabled();
 
     ImGui::End();
+}
+
+/** Renders both file dialogs at top level, outside any other window's Begin/End -- nesting them
+ * inside e.g. "Map viewer" would silently cancel an open dialog whenever that window is
+ * collapsed (BeginPopupModal() fails to start, which SimpleFileDialog::render() treats as a
+ * dismiss). */
+void renderFileDialogs()
+{
+    if (auto path = app.openDialog.render(); path.has_value())
+    {
+        if (loadMapFile(*path))
+        {
+            updateGuiAfterLoadingNewMap();
+        }
+    }
+    if (auto path = app.exportDialog.render(); path.has_value())
+    {
+        onSaveLayers(*path);
+    }
 }
 
 /** "3D View" window: fills the remaining (background) dockspace area. */
@@ -1359,6 +1403,7 @@ void renderFrame()
     renderViewPanel();
     renderMapsPanel();
     renderTravellingPanel();
+    renderFileDialogs();
     renderSceneWindow();
 }
 
@@ -1462,6 +1507,11 @@ int mainShowGui()
     // only remembers panel docking):
     char appCfgFile[1024];
     ::get_user_config_file(appCfgFile, sizeof(appCfgFile), APP_NAME);
+    if (appCfgFile[0] == '\0')
+    {
+        std::cerr << "Warning: could not determine a user config file path; "
+                     "UI/camera settings will not be persisted.\n";
+    }
     mrpt::config::CConfigFile appCfg(appCfgFile);
 
     auto& cam               = app.sceneView.camera();

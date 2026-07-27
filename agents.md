@@ -143,7 +143,8 @@ Exports WGS-84 lon/lat/alt with EPSG:4979 WKT2 CRS embedded as VLR.
 ## GUI apps: Dear ImGui port (in progress)
 
 `mm-viewer` and `icp-log-viewer` (`mp2p_icp_viz`) are being migrated from `mrpt::gui::CDisplayWindowGUI`
-+ nanogui to Dear ImGui (docking branch). See `~/plans/mp2p_icp_imgui_port.md` for the full plan/status.
++ nanogui to Dear ImGui (docking branch). The phased plan/status is tracked outside this repository
+by the maintainer.
 
 - Dear ImGui is vendored **once** as a git submodule at `mp2p_icp_viz/3rdparty/imgui` (docking
   branch), built as a private static lib (`mp2p_icp_viz/3rdparty/imgui_static/`, target
@@ -153,8 +154,10 @@ Exports WGS-84 lon/lat/alt with EPSG:4979 WKT2 CRS embedded as VLR.
   context/docking main-loop boilerplate, with a `setupDefaultLayout` hook so each app defines its
   own default panel arrangement) and `SimpleFileDialog` (self-contained ImGui file browser for
   Open/Export, no native/system dialog dependency).
-- 3D rendering goes through `mrpt::imgui::CImGuiSceneView` (ships with `mrpt::gui` &ge; 2.15.19),
-  which renders an `mrpt::opengl::Scene` into an ImGui panel with built-in orbit/pan/zoom.
+- 3D rendering goes through `mrpt::imgui::CImGuiSceneView` (part of `mrpt_imgui`, available since
+  MRPT &ge; 2.15.11), which renders an `mrpt::opengl::Scene` into an ImGui panel with built-in
+  orbit/pan/zoom. `mm-viewer`/`icp-log-viewer` include it unconditionally, so this is a hard
+  minimum for `mp2p_icp_viz` (higher than the `mp2p_icp_core` minimum above).
 
 **Known limitation, kept in the code on purpose:** the small axis-corner gizmo mini-viewports
 (`FIRST_MINI_VIEW_NAME`/`SECOND_MINI_VIEW_NAME` in `mm-viewer/main.cpp`, `MINI_VIEW_NAME` in
