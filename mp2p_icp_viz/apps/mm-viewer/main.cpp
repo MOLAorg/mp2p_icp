@@ -17,6 +17,12 @@
 #include <mrpt/imgui/CImGuiSceneView.h>
 
 // other deps:
+#include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <imgui_app_common/ImGuiAppShell.h>
+#include <imgui_app_common/SimpleFileDialog.h>
+#include <imgui_internal.h>  // DockBuilder* API (default docking layout)
+#include <imgui_stdlib.h>  // ImGui::InputText(std::string*)
 #include <mp2p_icp/pointcloud_sanity_check.h>
 #include <mrpt/config.h>
 #include <mrpt/config/CConfigFile.h>
@@ -38,14 +44,6 @@
 #include <mrpt/system/string_utils.h>  // unitsFormat()
 #include <mrpt/topography/conversions.h>
 #include <mrpt/version.h>
-
-#include <imgui.h>
-#include <imgui_app_common/ImGuiAppShell.h>
-#include <imgui_app_common/SimpleFileDialog.h>
-#include <imgui_internal.h>  // DockBuilder* API (default docking layout)
-#include <imgui_stdlib.h>  // ImGui::InputText(std::string*)
-
-#include <GLFW/glfw3.h>
 
 #include <CLI/CLI.hpp>
 #include <cmath>
@@ -72,7 +70,7 @@ constexpr const char* SECOND_MINI_VIEW_NAME = "small-view-2";
 
 const char* const kColorIntensityNames[]  = {"cmNONE", "cmHOT", "cmJET", "cmGRAYSCALE"};
 const char* const kColorIntensityLabels[] = {"None", "Hot", "Jet", "Grayscale"};
-constexpr int      kNumColorIntensity     = 4;
+constexpr int     kNumColorIntensity      = 4;
 
 // =========== Declare supported cli switches ===========
 CLI::App cmd{APP_NAME};
@@ -86,9 +84,9 @@ std::string              arg_georefPolygon;
 /** Extra viz layer loaded from a *.3dscene file, or from --georef-polygon. */
 struct ExtraVizLayer
 {
-  std::string                      fileName;
-  mrpt::opengl::CSetOfObjects::Ptr glObjects;
-  bool                             visible = true;
+    std::string                      fileName;
+    mrpt::opengl::CSetOfObjects::Ptr glObjects;
+    bool                             visible = true;
 };
 
 /** All mutable application state, replacing the individual nanogui widget
@@ -96,79 +94,79 @@ struct ExtraVizLayer
  *  an immediate-mode GUI: widgets read/write these each frame). */
 struct AppState
 {
-  mp2p_icp_viz::ImGuiAppShell  shell;
-  mrpt::imgui::CImGuiSceneView sceneView;
-  mrpt::opengl::Scene::Ptr     scene = mrpt::opengl::COpenGLScene::Create();
+    mp2p_icp_viz::ImGuiAppShell  shell;
+    mrpt::imgui::CImGuiSceneView sceneView;
+    mrpt::opengl::Scene::Ptr     scene = mrpt::opengl::COpenGLScene::Create();
 
-  mrpt::opengl::CSetOfObjects::Ptr glVizMap     = mrpt::opengl::CSetOfObjects::Create();
-  mrpt::opengl::CGridPlaneXY::Ptr  glGrid       = mrpt::opengl::CGridPlaneXY::Create();
-  mrpt::opengl::CSetOfObjects::Ptr glENUCorner;
-  mrpt::opengl::CSetOfObjects::Ptr glMapCorner;
-  mrpt::opengl::CSetOfObjects::Ptr glTrajectory = mrpt::opengl::CSetOfObjects::Create();
-  mrpt::opengl::CSetOfObjects::Ptr glVizObjects = mrpt::opengl::CSetOfObjects::Create();
+    mrpt::opengl::CSetOfObjects::Ptr glVizMap = mrpt::opengl::CSetOfObjects::Create();
+    mrpt::opengl::CGridPlaneXY::Ptr  glGrid   = mrpt::opengl::CGridPlaneXY::Create();
+    mrpt::opengl::CSetOfObjects::Ptr glENUCorner;
+    mrpt::opengl::CSetOfObjects::Ptr glMapCorner;
+    mrpt::opengl::CSetOfObjects::Ptr glTrajectory = mrpt::opengl::CSetOfObjects::Create();
+    mrpt::opengl::CSetOfObjects::Ptr glVizObjects = mrpt::opengl::CSetOfObjects::Create();
 
-  mp2p_icp::metric_map_t theMap;
-  std::string            theMapFileName = "unnamed.mm";
+    mp2p_icp::metric_map_t theMap;
+    std::string            theMapFileName = "unnamed.mm";
 
-  std::vector<std::string>    layerNames;
-  std::vector<std::string>    knownPointFields;
-  std::map<std::string, bool> layerVisible;
+    std::vector<std::string>    layerNames;
+    std::vector<std::string>    knownPointFields;
+    std::map<std::string, bool> layerVisible;
 
-  std::vector<ExtraVizLayer> extraVizLayers;
+    std::vector<ExtraVizLayer> extraVizLayers;
 
-  mrpt::poses::CPose3DInterpolator trajectory;
+    mrpt::poses::CPose3DInterpolator trajectory;
 
-  // Camera travelling:
-  mrpt::poses::CPose3DInterpolator camTravelling;
-  std::optional<double>            camTravellingCurrentTime;
-  std::vector<std::string>         camTravellingLabels;
-  float                            animFPS             = 30.0f;
-  float                            animProgress        = 0.0f;
-  int                              travellingInterpIdx = 0;  // 0=Linear, 1=Spline
-  float                            newKeyframeTime      = 0.0f;
+    // Camera travelling:
+    mrpt::poses::CPose3DInterpolator camTravelling;
+    std::optional<double>            camTravellingCurrentTime;
+    std::vector<std::string>         camTravellingLabels;
+    float                            animFPS             = 30.0f;
+    float                            animProgress        = 0.0f;
+    int                              travellingInterpIdx = 0;  // 0=Linear, 1=Spline
+    float                            newKeyframeTime     = 0.0f;
 
-  // View options (mirrors the old nanogui side panel):
-  bool  applyGeoRef                = false;
-  bool  viewOrtho                  = false;
-  bool  view2D                     = false;
-  bool  viewVoxelsAsPoints         = false;
-  bool  viewVoxelsFreeSpace        = false;
-  bool  colorizeMap                = true;
-  bool  keepNativeCloudColors      = false;
-  bool  autoBBoxOutliers           = true;
-  float autoBBoxOutliersPercentile = 0.025f;
-  bool  showGroundGrid             = true;
-  bool  depthLogScale              = true;
-  float pointSize                  = 2.0f;
-  float trajectoryThicknessLog     = std::log(0.05f);
-  float clipNear                   = 0.1f;
-  float clipFar                    = 4.0f;
-  float cameraFOV                  = 90.0f;
+    // View options (mirrors the old nanogui side panel):
+    bool  applyGeoRef                = false;
+    bool  viewOrtho                  = false;
+    bool  view2D                     = false;
+    bool  viewVoxelsAsPoints         = false;
+    bool  viewVoxelsFreeSpace        = false;
+    bool  colorizeMap                = true;
+    bool  keepNativeCloudColors      = false;
+    bool  autoBBoxOutliers           = true;
+    float autoBBoxOutliersPercentile = 0.025f;
+    bool  showGroundGrid             = true;
+    bool  depthLogScale              = true;
+    float pointSize                  = 2.0f;
+    float trajectoryThicknessLog     = std::log(0.05f);
+    float clipNear                   = 0.1f;
+    float clipFar                    = 4.0f;
+    float cameraFOV                  = 90.0f;
 
-  int recolorizeByFieldIdx = 0;
-  int colorIntensityIdx    = 2;  // cmJET
-  int mouseUnitsIdx        = 0;  // map / enu / lat-lon
+    int recolorizeByFieldIdx = 0;
+    int colorIntensityIdx    = 2;  // cmJET
+    int mouseUnitsIdx        = 0;  // map / enu / lat-lon
 
-  bool doFitView = false;
+    bool doFitView = false;
 
-  std::string mouseCoordText = "Mouse pointing to: -";
-  std::string cameraLookText = "Camera looking at: -";
+    std::string mouseCoordText = "Mouse pointing to: -";
+    std::string cameraLookText = "Camera looking at: -";
 
-  mp2p_icp_viz::SimpleFileDialog openDialog;
-  mp2p_icp_viz::SimpleFileDialog exportDialog;
+    mp2p_icp_viz::SimpleFileDialog openDialog;
+    mp2p_icp_viz::SimpleFileDialog exportDialog;
 };
 
 AppState app;
 
 bool load_plugins(const std::string& plugins)
 {
-  std::string errMsg;
-  if (!mrpt::system::loadPluginModules(plugins, errMsg))
-  {
-    std::cerr << errMsg << std::endl;
-    return false;
-  }
-  return true;
+    std::string errMsg;
+    if (!mrpt::system::loadPluginModules(plugins, errMsg))
+    {
+        std::cerr << errMsg << std::endl;
+        return false;
+    }
+    return true;
 }
 
 /** Reads a text file with one "lat,lon" (WGS84 degrees) vertex per line
@@ -177,44 +175,44 @@ bool load_plugins(const std::string& plugins)
  */
 std::vector<mrpt::math::TPoint2D> readLatLonPolygonFile(const std::string& filePath)
 {
-  std::vector<mrpt::math::TPoint2D> latLonPoints;
+    std::vector<mrpt::math::TPoint2D> latLonPoints;
 
-  std::ifstream f(filePath);
-  ASSERTMSG_(
-      f.is_open(), mrpt::format("Cannot open georef polygon file: '%s'", filePath.c_str()));
+    std::ifstream f(filePath);
+    ASSERTMSG_(
+        f.is_open(), mrpt::format("Cannot open georef polygon file: '%s'", filePath.c_str()));
 
-  std::string line;
-  while (std::getline(f, line))
-  {
-    for (char& c : line)
+    std::string line;
+    while (std::getline(f, line))
     {
-      if (c == ',')
-      {
-        c = ' ';
-      }
+        for (char& c : line)
+        {
+            if (c == ',')
+            {
+                c = ' ';
+            }
+        }
+
+        std::istringstream iss(line);
+        std::string        firstTok;
+        if (!(iss >> firstTok) || firstTok.empty() || firstTok[0] == '#')
+        {
+            continue;  // blank or comment line
+        }
+
+        double lat = 0;
+        double lon = 0;
+        std::istringstream(firstTok) >> lat;
+        if (!(iss >> lon))
+        {
+            std::cerr << "Warning: malformed line in georef polygon file, skipping: \"" << line
+                      << "\"\n";
+            continue;
+        }
+
+        latLonPoints.emplace_back(lat, lon);
     }
 
-    std::istringstream iss(line);
-    std::string        firstTok;
-    if (!(iss >> firstTok) || firstTok.empty() || firstTok[0] == '#')
-    {
-      continue;  // blank or comment line
-    }
-
-    double lat = 0;
-    double lon = 0;
-    std::istringstream(firstTok) >> lat;
-    if (!(iss >> lon))
-    {
-      std::cerr << "Warning: malformed line in georef polygon file, skipping: \"" << line
-                 << "\"\n";
-      continue;
-    }
-
-    latLonPoints.emplace_back(lat, lon);
-  }
-
-  return latLonPoints;
+    return latLonPoints;
 }
 
 /** Builds a closed polygon outline, in the metric map's local ("map") frame,
@@ -225,349 +223,350 @@ mrpt::opengl::CSetOfObjects::Ptr buildGeorefPolygonLayer(
     const std::vector<mrpt::math::TPoint2D>&      latLonPoints,
     const mp2p_icp::metric_map_t::Georeferencing& georef)
 {
-  auto glLayer = mrpt::opengl::CSetOfObjects::Create();
+    auto glLayer = mrpt::opengl::CSetOfObjects::Create();
 
-  std::vector<mrpt::math::TPoint3D> mapPoints;
-  mapPoints.reserve(latLonPoints.size());
-  for (const auto& ll : latLonPoints)
-  {
-    const mrpt::topography::TGeodeticCoords geodeticPt(
-        ll.x /*lat*/, ll.y /*lon*/, georef.geo_coord.height);
-
-    mrpt::math::TPoint3D enuPt;
-    mrpt::topography::geodeticToENU_WGS84(geodeticPt, enuPt, georef.geo_coord);
-
-    mapPoints.push_back(georef.T_enu_to_map.mean.inverseComposePoint(enuPt));
-  }
-
-  if (mapPoints.size() >= 2)
-  {
-    auto glLines = mrpt::opengl::CSetOfLines::Create();
-    glLines->setColor_u8(0xff, 0xd0, 0x00, 0xff);
-    glLines->setLineWidth(3.0f);
-
-    for (size_t i = 0; i < mapPoints.size(); i++)
+    std::vector<mrpt::math::TPoint3D> mapPoints;
+    mapPoints.reserve(latLonPoints.size());
+    for (const auto& ll : latLonPoints)
     {
-      const auto& p0 = mapPoints[i];
-      const auto& p1 = mapPoints[(i + 1) % mapPoints.size()];
-      glLines->appendLine(p0, p1);
-    }
-    glLayer->insert(glLines);
-  }
+        const mrpt::topography::TGeodeticCoords geodeticPt(
+            ll.x /*lat*/, ll.y /*lon*/, georef.geo_coord.height);
 
-  return glLayer;
+        mrpt::math::TPoint3D enuPt;
+        mrpt::topography::geodeticToENU_WGS84(geodeticPt, enuPt, georef.geo_coord);
+
+        mapPoints.push_back(georef.T_enu_to_map.mean.inverseComposePoint(enuPt));
+    }
+
+    if (mapPoints.size() >= 2)
+    {
+        auto glLines = mrpt::opengl::CSetOfLines::Create();
+        glLines->setColor_u8(0xff, 0xd0, 0x00, 0xff);
+        glLines->setLineWidth(3.0f);
+
+        for (size_t i = 0; i < mapPoints.size(); i++)
+        {
+            const auto& p0 = mapPoints[i];
+            const auto& p1 = mapPoints[(i + 1) % mapPoints.size()];
+            glLines->appendLine(p0, p1);
+        }
+        glLayer->insert(glLines);
+    }
+
+    return glLayer;
 }
 
 void rebuildCamTravellingLabels()
 {
-  app.camTravellingLabels.clear();
-  for (size_t i = 0; i < app.camTravelling.size(); i++)
-  {
-    auto it = app.camTravelling.begin();
-    std::advance(it, static_cast<std::ptrdiff_t>(i));
+    app.camTravellingLabels.clear();
+    for (size_t i = 0; i < app.camTravelling.size(); i++)
+    {
+        auto it = app.camTravelling.begin();
+        std::advance(it, static_cast<std::ptrdiff_t>(i));
 
-    app.camTravellingLabels.push_back(mrpt::format(
-        "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
-        mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
-  }
+        app.camTravellingLabels.push_back(mrpt::format(
+            "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
+            mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
+    }
 }
 
 bool loadMapFile(const std::string& mapFile)
 {
-  std::cout << "Loading map file: " << mapFile << std::endl;
+    std::cout << "Loading map file: " << mapFile << std::endl;
 
-  app.theMap = mp2p_icp::metric_map_t();  // reset
+    app.theMap = mp2p_icp::metric_map_t();  // reset
 
-  if (mrpt::system::extractFileExtension(mapFile) == "bin")
-  {
-    try
+    if (mrpt::system::extractFileExtension(mapFile) == "bin")
     {
-      mrpt::io::CCompressedInputStream        f(mapFile);
-      auto                                    arch = mrpt::serialization::archiveFrom(f);
-      mrpt::serialization::CSerializable::Ptr obj  = arch.ReadObject();
-      auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obj);
-      if (!pts)
-      {
-        std::cerr << "Error: .bin file did not deserialize to a CPointsMap-derived object"
-                   << (obj ? std::string(" (got: ") + obj->GetRuntimeClass()->className + ")"
-                           : std::string(" (null object)"))
-                   << std::endl;
-        return false;
-      }
-      const std::string layerName  = mrpt::system::extractFileName(mapFile);
-      app.theMap.layers[layerName] = pts;
-    }
-    catch (const std::exception& e)
-    {
-      std::cerr << "Error loading .bin file: " << e.what() << std::endl;
-      return false;
-    }
-  }
-  else
-  {
-    std::string loadErrorMsg;
-
-    if (!app.theMap.load_from_file(mapFile, loadErrorMsg))
-    {
-      bool retry_was_successful = false;
-
-      if (loadErrorMsg.find("which is not registered") != std::string::npos &&
-          arg_plugins.empty())
-      {
-        std::cout << "The map file requires plugins for missing C++ classes.\n"
-                     "Trying to load 'libmola_metric_maps.so' and retrying.\n"
-                     "Note that you can directly use '-l libmola_metric_maps.so' or any other "
-                     "custom plugin next time.\n";
-
-        if (!load_plugins("libmola_metric_maps.so"))
+        try
         {
-          return false;
+            mrpt::io::CCompressedInputStream        f(mapFile);
+            auto                                    arch = mrpt::serialization::archiveFrom(f);
+            mrpt::serialization::CSerializable::Ptr obj  = arch.ReadObject();
+            auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obj);
+            if (!pts)
+            {
+                std::cerr << "Error: .bin file did not deserialize to a CPointsMap-derived object"
+                          << (obj ? std::string(" (got: ") + obj->GetRuntimeClass()->className + ")"
+                                  : std::string(" (null object)"))
+                          << std::endl;
+                return false;
+            }
+            const std::string layerName  = mrpt::system::extractFileName(mapFile);
+            app.theMap.layers[layerName] = pts;
         }
-        retry_was_successful = app.theMap.load_from_file(mapFile, loadErrorMsg);
-      }
-
-      if (!retry_was_successful)
-      {
-        std::cerr << "Error loading metric map from file!:\n" << loadErrorMsg << std::endl;
-        return false;
-      }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error loading .bin file: " << e.what() << std::endl;
+            return false;
+        }
     }
-  }
+    else
+    {
+        std::string loadErrorMsg;
 
-  app.theMapFileName = mapFile;
+        if (!app.theMap.load_from_file(mapFile, loadErrorMsg))
+        {
+            bool retry_was_successful = false;
 
-  std::cout << "Loaded map: " << app.theMap.contents_summary() << std::endl;
+            if (loadErrorMsg.find("which is not registered") != std::string::npos &&
+                arg_plugins.empty())
+            {
+                std::cout
+                    << "The map file requires plugins for missing C++ classes.\n"
+                       "Trying to load 'libmola_metric_maps.so' and retrying.\n"
+                       "Note that you can directly use '-l libmola_metric_maps.so' or any other "
+                       "custom plugin next time.\n";
 
-  app.layerNames.clear();
-  for (const auto& [name, map] : app.theMap.layers)
-  {
-    app.layerNames.push_back(name);
-  }
+                if (!load_plugins("libmola_metric_maps.so"))
+                {
+                    return false;
+                }
+                retry_was_successful = app.theMap.load_from_file(mapFile, loadErrorMsg);
+            }
 
-  // Find point cloud field names:
-  {
-    std::set<std::string> fields;
-    fields.insert("x");
-    fields.insert("y");
-    fields.insert("z");
+            if (!retry_was_successful)
+            {
+                std::cerr << "Error loading metric map from file!:\n" << loadErrorMsg << std::endl;
+                return false;
+            }
+        }
+    }
 
+    app.theMapFileName = mapFile;
+
+    std::cout << "Loaded map: " << app.theMap.contents_summary() << std::endl;
+
+    app.layerNames.clear();
     for (const auto& [name, map] : app.theMap.layers)
     {
-      auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
-      if (!pts)
-      {
-        continue;
-      }
-      for (const auto& f : pts->getPointFieldNames_float())
-      {
-        fields.insert(std::string(f));
-      }
-      for (const auto& f : pts->getPointFieldNames_uint16())
-      {
-        fields.insert(std::string(f));
-      }
+        app.layerNames.push_back(name);
+    }
+
+    // Find point cloud field names:
+    {
+        std::set<std::string> fields;
+        fields.insert("x");
+        fields.insert("y");
+        fields.insert("z");
+
+        for (const auto& [name, map] : app.theMap.layers)
+        {
+            auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(map);
+            if (!pts)
+            {
+                continue;
+            }
+            for (const auto& f : pts->getPointFieldNames_float())
+            {
+                fields.insert(std::string(f));
+            }
+            for (const auto& f : pts->getPointFieldNames_uint16())
+            {
+                fields.insert(std::string(f));
+            }
 #if MRPT_VERSION >= 0x020f03  // 2.15.3
-      for (const auto& f : pts->getPointFieldNames_double())
-      {
-        fields.insert(std::string(f));
-      }
-      for (const auto& f : pts->getPointFieldNames_uint8())
-      {
-        fields.insert(std::string(f));
-      }
+            for (const auto& f : pts->getPointFieldNames_double())
+            {
+                fields.insert(std::string(f));
+            }
+            for (const auto& f : pts->getPointFieldNames_uint8())
+            {
+                fields.insert(std::string(f));
+            }
 #endif
+        }
+
+        if (fields.count("color_r") && fields.count("color_g") && fields.count("color_b"))
+        {
+            fields.erase("color_r");
+            fields.erase("color_g");
+            fields.erase("color_b");
+            fields.insert("rgb");
+        }
+        if (fields.count("color_rf") && fields.count("color_gf") && fields.count("color_bf"))
+        {
+            fields.erase("color_rf");
+            fields.erase("color_gf");
+            fields.erase("color_bf");
+            fields.insert("rgbf");
+        }
+
+        app.knownPointFields.clear();
+        for (const auto& f : fields)
+        {
+            app.knownPointFields.push_back(f);
+        }
     }
 
-    if (fields.count("color_r") && fields.count("color_g") && fields.count("color_b"))
+    // sanity checks:
+    for (const auto& [name, map] : app.theMap.layers)
     {
-      fields.erase("color_r");
-      fields.erase("color_g");
-      fields.erase("color_b");
-      fields.insert("rgb");
-    }
-    if (fields.count("color_rf") && fields.count("color_gf") && fields.count("color_bf"))
-    {
-      fields.erase("color_rf");
-      fields.erase("color_gf");
-      fields.erase("color_bf");
-      fields.insert("rgbf");
+        const auto* pc = mp2p_icp::MapToPointsMap(*map);
+        if (!pc)
+        {
+            continue;  // not a point map
+        }
+        const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*pc);
+        ASSERTMSG_(
+            sanityPassed, mrpt::format("sanity check did not pass for layer: '%s'", name.c_str()));
     }
 
-    app.knownPointFields.clear();
-    for (const auto& f : fields)
-    {
-      app.knownPointFields.push_back(f);
-    }
-  }
-
-  // sanity checks:
-  for (const auto& [name, map] : app.theMap.layers)
-  {
-    const auto* pc = mp2p_icp::MapToPointsMap(*map);
-    if (!pc)
-    {
-      continue;  // not a point map
-    }
-    const bool sanityPassed = mp2p_icp::pointcloud_sanity_check(*pc);
-    ASSERTMSG_(
-        sanityPassed, mrpt::format("sanity check did not pass for layer: '%s'", name.c_str()));
-  }
-
-  return true;
+    return true;
 }
 
 /** Transform to show in the selected frame of reference and units: "map", "enu", or "lat/lon" */
 std::string transformAndFormatSelectedPoint(const mrpt::math::TPoint3D& pt)
 {
-  const bool hasGeoref = app.theMap.georeferencing.has_value();
-  const bool ptIsENU   = hasGeoref && app.applyGeoRef;
-  const int  idx       = hasGeoref ? app.mouseUnitsIdx : 0;
+    const bool hasGeoref = app.theMap.georeferencing.has_value();
+    const bool ptIsENU   = hasGeoref && app.applyGeoRef;
+    const int  idx       = hasGeoref ? app.mouseUnitsIdx : 0;
 
-  switch (idx)
-  {
-    case 0:  // show in map
+    switch (idx)
     {
-      mrpt::math::TPoint3D ptViz;
-      if (ptIsENU)
-      {
-        ptViz = app.theMap.georeferencing->T_enu_to_map.mean.inverseComposePoint(pt);
-      }
-      else
-      {
-        ptViz = pt;
-      }
-      return mrpt::format("X=%6.03f Y=%6.03f Z=%6.03f", ptViz.x, ptViz.y, ptViz.z);
-    }
-    case 1:  // show in enu
-      return mrpt::format("X=%6.03f Y=%6.03f Z=%6.03f", pt.x, pt.y, pt.z);
-    case 2:  // show as lat/lon
-    {
-      try
-      {
-        mrpt::topography::TGeocentricCoords geocentricPt;
-        mrpt::topography::ENUToGeocentric(
-            pt, app.theMap.georeferencing->geo_coord, geocentricPt,
-            mrpt::topography::TEllipsoid::Ellipsoid_WGS84());
+        case 0:  // show in map
+        {
+            mrpt::math::TPoint3D ptViz;
+            if (ptIsENU)
+            {
+                ptViz = app.theMap.georeferencing->T_enu_to_map.mean.inverseComposePoint(pt);
+            }
+            else
+            {
+                ptViz = pt;
+            }
+            return mrpt::format("X=%6.03f Y=%6.03f Z=%6.03f", ptViz.x, ptViz.y, ptViz.z);
+        }
+        case 1:  // show in enu
+            return mrpt::format("X=%6.03f Y=%6.03f Z=%6.03f", pt.x, pt.y, pt.z);
+        case 2:  // show as lat/lon
+        {
+            try
+            {
+                mrpt::topography::TGeocentricCoords geocentricPt;
+                mrpt::topography::ENUToGeocentric(
+                    pt, app.theMap.georeferencing->geo_coord, geocentricPt,
+                    mrpt::topography::TEllipsoid::Ellipsoid_WGS84());
 
-        mrpt::topography::TGeodeticCoords outCoords;
-        mrpt::topography::geocentricToGeodetic(geocentricPt, outCoords);
+                mrpt::topography::TGeodeticCoords outCoords;
+                mrpt::topography::geocentricToGeodetic(geocentricPt, outCoords);
 
-        return mrpt::format(
-            "%.06f, %.06f, h=%.03f", outCoords.lat.getDecimalValue(),
-            outCoords.lon.getDecimalValue(), outCoords.height);
-      }
-      catch (const std::exception& e)
-      {
-        std::cerr << "[transformAndFormatSelectedPoint] " << e.what() << "\n";
-        return {};
-      }
+                return mrpt::format(
+                    "%.06f, %.06f, h=%.03f", outCoords.lat.getDecimalValue(),
+                    outCoords.lon.getDecimalValue(), outCoords.height);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "[transformAndFormatSelectedPoint] " << e.what() << "\n";
+                return {};
+            }
+        }
+        default:
+            return {};
     }
-    default:
-      return {};
-  }
 }
 
 void updateCameraLookCoordinates()
 {
-  const auto& cam = app.sceneView.camera();
-  const mrpt::math::TPoint3D pt(cam.getPointingAtX(), cam.getPointingAtY(), cam.getPointingAtZ());
-  app.cameraLookText = "Camera looking at: " + transformAndFormatSelectedPoint(pt);
+    const auto&                cam = app.sceneView.camera();
+    const mrpt::math::TPoint3D pt(cam.getPointingAtX(), cam.getPointingAtY(), cam.getPointingAtZ());
+    app.cameraLookText = "Camera looking at: " + transformAndFormatSelectedPoint(pt);
 }
 
 /** Wired as `sceneView.onOverlayGui`: runs right after the 3-D canvas is drawn, while it is
  * still the last ImGui item, so `ImGui::IsItemHovered()`/`GetItemRect*()` refer to it. */
 void renderSceneOverlay()
 {
-  updateCameraLookCoordinates();
+    updateCameraLookCoordinates();
 
-  const bool   hovered  = ImGui::IsItemHovered();
-  const ImVec2 rectMin  = ImGui::GetItemRectMin();
-  const ImVec2 rectSize = ImGui::GetItemRectSize();
+    const bool   hovered  = ImGui::IsItemHovered();
+    const ImVec2 rectMin  = ImGui::GetItemRectMin();
+    const ImVec2 rectSize = ImGui::GetItemRectSize();
 
-  if (!hovered)
-  {
-    app.mouseCoordText = "Mouse pointing to: -";
-    return;
-  }
+    if (!hovered)
+    {
+        app.mouseCoordText = "Mouse pointing to: -";
+        return;
+    }
 
-  const ImVec2 mouse  = ImGui::GetMousePos();
-  const double localX = static_cast<double>(mouse.x - rectMin.x);
-  const double localY = static_cast<double>(mouse.y - rectMin.y);
-  if (localX < 0 || localY < 0 || localX >= rectSize.x || localY >= rectSize.y)
-  {
-    app.mouseCoordText = "Mouse pointing to: -";
-    return;
-  }
+    const ImVec2 mouse  = ImGui::GetMousePos();
+    const double localX = static_cast<double>(mouse.x - rectMin.x);
+    const double localY = static_cast<double>(mouse.y - rectMin.y);
+    if (localX < 0 || localY < 0 || localX >= rectSize.x || localY >= rectSize.y)
+    {
+        app.mouseCoordText = "Mouse pointing to: -";
+        return;
+    }
 
-  mrpt::math::TLine3D mouseRay;
-  app.scene->getViewport("main")->get3DRayForPixelCoord(localX, localY, mouseRay);
+    mrpt::math::TLine3D mouseRay;
+    app.scene->getViewport("main")->get3DRayForPixelCoord(localX, localY, mouseRay);
 
-  using mrpt::math::TPoint3D;
-  const mrpt::math::TPlane groundPlane(TPoint3D(0, 0, 0), TPoint3D(1, 0, 0), TPoint3D(0, 1, 0));
-  mrpt::math::TObject3D    inters;
-  mrpt::math::intersect(mouseRay, groundPlane, inters);
-  mrpt::math::TPoint3D intersPt;
-  if (inters.getPoint(intersPt))
-  {
-    app.mouseCoordText = "Mouse pointing to: " + transformAndFormatSelectedPoint(intersPt);
-  }
+    using mrpt::math::TPoint3D;
+    const mrpt::math::TPlane groundPlane(TPoint3D(0, 0, 0), TPoint3D(1, 0, 0), TPoint3D(0, 1, 0));
+    mrpt::math::TObject3D    inters;
+    mrpt::math::intersect(mouseRay, groundPlane, inters);
+    mrpt::math::TPoint3D intersPt;
+    if (inters.getPoint(intersPt))
+    {
+        app.mouseCoordText = "Mouse pointing to: " + transformAndFormatSelectedPoint(intersPt);
+    }
 }
 
 /** Creates the "Map frame"/"ENU frame" axis-corner gizmo viewports once. See the comment next to
  * FIRST_MINI_VIEW_NAME/SECOND_MINI_VIEW_NAME above: not currently rendered under MRPT 2.x. */
 void ensureMiniCornerViewports()
 {
-  if (!app.scene->getViewport(FIRST_MINI_VIEW_NAME))
-  {
-    auto gl_view = app.scene->createViewport(FIRST_MINI_VIEW_NAME);
+    if (!app.scene->getViewport(FIRST_MINI_VIEW_NAME))
+    {
+        auto gl_view = app.scene->createViewport(FIRST_MINI_VIEW_NAME);
 
-    gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
-    gl_view->setTransparent(true);
-    {
-      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
-      obj->setLocation(1.1, 0, 0);
-      gl_view->insert(obj);
+        gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
+        gl_view->setTransparent(true);
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+            obj->setLocation(1.1, 0, 0);
+            gl_view->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+            obj->setLocation(0, 1.1, 0);
+            gl_view->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+            obj->setLocation(0, 0, 1.1);
+            gl_view->insert(obj);
+        }
+        gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
     }
-    {
-      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
-      obj->setLocation(0, 1.1, 0);
-      gl_view->insert(obj);
-    }
-    {
-      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
-      obj->setLocation(0, 0, 1.1);
-      gl_view->insert(obj);
-    }
-    gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
-  }
 
-  if (!app.scene->getViewport(SECOND_MINI_VIEW_NAME))
-  {
-    auto gl_view = app.scene->createViewport(SECOND_MINI_VIEW_NAME);
-
-    gl_view->setViewportPosition(0.1, 0, 0.1, 0.1 * 16.0 / 9.0);
-    gl_view->setTransparent(true);
-
-    auto glRoot = mrpt::opengl::CSetOfObjects::Create();
-    gl_view->insert(glRoot);
-
+    if (!app.scene->getViewport(SECOND_MINI_VIEW_NAME))
     {
-      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
-      obj->setLocation(1.1, 0, 0);
-      glRoot->insert(obj);
+        auto gl_view = app.scene->createViewport(SECOND_MINI_VIEW_NAME);
+
+        gl_view->setViewportPosition(0.1, 0, 0.1, 0.1 * 16.0 / 9.0);
+        gl_view->setTransparent(true);
+
+        auto glRoot = mrpt::opengl::CSetOfObjects::Create();
+        gl_view->insert(glRoot);
+
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+            obj->setLocation(1.1, 0, 0);
+            glRoot->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+            obj->setLocation(0, 1.1, 0);
+            glRoot->insert(obj);
+        }
+        {
+            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+            obj->setLocation(0, 0, 1.1);
+            glRoot->insert(obj);
+        }
+        glRoot->insert(mrpt::opengl::stock_objects::CornerXYZ());
     }
-    {
-      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
-      obj->setLocation(0, 1.1, 0);
-      glRoot->insert(obj);
-    }
-    {
-      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
-      obj->setLocation(0, 0, 1.1);
-      glRoot->insert(obj);
-    }
-    glRoot->insert(mrpt::opengl::stock_objects::CornerXYZ());
-  }
 }
 
 /** Keeps the mini-corner viewport cameras/labels in sync with the main camera each frame.
@@ -575,99 +574,99 @@ void ensureMiniCornerViewports()
  * rendered under MRPT 2.x. */
 void updateMiniCornerView()
 {
-  auto gl_view1 = app.scene->getViewport(FIRST_MINI_VIEW_NAME);
-  if (!gl_view1)
-  {
-    return;
-  }
+    auto gl_view1 = app.scene->getViewport(FIRST_MINI_VIEW_NAME);
+    if (!gl_view1)
+    {
+        return;
+    }
 
-  mrpt::opengl::TFontParams fp;
-  fp.draw_shadow = true;
-  fp.vfont_scale = 9.0f;
+    mrpt::opengl::TFontParams fp;
+    fp.draw_shadow = true;
+    fp.vfont_scale = 9.0f;
 
-  {
-    mrpt::opengl::CCamera& view_cam = gl_view1->getCamera();
-    view_cam.setAzimuthDegrees(app.sceneView.camera().getAzimuthDegrees());
-    view_cam.setElevationDegrees(app.sceneView.camera().getElevationDegrees());
-    view_cam.setZoomDistance(5);
-  }
+    {
+        mrpt::opengl::CCamera& view_cam = gl_view1->getCamera();
+        view_cam.setAzimuthDegrees(app.sceneView.camera().getAzimuthDegrees());
+        view_cam.setElevationDegrees(app.sceneView.camera().getElevationDegrees());
+        view_cam.setZoomDistance(5);
+    }
 
-  const bool show_two_corners = app.applyGeoRef && app.theMap.georeferencing.has_value();
+    const bool show_two_corners = app.applyGeoRef && app.theMap.georeferencing.has_value();
 
-  gl_view1->clearTextMessages();
-  gl_view1->addTextMessage(5, 5, show_two_corners ? "ENU frame" : "Map frame", 0, fp);
+    gl_view1->clearTextMessages();
+    gl_view1->addTextMessage(5, 5, show_two_corners ? "ENU frame" : "Map frame", 0, fp);
 
-  auto gl_view2 = app.scene->getViewport(SECOND_MINI_VIEW_NAME);
-  if (!gl_view2 || gl_view2->empty())
-  {
-    return;
-  }
+    auto gl_view2 = app.scene->getViewport(SECOND_MINI_VIEW_NAME);
+    if (!gl_view2 || gl_view2->empty())
+    {
+        return;
+    }
 
-  auto glRoot = *gl_view2->begin();
-  if (!glRoot)
-  {
-    return;
-  }
-  glRoot->setVisibility(show_two_corners);
+    auto glRoot = *gl_view2->begin();
+    if (!glRoot)
+    {
+        return;
+    }
+    glRoot->setVisibility(show_two_corners);
 
-  if (!show_two_corners)
-  {
+    if (!show_two_corners)
+    {
+        gl_view2->clearTextMessages();
+        return;
+    }
+
+    glRoot->setPose(mrpt::poses::CPose3D::FromRotationAndTranslation(
+        app.theMap.georeferencing->T_enu_to_map.mean.getRotationMatrix(),
+        mrpt::math::TVector3D(0, 0, 0)));
+
+    {
+        mrpt::opengl::CCamera& view_cam = gl_view2->getCamera();
+        view_cam.setAzimuthDegrees(app.sceneView.camera().getAzimuthDegrees());
+        view_cam.setElevationDegrees(app.sceneView.camera().getElevationDegrees());
+        view_cam.setZoomDistance(5);
+    }
+
     gl_view2->clearTextMessages();
-    return;
-  }
-
-  glRoot->setPose(mrpt::poses::CPose3D::FromRotationAndTranslation(
-      app.theMap.georeferencing->T_enu_to_map.mean.getRotationMatrix(),
-      mrpt::math::TVector3D(0, 0, 0)));
-
-  {
-    mrpt::opengl::CCamera& view_cam = gl_view2->getCamera();
-    view_cam.setAzimuthDegrees(app.sceneView.camera().getAzimuthDegrees());
-    view_cam.setElevationDegrees(app.sceneView.camera().getElevationDegrees());
-    view_cam.setZoomDistance(5);
-  }
-
-  gl_view2->clearTextMessages();
-  gl_view2->addTextMessage(5, 5, "Map frame", 0, fp);
+    gl_view2->addTextMessage(5, 5, "Map frame", 0, fp);
 }
 
 void updateGuiAfterLoadingNewMap()
 {
-  app.layerVisible.clear();
-  for (const auto& name : app.layerNames)
-  {
-    app.layerVisible[name] = true;
-  }
-
-  for (auto& evl : app.extraVizLayers)
-  {
-    evl.visible = true;
-  }
-
-  app.recolorizeByFieldIdx = 0;
-
-  // Auto-range clip sliders from map Z bounds (linear mode only):
-  if (!app.depthLogScale)
-  {
-    float zMin = std::numeric_limits<float>::max();
-    float zMax = -std::numeric_limits<float>::max();
-    for (const auto& [name, map] : app.theMap.layers)
+    app.layerVisible.clear();
+    for (const auto& name : app.layerNames)
     {
-      const auto* pc = mp2p_icp::MapToPointsMap(*map);
-      if (!pc || pc->empty())
-      {
-        continue;
-      }
-      const auto bb = pc->boundingBox();
-      zMin          = std::min(zMin, bb.min.z);
-      zMax          = std::max(zMax, bb.max.z);
+        app.layerVisible[name] = true;
     }
-    if (zMin < zMax)
+
+    for (auto& evl : app.extraVizLayers)
     {
-      app.clipNear = zMin;
-      app.clipFar  = zMax;
+        evl.visible = true;
     }
-  }
+
+    app.recolorizeByFieldIdx = 0;
+
+    // Auto-range clip sliders from map Z bounds (linear mode only):
+    if (!app.depthLogScale)
+    {
+        float zMin = std::numeric_limits<float>::max();
+        float zMax = -std::numeric_limits<float>::max();
+        for (const auto& [name, map] : app.theMap.layers)
+        {
+            const auto* pc = mp2p_icp::MapToPointsMap(*map);
+            if (!pc || pc->empty())
+            {
+                continue;
+            }
+            const auto bb = pc->boundingBox();
+            zMin          = std::min(zMin, bb.min.z);
+            zMax          = std::max(zMax, bb.max.z);
+        }
+        if (zMin < zMax)
+        {
+            app.clipNear = zMin;
+            app.clipFar  = zMax;
+        }
+    }
 }
 
 void camTravellingStop() { app.camTravellingCurrentTime.reset(); }
@@ -676,903 +675,920 @@ void camTravellingStop() { app.camTravellingCurrentTime.reset(); }
  * the current camera pose). */
 void updateCameraClipDistances()
 {
-  auto& cam = app.sceneView.camera();
+    auto& cam = app.sceneView.camera();
 
-  float clipNear = 0;
-  float clipFar  = 0;
-  if (app.depthLogScale)
-  {
-    const auto depthFieldMid       = std::pow(10.0, app.clipNear);
-    const auto depthFieldThickness = std::pow(10.0, app.clipFar);
-    clipNear = static_cast<float>(std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness));
-    clipFar  = static_cast<float>(depthFieldMid + 0.5 * depthFieldThickness);
-  }
-  else
-  {
-    // Linear mode: slider values are world Z coordinates.
-    // Convert to frustum distances using the camera elevation and zoom.
-    const float elDeg   = cam.getElevationDegrees();
-    const float sinEl   = std::sin(mrpt::DEG2RAD(elDeg));
-    const float cameraZ = cam.getPointingAtZ() + cam.getZoomDistance() * sinEl;
-
-    const float orthoFactor = cam.isProjective() ? 1.0f : 2.0f;
-    const float zFloor      = orthoFactor * app.clipNear;
-    const float zCeiling    = orthoFactor * app.clipFar;
-
-    if (std::abs(sinEl) > 0.05f)
+    float clipNear = 0;
+    float clipFar  = 0;
+    if (app.depthLogScale)
     {
-      clipFar  = std::max(0.01f, (cameraZ - zFloor) / sinEl);
-      clipNear = std::max(0.01f, std::min(clipFar - 0.01f, (cameraZ - zCeiling) / sinEl));
+        const auto depthFieldMid       = std::pow(10.0, app.clipNear);
+        const auto depthFieldThickness = std::pow(10.0, app.clipFar);
+        clipNear = static_cast<float>(std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness));
+        clipFar  = static_cast<float>(depthFieldMid + 0.5 * depthFieldThickness);
     }
     else
     {
-      clipNear = std::max(0.01f, std::abs(zFloor));
-      clipFar  = std::max(clipNear + 0.01f, std::abs(zCeiling));
+        // Linear mode: slider values are world Z coordinates.
+        // Convert to frustum distances using the camera elevation and zoom.
+        const float elDeg   = cam.getElevationDegrees();
+        const float sinEl   = std::sin(mrpt::DEG2RAD(elDeg));
+        const float cameraZ = cam.getPointingAtZ() + cam.getZoomDistance() * sinEl;
+
+        const float orthoFactor = cam.isProjective() ? 1.0f : 2.0f;
+        const float zFloor      = orthoFactor * app.clipNear;
+        const float zCeiling    = orthoFactor * app.clipFar;
+
+        if (std::abs(sinEl) > 0.05f)
+        {
+            clipFar  = std::max(0.01f, (cameraZ - zFloor) / sinEl);
+            clipNear = std::max(0.01f, std::min(clipFar - 0.01f, (cameraZ - zCeiling) / sinEl));
+        }
+        else
+        {
+            clipNear = std::max(0.01f, std::abs(zFloor));
+            clipFar  = std::max(clipNear + 0.01f, std::abs(zCeiling));
+        }
     }
-  }
 
-  cam.setProjectiveFOVdeg(app.cameraFOV);
+    cam.setProjectiveFOVdeg(app.cameraFOV);
 
-  app.scene->getViewport("main")->setViewportClipDistances(clipNear, clipFar);
+    app.scene->getViewport("main")->setViewportClipDistances(clipNear, clipFar);
 }
 
 void processCameraTravelling()
 {
-  if (!app.camTravellingCurrentTime.has_value())
-  {
-    return;
-  }
-  double& t = app.camTravellingCurrentTime.value();
+    if (!app.camTravellingCurrentTime.has_value())
+    {
+        return;
+    }
+    double& t = app.camTravellingCurrentTime.value();
 
-  const double t0 = mrpt::Clock::toDouble(app.camTravelling.begin()->first);
-  const double t1 = mrpt::Clock::toDouble(app.camTravelling.rbegin()->first);
-  app.animProgress = (t1 > t0) ? static_cast<float>((t - t0) / (t1 - t0)) : 0.0f;
+    const double t0  = mrpt::Clock::toDouble(app.camTravelling.begin()->first);
+    const double t1  = mrpt::Clock::toDouble(app.camTravelling.rbegin()->first);
+    app.animProgress = (t1 > t0) ? static_cast<float>((t - t0) / (t1 - t0)) : 0.0f;
 
-  if (t >= t1)
-  {
-    camTravellingStop();
-    return;
-  }
+    if (t >= t1)
+    {
+        camTravellingStop();
+        return;
+    }
 
-  const auto interpMethod = app.travellingInterpIdx == 0 ? mrpt::poses::TInterpolatorMethod::imLinear2Neig
-                                                          : mrpt::poses::TInterpolatorMethod::imSSLSLL;
-  app.camTravelling.setInterpolationMethod(interpMethod);
+    const auto interpMethod = app.travellingInterpIdx == 0
+                                  ? mrpt::poses::TInterpolatorMethod::imLinear2Neig
+                                  : mrpt::poses::TInterpolatorMethod::imSSLSLL;
+    app.camTravelling.setInterpolationMethod(interpMethod);
 
-  mrpt::math::TPose3D p;
-  bool                valid = false;
-  app.camTravelling.interpolate(mrpt::Clock::fromDouble(t), p, valid);
-  if (valid)
-  {
-    auto& cam = app.sceneView.camera();
-    cam.setPointingAt(static_cast<float>(p.x), static_cast<float>(p.y), static_cast<float>(p.z));
-    cam.setAzimuthDegrees(static_cast<float>(mrpt::RAD2DEG(p.yaw)));
-    cam.setElevationDegrees(static_cast<float>(mrpt::RAD2DEG(p.pitch)));
-    cam.setZoomDistance(static_cast<float>(p.roll / TRAVELING_ZOOM2ROLL));
-  }
+    mrpt::math::TPose3D p;
+    bool                valid = false;
+    app.camTravelling.interpolate(mrpt::Clock::fromDouble(t), p, valid);
+    if (valid)
+    {
+        auto& cam = app.sceneView.camera();
+        cam.setPointingAt(
+            static_cast<float>(p.x), static_cast<float>(p.y), static_cast<float>(p.z));
+        cam.setAzimuthDegrees(static_cast<float>(mrpt::RAD2DEG(p.yaw)));
+        cam.setElevationDegrees(static_cast<float>(mrpt::RAD2DEG(p.pitch)));
+        cam.setZoomDistance(static_cast<float>(p.roll / TRAVELING_ZOOM2ROLL));
+    }
 
-  const double dt = app.animFPS > 0 ? 1.0 / app.animFPS : 1.0 / 30.0;
-  t += dt;
+    const double dt = app.animFPS > 0 ? 1.0 / app.animFPS : 1.0 / 30.0;
+    t += dt;
 }
 
 void handleKeyboard()
 {
-  ImGuiIO& io = ImGui::GetIO();
-  if (io.WantTextInput)
-  {
-    return;
-  }
-
-  constexpr float SLIDE_VELOCITY     = 0.01f;
-  constexpr float SENSIBILITY_ROTATE = 1.0f;
-  auto&           cam                = app.sceneView.camera();
-
-  auto doStrideSides = [&](bool toTheRight)
-  {
-    const float az   = cam.getAzimuthDegrees();
-    const float dx   = std::cos(mrpt::DEG2RAD(az + 90.f));
-    const float dy   = std::sin(mrpt::DEG2RAD(az + 90.f));
-    const float d    = toTheRight ? 1.0f : -1.0f;
-    const float dist = cam.getZoomDistance();
-    cam.setPointingAt(
-        cam.getPointingAtX() + d * dx * dist * SLIDE_VELOCITY,
-        cam.getPointingAtY() + d * dy * dist * SLIDE_VELOCITY, cam.getPointingAtZ());
-  };
-
-  auto doRotateEyeYaw = [&](bool toTheRight)
-  {
-    const float dis = std::max(0.01f, cam.getZoomDistance());
-    const float az0 = cam.getAzimuthDegrees();
-    const float el0 = cam.getElevationDegrees();
-
-    const float eyeX = cam.getPointingAtX() +
-                        dis * std::cos(mrpt::DEG2RAD(az0)) * std::cos(mrpt::DEG2RAD(el0));
-    const float eyeY = cam.getPointingAtY() +
-                        dis * std::sin(mrpt::DEG2RAD(az0)) * std::cos(mrpt::DEG2RAD(el0));
-    const float eyeZ = cam.getPointingAtZ() + dis * std::sin(mrpt::DEG2RAD(el0));
-
-    const float newAz = az0 + (toTheRight ? -SENSIBILITY_ROTATE : SENSIBILITY_ROTATE);
-    cam.setAzimuthDegrees(newAz);
-
-    cam.setPointingAt(
-        eyeX - dis * std::cos(mrpt::DEG2RAD(newAz)) * std::cos(mrpt::DEG2RAD(el0)),
-        eyeY - dis * std::sin(mrpt::DEG2RAD(newAz)) * std::cos(mrpt::DEG2RAD(el0)),
-        eyeZ - dis * std::sin(mrpt::DEG2RAD(el0)));
-  };
-
-  auto doRotateEyeUpDown = [&](bool toUp)
-  {
-    const float az   = cam.getAzimuthDegrees();
-    const float dx   = std::cos(mrpt::DEG2RAD(az));
-    const float dy   = std::sin(mrpt::DEG2RAD(az));
-    const float d    = toUp ? -1.0f : 1.0f;
-    const float dist = cam.getZoomDistance();
-    cam.setPointingAt(
-        cam.getPointingAtX() + d * dx * dist * SLIDE_VELOCITY,
-        cam.getPointingAtY() + d * dy * dist * SLIDE_VELOCITY, cam.getPointingAtZ());
-  };
-
-  auto doMoveVertically = [&](bool toUp)
-  {
-    const float d    = toUp ? 1.0f : -1.0f;
-    const float dist = cam.getZoomDistance();
-    cam.setPointingAt(
-        cam.getPointingAtX(), cam.getPointingAtY(), cam.getPointingAtZ() + d * dist * SLIDE_VELOCITY);
-  };
-
-  const bool up   = ImGui::IsKeyPressed(ImGuiKey_UpArrow, true) || ImGui::IsKeyPressed(ImGuiKey_W, true);
-  const bool down = ImGui::IsKeyPressed(ImGuiKey_DownArrow, true) || ImGui::IsKeyPressed(ImGuiKey_S, true);
-  if (up || down)
-  {
-    if (io.KeyShift)
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantTextInput)
     {
-      doMoveVertically(up);
+        return;
     }
-    else
-    {
-      doRotateEyeUpDown(up);
-    }
-  }
 
-  if (ImGui::IsKeyPressed(ImGuiKey_A, true))
-  {
-    doStrideSides(false);
-  }
-  if (ImGui::IsKeyPressed(ImGuiKey_D, true))
-  {
-    doStrideSides(true);
-  }
+    constexpr float SLIDE_VELOCITY     = 0.01f;
+    constexpr float SENSIBILITY_ROTATE = 1.0f;
+    auto&           cam                = app.sceneView.camera();
 
-  const bool right = ImGui::IsKeyPressed(ImGuiKey_RightArrow, true);
-  const bool left   = ImGui::IsKeyPressed(ImGuiKey_LeftArrow, true);
-  if (right || left)
-  {
-    if (io.KeyShift)
+    auto doStrideSides = [&](bool toTheRight)
     {
-      doStrideSides(right);
-    }
-    else
-    {
-      doRotateEyeYaw(right);
-    }
-  }
+        const float az   = cam.getAzimuthDegrees();
+        const float dx   = std::cos(mrpt::DEG2RAD(az + 90.f));
+        const float dy   = std::sin(mrpt::DEG2RAD(az + 90.f));
+        const float d    = toTheRight ? 1.0f : -1.0f;
+        const float dist = cam.getZoomDistance();
+        cam.setPointingAt(
+            cam.getPointingAtX() + d * dx * dist * SLIDE_VELOCITY,
+            cam.getPointingAtY() + d * dy * dist * SLIDE_VELOCITY, cam.getPointingAtZ());
+    };
 
-  // CTRL+C copies the coordinates
-  if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C, false))
-  {
-    const std::string text = app.mouseCoordText + "\n" + app.cameraLookText;
-    glfwSetClipboardString(app.shell.windowHandle(), text.c_str());
-  }
+    auto doRotateEyeYaw = [&](bool toTheRight)
+    {
+        const float dis = std::max(0.01f, cam.getZoomDistance());
+        const float az0 = cam.getAzimuthDegrees();
+        const float el0 = cam.getElevationDegrees();
+
+        const float eyeX = cam.getPointingAtX() +
+                           dis * std::cos(mrpt::DEG2RAD(az0)) * std::cos(mrpt::DEG2RAD(el0));
+        const float eyeY = cam.getPointingAtY() +
+                           dis * std::sin(mrpt::DEG2RAD(az0)) * std::cos(mrpt::DEG2RAD(el0));
+        const float eyeZ = cam.getPointingAtZ() + dis * std::sin(mrpt::DEG2RAD(el0));
+
+        const float newAz = az0 + (toTheRight ? -SENSIBILITY_ROTATE : SENSIBILITY_ROTATE);
+        cam.setAzimuthDegrees(newAz);
+
+        cam.setPointingAt(
+            eyeX - dis * std::cos(mrpt::DEG2RAD(newAz)) * std::cos(mrpt::DEG2RAD(el0)),
+            eyeY - dis * std::sin(mrpt::DEG2RAD(newAz)) * std::cos(mrpt::DEG2RAD(el0)),
+            eyeZ - dis * std::sin(mrpt::DEG2RAD(el0)));
+    };
+
+    auto doRotateEyeUpDown = [&](bool toUp)
+    {
+        const float az   = cam.getAzimuthDegrees();
+        const float dx   = std::cos(mrpt::DEG2RAD(az));
+        const float dy   = std::sin(mrpt::DEG2RAD(az));
+        const float d    = toUp ? -1.0f : 1.0f;
+        const float dist = cam.getZoomDistance();
+        cam.setPointingAt(
+            cam.getPointingAtX() + d * dx * dist * SLIDE_VELOCITY,
+            cam.getPointingAtY() + d * dy * dist * SLIDE_VELOCITY, cam.getPointingAtZ());
+    };
+
+    auto doMoveVertically = [&](bool toUp)
+    {
+        const float d    = toUp ? 1.0f : -1.0f;
+        const float dist = cam.getZoomDistance();
+        cam.setPointingAt(
+            cam.getPointingAtX(), cam.getPointingAtY(),
+            cam.getPointingAtZ() + d * dist * SLIDE_VELOCITY);
+    };
+
+    const bool up =
+        ImGui::IsKeyPressed(ImGuiKey_UpArrow, true) || ImGui::IsKeyPressed(ImGuiKey_W, true);
+    const bool down =
+        ImGui::IsKeyPressed(ImGuiKey_DownArrow, true) || ImGui::IsKeyPressed(ImGuiKey_S, true);
+    if (up || down)
+    {
+        if (io.KeyShift)
+        {
+            doMoveVertically(up);
+        }
+        else
+        {
+            doRotateEyeUpDown(up);
+        }
+    }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_A, true))
+    {
+        doStrideSides(false);
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_D, true))
+    {
+        doStrideSides(true);
+    }
+
+    const bool right = ImGui::IsKeyPressed(ImGuiKey_RightArrow, true);
+    const bool left  = ImGui::IsKeyPressed(ImGuiKey_LeftArrow, true);
+    if (right || left)
+    {
+        if (io.KeyShift)
+        {
+            doStrideSides(right);
+        }
+        else
+        {
+            doRotateEyeYaw(right);
+        }
+    }
+
+    // CTRL+C copies the coordinates
+    if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C, false))
+    {
+        const std::string text = app.mouseCoordText + "\n" + app.cameraLookText;
+        glfwSetClipboardString(app.shell.windowHandle(), text.c_str());
+    }
 }
 
 void onSaveLayers(const std::string& outFile)
 {
-  for (const auto& lyName : app.layerNames)
-  {
-    if (auto itL = app.theMap.layers.find(lyName); itL != app.theMap.layers.end())
+    for (const auto& lyName : app.layerNames)
     {
-      itL->second->saveMetricMapRepresentationToFile(outFile);
+        if (auto itL = app.theMap.layers.find(lyName); itL != app.theMap.layers.end())
+        {
+            itL->second->saveMetricMapRepresentationToFile(outFile);
+        }
     }
-  }
 }
 
 void rebuild_3d_view()
 {
-  std::optional<mrpt::math::TBoundingBoxf> mapBbox;
+    std::optional<mrpt::math::TBoundingBoxf> mapBbox;
 
-  mp2p_icp::render_params_t rpMap;
-  rpMap.points.visible = false;
+    mp2p_icp::render_params_t rpMap;
+    rpMap.points.visible = false;
 
-  for (const auto& lyName : app.layerNames)
-  {
-    if (auto itL = app.theMap.layers.find(lyName); itL != app.theMap.layers.end())
+    for (const auto& lyName : app.layerNames)
     {
-      if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second); pc)
-      {
-        const auto bb = pc->boundingBox();
-        mapBbox        = mapBbox.has_value() ? mapBbox->unionWith(bb) : bb;
-      }
+        if (auto itL = app.theMap.layers.find(lyName); itL != app.theMap.layers.end())
+        {
+            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second); pc)
+            {
+                const auto bb = pc->boundingBox();
+                mapBbox       = mapBbox.has_value() ? mapBbox->unionWith(bb) : bb;
+            }
+        }
+
+        if (!app.layerVisible[lyName])
+        {
+            continue;  // hidden
+        }
+        rpMap.points.visible = true;
+
+        auto& rpL                       = rpMap.points.perLayer[lyName];
+        rpL.pointSize                   = app.pointSize;
+        rpL.render_voxelmaps_as_points  = app.viewVoxelsAsPoints;
+        rpL.render_voxelmaps_free_space = app.viewVoxelsFreeSpace;
+
+        if (app.colorizeMap)
+        {
+            auto& cm    = rpL.colorMode.emplace();
+            cm.colorMap = mrpt::typemeta::str2enum<mrpt::img::TColormap>(
+                kColorIntensityNames[app.colorIntensityIdx]);
+
+            if (!app.knownPointFields.empty())
+            {
+                cm.recolorizeByField =
+                    app.knownPointFields.at(static_cast<size_t>(app.recolorizeByFieldIdx));
+            }
+
+            if (app.autoBBoxOutliers)
+            {
+                cm.autoBoundingBoxOutliersPercentile = app.autoBBoxOutliersPercentile;
+            }
+        }
+        if (app.keepNativeCloudColors)
+        {
+            auto& cm                     = rpL.colorMode.emplace();
+            cm.keep_original_cloud_color = true;
+            rpL.force_alpha_channel      = true;
+        }
     }
 
-    if (!app.layerVisible[lyName])
+    for (auto& [layer, rp] : rpMap.points.perLayer)
     {
-      continue;  // hidden
+        rp.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0x80);
     }
-    rpMap.points.visible = true;
 
-    auto& rpL                       = rpMap.points.perLayer[lyName];
-    rpL.pointSize                   = app.pointSize;
-    rpL.render_voxelmaps_as_points  = app.viewVoxelsAsPoints;
-    rpL.render_voxelmaps_free_space = app.viewVoxelsFreeSpace;
+    // Regenerate points opengl representation only if some parameter changed:
+    static std::optional<mp2p_icp::render_params_t> prevRenderParams;
 
-    if (app.colorizeMap)
+    if (!prevRenderParams.has_value() || prevRenderParams.value() != rpMap)
     {
-      auto& cm    = rpL.colorMode.emplace();
-      cm.colorMap = mrpt::typemeta::str2enum<mrpt::img::TColormap>(
-          kColorIntensityNames[app.colorIntensityIdx]);
+        prevRenderParams = rpMap;
+        app.glVizMap->clear();
 
-      if (!app.knownPointFields.empty())
-      {
-        cm.recolorizeByField =
-            app.knownPointFields.at(static_cast<size_t>(app.recolorizeByFieldIdx));
-      }
+        auto glPts = app.theMap.get_visualization(rpMap);
 
-      if (app.autoBBoxOutliers)
-      {
-        cm.autoBoundingBoxOutliersPercentile = app.autoBBoxOutliersPercentile;
-      }
+        app.glVizMap->insert(glPts);
+        app.glVizMap->insert(app.glMapCorner);
+        app.glVizMap->insert(app.glTrajectory);
+        app.glVizMap->insert(app.glVizObjects);
     }
-    if (app.keepNativeCloudColors)
+
+    if (app.applyGeoRef && app.theMap.georeferencing.has_value())
     {
-      auto& cm                     = rpL.colorMode.emplace();
-      cm.keep_original_cloud_color = true;
-      rpL.force_alpha_channel      = true;
+        app.glVizMap->setPose(app.theMap.georeferencing->T_enu_to_map.mean);
+        app.glENUCorner->setVisibility(true);
     }
-  }
-
-  for (auto& [layer, rp] : rpMap.points.perLayer)
-  {
-    rp.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0x80);
-  }
-
-  // Regenerate points opengl representation only if some parameter changed:
-  static std::optional<mp2p_icp::render_params_t> prevRenderParams;
-
-  if (!prevRenderParams.has_value() || prevRenderParams.value() != rpMap)
-  {
-    prevRenderParams = rpMap;
-    app.glVizMap->clear();
-
-    auto glPts = app.theMap.get_visualization(rpMap);
-
-    app.glVizMap->insert(glPts);
-    app.glVizMap->insert(app.glMapCorner);
-    app.glVizMap->insert(app.glTrajectory);
-    app.glVizMap->insert(app.glVizObjects);
-  }
-
-  if (app.applyGeoRef && app.theMap.georeferencing.has_value())
-  {
-    app.glVizMap->setPose(app.theMap.georeferencing->T_enu_to_map.mean);
-    app.glENUCorner->setVisibility(true);
-  }
-  else
-  {
-    app.glVizMap->setPose(mrpt::poses::CPose3D::Identity());
-    app.glENUCorner->setVisibility(false);
-  }
-
-  if (mapBbox)
-  {
-    app.glGrid->setPlaneLimits(mapBbox->min.x, mapBbox->max.x, mapBbox->min.y, mapBbox->max.y);
-
-    constexpr float MAX_GRID_LINES = 20.0f;
-    const auto      bboxDiagonal   = (mapBbox->max - mapBbox->min).cast<float>().norm();
-    app.glGrid->setGridFrequency(std::max<float>(1.0f, std::round(bboxDiagonal / MAX_GRID_LINES)));
-  }
-  app.glGrid->setVisibility(app.showGroundGrid);
-
-  if (mapBbox && app.doFitView)
-  {
-    const auto midPt  = (mapBbox->min + mapBbox->max) * 0.5;
-    const auto mapLen = (mapBbox->max - mapBbox->min).norm();
-
-    app.sceneView.camera().setPointingAt(midPt.x, midPt.y, midPt.z);
-    app.sceneView.camera().setZoomDistance(mapLen);
-  }
-  app.doFitView = false;
-
-  if (app.glTrajectory->empty() && app.trajectory.size() >= 2)
-  {
-    const float trajectoryCylRadius = std::exp(app.trajectoryThicknessLog);
-
-    std::optional<mrpt::math::TPose3D> prevPose;
-    for (const auto& [t, p] : app.trajectory)
+    else
     {
-      if (prevPose)
-      {
-        const auto& p0 = prevPose.value();
-
-        auto glSegment = mrpt::opengl::CArrow::Create();
-        glSegment->setArrowEnds(p0.translation(), p.translation());
-        glSegment->setHeadRatio(.0);
-        glSegment->setLargeRadius(trajectoryCylRadius);
-        glSegment->setSmallRadius(trajectoryCylRadius);
-        glSegment->setColor_u8(0x30, 0x30, 0x30, 0xff);
-
-        app.glTrajectory->insert(glSegment);
-      }
-      prevPose = p;
+        app.glVizMap->setPose(mrpt::poses::CPose3D::Identity());
+        app.glENUCorner->setVisibility(false);
     }
-  }
 
-  app.glVizObjects->clear();
-  for (auto& evl : app.extraVizLayers)
-  {
-    evl.glObjects->setVisibility(evl.visible);
-    app.glVizObjects->insert(evl.glObjects);
-  }
+    if (mapBbox)
+    {
+        app.glGrid->setPlaneLimits(mapBbox->min.x, mapBbox->max.x, mapBbox->min.y, mapBbox->max.y);
 
-  app.sceneView.camera().setProjectiveModel(!app.viewOrtho && !app.view2D);
+        constexpr float MAX_GRID_LINES = 20.0f;
+        const auto      bboxDiagonal   = (mapBbox->max - mapBbox->min).cast<float>().norm();
+        app.glGrid->setGridFrequency(
+            std::max<float>(1.0f, std::round(bboxDiagonal / MAX_GRID_LINES)));
+    }
+    app.glGrid->setVisibility(app.showGroundGrid);
 
-  if (app.view2D)
-  {
-    app.sceneView.camera().setAzimuthDegrees(-90.0f);
-    app.sceneView.camera().setElevationDegrees(90.0f);
-  }
+    if (mapBbox && app.doFitView)
+    {
+        const auto midPt  = (mapBbox->min + mapBbox->max) * 0.5;
+        const auto mapLen = (mapBbox->max - mapBbox->min).norm();
 
-  ensureMiniCornerViewports();
+        app.sceneView.camera().setPointingAt(midPt.x, midPt.y, midPt.z);
+        app.sceneView.camera().setZoomDistance(mapLen);
+    }
+    app.doFitView = false;
 
-  // Clip planes/FOV are refreshed every frame in updateCameraClipDistances(),
-  // since the "linear" clip mode needs the up-to-date camera pose.
+    if (app.glTrajectory->empty() && app.trajectory.size() >= 2)
+    {
+        const float trajectoryCylRadius = std::exp(app.trajectoryThicknessLog);
+
+        std::optional<mrpt::math::TPose3D> prevPose;
+        for (const auto& [t, p] : app.trajectory)
+        {
+            if (prevPose)
+            {
+                const auto& p0 = prevPose.value();
+
+                auto glSegment = mrpt::opengl::CArrow::Create();
+                glSegment->setArrowEnds(p0.translation(), p.translation());
+                glSegment->setHeadRatio(.0);
+                glSegment->setLargeRadius(trajectoryCylRadius);
+                glSegment->setSmallRadius(trajectoryCylRadius);
+                glSegment->setColor_u8(0x30, 0x30, 0x30, 0xff);
+
+                app.glTrajectory->insert(glSegment);
+            }
+            prevPose = p;
+        }
+    }
+
+    app.glVizObjects->clear();
+    for (auto& evl : app.extraVizLayers)
+    {
+        evl.glObjects->setVisibility(evl.visible);
+        app.glVizObjects->insert(evl.glObjects);
+    }
+
+    app.sceneView.camera().setProjectiveModel(!app.viewOrtho && !app.view2D);
+
+    if (app.view2D)
+    {
+        app.sceneView.camera().setAzimuthDegrees(-90.0f);
+        app.sceneView.camera().setElevationDegrees(90.0f);
+    }
+
+    ensureMiniCornerViewports();
+
+    // Clip planes/FOV are refreshed every frame in updateCameraClipDistances(),
+    // since the "linear" clip mode needs the up-to-date camera pose.
 }
 
 /** "Map viewer" window: file header + Open/Export + mouse/camera coordinate footer.
  *  Kept separate from the View/Maps/Travelling panels below so it can dock as a thin strip. */
 void renderMapViewerPanel()
 {
-  ImGui::Begin("Map viewer");
+    ImGui::Begin("Map viewer");
 
-  const std::string headerLine = app.theMapFileName + "  |  " + app.theMap.contents_summary();
-  ImGui::TextWrapped("%s", headerLine.c_str());
-  if (ImGui::Button("Open..."))
-  {
-    app.openDialog.open(
-        mp2p_icp_viz::SimpleFileDialog::Mode::Open,
-        {{"mm", "Metric maps (*.mm)"}, {"bin", "Serialized CGenericPointsMap (*.bin)"}},
-        "Open metric map");
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Export marked layers..."))
-  {
-    app.exportDialog.open(
-        mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"txt", "(*.txt)"}}, "Export layers");
-  }
-
-  if (auto path = app.openDialog.render(); path.has_value())
-  {
-    if (loadMapFile(*path))
+    const std::string headerLine = app.theMapFileName + "  |  " + app.theMap.contents_summary();
+    ImGui::TextWrapped("%s", headerLine.c_str());
+    if (ImGui::Button("Open..."))
     {
-      updateGuiAfterLoadingNewMap();
+        app.openDialog.open(
+            mp2p_icp_viz::SimpleFileDialog::Mode::Open,
+            {{"mm", "Metric maps (*.mm)"}, {"bin", "Serialized CGenericPointsMap (*.bin)"}},
+            "Open metric map");
     }
-  }
-  if (auto path = app.exportDialog.render(); path.has_value())
-  {
-    onSaveLayers(*path);
-  }
+    ImGui::SameLine();
+    if (ImGui::Button("Export marked layers..."))
+    {
+        app.exportDialog.open(
+            mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"txt", "(*.txt)"}}, "Export layers");
+    }
 
-  ImGui::Separator();
-  ImGui::TextUnformatted(app.mouseCoordText.c_str());
-  ImGui::TextUnformatted(app.cameraLookText.c_str());
+    if (auto path = app.openDialog.render(); path.has_value())
+    {
+        if (loadMapFile(*path))
+        {
+            updateGuiAfterLoadingNewMap();
+        }
+    }
+    if (auto path = app.exportDialog.render(); path.has_value())
+    {
+        onSaveLayers(*path);
+    }
 
-  const bool  hasGeoref     = app.theMap.georeferencing.has_value();
-  const char* itemsGeoref[] = {"map", "enu", "lat/lon"};
-  const char* itemsPlain[]  = {"map"};
-  if (!hasGeoref)
-  {
-    app.mouseUnitsIdx = 0;
-  }
-  ImGui::SetNextItemWidth(100);
-  if (hasGeoref)
-  {
-    ImGui::Combo("##mouseUnits", &app.mouseUnitsIdx, itemsGeoref, 3);
-  }
-  else
-  {
-    ImGui::BeginDisabled();
-    int dummy = 0;
-    ImGui::Combo("##mouseUnits", &dummy, itemsPlain, 1);
-    ImGui::EndDisabled();
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Copy coords"))
-  {
-    const std::string text = app.mouseCoordText + "\n" + app.cameraLookText;
-    glfwSetClipboardString(app.shell.windowHandle(), text.c_str());
-  }
+    ImGui::Separator();
+    ImGui::TextUnformatted(app.mouseCoordText.c_str());
+    ImGui::TextUnformatted(app.cameraLookText.c_str());
 
-  ImGui::End();
+    const bool  hasGeoref     = app.theMap.georeferencing.has_value();
+    const char* itemsGeoref[] = {"map", "enu", "lat/lon"};
+    const char* itemsPlain[]  = {"map"};
+    if (!hasGeoref)
+    {
+        app.mouseUnitsIdx = 0;
+    }
+    ImGui::SetNextItemWidth(100);
+    if (hasGeoref)
+    {
+        ImGui::Combo("##mouseUnits", &app.mouseUnitsIdx, itemsGeoref, 3);
+    }
+    else
+    {
+        ImGui::BeginDisabled();
+        int dummy = 0;
+        ImGui::Combo("##mouseUnits", &dummy, itemsPlain, 1);
+        ImGui::EndDisabled();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Copy coords"))
+    {
+        const std::string text = app.mouseCoordText + "\n" + app.cameraLookText;
+        glfwSetClipboardString(app.shell.windowHandle(), text.c_str());
+    }
+
+    ImGui::End();
 }
 
 /** "View" window: camera/rendering options (mirrors the old nanogui "View" tab). */
 void renderViewPanel()
 {
-  ImGui::Begin("View");
+    ImGui::Begin("View");
 
-  ImGui::SliderFloat(
-      "Trajectory thickness", &app.trajectoryThicknessLog, std::log(0.005f), std::log(2.0f));
-  if (ImGui::IsItemEdited())
-  {
-    app.glTrajectory->clear();  // force rebuild
-  }
+    ImGui::SliderFloat(
+        "Trajectory thickness", &app.trajectoryThicknessLog, std::log(0.005f), std::log(2.0f));
+    if (ImGui::IsItemEdited())
+    {
+        app.glTrajectory->clear();  // force rebuild
+    }
 
-  ImGui::Checkbox("Log scale", &app.depthLogScale);
-  if (ImGui::IsItemEdited())
-  {
+    ImGui::Checkbox("Log scale", &app.depthLogScale);
+    if (ImGui::IsItemEdited())
+    {
+        if (app.depthLogScale)
+        {
+            app.clipNear = 0.1f;
+            app.clipFar  = 4.0f;
+        }
+        else
+        {
+            app.clipNear = -5.0f;
+            app.clipFar  = 25.0f;
+        }
+    }
+
     if (app.depthLogScale)
     {
-      app.clipNear = 0.1f;
-      app.clipFar  = 4.0f;
+        ImGui::SliderFloat("Frustum center (log10 m)", &app.clipNear, -2.0f, 3.0f);
+        ImGui::SliderFloat("Frustum thickness (log10 m)", &app.clipFar, -2.0f, 6.0f);
     }
     else
     {
-      app.clipNear = -5.0f;
-      app.clipFar  = 25.0f;
+        ImGui::SliderFloat("Floor clip (near, m)", &app.clipNear, -5.0f, 25.0f);
+        ImGui::SliderFloat("Ceiling clip (far, m)", &app.clipFar, -5.0f, 25.0f);
     }
-  }
 
-  if (app.depthLogScale)
-  {
-    ImGui::SliderFloat("Frustum center (log10 m)", &app.clipNear, -2.0f, 3.0f);
-    ImGui::SliderFloat("Frustum thickness (log10 m)", &app.clipFar, -2.0f, 6.0f);
-  }
-  else
-  {
-    ImGui::SliderFloat("Floor clip (near, m)", &app.clipNear, -5.0f, 25.0f);
-    ImGui::SliderFloat("Ceiling clip (far, m)", &app.clipFar, -5.0f, 25.0f);
-  }
-
-  ImGui::SliderFloat("Camera FOV", &app.cameraFOV, 20.0f, 170.0f);
-  ImGui::Checkbox("Orthogonal view", &app.viewOrtho);
-  ImGui::SameLine();
-  ImGui::Checkbox("Force 2D view", &app.view2D);
-
-  ImGui::Checkbox("Show ground grid", &app.showGroundGrid);
-  ImGui::SameLine();
-  if (ImGui::Button("Fit view to map"))
-  {
-    app.doFitView = true;
-  }
-
-  ImGui::TextUnformatted("Set view along axis:");
-  auto viewButton = [&](const char* caption, float az, float el)
-  {
-    if (ImGui::Button(caption))
-    {
-      app.view2D = false;
-      app.sceneView.camera().setAzimuthDegrees(az);
-      app.sceneView.camera().setElevationDegrees(el);
-    }
+    ImGui::SliderFloat("Camera FOV", &app.cameraFOV, 20.0f, 170.0f);
+    ImGui::Checkbox("Orthogonal view", &app.viewOrtho);
     ImGui::SameLine();
-  };
-  viewButton("+X", 0.0f, 0.0f);
-  viewButton("-X", 180.0f, 0.0f);
-  viewButton("+Y", 90.0f, 0.0f);
-  viewButton("-Y", -90.0f, 0.0f);
-  viewButton("+Z", -90.0f, 90.0f);
-  viewButton("-Z", -90.0f, -90.0f);
-  ImGui::NewLine();
+    ImGui::Checkbox("Force 2D view", &app.view2D);
 
-  ImGui::BeginDisabled(!app.theMap.georeferencing.has_value());
-  ImGui::Checkbox("Apply georeferenced pose (if available)", &app.applyGeoRef);
-  ImGui::EndDisabled();
+    ImGui::Checkbox("Show ground grid", &app.showGroundGrid);
+    ImGui::SameLine();
+    if (ImGui::Button("Fit view to map"))
+    {
+        app.doFitView = true;
+    }
 
-  ImGui::End();
+    ImGui::TextUnformatted("Set view along axis:");
+    auto viewButton = [&](const char* caption, float az, float el)
+    {
+        if (ImGui::Button(caption))
+        {
+            app.view2D = false;
+            app.sceneView.camera().setAzimuthDegrees(az);
+            app.sceneView.camera().setElevationDegrees(el);
+        }
+        ImGui::SameLine();
+    };
+    viewButton("+X", 0.0f, 0.0f);
+    viewButton("-X", 180.0f, 0.0f);
+    viewButton("+Y", 90.0f, 0.0f);
+    viewButton("-Y", -90.0f, 0.0f);
+    viewButton("+Z", -90.0f, 90.0f);
+    viewButton("-Z", -90.0f, -90.0f);
+    ImGui::NewLine();
+
+    ImGui::BeginDisabled(!app.theMap.georeferencing.has_value());
+    ImGui::Checkbox("Apply georeferenced pose (if available)", &app.applyGeoRef);
+    ImGui::EndDisabled();
+
+    ImGui::End();
 }
 
 /** "Maps" window: layer list, visibility, and colorization options. */
 void renderMapsPanel()
 {
-  ImGui::Begin("Maps");
+    ImGui::Begin("Maps");
 
-  ImGui::SliderFloat("Point size", &app.pointSize, 1.0f, 10.0f);
-  ImGui::Checkbox("Render voxel maps as point clouds", &app.viewVoxelsAsPoints);
-  ImGui::Checkbox("Render free space of voxel maps", &app.viewVoxelsFreeSpace);
+    ImGui::SliderFloat("Point size", &app.pointSize, 1.0f, 10.0f);
+    ImGui::Checkbox("Render voxel maps as point clouds", &app.viewVoxelsAsPoints);
+    ImGui::Checkbox("Render free space of voxel maps", &app.viewVoxelsFreeSpace);
 
-  ImGui::Checkbox("Recolorize points", &app.colorizeMap);
-  ImGui::SameLine();
-  ImGui::TextUnformatted("by:");
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(140);
-  if (!app.knownPointFields.empty())
-  {
-    const char* preview = app.knownPointFields.at(static_cast<size_t>(app.recolorizeByFieldIdx)).c_str();
-    if (ImGui::BeginCombo("##recolorizeField", preview))
+    ImGui::Checkbox("Recolorize points", &app.colorizeMap);
+    ImGui::SameLine();
+    ImGui::TextUnformatted("by:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(140);
+    if (!app.knownPointFields.empty())
     {
-      for (size_t i = 0; i < app.knownPointFields.size(); i++)
-      {
-        const bool sel = (static_cast<int>(i) == app.recolorizeByFieldIdx);
-        if (ImGui::Selectable(app.knownPointFields[i].c_str(), sel))
+        const char* preview =
+            app.knownPointFields.at(static_cast<size_t>(app.recolorizeByFieldIdx)).c_str();
+        if (ImGui::BeginCombo("##recolorizeField", preview))
         {
-          app.recolorizeByFieldIdx = static_cast<int>(i);
+            for (size_t i = 0; i < app.knownPointFields.size(); i++)
+            {
+                const bool sel = (static_cast<int>(i) == app.recolorizeByFieldIdx);
+                if (ImGui::Selectable(app.knownPointFields[i].c_str(), sel))
+                {
+                    app.recolorizeByFieldIdx = static_cast<int>(i);
+                }
+            }
+            ImGui::EndCombo();
         }
-      }
-      ImGui::EndCombo();
     }
-  }
-  ImGui::SetNextItemWidth(140);
-  ImGui::Combo("##colorMap", &app.colorIntensityIdx, kColorIntensityLabels, kNumColorIntensity);
+    ImGui::SetNextItemWidth(140);
+    ImGui::Combo("##colorMap", &app.colorIntensityIdx, kColorIntensityLabels, kNumColorIntensity);
 
-  ImGui::Checkbox("Keep native map colors", &app.keepNativeCloudColors);
+    ImGui::Checkbox("Keep native map colors", &app.keepNativeCloudColors);
 
-  ImGui::Checkbox("Outlier percentile:", &app.autoBBoxOutliers);
-  ImGui::SameLine();
-  ImGui::BeginDisabled(!app.autoBBoxOutliers);
-  ImGui::SetNextItemWidth(120);
-  ImGui::SliderFloat("##outlierPercentile", &app.autoBBoxOutliersPercentile, 0.0f, 0.25f, "%.3f");
-  ImGui::EndDisabled();
+    ImGui::Checkbox("Outlier percentile:", &app.autoBBoxOutliers);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!app.autoBBoxOutliers);
+    ImGui::SetNextItemWidth(120);
+    ImGui::SliderFloat("##outlierPercentile", &app.autoBBoxOutliersPercentile, 0.0f, 0.25f, "%.3f");
+    ImGui::EndDisabled();
 
-  ImGui::Separator();
-  ImGui::TextUnformatted("Visible layers:");
-  ImGui::SameLine();
-  if (ImGui::SmallButton("All"))
-  {
-    for (auto& [name, vis] : app.layerVisible)
+    ImGui::Separator();
+    ImGui::TextUnformatted("Visible layers:");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("All"))
     {
-      vis = true;
-    }
-    for (auto& evl : app.extraVizLayers)
-    {
-      evl.visible = true;
-    }
-  }
-  ImGui::SameLine();
-  if (ImGui::SmallButton("None"))
-  {
-    for (auto& [name, vis] : app.layerVisible)
-    {
-      vis = false;
-    }
-    for (auto& evl : app.extraVizLayers)
-    {
-      evl.visible = false;
-    }
-  }
-
-  if (ImGui::BeginChild("##layerList", ImVec2(0, 150), true))
-  {
-    for (const auto& lyName : app.layerNames)
-    {
-      std::string caption = lyName;
-      if (auto itL = app.theMap.layers.find(lyName); itL != app.theMap.layers.end())
-      {
-        if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second); pc)
+        for (auto& [name, vis] : app.layerVisible)
         {
-          caption = lyName + " | " +
-                    mrpt::system::unitsFormat(static_cast<double>(pc->size()), 2, false) +
-                    " points | class=" + pc->GetRuntimeClass()->className;
+            vis = true;
         }
-        else
+        for (auto& evl : app.extraVizLayers)
         {
-          caption = lyName + " | class=" + itL->second->GetRuntimeClass()->className;
+            evl.visible = true;
         }
-      }
-      ImGui::Checkbox(caption.c_str(), &app.layerVisible[lyName]);
     }
-    for (auto& evl : app.extraVizLayers)
+    ImGui::SameLine();
+    if (ImGui::SmallButton("None"))
     {
-      ImGui::Checkbox(("(viz) " + evl.fileName).c_str(), &evl.visible);
+        for (auto& [name, vis] : app.layerVisible)
+        {
+            vis = false;
+        }
+        for (auto& evl : app.extraVizLayers)
+        {
+            evl.visible = false;
+        }
     }
-  }
-  ImGui::EndChild();
 
-  ImGui::End();
+    if (ImGui::BeginChild("##layerList", ImVec2(0, 150), true))
+    {
+        for (const auto& lyName : app.layerNames)
+        {
+            std::string caption = lyName;
+            if (auto itL = app.theMap.layers.find(lyName); itL != app.theMap.layers.end())
+            {
+                if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second); pc)
+                {
+                    caption = lyName + " | " +
+                              mrpt::system::unitsFormat(static_cast<double>(pc->size()), 2, false) +
+                              " points | class=" + pc->GetRuntimeClass()->className;
+                }
+                else
+                {
+                    caption = lyName + " | class=" + itL->second->GetRuntimeClass()->className;
+                }
+            }
+            ImGui::Checkbox(caption.c_str(), &app.layerVisible[lyName]);
+        }
+        for (auto& evl : app.extraVizLayers)
+        {
+            ImGui::Checkbox(("(viz) " + evl.fileName).c_str(), &evl.visible);
+        }
+    }
+    ImGui::EndChild();
+
+    ImGui::End();
 }
 
 /** "Travelling" window: camera keyframe animation controls. */
 void renderTravellingPanel()
 {
-  ImGui::Begin("Travelling");
+    ImGui::Begin("Travelling");
 
-  ImGui::TextUnformatted("Define camera travelling paths");
+    ImGui::TextUnformatted("Define camera travelling paths");
 
-  ImGui::SetNextItemWidth(-1);
-  if (!app.camTravellingLabels.empty())
-  {
-    const int   selected = static_cast<int>(app.camTravellingLabels.size()) - 1;
-    const char* preview   = app.camTravellingLabels[static_cast<size_t>(selected)].c_str();
-    if (ImGui::BeginCombo("##travellingKeys", preview))
+    ImGui::SetNextItemWidth(-1);
+    if (!app.camTravellingLabels.empty())
     {
-      for (size_t i = 0; i < app.camTravellingLabels.size(); i++)
-      {
-        ImGui::Selectable(app.camTravellingLabels[i].c_str(), false);
-      }
-      ImGui::EndCombo();
+        const int   selected = static_cast<int>(app.camTravellingLabels.size()) - 1;
+        const char* preview  = app.camTravellingLabels[static_cast<size_t>(selected)].c_str();
+        if (ImGui::BeginCombo("##travellingKeys", preview))
+        {
+            for (size_t i = 0; i < app.camTravellingLabels.size(); i++)
+            {
+                ImGui::Selectable(app.camTravellingLabels[i].c_str(), false);
+            }
+            ImGui::EndCombo();
+        }
     }
-  }
 
-  ImGui::InputFloat("New keyframe time [s]", &app.newKeyframeTime);
-  ImGui::SameLine();
-  if (ImGui::Button("Add"))
-  {
-    auto&      cam = app.sceneView.camera();
-    const auto p   = mrpt::math::TPose3D(
-        cam.getPointingAtX(), cam.getPointingAtY(), cam.getPointingAtZ(),
-        mrpt::DEG2RAD(cam.getAzimuthDegrees()), mrpt::DEG2RAD(cam.getElevationDegrees()),
-        cam.getZoomDistance() * TRAVELING_ZOOM2ROLL);
-    app.camTravelling.insert(mrpt::Clock::fromDouble(static_cast<double>(app.newKeyframeTime)), p);
-    rebuildCamTravellingLabels();
-    app.newKeyframeTime += 1.0f;
-  }
+    ImGui::InputFloat("New keyframe time [s]", &app.newKeyframeTime);
+    ImGui::SameLine();
+    if (ImGui::Button("Add"))
+    {
+        auto&      cam = app.sceneView.camera();
+        const auto p   = mrpt::math::TPose3D(
+              cam.getPointingAtX(), cam.getPointingAtY(), cam.getPointingAtZ(),
+              mrpt::DEG2RAD(cam.getAzimuthDegrees()), mrpt::DEG2RAD(cam.getElevationDegrees()),
+              cam.getZoomDistance() * TRAVELING_ZOOM2ROLL);
+        app.camTravelling.insert(
+            mrpt::Clock::fromDouble(static_cast<double>(app.newKeyframeTime)), p);
+        rebuildCamTravellingLabels();
+        app.newKeyframeTime += 1.0f;
+    }
 
-  const bool isPlaying = app.camTravellingCurrentTime.has_value();
-  ImGui::BeginDisabled(isPlaying || app.camTravelling.empty());
-  if (ImGui::Button("Play"))
-  {
-    app.camTravellingCurrentTime.emplace(mrpt::Clock::toDouble(app.camTravelling.begin()->first));
-  }
-  ImGui::EndDisabled();
-  ImGui::SameLine();
-  ImGui::BeginDisabled(!isPlaying);
-  if (ImGui::Button("Stop"))
-  {
-    camTravellingStop();
-  }
-  ImGui::EndDisabled();
+    const bool isPlaying = app.camTravellingCurrentTime.has_value();
+    ImGui::BeginDisabled(isPlaying || app.camTravelling.empty());
+    if (ImGui::Button("Play"))
+    {
+        app.camTravellingCurrentTime.emplace(
+            mrpt::Clock::toDouble(app.camTravelling.begin()->first));
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!isPlaying);
+    if (ImGui::Button("Stop"))
+    {
+        camTravellingStop();
+    }
+    ImGui::EndDisabled();
 
-  ImGui::InputFloat("Animation FPS", &app.animFPS);
+    ImGui::InputFloat("Animation FPS", &app.animFPS);
 
-  const char* interpItems[] = {"Linear", "Spline"};
-  ImGui::Combo("Interpolation", &app.travellingInterpIdx, interpItems, 2);
+    const char* interpItems[] = {"Linear", "Spline"};
+    ImGui::Combo("Interpolation", &app.travellingInterpIdx, interpItems, 2);
 
-  ImGui::BeginDisabled(true);
-  ImGui::SliderFloat("Progress", &app.animProgress, 0.0f, 1.0f);
-  ImGui::EndDisabled();
+    ImGui::BeginDisabled(true);
+    ImGui::SliderFloat("Progress", &app.animProgress, 0.0f, 1.0f);
+    ImGui::EndDisabled();
 
-  ImGui::End();
+    ImGui::End();
 }
 
 /** "3D View" window: fills the remaining (background) dockspace area. */
 void renderSceneWindow()
 {
-  ImGui::Begin("3D View");
-  app.sceneView.render();
-  ImGui::End();
+    ImGui::Begin("3D View");
+    app.sceneView.render();
+    ImGui::End();
 }
 
 void renderFrame()
 {
-  handleKeyboard();
-  processCameraTravelling();
-  rebuild_3d_view();
-  updateCameraClipDistances();
-  updateMiniCornerView();
+    handleKeyboard();
+    processCameraTravelling();
+    rebuild_3d_view();
+    updateCameraClipDistances();
+    updateMiniCornerView();
 
-  renderMapViewerPanel();
-  renderViewPanel();
-  renderMapsPanel();
-  renderTravellingPanel();
-  renderSceneWindow();
+    renderMapViewerPanel();
+    renderViewPanel();
+    renderMapsPanel();
+    renderTravellingPanel();
+    renderSceneWindow();
 }
 
 int mainShowGui()
 {
-  using namespace std::string_literals;
+    using namespace std::string_literals;
 
-  if (!argMapFile.empty())
-  {
-    if (!loadMapFile(argMapFile))
+    if (!argMapFile.empty())
     {
-      return 1;
+        if (!loadMapFile(argMapFile))
+        {
+            return 1;
+        }
     }
-  }
 
-  if (!arg_georefPolygon.empty())
-  {
-    if (!app.theMap.georeferencing.has_value())
+    if (!arg_georefPolygon.empty())
     {
-      std::cerr << "Warning: --georef-polygon given, but the loaded map has no "
-                   "georeferencing information. Ignoring it.\n";
+        if (!app.theMap.georeferencing.has_value())
+        {
+            std::cerr << "Warning: --georef-polygon given, but the loaded map has no "
+                         "georeferencing information. Ignoring it.\n";
+        }
+        else
+        {
+            try
+            {
+                const auto latLonPoints = readLatLonPolygonFile(arg_georefPolygon);
+
+                ExtraVizLayer evl;
+                evl.fileName = mrpt::system::extractFileName(arg_georefPolygon);
+                evl.glObjects =
+                    buildGeorefPolygonLayer(latLonPoints, app.theMap.georeferencing.value());
+                evl.glObjects->setName(evl.fileName);
+
+                app.extraVizLayers.push_back(evl);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "Warning: could not load georef polygon: " << e.what() << "\n";
+            }
+        }
     }
-    else
+
+    if (!app.shell.init(APP_NAME, 1280, 800))
     {
-      try
-      {
-        const auto latLonPoints = readLatLonPolygonFile(arg_georefPolygon);
-
-        ExtraVizLayer evl;
-        evl.fileName  = mrpt::system::extractFileName(arg_georefPolygon);
-        evl.glObjects = buildGeorefPolygonLayer(latLonPoints, app.theMap.georeferencing.value());
-        evl.glObjects->setName(evl.fileName);
-
-        app.extraVizLayers.push_back(evl);
-      }
-      catch (const std::exception& e)
-      {
-        std::cerr << "Warning: could not load georef polygon: " << e.what() << "\n";
-      }
+        return 1;
     }
-  }
 
-  if (!app.shell.init(APP_NAME, 1280, 800))
-  {
-    return 1;
-  }
+    // Default docking layout (only applied once, when no imgui.ini layout exists yet):
+    // "Map viewer" as a thin left strip, View/Maps/Travelling tabbed below it, and the 3D
+    // scene filling the remaining (background) area.
+    app.shell.setupDefaultLayout = [](unsigned int dockspaceId)
+    {
+        ImGuiID rightId = 0;
+        ImGuiID leftId =
+            ImGui::DockBuilderSplitNode(dockspaceId, ImGuiDir_Left, 0.28f, nullptr, &rightId);
 
-  // Default docking layout (only applied once, when no imgui.ini layout exists yet):
-  // "Map viewer" as a thin left strip, View/Maps/Travelling tabbed below it, and the 3D
-  // scene filling the remaining (background) area.
-  app.shell.setupDefaultLayout = [](unsigned int dockspaceId)
-  {
-    ImGuiID rightId = 0;
-    ImGuiID leftId  = ImGui::DockBuilderSplitNode(dockspaceId, ImGuiDir_Left, 0.28f, nullptr, &rightId);
+        ImGuiID leftBottomId = 0;
+        ImGuiID leftTopId =
+            ImGui::DockBuilderSplitNode(leftId, ImGuiDir_Up, 0.32f, nullptr, &leftBottomId);
 
-    ImGuiID leftBottomId = 0;
-    ImGuiID leftTopId =
-        ImGui::DockBuilderSplitNode(leftId, ImGuiDir_Up, 0.32f, nullptr, &leftBottomId);
+        // "Maps" gets its own independent docked panel, separate from the View/Travelling tab
+        // group.
+        ImGuiID leftMapsId =
+            ImGui::DockBuilderSplitNode(leftBottomId, ImGuiDir_Down, 0.45f, nullptr, &leftBottomId);
 
-    // "Maps" gets its own independent docked panel, separate from the View/Travelling tab group.
-    ImGuiID leftMapsId =
-        ImGui::DockBuilderSplitNode(leftBottomId, ImGuiDir_Down, 0.45f, nullptr, &leftBottomId);
+        ImGui::DockBuilderDockWindow("Map viewer", leftTopId);
+        ImGui::DockBuilderDockWindow("View", leftBottomId);
+        ImGui::DockBuilderDockWindow("Travelling", leftBottomId);
+        ImGui::DockBuilderDockWindow("Maps", leftMapsId);
+        ImGui::DockBuilderDockWindow("3D View", rightId);
+    };
 
-    ImGui::DockBuilderDockWindow("Map viewer", leftTopId);
-    ImGui::DockBuilderDockWindow("View", leftBottomId);
-    ImGui::DockBuilderDockWindow("Travelling", leftBottomId);
-    ImGui::DockBuilderDockWindow("Maps", leftMapsId);
-    ImGui::DockBuilderDockWindow("3D View", rightId);
-  };
+    // Background scene:
+    app.glGrid->setColor_u8(0xff, 0xff, 0xff, 0x10);
+    app.scene->insert(app.glGrid);
 
-  // Background scene:
-  app.glGrid->setColor_u8(0xff, 0xff, 0xff, 0x10);
-  app.scene->insert(app.glGrid);
+    app.glMapCorner = mrpt::opengl::stock_objects::CornerXYZ(1.0f);
+    app.glMapCorner->setName("map");
+    app.glMapCorner->enableShowName();
 
-  app.glMapCorner = mrpt::opengl::stock_objects::CornerXYZ(1.0f);
-  app.glMapCorner->setName("map");
-  app.glMapCorner->enableShowName();
+    app.glENUCorner = mrpt::opengl::stock_objects::CornerXYZ(2.0f);
+    app.glENUCorner->setName("ENU");
+    app.glENUCorner->enableShowName();
+    app.scene->insert(app.glENUCorner);
 
-  app.glENUCorner = mrpt::opengl::stock_objects::CornerXYZ(2.0f);
-  app.glENUCorner->setName("ENU");
-  app.glENUCorner->enableShowName();
-  app.scene->insert(app.glENUCorner);
+    app.scene->insert(app.glVizMap);
 
-  app.scene->insert(app.glVizMap);
+    app.sceneView.setScene(app.scene);
+    app.sceneView.onOverlayGui = &renderSceneOverlay;
 
-  app.sceneView.setScene(app.scene);
-  app.sceneView.onOverlayGui = &renderSceneOverlay;
+    app.sceneView.camera().setPointingAt(8.0f, 0.0f, 0.0f);
+    app.sceneView.camera().setAzimuthDegrees(110.0f);
+    app.sceneView.camera().setElevationDegrees(15.0f);
+    app.sceneView.camera().setZoomDistance(50.0f);
 
-  app.sceneView.camera().setPointingAt(8.0f, 0.0f, 0.0f);
-  app.sceneView.camera().setAzimuthDegrees(110.0f);
-  app.sceneView.camera().setElevationDegrees(15.0f);
-  app.sceneView.camera().setZoomDistance(50.0f);
+    updateGuiAfterLoadingNewMap();
+    rebuildCamTravellingLabels();
 
-  updateGuiAfterLoadingNewMap();
-  rebuildCamTravellingLabels();
+    // Load/save persistent UI+camera state across sessions (separate from imgui.ini, which
+    // only remembers panel docking):
+    char appCfgFile[1024];
+    ::get_user_config_file(appCfgFile, sizeof(appCfgFile), APP_NAME);
+    mrpt::config::CConfigFile appCfg(appCfgFile);
 
-  // Load/save persistent UI+camera state across sessions (separate from imgui.ini, which
-  // only remembers panel docking):
-  char appCfgFile[1024];
-  ::get_user_config_file(appCfgFile, sizeof(appCfgFile), APP_NAME);
-  mrpt::config::CConfigFile appCfg(appCfgFile);
+    auto& cam               = app.sceneView.camera();
+    app.applyGeoRef         = appCfg.read_bool("", "applyGeoRef", app.applyGeoRef);
+    app.viewOrtho           = appCfg.read_bool("", "viewOrtho", app.viewOrtho);
+    app.view2D              = appCfg.read_bool("", "view2D", app.view2D);
+    app.viewVoxelsAsPoints  = appCfg.read_bool("", "viewVoxelsAsPoints", app.viewVoxelsAsPoints);
+    app.viewVoxelsFreeSpace = appCfg.read_bool("", "viewVoxelsFreeSpace", app.viewVoxelsFreeSpace);
+    app.colorizeMap         = appCfg.read_bool("", "colorizeMap", app.colorizeMap);
+    app.keepNativeCloudColors =
+        appCfg.read_bool("", "keepNativeCloudColors", app.keepNativeCloudColors);
+    app.autoBBoxOutliers = appCfg.read_bool("", "autoBBoxOutliers", app.autoBBoxOutliers);
+    app.showGroundGrid   = appCfg.read_bool("", "showGroundGrid", app.showGroundGrid);
+    app.depthLogScale    = appCfg.read_bool("", "depthLogScale", app.depthLogScale);
 
-  auto& cam = app.sceneView.camera();
-  app.applyGeoRef           = appCfg.read_bool("", "applyGeoRef", app.applyGeoRef);
-  app.viewOrtho             = appCfg.read_bool("", "viewOrtho", app.viewOrtho);
-  app.view2D                = appCfg.read_bool("", "view2D", app.view2D);
-  app.viewVoxelsAsPoints    = appCfg.read_bool("", "viewVoxelsAsPoints", app.viewVoxelsAsPoints);
-  app.viewVoxelsFreeSpace   = appCfg.read_bool("", "viewVoxelsFreeSpace", app.viewVoxelsFreeSpace);
-  app.colorizeMap           = appCfg.read_bool("", "colorizeMap", app.colorizeMap);
-  app.keepNativeCloudColors = appCfg.read_bool("", "keepNativeCloudColors", app.keepNativeCloudColors);
-  app.autoBBoxOutliers      = appCfg.read_bool("", "autoBBoxOutliers", app.autoBBoxOutliers);
-  app.showGroundGrid        = appCfg.read_bool("", "showGroundGrid", app.showGroundGrid);
-  app.depthLogScale         = appCfg.read_bool("", "depthLogScale", app.depthLogScale);
+    app.pointSize = appCfg.read_float("", "pointSize", app.pointSize);
+    app.autoBBoxOutliersPercentile =
+        appCfg.read_float("", "autoBBoxOutliersPercentile", app.autoBBoxOutliersPercentile);
+    app.trajectoryThicknessLog =
+        appCfg.read_float("", "trajectoryThicknessLog", app.trajectoryThicknessLog);
+    app.clipNear  = appCfg.read_float("", "clipNear", app.clipNear);
+    app.clipFar   = appCfg.read_float("", "clipFar", app.clipFar);
+    app.cameraFOV = appCfg.read_float("", "cameraFOV", app.cameraFOV);
 
-  app.pointSize                  = appCfg.read_float("", "pointSize", app.pointSize);
-  app.autoBBoxOutliersPercentile = appCfg.read_float(
-      "", "autoBBoxOutliersPercentile", app.autoBBoxOutliersPercentile);
-  app.trajectoryThicknessLog = appCfg.read_float("", "trajectoryThicknessLog", app.trajectoryThicknessLog);
-  app.clipNear               = appCfg.read_float("", "clipNear", app.clipNear);
-  app.clipFar                = appCfg.read_float("", "clipFar", app.clipFar);
-  app.cameraFOV              = appCfg.read_float("", "cameraFOV", app.cameraFOV);
+    cam.setPointingAt(
+        appCfg.read_float("", "cam_x", cam.getPointingAtX()),
+        appCfg.read_float("", "cam_y", cam.getPointingAtY()),
+        appCfg.read_float("", "cam_z", cam.getPointingAtZ()));
+    cam.setAzimuthDegrees(appCfg.read_float("", "cam_az", cam.getAzimuthDegrees()));
+    cam.setElevationDegrees(appCfg.read_float("", "cam_el", cam.getElevationDegrees()));
+    cam.setZoomDistance(appCfg.read_float("", "cam_d", cam.getZoomDistance()));
 
-  cam.setPointingAt(
-      appCfg.read_float("", "cam_x", cam.getPointingAtX()),
-      appCfg.read_float("", "cam_y", cam.getPointingAtY()),
-      appCfg.read_float("", "cam_z", cam.getPointingAtZ()));
-  cam.setAzimuthDegrees(appCfg.read_float("", "cam_az", cam.getAzimuthDegrees()));
-  cam.setElevationDegrees(appCfg.read_float("", "cam_el", cam.getElevationDegrees()));
-  cam.setZoomDistance(appCfg.read_float("", "cam_d", cam.getZoomDistance()));
+    app.shell.run(&renderFrame);
 
-  app.shell.run(&renderFrame);
+    appCfg.write("", "applyGeoRef", app.applyGeoRef);
+    appCfg.write("", "viewOrtho", app.viewOrtho);
+    appCfg.write("", "view2D", app.view2D);
+    appCfg.write("", "viewVoxelsAsPoints", app.viewVoxelsAsPoints);
+    appCfg.write("", "viewVoxelsFreeSpace", app.viewVoxelsFreeSpace);
+    appCfg.write("", "colorizeMap", app.colorizeMap);
+    appCfg.write("", "keepNativeCloudColors", app.keepNativeCloudColors);
+    appCfg.write("", "autoBBoxOutliers", app.autoBBoxOutliers);
+    appCfg.write("", "showGroundGrid", app.showGroundGrid);
+    appCfg.write("", "depthLogScale", app.depthLogScale);
 
-  appCfg.write("", "applyGeoRef", app.applyGeoRef);
-  appCfg.write("", "viewOrtho", app.viewOrtho);
-  appCfg.write("", "view2D", app.view2D);
-  appCfg.write("", "viewVoxelsAsPoints", app.viewVoxelsAsPoints);
-  appCfg.write("", "viewVoxelsFreeSpace", app.viewVoxelsFreeSpace);
-  appCfg.write("", "colorizeMap", app.colorizeMap);
-  appCfg.write("", "keepNativeCloudColors", app.keepNativeCloudColors);
-  appCfg.write("", "autoBBoxOutliers", app.autoBBoxOutliers);
-  appCfg.write("", "showGroundGrid", app.showGroundGrid);
-  appCfg.write("", "depthLogScale", app.depthLogScale);
+    appCfg.write("", "pointSize", app.pointSize);
+    appCfg.write("", "autoBBoxOutliersPercentile", app.autoBBoxOutliersPercentile);
+    appCfg.write("", "trajectoryThicknessLog", app.trajectoryThicknessLog);
+    appCfg.write("", "clipNear", app.clipNear);
+    appCfg.write("", "clipFar", app.clipFar);
+    appCfg.write("", "cameraFOV", app.cameraFOV);
 
-  appCfg.write("", "pointSize", app.pointSize);
-  appCfg.write("", "autoBBoxOutliersPercentile", app.autoBBoxOutliersPercentile);
-  appCfg.write("", "trajectoryThicknessLog", app.trajectoryThicknessLog);
-  appCfg.write("", "clipNear", app.clipNear);
-  appCfg.write("", "clipFar", app.clipFar);
-  appCfg.write("", "cameraFOV", app.cameraFOV);
+    appCfg.write("", "cam_x", cam.getPointingAtX());
+    appCfg.write("", "cam_y", cam.getPointingAtY());
+    appCfg.write("", "cam_z", cam.getPointingAtZ());
+    appCfg.write("", "cam_az", cam.getAzimuthDegrees());
+    appCfg.write("", "cam_el", cam.getElevationDegrees());
+    appCfg.write("", "cam_d", cam.getZoomDistance());
 
-  appCfg.write("", "cam_x", cam.getPointingAtX());
-  appCfg.write("", "cam_y", cam.getPointingAtY());
-  appCfg.write("", "cam_z", cam.getPointingAtZ());
-  appCfg.write("", "cam_az", cam.getAzimuthDegrees());
-  appCfg.write("", "cam_el", cam.getElevationDegrees());
-  appCfg.write("", "cam_d", cam.getZoomDistance());
-
-  app.shell.shutdown();
-  return 0;
+    app.shell.shutdown();
+    return 0;
 }
 
 }  // namespace
 
 int main(int argc, char** argv)
 {
-  cmd.add_option("input", argMapFile, "Load this metric map file (*.mm)");
-  cmd.add_option(
-      "-l,--load-plugins", arg_plugins, "One or more (comma separated) *.so files to load as plugins");
-  cmd.add_option(
-      "-t,--trajectory", arg_tumTrajectory, "Also draw a trajectory, given by a TUM file trajectory.");
-  cmd.add_option(
-      "-s,--add-3d-scene", arg_add3dScenes, "Adds an extra 3D scene file (*.3dscene) for visualization.");
-  cmd.add_option(
-      "-g,--georef-polygon", arg_georefPolygon,
-      "Overlay a polygon given by a text file with one \"lat,lon\" vertex (WGS84 degrees) per "
-      "line. Ignored if the loaded map has no georeferencing information.");
+    cmd.add_option("input", argMapFile, "Load this metric map file (*.mm)");
+    cmd.add_option(
+        "-l,--load-plugins", arg_plugins,
+        "One or more (comma separated) *.so files to load as plugins");
+    cmd.add_option(
+        "-t,--trajectory", arg_tumTrajectory,
+        "Also draw a trajectory, given by a TUM file trajectory.");
+    cmd.add_option(
+        "-s,--add-3d-scene", arg_add3dScenes,
+        "Adds an extra 3D scene file (*.3dscene) for visualization.");
+    cmd.add_option(
+        "-g,--georef-polygon", arg_georefPolygon,
+        "Overlay a polygon given by a text file with one \"lat,lon\" vertex (WGS84 degrees) per "
+        "line. Ignored if the loaded map has no georeferencing information.");
 
-  CLI11_PARSE(cmd, argc, argv);
+    CLI11_PARSE(cmd, argc, argv);
 
-  try
-  {
-    if (!arg_plugins.empty())
+    try
     {
-      if (!load_plugins(arg_plugins))
-      {
+        if (!arg_plugins.empty())
+        {
+            if (!load_plugins(arg_plugins))
+            {
+                return 1;
+            }
+        }
+
+        if (!arg_tumTrajectory.empty())
+        {
+            ASSERT_FILE_EXISTS_(arg_tumTrajectory);
+            const bool trajectoryReadOk = app.trajectory.loadFromTextFile_TUM(arg_tumTrajectory);
+            ASSERT_(trajectoryReadOk);
+            std::cout << "Read trajectory with " << app.trajectory.size() << " keyframes.\n";
+        }
+
+        for (const auto& path : arg_add3dScenes)
+        {
+            ASSERT_FILE_EXISTS_(path);
+            auto scene  = mrpt::opengl::Scene::Create();
+            bool readOk = scene->loadFromFile(path);
+            ASSERT_(readOk);
+
+            ExtraVizLayer evl;
+            evl.fileName  = mrpt::system::extractFileName(path);
+            evl.glObjects = mrpt::opengl::CSetOfObjects::Create();
+            evl.glObjects->setName(evl.fileName);
+
+            for (const auto& obj : *scene->getViewport())
+            {
+                evl.glObjects->insert(obj);
+            }
+
+            app.extraVizLayers.push_back(evl);
+        }
+
+        return mainShowGui();
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << "Exit due to exception:\n" << mrpt::exception_to_str(e) << std::endl;
         return 1;
-      }
     }
-
-    if (!arg_tumTrajectory.empty())
-    {
-      ASSERT_FILE_EXISTS_(arg_tumTrajectory);
-      const bool trajectoryReadOk = app.trajectory.loadFromTextFile_TUM(arg_tumTrajectory);
-      ASSERT_(trajectoryReadOk);
-      std::cout << "Read trajectory with " << app.trajectory.size() << " keyframes.\n";
-    }
-
-    for (const auto& path : arg_add3dScenes)
-    {
-      ASSERT_FILE_EXISTS_(path);
-      auto scene  = mrpt::opengl::Scene::Create();
-      bool readOk = scene->loadFromFile(path);
-      ASSERT_(readOk);
-
-      ExtraVizLayer evl;
-      evl.fileName  = mrpt::system::extractFileName(path);
-      evl.glObjects = mrpt::opengl::CSetOfObjects::Create();
-      evl.glObjects->setName(evl.fileName);
-
-      for (const auto& obj : *scene->getViewport())
-      {
-        evl.glObjects->insert(obj);
-      }
-
-      app.extraVizLayers.push_back(evl);
-    }
-
-    return mainShowGui();
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "Exit due to exception:\n" << mrpt::exception_to_str(e) << std::endl;
-    return 1;
-  }
 }

@@ -10,8 +10,8 @@ namespace mp2p_icp_viz
  *  An empty `extension` means "any file". */
 struct FileDialogFilter
 {
-  std::string extension;
-  std::string description;
+    std::string extension;
+    std::string description;
 };
 
 /** Minimal, self-contained ImGui file browser (no native/system dialog, no
@@ -27,36 +27,36 @@ struct FileDialogFilter
  */
 class SimpleFileDialog
 {
- public:
-  enum class Mode
-  {
-    Open,
-    Save
-  };
+   public:
+    enum class Mode
+    {
+        Open,
+        Save
+    };
 
-  /** Opens the dialog, starting at `initialDir` (or the current directory,
-   *  or the last directory this dialog was used in, if empty). */
-  void open(
-      Mode mode, const std::vector<FileDialogFilter>& filters, const std::string& title = "",
-      const std::string& initialDir = "");
+    /** Opens the dialog, starting at `initialDir` (or the current directory,
+     *  or the last directory this dialog was used in, if empty). */
+    void open(
+        Mode mode, const std::vector<FileDialogFilter>& filters, const std::string& title = "",
+        const std::string& initialDir = "");
 
-  /** Must be called every frame while isOpen(). Returns the selected path
-   *  once the user confirms (Open/Save), or nullopt otherwise (still open,
-   *  or cancelled -- check isOpen() to tell those apart). */
-  std::optional<std::string> render();
+    /** Must be called every frame while isOpen(). Returns the selected path
+     *  once the user confirms (Open/Save), or nullopt otherwise (still open,
+     *  or cancelled -- check isOpen() to tell those apart). */
+    std::optional<std::string> render();
 
-  bool isOpen() const { return open_; }
+    bool isOpen() const { return open_; }
 
- private:
-  bool                          open_ = false;
-  Mode                          mode_ = Mode::Open;
-  std::string                   title_;
-  std::vector<FileDialogFilter> filters_;
-  int                           selectedFilterIdx_ = 0;
+   private:
+    bool                          open_ = false;
+    Mode                          mode_ = Mode::Open;
+    std::string                   title_;
+    std::vector<FileDialogFilter> filters_;
+    int                           selectedFilterIdx_ = 0;
 
-  std::string currentDir_;
-  std::string typedName_;
-  std::string errorMsg_;
+    std::string currentDir_;
+    std::string typedName_;
+    std::string errorMsg_;
 };
 
 }  // namespace mp2p_icp_viz
