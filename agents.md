@@ -140,6 +140,32 @@ Exports WGS-84 lon/lat/alt with EPSG:4979 WKT2 CRS embedded as VLR.
 
 ---
 
+## GUI apps: Dear ImGui port (in progress)
+
+`mm-viewer` and `icp-log-viewer` (`mp2p_icp_viz`) are being migrated from `mrpt::gui::CDisplayWindowGUI`
++ nanogui to Dear ImGui (docking branch). See `~/plans/mp2p_icp_imgui_port.md` for the full plan/status.
+
+- Dear ImGui is vendored **once** as a git submodule at `mp2p_icp_viz/3rdparty/imgui` (docking
+  branch), built as a private static lib (`mp2p_icp_viz/3rdparty/imgui_static/`, target
+  `imgui::imgui`) that is never installed/exported — an internal build detail only, baked
+  statically into the app binaries.
+- Both apps share `mp2p_icp_viz/apps/imgui_app_common/`: `ImGuiAppShell` (GLFW window/GL
+  context/docking main-loop boilerplate, with a `setupDefaultLayout` hook so each app defines its
+  own default panel arrangement) and `SimpleFileDialog` (self-contained ImGui file browser for
+  Open/Export, no native/system dialog dependency).
+- 3D rendering goes through `mrpt::imgui::CImGuiSceneView` (ships with `mrpt::gui` &ge; 2.15.19),
+  which renders an `mrpt::opengl::Scene` into an ImGui panel with built-in orbit/pan/zoom.
+
+**Known limitation, kept in the code on purpose:** the small "Map frame"/"ENU frame" axis-corner
+gizmo mini-viewports (`FIRST_MINI_VIEW_NAME`/`SECOND_MINI_VIEW_NAME` in `mm-viewer/main.cpp`) are
+still created and kept in sync with the main camera every frame, but are **not currently visible**:
+under MRPT 2.x, `CImGuiSceneView::render()` only renders the scene's `"main"` viewport, not extra
+named ones. This project plans to move to MRPT 3.x soon, which is expected to support rendering
+arbitrary named viewports through the same mechanism — at that point this code should start working
+again unmodified. Do not remove it as dead code in the meantime.
+
+---
+
 ## ICP pipeline
 
 ```

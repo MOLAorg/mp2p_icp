@@ -61,6 +61,15 @@ constexpr const char* APP_NAME = "mm-viewer";
 
 constexpr float TRAVELING_ZOOM2ROLL = 1e-4f;
 
+// Small axis-corner gizmo viewports ("Map frame" / "ENU frame"), kept for parity with the old
+// nanogui app. NOTE: with MRPT 2.x, `mrpt::imgui::CImGuiSceneView::render()` only renders the
+// scene's "main" viewport, so these two extra viewports are created and kept up to date but are
+// not currently visible on screen. MRPT 3.x is expected to support rendering arbitrary named
+// viewports through the same mechanism, so this code is intentionally NOT removed -- it should
+// start working again, unmodified, once this project moves to MRPT 3.x.
+constexpr const char* FIRST_MINI_VIEW_NAME  = "small-view-1";
+constexpr const char* SECOND_MINI_VIEW_NAME = "small-view-2";
+
 const char* const kColorIntensityNames[]  = {"cmNONE", "cmHOT", "cmJET", "cmGRAYSCALE"};
 const char* const kColorIntensityLabels[] = {"None", "Hot", "Jet", "Grayscale"};
 constexpr int      kNumColorIntensity     = 4;
@@ -504,6 +513,124 @@ void renderSceneOverlay()
   }
 }
 
+/** Creates the "Map frame"/"ENU frame" axis-corner gizmo viewports once. See the comment next to
+ * FIRST_MINI_VIEW_NAME/SECOND_MINI_VIEW_NAME above: not currently rendered under MRPT 2.x. */
+void ensureMiniCornerViewports()
+{
+  if (!app.scene->getViewport(FIRST_MINI_VIEW_NAME))
+  {
+    auto gl_view = app.scene->createViewport(FIRST_MINI_VIEW_NAME);
+
+    gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
+    gl_view->setTransparent(true);
+    {
+      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+      obj->setLocation(1.1, 0, 0);
+      gl_view->insert(obj);
+    }
+    {
+      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+      obj->setLocation(0, 1.1, 0);
+      gl_view->insert(obj);
+    }
+    {
+      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+      obj->setLocation(0, 0, 1.1);
+      gl_view->insert(obj);
+    }
+    gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
+  }
+
+  if (!app.scene->getViewport(SECOND_MINI_VIEW_NAME))
+  {
+    auto gl_view = app.scene->createViewport(SECOND_MINI_VIEW_NAME);
+
+    gl_view->setViewportPosition(0.1, 0, 0.1, 0.1 * 16.0 / 9.0);
+    gl_view->setTransparent(true);
+
+    auto glRoot = mrpt::opengl::CSetOfObjects::Create();
+    gl_view->insert(glRoot);
+
+    {
+      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+      obj->setLocation(1.1, 0, 0);
+      glRoot->insert(obj);
+    }
+    {
+      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+      obj->setLocation(0, 1.1, 0);
+      glRoot->insert(obj);
+    }
+    {
+      mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+      obj->setLocation(0, 0, 1.1);
+      glRoot->insert(obj);
+    }
+    glRoot->insert(mrpt::opengl::stock_objects::CornerXYZ());
+  }
+}
+
+/** Keeps the mini-corner viewport cameras/labels in sync with the main camera each frame.
+ * See the comment next to FIRST_MINI_VIEW_NAME/SECOND_MINI_VIEW_NAME above: not currently
+ * rendered under MRPT 2.x. */
+void updateMiniCornerView()
+{
+  auto gl_view1 = app.scene->getViewport(FIRST_MINI_VIEW_NAME);
+  if (!gl_view1)
+  {
+    return;
+  }
+
+  mrpt::opengl::TFontParams fp;
+  fp.draw_shadow = true;
+  fp.vfont_scale = 9.0f;
+
+  {
+    mrpt::opengl::CCamera& view_cam = gl_view1->getCamera();
+    view_cam.setAzimuthDegrees(app.sceneView.camera().getAzimuthDegrees());
+    view_cam.setElevationDegrees(app.sceneView.camera().getElevationDegrees());
+    view_cam.setZoomDistance(5);
+  }
+
+  const bool show_two_corners = app.applyGeoRef && app.theMap.georeferencing.has_value();
+
+  gl_view1->clearTextMessages();
+  gl_view1->addTextMessage(5, 5, show_two_corners ? "ENU frame" : "Map frame", 0, fp);
+
+  auto gl_view2 = app.scene->getViewport(SECOND_MINI_VIEW_NAME);
+  if (!gl_view2 || gl_view2->empty())
+  {
+    return;
+  }
+
+  auto glRoot = *gl_view2->begin();
+  if (!glRoot)
+  {
+    return;
+  }
+  glRoot->setVisibility(show_two_corners);
+
+  if (!show_two_corners)
+  {
+    gl_view2->clearTextMessages();
+    return;
+  }
+
+  glRoot->setPose(mrpt::poses::CPose3D::FromRotationAndTranslation(
+      app.theMap.georeferencing->T_enu_to_map.mean.getRotationMatrix(),
+      mrpt::math::TVector3D(0, 0, 0)));
+
+  {
+    mrpt::opengl::CCamera& view_cam = gl_view2->getCamera();
+    view_cam.setAzimuthDegrees(app.sceneView.camera().getAzimuthDegrees());
+    view_cam.setElevationDegrees(app.sceneView.camera().getElevationDegrees());
+    view_cam.setZoomDistance(5);
+  }
+
+  gl_view2->clearTextMessages();
+  gl_view2->addTextMessage(5, 5, "Map frame", 0, fp);
+}
+
 void updateGuiAfterLoadingNewMap()
 {
   app.layerVisible.clear();
@@ -893,6 +1020,8 @@ void rebuild_3d_view()
     app.sceneView.camera().setElevationDegrees(90.0f);
   }
 
+  ensureMiniCornerViewports();
+
   // Clip planes/FOV are refreshed every frame in updateCameraClipDistances(),
   // since the "linear" clip mode needs the up-to-date camera pose.
 }
@@ -1216,6 +1345,7 @@ void renderFrame()
   processCameraTravelling();
   rebuild_3d_view();
   updateCameraClipDistances();
+  updateMiniCornerView();
 
   renderMapViewerPanel();
   renderViewPanel();
@@ -1280,10 +1410,14 @@ int mainShowGui()
     ImGuiID leftTopId =
         ImGui::DockBuilderSplitNode(leftId, ImGuiDir_Up, 0.32f, nullptr, &leftBottomId);
 
+    // "Maps" gets its own independent docked panel, separate from the View/Travelling tab group.
+    ImGuiID leftMapsId =
+        ImGui::DockBuilderSplitNode(leftBottomId, ImGuiDir_Down, 0.45f, nullptr, &leftBottomId);
+
     ImGui::DockBuilderDockWindow("Map viewer", leftTopId);
     ImGui::DockBuilderDockWindow("View", leftBottomId);
-    ImGui::DockBuilderDockWindow("Maps", leftBottomId);
     ImGui::DockBuilderDockWindow("Travelling", leftBottomId);
+    ImGui::DockBuilderDockWindow("Maps", leftMapsId);
     ImGui::DockBuilderDockWindow("3D View", rightId);
   };
 
