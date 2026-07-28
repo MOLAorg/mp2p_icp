@@ -72,6 +72,7 @@ mp2p_add_test(mp2p_optimize_prior_referenced_kernel)
 mp2p_add_test(mp2p_Pairings)
 mp2p_add_test(mp2p_PairWeights)
 mp2p_add_test(mp2p_quality_reproject_ranges)
+mp2p_add_test(mp2p_viz_non_finite_points)
 mp2p_add_test(mp2p_WeightParameters)
 
 mp2p_add_test(mp2p_class_factory EXTRA_LIBS mp2p_icp_filters)
