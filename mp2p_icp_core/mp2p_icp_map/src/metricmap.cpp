@@ -97,6 +97,53 @@ mrpt::maps::CPointsMap::Ptr onlyFinitePoints(const mrpt::maps::CPointsMap& src)
 
     return out;
 }
+
+inline bool isFiniteXYZ(const mrpt::math::TPoint3Df& p)
+{
+    return std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z);
+}
+
+/** Drops the non-finite points of an already-built render object, in place,
+ *  keeping each surviving point's own color.
+ *
+ *  This is the counterpart of onlyFinitePoints() for the render path that
+ *  delegates to the map's own getVisualizationInto(): there the map draws
+ *  itself, so there is no source cloud to filter beforehand, and replacing it
+ *  with a filtered copy would lose the very renderer that path exists to use.
+ */
+void dropNonFinitePoints(mrpt::opengl::CPointCloudColoured& glPts)
+{
+    const size_t n   = glPts.size();
+    size_t       dst = 0;
+    for (size_t src = 0; src < n; src++)
+    {
+        const auto p = glPts.getPoint3Df(src);
+        if (!isFiniteXYZ(p)) continue;
+
+        if (dst != src)
+        {
+            const auto c = glPts.getPointColor(src);
+            glPts.setPoint_fast(dst, {p.x, p.y, p.z, c.R, c.G, c.B, c.A});
+        }
+        dst++;
+    }
+    if (dst != n) glPts.resize(dst);
+}
+
+void dropNonFinitePoints(mrpt::opengl::CPointCloud& glPts)
+{
+    const size_t n   = glPts.size();
+    size_t       dst = 0;
+    for (size_t src = 0; src < n; src++)
+    {
+        const auto p = glPts[src];
+        if (!isFiniteXYZ(p)) continue;
+
+        if (dst != src) glPts.setPoint_fast(dst, p.x, p.y, p.z);
+        dst++;
+    }
+    if (dst != n) glPts.resize(dst);
+}
 }  // namespace
 
 // Implementation of the CSerializable virtual interface:
@@ -381,7 +428,8 @@ void metric_map_t::get_visualization_map_layer(
         map->getVisualizationInto(o);
 
         // apply the point size to ALL point cloud objects (a map type such as
-        // KeyframePointCloudMap inserts one object per keyframe):
+        // KeyframePointCloudMap inserts one object per keyframe), and drop the
+        // non-finite points the map may have drawn (see dropNonFinitePoints()):
         for (size_t ith = 0;; ith++)
         {
             auto glPtsCol = o.getByClass<mrpt::opengl::CPointCloudColoured>(ith);
@@ -389,6 +437,7 @@ void metric_map_t::get_visualization_map_layer(
             {
                 break;
             }
+            dropNonFinitePoints(*glPtsCol);
             glPtsCol->setPointSize(p.pointSize);
             if (p.force_alpha_channel)
             {
@@ -402,6 +451,7 @@ void metric_map_t::get_visualization_map_layer(
             {
                 break;
             }
+            dropNonFinitePoints(*glPts);
             glPts->setPointSize(p.pointSize);
         }
 
