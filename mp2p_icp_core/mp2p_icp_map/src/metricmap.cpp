@@ -21,6 +21,7 @@
 #include <mp2p_icp/MetricMapMergeCapable.h>
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/maps/CVoxelMapRGB.h>
 #include <mrpt/obs/customizable_obs_viz.h>
@@ -44,12 +45,59 @@
 #endif
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <sstream>
 
 IMPLEMENTS_MRPT_OBJECT(metric_map_t, mrpt::serialization::CSerializable, mp2p_icp)
 
 using namespace mp2p_icp;
+
+namespace
+{
+/** Returns a copy of `src` holding only its finite points, or an empty smart
+ *  pointer if every point is already finite (so callers can keep using the
+ *  original map and pay no copy in the usual case).
+ *
+ *  Some point map classes expose storage slots that hold no point: e.g.
+ *  mola::IncrementalPointCloud blanks recycled slots to NaN so that generic
+ *  code walking the inherited buffers does not resurrect evicted geometry.
+ *  MRPT's point cloud render objects copy such slots verbatim, and a single
+ *  non-finite coordinate makes the LOD octree split criterion degenerate: the
+ *  node mean becomes NaN, every comparison against it is false, so all points
+ *  land in the same child and the recursive split never terminates.
+ */
+mrpt::maps::CPointsMap::Ptr onlyFinitePoints(const mrpt::maps::CPointsMap& src)
+{
+    const auto&  xs = src.getPointsBufferRef_x();
+    const auto&  ys = src.getPointsBufferRef_y();
+    const auto&  zs = src.getPointsBufferRef_z();
+    const size_t n  = src.size();
+
+    const auto isFinitePt = [&](size_t i)
+    { return std::isfinite(xs[i]) && std::isfinite(ys[i]) && std::isfinite(zs[i]); };
+
+    size_t nFinite = 0;
+    for (size_t i = 0; i < n; i++)
+    {
+        if (isFinitePt(i)) nFinite++;
+    }
+
+    if (nFinite == n) return {};  // usual case: nothing to filter out
+
+    auto out = mrpt::maps::CGenericPointsMap::Create();
+    out->reserve(nFinite);
+    out->registerPointFieldsFrom(src);
+
+    const auto ctx = out->prepareForInsertPointsFrom(src);
+    for (size_t i = 0; i < n; i++)
+    {
+        if (isFinitePt(i)) out->insertPointFrom(i, ctx);
+    }
+
+    return out;
+}
+}  // namespace
 
 // Implementation of the CSerializable virtual interface:
 uint8_t metric_map_t::serializeGetVersion() const { return 5; }
@@ -364,6 +412,16 @@ void metric_map_t::get_visualization_map_layer(
     {
         // quick return if empty point cloud
         return;
+    }
+
+    // Both render paths below copy the raw point buffers into an OpenGL object
+    // that cannot cope with non-finite coordinates (see onlyFinitePoints()).
+    // Filtering the *source* map, rather than the render object, is what keeps
+    // the point counts of the two equal, as recolorize3Dpc() requires.
+    if (auto finitePts = onlyFinitePoints(*pts); finitePts)
+    {
+        pts = finitePts;
+        if (pts->empty()) return;
     }
 
     if (p.colorMode.has_value())
