@@ -171,6 +171,10 @@ filters:
 
 Key filter categories: decimation (including range-adaptive EllipseLIO-style), outlier removal, range/ring/intensity gating, deskew, edge/plane extraction, layer management.
 
+### Standalone point cloud utilities (not `Filter` subclasses)
+
+- `mp2p_icp_filters::robust_max_range()` (`PointCloudRobustRange.h`) — a percentile (default 0.95) of the per-point range, instead of the raw maximum, so a small minority of far outlier returns (observed on Livox sensors: specular-reflection artifacts hundreds of meters away in an otherwise small scene) cannot dominate an observation-radius estimate the way `boundingBox().max.norm()` does. `O(n)` average via `std::nth_element`. Not yet wired into any consumer (`mola_lidar_odometry`'s `ESTIMATED_OBSERVATION_RADIUS`, `icp_benchmark`'s `Bench::processScan`) — both currently compute their own unfiltered bounding-box max, which is exactly the vulnerability this function exists to fix; see `test-mp2p_PointCloudRobustRange.cpp`.
+
 ---
 
 ## Build system

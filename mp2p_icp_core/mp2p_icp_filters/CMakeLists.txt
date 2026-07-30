@@ -50,6 +50,7 @@ set(LIB_SRCS
   src/GeneratorEdgesFromCurvature.cpp
   src/GeneratorEdgesFromRangeImage.cpp
   src/GetOrCreatePointLayer.cpp
+  src/PointCloudRobustRange.cpp
   src/PointCloudToVoxelGrid.cpp
   src/PointCloudToVoxelGridSingle.cpp
   src/sm2mm.cpp
@@ -91,6 +92,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/GeneratorEdgesFromCurvature.h
   include/mp2p_icp_filters/GeneratorEdgesFromRangeImage.h
   include/mp2p_icp_filters/GetOrCreatePointLayer.h
+  include/mp2p_icp_filters/PointCloudRobustRange.h
   include/mp2p_icp_filters/PointCloudToVoxelGrid.h
   include/mp2p_icp_filters/PointCloudToVoxelGridSingle.h
   include/mp2p_icp_filters/sm2mm.h
