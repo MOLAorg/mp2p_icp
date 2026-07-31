@@ -24,6 +24,7 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 
+#include <cmath>
 #include <iostream>
 
 using namespace mp2p_icp_filters;
@@ -75,6 +76,133 @@ int main()
             ASSERT_NEAR_(outSize, 500, 20);  // Allow small tolerance
 
             std::cout << "[Test Passed] Adaptive decimation count check\n";
+        }
+
+        // ---------------------------------------------------------
+        // Test: two output layers from one single voxelization pass
+        // ---------------------------------------------------------
+        {
+            FilterDecimateAdaptive filter;
+            mrpt::containers::yaml p;
+            p["input_pointcloud_layer"]         = "raw";
+            p["voxel_size"]                     = 0.5f;
+            p["minimum_input_points_per_voxel"] = 1;
+
+            p["outputs"] = mrpt::containers::yaml::Sequence();
+            p["outputs"].push_back(mrpt::containers::yaml::Map(
+                {{"output_pointcloud_layer", "multi_out_map"},
+                 {"desired_output_point_count", 500}}));
+            p["outputs"].push_back(mrpt::containers::yaml::Map(
+                {{"output_pointcloud_layer", "multi_out_icp"},
+                 {"desired_output_point_count", 150}}));
+
+            filter.initialize(p);
+            filter.filter(map);
+
+            auto outMap = map.layer<mrpt::maps::CPointsMap>("multi_out_map");
+            auto outIcp = map.layer<mrpt::maps::CPointsMap>("multi_out_icp");
+            ASSERT_(outMap);
+            ASSERT_(outIcp);
+
+            std::cout << "Multi-output decimation: map=" << outMap->size()
+                      << " (desired 500), icp=" << outIcp->size() << " (desired 150)\n";
+
+            ASSERT_NEAR_(outMap->size(), 500, 20);
+            ASSERT_NEAR_(outIcp->size(), 150, 20);
+
+            std::cout << "[Test Passed] Multi-output decimation count check\n";
+        }
+
+        // ---------------------------------------------------------
+        // Test: 'outputs' and the single-output keys are exclusive
+        // ---------------------------------------------------------
+        {
+            FilterDecimateAdaptive filter;
+            mrpt::containers::yaml p;
+            p["input_pointcloud_layer"]     = "raw";
+            p["output_pointcloud_layer"]    = "some_layer";
+            p["desired_output_point_count"] = 100;
+            p["outputs"]                    = mrpt::containers::yaml::Sequence();
+            p["outputs"].push_back(mrpt::containers::yaml::Map(
+                {{"output_pointcloud_layer", "other_layer"}, {"desired_output_point_count", 100}}));
+
+            bool didThrow = false;
+            try
+            {
+                filter.initialize(p);
+            }
+            catch (const std::exception&)
+            {
+                didThrow = true;
+            }
+            ASSERT_(didThrow);
+
+            std::cout << "[Test Passed] Mutually-exclusive output parameters check\n";
+        }
+
+        // ---------------------------------------------------------
+        // Test: the decimate_method options
+        // ---------------------------------------------------------
+        {
+            // A cloud of tight clusters of 4 points each, each one well inside
+            // its own voxel, so the expected output of every method is known:
+            const auto      clustered      = mrpt::maps::CSimplePointsMap::Create();
+            constexpr int   kClusters      = 200;
+            constexpr float kVoxelSize     = 0.5f;
+            constexpr float kSpread        = 0.1f;
+            const auto      clusterCenterX = [](int i) { return static_cast<float>(i) + 0.25f; };
+
+            for (int i = 0; i < kClusters; ++i)
+            {
+                const float cx = clusterCenterX(i);  // one cluster per voxel
+                const float cy = 0.25f;
+                clustered->insertPoint(cx - kSpread, cy, 0.25f);
+                clustered->insertPoint(cx + kSpread, cy, 0.25f);
+                clustered->insertPoint(cx, cy - kSpread, 0.25f);
+                clustered->insertPoint(cx, cy + kSpread, 0.25f);
+            }
+
+            for (const auto& method :
+                 {"DecimateMethod::FirstPoint", "DecimateMethod::ClosestToAverage",
+                  "DecimateMethod::VoxelAverage", "DecimateMethod::RandomPoint"})
+            {
+                mp2p_icp::metric_map_t m;
+                m.layers["raw"] = clustered;
+
+                FilterDecimateAdaptive filter;
+                mrpt::containers::yaml p;
+                p["input_pointcloud_layer"]         = "raw";
+                p["output_pointcloud_layer"]        = "out";
+                p["desired_output_point_count"]     = kClusters;
+                p["voxel_size"]                     = kVoxelSize;
+                p["minimum_input_points_per_voxel"] = 1;
+                p["decimate_method"]                = method;
+
+                filter.initialize(p);
+                filter.filter(m);
+
+                auto out = m.layer<mrpt::maps::CPointsMap>("out");
+                ASSERT_(out);
+
+                // One point per cluster, whatever the method:
+                ASSERT_EQUAL_(out->size(), static_cast<size_t>(kClusters));
+
+                // Every output point must lie within its own cluster's extent:
+                for (size_t i = 0; i < out->size(); i++)
+                {
+                    float x = 0;
+                    float y = 0;
+                    float z = 0;
+                    out->getPointFast(i, x, y, z);
+
+                    const float nearestCenter = std::round(x - 0.25f) + 0.25f;
+                    ASSERT_LT_(std::abs(x - nearestCenter), kSpread + 1e-3f);
+                    ASSERT_LT_(std::abs(y - 0.25f), kSpread + 1e-3f);
+                }
+
+                std::cout << "[Test Passed] decimate_method=" << method << " (" << out->size()
+                          << " points)\n";
+            }
         }
 
         std::cout << "\nFilterDecimateAdaptive Unit Tests Passed!\n";

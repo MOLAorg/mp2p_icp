@@ -21,31 +21,14 @@
 #pragma once
 
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp_filters/DecimateMethod.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGridSingle.h>
 #include <mrpt/maps/CPointsMap.h>
-#include <mrpt/typemeta/TEnumType.h>
 
 namespace mp2p_icp_filters
 {
-/** Enum to select what method to use to pick the downsampled point for each
- *  voxel in FilterDecimateVoxels.
- *
- * \ingroup mp2p_icp_filters_grp
- */
-enum class DecimateMethod : uint8_t
-{
-    /** Pick the first point that was put int the voxel */
-    FirstPoint = 0,
-    /** Closest to the average of all voxel points */
-    ClosestToAverage,
-    /** Average of all voxel points */
-    VoxelAverage,
-    /** Pick one of the voxel points at random */
-    RandomPoint
-};
-
 /** Builds a new layer with a decimated version of one or more input layers,
  * merging their contents.
  *
@@ -140,10 +123,3 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
 /** @} */
 
 }  // namespace mp2p_icp_filters
-
-MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp_filters, mp2p_icp_filters::DecimateMethod)
-MRPT_FILL_ENUM(DecimateMethod::FirstPoint);
-MRPT_FILL_ENUM(DecimateMethod::ClosestToAverage);
-MRPT_FILL_ENUM(DecimateMethod::VoxelAverage);
-MRPT_FILL_ENUM(DecimateMethod::RandomPoint);
-MRPT_ENUM_TYPE_END()

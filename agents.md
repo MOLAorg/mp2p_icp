@@ -171,6 +171,22 @@ filters:
 
 Key filter categories: decimation (including range-adaptive EllipseLIO-style), outlier removal, range/ring/intensity gating, deskew, edge/plane extraction, layer management.
 
+`FilterDecimateAdaptive` accepts either the single-output keys (`output_pointcloud_layer` +
+`desired_output_point_count`) or an `outputs` sequence of several such pairs. In the latter case all
+output layers are sampled from ONE voxelization pass (the dominant cost), each with its own stride,
+which is what lets a consumer get a dense cloud for its local map and a sparse one for ICP without
+paying for two full passes. Measured on `test-mp2p_gicp_pipeline_benchmark`
+(`MP2P_BENCH_SINGLE_DECIMATION=1` selects the single-pass variant there), this saves ~2 ms per
+100k-point scan out of ~15 ms of 1st-pass filtering. Consumer side:
+`mola_lidar_odometry/pipelines/lidar3d-gicp-single-filter.yaml`.
+
+It also honors `decimate_method` (the `DecimateMethod` enum, now in its own header
+`mp2p_icp_filters/DecimateMethod.h`, shared with `FilterDecimateVoxels`). Because this filter
+revisits voxels in several rounds until the point count is met, `FirstPoint`/`RandomPoint` take
+successive points out of each voxel, while `ClosestToAverage`/`VoxelAverage` summarize the voxel and
+so emit at most one point per voxel (output capped at the voxel count); `VoxelAverage` synthesizes
+points, so per-point fields are not propagated.
+
 ### Standalone point cloud utilities (not `Filter` subclasses)
 
 - `mp2p_icp_filters::robust_max_range()` (`PointCloudRobustRange.h`) — a percentile (default 0.95) of the per-point range, instead of the raw maximum, so a small minority of far outlier returns (observed on Livox sensors: specular-reflection artifacts hundreds of meters away in an otherwise small scene) cannot dominate an observation-radius estimate the way `boundingBox().max.norm()` does. `O(n)` average via `std::nth_element`. Not yet wired into any consumer (`mola_lidar_odometry`'s `ESTIMATED_OBSERVATION_RADIUS`, `icp_benchmark`'s `Bench::processScan`) — both currently compute their own unfiltered bounding-box max, which is exactly the vulnerability this function exists to fix; see `test-mp2p_PointCloudRobustRange.cpp`.
