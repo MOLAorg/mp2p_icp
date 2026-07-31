@@ -106,7 +106,7 @@ The `mp2p_icp_filters` library provides extensive filtering capabilities:
  * **Outlier removal**: `FilterSOR` (Statistical Outlier Removal), `FilterVoxelSOR`
  * **Geometric filtering**: `FilterByRange`, `FilterBoundingBox`, `FilterByRing`
  * **Feature extraction**: `FilterEdgesPlanes`, `FilterCurvature`
- * **Data manipulation**: `FilterDeskew`, `FilterMerge`, `FilterAdjustTimestamps`
+ * **Data manipulation**: `FilterDeskew`, `FilterMerge`, `FilterTransformPointCloud`, `FilterAdjustTimestamps`
  * **Generators**: `GeneratorEdgesFromCurvature`, `GeneratorEdgesFromRangeImage`
 
 ### Quality Evaluators
