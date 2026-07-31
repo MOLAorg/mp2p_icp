@@ -87,15 +87,14 @@ void FilterDecimateVoxels::initialize_filter(const mrpt::containers::yaml& c)
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params.load_from_yaml(c, *this);
 
-    filter_grid_single_.reset();
-    filter_grid_.reset();
-
     if (useSingleGrid())
     {  // Create:
+        filter_grid_.reset();
         filter_grid_single_.emplace();
     }
     else
     {  // Create:
+        filter_grid_single_.reset();
         filter_grid_.emplace();
     }
 
