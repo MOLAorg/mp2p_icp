@@ -22,6 +22,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterTransformPointCloud.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/CPose3D.h>
 
@@ -119,6 +120,68 @@ int main()
                 ASSERT_NEAR_(oz, z, 1e-4);
             }
             std::cout << "[Test Passed] Forward + inverse round-trip recovers input points\n";
+        }
+
+        // ---------------------------------------------------------
+        // Test: view-direction unit vectors (view_x/y/z) are rotated too,
+        // forward and back, not just the XYZ coordinates.
+        // ---------------------------------------------------------
+        {
+            auto pcv = mrpt::maps::CGenericPointsMap::Create();
+            pcv->registerField_float("view_x");
+            pcv->registerField_float("view_y");
+            pcv->registerField_float("view_z");
+            pcv->insertPointFast(5.f, 0.f, 0.f);
+            pcv->insertPointField_float("view_x", -1.f);
+            pcv->insertPointField_float("view_y", 0.f);
+            pcv->insertPointField_float("view_z", 0.f);
+            pcv->mark_as_modified();
+
+            mp2p_icp::metric_map_t map;
+            map.layers["raw"] = pcv;
+
+            const auto poseSeq = mrpt::containers::yaml::Sequence(
+                {pose.x(), pose.y(), pose.z(), pose.yaw(), pose.pitch(), pose.roll()});
+
+            FilterTransformPointCloud fwd;
+            mrpt::containers::yaml    pf;
+            pf["input_pointcloud_layer"]  = "raw";
+            pf["output_pointcloud_layer"] = "world";
+            pf["pose"]                    = poseSeq;
+            fwd.initialize(pf);
+            fwd.filter(map);
+
+            auto outFwd = map.layer<mrpt::maps::CGenericPointsMap>("world");
+            ASSERT_(outFwd);
+
+            const auto expectedView = pose.rotateVector(mrpt::math::TVector3D(-1, 0, 0));
+            ASSERT_NEAR_(
+                outFwd->getPointField_float(0, "view_x"), static_cast<float>(expectedView.x),
+                1e-4f);
+            ASSERT_NEAR_(
+                outFwd->getPointField_float(0, "view_y"), static_cast<float>(expectedView.y),
+                1e-4f);
+            ASSERT_NEAR_(
+                outFwd->getPointField_float(0, "view_z"), static_cast<float>(expectedView.z),
+                1e-4f);
+
+            FilterTransformPointCloud back;
+            mrpt::containers::yaml    pb;
+            pb["input_pointcloud_layer"]  = "world";
+            pb["output_pointcloud_layer"] = "local_again";
+            pb["pose"]                    = poseSeq;
+            pb["invert_pose"]             = true;
+            back.initialize(pb);
+            back.filter(map);
+
+            auto outBack = map.layer<mrpt::maps::CGenericPointsMap>("local_again");
+            ASSERT_(outBack);
+            ASSERT_NEAR_(outBack->getPointField_float(0, "view_x"), -1.0f, 1e-4f);
+            ASSERT_NEAR_(outBack->getPointField_float(0, "view_y"), 0.0f, 1e-4f);
+            ASSERT_NEAR_(outBack->getPointField_float(0, "view_z"), 0.0f, 1e-4f);
+
+            std::cout << "[Test Passed] View-direction fields rotated forward and restored on the "
+                         "inverse round-trip\n";
         }
 
         // ---------------------------------------------------------
