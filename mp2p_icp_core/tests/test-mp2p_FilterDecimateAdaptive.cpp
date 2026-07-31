@@ -23,10 +23,33 @@
 #include <mp2p_icp_filters/FilterDecimateAdaptive.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/typemeta/TEnumType.h>
 
 #include <iostream>
+#include <optional>
 
 using namespace mp2p_icp_filters;
+
+namespace
+{
+// Finds the output point whose x coordinate is nearest to `x`, and asserts it
+// is within `tol`. Used to check per-voxel representative points without
+// depending on output ordering.
+float closestX(const mrpt::maps::CPointsMap& pc, float x)
+{
+    const auto&          xs = pc.getPointsBufferRef_x();
+    std::optional<float> best;
+    for (const auto v : xs)
+    {
+        if (!best.has_value() || std::abs(v - x) < std::abs(*best - x))
+        {
+            best = v;
+        }
+    }
+    ASSERT_(best.has_value());
+    return *best;
+}
+}  // namespace
 
 int main()
 {
@@ -75,6 +98,67 @@ int main()
             ASSERT_NEAR_(outSize, 500, 20);  // Allow small tolerance
 
             std::cout << "[Test Passed] Adaptive decimation count check\n";
+        }
+
+        // ---------------------------------------------------------
+        // Test: decimate_method VoxelAverage and ClosestToAverage, one
+        // point per voxel by construction (4 voxels, exactly 4 desired
+        // output points), so each output point must correspond to a known
+        // per-voxel centroid (VoxelAverage) or a known real point
+        // (ClosestToAverage), independently of FirstPoint's behavior.
+        // ---------------------------------------------------------
+        {
+            auto pc2 = mrpt::maps::CSimplePointsMap::Create();
+            // 4 voxels along X ([0,1), [1,2), [2,3), [3,4)), 3 points each,
+            // asymmetric so the closest-to-mean point is unambiguous.
+            const float offsets[3]   = {0.1f, 0.2f, 0.6f};
+            const float voxelBase[4] = {0.0f, 1.0f, 2.0f, 3.0f};
+            for (const float base : voxelBase)
+            {
+                for (const float off : offsets)
+                {
+                    pc2->insertPoint(base + off, 0.0f, 0.0f);
+                }
+            }
+
+            const float expectedMean[4]    = {0.3f, 1.3f, 2.3f, 3.3f};
+            const float expectedClosest[4] = {0.2f, 1.2f, 2.2f, 3.2f};
+
+            for (const auto method :
+                 {DecimateMethod::VoxelAverage, DecimateMethod::ClosestToAverage})
+            {
+                mp2p_icp::metric_map_t map2;
+                map2.layers["raw"] = pc2;
+
+                FilterDecimateAdaptive filter;
+                mrpt::containers::yaml p;
+                p["input_pointcloud_layer"]         = "raw";
+                p["output_pointcloud_layer"]        = "out";
+                p["desired_output_point_count"]     = 4;
+                p["voxel_size"]                     = 1.0f;
+                p["minimum_input_points_per_voxel"] = 1;
+                p["decimate_method"]                = mrpt::typemeta::enum2str(method);
+
+                filter.initialize(p);
+                filter.filter(map2);
+
+                auto out = map2.layer<mrpt::maps::CPointsMap>("out");
+                ASSERT_(out);
+                ASSERT_EQUAL_(out->size(), 4U);
+
+                const float* expected =
+                    (method == DecimateMethod::VoxelAverage) ? expectedMean : expectedClosest;
+                const float tol = (method == DecimateMethod::VoxelAverage) ? 1e-4f : 1e-6f;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    const float got = closestX(*out, expected[i]);
+                    ASSERT_NEAR_(got, expected[i], tol);
+                }
+
+                std::cout << "[Test Passed] FilterDecimateAdaptive decimate_method="
+                          << mrpt::typemeta::enum2str(method) << "\n";
+            }
         }
 
         std::cout << "\nFilterDecimateAdaptive Unit Tests Passed!\n";

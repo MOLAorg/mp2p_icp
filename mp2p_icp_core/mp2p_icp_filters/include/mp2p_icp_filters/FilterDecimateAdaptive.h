@@ -23,6 +23,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
+#include <mp2p_icp_filters/VoxelRepresentativePoint.h>  // DecimateMethod
 #include <mrpt/core/pimpl.h>
 #include <mrpt/maps/CPointsMap.h>
 
@@ -61,6 +62,13 @@ class FilterDecimateAdaptive : public mp2p_icp_filters::FilterBase
         unsigned int minimum_input_points_per_voxel = 1;
 
         float voxel_size = 0.10;
+
+        /** How to pick the representative point of each occupied voxel.
+         * Only DecimateMethod::FirstPoint preserves the adaptive point-budget
+         * round-robin over several points per voxel; the other methods emit
+         * exactly one (synthesized, for VoxelAverage) or one real point per
+         * occupied voxel. */
+        DecimateMethod decimate_method = DecimateMethod::FirstPoint;
 
         /// When TBB is enabled, the grainsize for splitting the input clouds into threads
         size_t parallelization_grain_size = 16UL * 1024UL;

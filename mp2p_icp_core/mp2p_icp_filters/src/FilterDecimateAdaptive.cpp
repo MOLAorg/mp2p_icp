@@ -23,6 +23,7 @@
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/round.h>
+#include <mrpt/random/RandomGenerators.h>
 #include <mrpt/version.h>
 
 #if defined(MP2P_HAS_TBB)
@@ -44,6 +45,7 @@ void FilterDecimateAdaptive::Parameters::load_from_yaml(const mrpt::containers::
     MCP_LOAD_OPT(c, voxel_size);
     MCP_LOAD_OPT(c, minimum_input_points_per_voxel);
     MCP_LOAD_OPT(c, parallelization_grain_size);
+    MCP_LOAD_OPT(c, decimate_method);
 }
 
 struct FilterDecimateAdaptive::Impl
@@ -210,6 +212,29 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     bool anyInsertInTheRound = false;
 
+    const auto& xs = pc.getPointsBufferRef_x();
+    const auto& ys = pc.getPointsBufferRef_y();
+    const auto& zs = pc.getPointsBufferRef_z();
+
+    auto rng = mrpt::random::CRandomGenerator();
+
+    // Picks the single representative point for a voxel under any of the
+    // non-default decimate_method's. Unlike FirstPoint, these always emit
+    // exactly one point per occupied voxel, regardless of how many times the
+    // point-budget round-robin below revisits it.
+    const auto insertVoxelRepresentative = [&](const PointCloudToVoxelGrid::voxel_t& voxel)
+    {
+        const auto rep = pickVoxelRepresentativePoint(_.decimate_method, voxel, xs, ys, zs, rng);
+        if (rep.point)
+        {
+            outPc->insertPointFast(rep.point->x, rep.point->y, rep.point->z);
+        }
+        else
+        {
+            outPc->insertPointFrom(*rep.pointIndex, ctx);
+        }
+    };
+
     std::size_t i_frac = 0;
     while (outPc->size() < params.desired_output_point_count)
     {
@@ -234,15 +259,23 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         auto& ith = voxels[i];
         if (!ith.exhausted)
         {
-            auto ptIdx = ith.voxel[ith.nextIdx++];
-
-            outPc->insertPointFrom(ptIdx, ctx);
-            anyInsertInTheRound = true;
-
-            if (ith.nextIdx >= ith.voxel.size())
+            if (_.decimate_method == DecimateMethod::FirstPoint)
             {
+                auto ptIdx = ith.voxel[ith.nextIdx++];
+
+                outPc->insertPointFrom(ptIdx, ctx);
+
+                if (ith.nextIdx >= ith.voxel.size())
+                {
+                    ith.exhausted = true;
+                }
+            }
+            else
+            {
+                insertVoxelRepresentative(ith.voxel);
                 ith.exhausted = true;
             }
+            anyInsertInTheRound = true;
         }
 
         i_frac += voxelIdxIncrement_frac;

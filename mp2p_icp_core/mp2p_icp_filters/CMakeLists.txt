@@ -55,6 +55,7 @@ set(LIB_SRCS
   src/PointCloudToVoxelGrid.cpp
   src/PointCloudToVoxelGridSingle.cpp
   src/sm2mm.cpp
+  src/VoxelRepresentativePoint.cpp
   #
   src/register.cpp # This must be last
 )
@@ -98,6 +99,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/PointCloudToVoxelGrid.h
   include/mp2p_icp_filters/PointCloudToVoxelGridSingle.h
   include/mp2p_icp_filters/sm2mm.h
+  include/mp2p_icp_filters/VoxelRepresentativePoint.h
 )
 
 
