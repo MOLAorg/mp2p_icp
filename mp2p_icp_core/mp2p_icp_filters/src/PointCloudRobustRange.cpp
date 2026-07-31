@@ -49,7 +49,7 @@ double mp2p_icp_filters::robust_max_range(
         const float dx = xs[i] - center.x;
         const float dy = ys[i] - center.y;
         const float dz = zs[i] - center.z;
-        ranges[i]       = std::sqrt(dx * dx + dy * dy + dz * dz);
+        ranges[i]      = std::sqrt(dx * dx + dy * dy + dz * dz);
     }
 
     // percentile==1.0 must still map to the last (largest) element, not one
