@@ -401,6 +401,8 @@ Filter: `FilterDecimateAdaptive`
 
 **Description**: Accepts an input point cloud, voxelizes it, and generates a new layer with an adaptive sampling to aim for a specific desired output point count.
 
+More than one output layer can be requested, each one with its own target point count (see `outputs` below). All of them are then sampled from one single voxelization pass, which is the dominant cost, instead of chaining several instances of this filter.
+
 **Parameters**:
 
 * **input\_pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): The input point cloud layer name.
@@ -409,9 +411,13 @@ Filter: `FilterDecimateAdaptive`
 
 * **desired\_output\_point\_count** (:cpp:type:`unsigned int`, default: `1000`): The target number of points in the output cloud.
 
+* **outputs** (sequence, optional): A list of output layers, each entry holding its own `output_pointcloud_layer` and `desired_output_point_count`. Mutually exclusive with the two single-output parameters above.
+
 * **minimum\_input\_points\_per\_voxel** (:cpp:type:`unsigned int`, default: `1`): Voxels with fewer points than this threshold will not generate any output point.
 
 * **voxel\_size** (:cpp:type:`float`, default: `0.10`): The size of the voxel grid used for downsampling (m).
+
+* **decimate\_method** (:cpp:enum:`mp2p_icp_filters::DecimateMethod`, default: `DecimateMethod::FirstPoint`): Which point represents each voxel, as in `FilterDecimateVoxels`_. Since this filter walks the voxels in as many rounds as needed to reach the desired point count, note that `DecimateMethod::FirstPoint` (the fastest) and `DecimateMethod::RandomPoint` take successive points out of each voxel, in insertion order or starting at a random offset, respectively; whereas `DecimateMethod::ClosestToAverage` and `DecimateMethod::VoxelAverage` summarize the whole voxel and hence yield **one point per voxel only**, so the output cannot be larger than the number of valid voxels. `DecimateMethod::VoxelAverage` generates new points, so per-point fields (intensity, ring, timestamp, ...) are not propagated to the output.
 
 * **parallelization\_grain\_size** (:cpp:type:`size\_t`, default: `16384`): Grain size for parallel processing of input clouds (used when TBB is enabled).
 
@@ -425,6 +431,22 @@ Filter: `FilterDecimateAdaptive`
           output_pointcloud_layer: 'adaptively_decimated'
           desired_output_point_count: 5000
           voxel_size: 0.2
+
+And the multiple-outputs form, e.g. to obtain a denser cloud to feed a local map and a sparser one to feed ICP:
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterDecimateAdaptive
+        params:
+          input_pointcloud_layer: 'raw'
+          voxel_size: 0.15
+          outputs:
+            - output_pointcloud_layer: 'decimated_for_map'
+              desired_output_point_count: 10000
+            - output_pointcloud_layer: 'decimated_for_icp'
+              desired_output_point_count: 3000
 
 .. rubric:: Before → After Screenshot
 

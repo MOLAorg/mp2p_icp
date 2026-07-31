@@ -27,6 +27,10 @@
  *  Internal CTimeLogger of mp2p_icp::ICP and the filter pipeline is enabled
  *  and dumped to stdout to serve as a profiling reference.
  *
+ *  Set MP2P_BENCH_SINGLE_DECIMATION=1 to replace the two chained decimation
+ *  stages by a single FilterDecimateAdaptive producing both output clouds from
+ *  one voxelization pass, to compare both variants.
+ *
  *  This test requires the mola_metric_maps package; if not available at build
  *  time it is silently skipped via CMake.
  */
@@ -38,6 +42,7 @@
 #include <mp2p_icp_filters/Generator.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/core/get_env.h>
 #include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/poses/CPose3D.h>
@@ -205,6 +210,28 @@ constexpr const char* kYamlFilters1stPass = R"yaml(
     desired_output_point_count: 3000
 )yaml";
 
+// Same two output clouds, but sampled from one single voxelization pass.
+constexpr const char* kYamlFilters1stPassSingleDecimation = R"yaml(
+- class_name: mp2p_icp_filters::FilterByRange
+  params:
+    input_pointcloud_layer: "raw"
+    output_layer_between: "raw_range_filtered"
+    range_min: 0.5
+    range_max: 30.0
+    metric_l_infinity: true
+
+- class_name: mp2p_icp_filters::FilterDecimateAdaptive
+  params:
+    name: "FilterDecimateAdaptive (map+icp)"
+    input_pointcloud_layer: "raw_range_filtered"
+    voxel_size: 0.15
+    outputs:
+      - output_pointcloud_layer: "decimated_for_map"
+        desired_output_point_count: 10000
+      - output_pointcloud_layer: "decimated_for_icp"
+        desired_output_point_count: 3000
+)yaml";
+
 constexpr const char* kYamlFilters2ndPass = R"yaml(
 - class_name: mp2p_icp_filters::FilterMerge
   params:
@@ -275,9 +302,17 @@ int main(int /*argc*/, char** /*argv*/)
         auto obs1 = makeSyntheticScan(pose1, 0.10, 5678);
 
         // --- Parse YAML blocks ---
-        const auto yObsGen   = parseSeq(kYamlObservationsGenerator);
-        const auto yLmGen    = parseSeq(kYamlLocalmapGenerator);
-        const auto yF1       = parseSeq(kYamlFilters1stPass);
+        const auto yObsGen = parseSeq(kYamlObservationsGenerator);
+        const auto yLmGen  = parseSeq(kYamlLocalmapGenerator);
+        // Set MP2P_BENCH_SINGLE_DECIMATION=1 to sample both decimated clouds
+        // from one single voxelization pass instead of chaining two filters.
+        const bool singleDecimation = mrpt::get_env<bool>("MP2P_BENCH_SINGLE_DECIMATION", false);
+        std::cout << "Decimation variant: "
+                  << (singleDecimation ? "single filter, two outputs" : "two chained filters")
+                  << "\n";
+
+        const auto yF1 =
+            parseSeq(singleDecimation ? kYamlFilters1stPassSingleDecimation : kYamlFilters1stPass);
         const auto yF2       = parseSeq(kYamlFilters2ndPass);
         const auto yInsertLm = parseSeq(kYamlInsertIntoLocalMap);
         const auto yIcp      = mrpt::containers::yaml::FromText(kYamlIcp);

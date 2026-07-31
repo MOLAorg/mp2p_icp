@@ -21,15 +21,41 @@
 #pragma once
 
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp_filters/DecimateMethod.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
 #include <mrpt/core/pimpl.h>
 #include <mrpt/maps/CPointsMap.h>
 
+#include <string>
+#include <vector>
+
 namespace mp2p_icp_filters
 {
 /** Accepts as input a point cloud layer, voxelizes it, and generates a new
  * point cloud layer with an adaptive sampling.
+ *
+ * More than one output layer can be requested (see Parameters::outputs), each
+ * one with its own target point count. All of them are then generated from one
+ * single voxelization pass over the input, which is the dominant cost, instead
+ * of chaining several instances of this filter.
+ *
+ * Which point represents each voxel is selected with `decimate_method`, as in
+ * FilterDecimateVoxels. Note though that this filter walks the voxels in
+ * several rounds until the desired point count is reached, so:
+ * - DecimateMethod::FirstPoint (the default, and the fastest) and
+ *   DecimateMethod::RandomPoint take successive points out of each voxel, in
+ *   insertion order or starting at a random offset, respectively.
+ * - DecimateMethod::ClosestToAverage and DecimateMethod::VoxelAverage yield ONE
+ *   point per voxel only, so the output cannot be larger than the number of
+ *   valid voxels no matter the desired point count. They are also more
+ *   expensive, since all voxel points must be traversed to get the average.
+ *   DecimateMethod::VoxelAverage generates new points, so per-point fields
+ *   (intensity, ring, timestamp, ...) are not propagated to the output.
+ *
+ * When built with TBB, voxels are accumulated per thread and not merged, so the
+ * per-voxel averages above are computed over the subset of points that fell in
+ * the same thread block.
  *
  * Not compatible with calling from different threads simultaneously for
  * different input point clouds. Use independent instances for each thread if
@@ -46,21 +72,35 @@ class FilterDecimateAdaptive : public mp2p_icp_filters::FilterBase
     // See docs in FilterBase
     void filter(mp2p_icp::metric_map_t& inOut) const override;
 
+    /** One requested output layer, with its own target point count. */
+    struct OutputTarget
+    {
+        void load_from_yaml(const mrpt::containers::yaml& c);
+
+        std::string  output_pointcloud_layer;
+        unsigned int desired_output_point_count = 1000;
+    };
+
     struct Parameters
     {
         void load_from_yaml(const mrpt::containers::yaml& c);
 
         std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
-        std::string output_pointcloud_layer;
-
-        unsigned int desired_output_point_count = 1000;
+        /** The requested output layers. Loaded either from the YAML sequence
+         * "outputs", or from the single-output keys "output_pointcloud_layer"
+         * and "desired_output_point_count". */
+        std::vector<OutputTarget> outputs;
 
         /** Voxels with less points will not generate anything at the output
          * layer */
         unsigned int minimum_input_points_per_voxel = 1;
 
         float voxel_size = 0.10;
+
+        /** The method to pick what point will be used as representative of each
+         * voxel. See notes on top of this class. */
+        DecimateMethod decimate_method = DecimateMethod::FirstPoint;
 
         /// When TBB is enabled, the grainsize for splitting the input clouds into threads
         size_t parallelization_grain_size = 16UL * 1024UL;
