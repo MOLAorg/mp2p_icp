@@ -52,7 +52,7 @@ int main()
             p["input_pointcloud_layer"]  = "raw";
             p["output_pointcloud_layer"] = "world";
             p["pose"]                    = mrpt::containers::yaml::Sequence(
-                {pose.x(), pose.y(), pose.z(), pose.yaw(), pose.pitch(), pose.roll()});
+                                   {pose.x(), pose.y(), pose.z(), pose.yaw(), pose.pitch(), pose.roll()});
             p["invert_pose"] = false;
 
             filter.initialize(p);
