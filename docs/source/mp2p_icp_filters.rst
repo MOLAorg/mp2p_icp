@@ -1127,6 +1127,40 @@ the overall structure of the point cloud.
 
 ---
 
+Filter: `FilterTransformPointCloud`
+------------------------------------
+
+**Description**: Rigidly transforms an input point cloud layer into a **new** output layer, replacing each point :math:`p_i` by :math:`p'_i = T \oplus p_i` (pose compounding operator), where :math:`T` is `pose`, or its inverse if `invert_pose` is `true`. View-direction unit vector fields (``view_x``/``view_y``/``view_z``), if present, are rotated accordingly.
+
+Unlike `FilterMerge`_, this does not insert into an existing metric map: it always (re)creates a plain point-cloud layer of the same class as the input, so it composes with any other filter that takes a point-cloud layer as input (e.g. `FilterDecimateAdaptive`_).
+
+Typical use case: some odometry systems voxelize incoming scans *after* transforming them into the (approximately known, e.g. from a motion-model prior) global/map frame, so voxel membership is anchored to the map rather than to the vehicle's instantaneous local frame. This filter lets a pipeline replicate that: transform local→global with ``invert_pose: false``, run a decimation filter, then transform back with ``invert_pose: true`` and the *same* `pose` so the rest of the pipeline is unaffected.
+
+**Parameters**:
+
+* **input_pointcloud_layer** (:cpp:type:`std::string`): The point cloud layer to be transformed.
+
+* **output_pointcloud_layer** (:cpp:type:`std::string`): The destination layer for the transformed points. Must be different from `input_pointcloud_layer` (this filter does not transform a layer in place).
+
+* **pose** (:cpp:type:`mrpt::math::TPose3D`): The pose :math:`T` to apply.
+
+* **invert_pose** (:cpp:type:`bool`, default: `false`): If `true`, apply :math:`T^{-1}` instead of :math:`T`.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterTransformPointCloud
+        params:
+          input_pointcloud_layer: 'deskewed'
+          output_pointcloud_layer: 'deskewed_world'
+          pose: [robot_x, robot_y, robot_z, robot_yaw, robot_pitch, robot_roll]
+          invert_pose: false
+
+|
+
+---
+
 Filter: `FilterVoxelSlice`
 --------------------------
 

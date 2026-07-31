@@ -49,6 +49,7 @@
 #include <mp2p_icp_filters/FilterRemovePointCloudField.h>
 #include <mp2p_icp_filters/FilterRenameLayer.h>
 #include <mp2p_icp_filters/FilterSOR.h>
+#include <mp2p_icp_filters/FilterTransformPointCloud.h>
 #include <mp2p_icp_filters/FilterVoxelSOR.h>
 #include <mp2p_icp_filters/FilterVoxelSlice.h>
 #include <mp2p_icp_filters/Generator.h>
@@ -93,6 +94,7 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRemovePointCloudField));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRenameLayer));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterSOR));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterTransformPointCloud));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterVoxelSlice));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterVoxelSOR));
 }

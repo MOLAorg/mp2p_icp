@@ -42,6 +42,7 @@ set(LIB_SRCS
   src/FilterRemovePointCloudField.cpp
   src/FilterRenameLayer.cpp
   src/FilterSOR.cpp
+  src/FilterTransformPointCloud.cpp
   src/FilterVoxelSlice.cpp
   src/FilterVoxelSOR.cpp
   src/Generator.cpp
@@ -86,6 +87,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterRenameLayer.h
   include/mp2p_icp_filters/FilterRemovePointCloudField.h
   include/mp2p_icp_filters/FilterSOR.h
+  include/mp2p_icp_filters/FilterTransformPointCloud.h
   include/mp2p_icp_filters/FilterVoxelSlice.h
   include/mp2p_icp_filters/FilterVoxelSOR.h
   include/mp2p_icp_filters/Generator.h
