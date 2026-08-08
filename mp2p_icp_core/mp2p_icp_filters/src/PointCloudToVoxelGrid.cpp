@@ -88,6 +88,7 @@ void PointCloudToVoxelGrid::mergeFrom(const PointCloudToVoxelGrid& other)
     MRPT_START
 
     ASSERT_EQUAL_(resolution_, other.resolution_);
+    ASSERT_EQUAL_(use_tsl_robin_map_, other.use_tsl_robin_map_);
 
     auto append = [](auto& dest, const auto& src)
     {
@@ -98,31 +99,13 @@ void PointCloudToVoxelGrid::mergeFrom(const PointCloudToVoxelGrid& other)
         }
     };
 
-    // The source may use a different map type than this grid, so all four
-    // combinations must be handled:
-    const auto& o = *other.impl_;
-
     if (use_tsl_robin_map_)
     {
-        if (other.use_tsl_robin_map_)
-        {
-            append(impl_->pts_voxels, o.pts_voxels);
-        }
-        else
-        {
-            append(impl_->pts_voxels, o.pts_voxels_std_map);
-        }
+        append(impl_->pts_voxels, other.impl_->pts_voxels);
     }
     else
     {
-        if (other.use_tsl_robin_map_)
-        {
-            append(impl_->pts_voxels_std_map, o.pts_voxels);
-        }
-        else
-        {
-            append(impl_->pts_voxels_std_map, o.pts_voxels_std_map);
-        }
+        append(impl_->pts_voxels_std_map, other.impl_->pts_voxels_std_map);
     }
 
     MRPT_END

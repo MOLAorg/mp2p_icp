@@ -333,32 +333,49 @@ int main()
 
                 const size_t nPts = sweptCloud->size();
 
-                PointCloudToVoxelGrid whole;
-                whole.setConfiguration(kVoxelSize, true);
-                whole.processPointCloud(*sweptCloud);
+                // Both backing map types, which must also agree with each
+                // other: the voxel contents are what the canonical ordering is
+                // built from, so they cannot depend on the container.
+                std::map<
+                    PointCloudToVoxelGrid::indices_t, std::vector<std::size_t>,
+                    PointCloudToVoxelGrid::IndicesHash>
+                    contentsPerMapType[2];
 
-                // Three arbitrary, unequal pieces, as parallel blocks would be:
-                PointCloudToVoxelGrid pieces[3];
-                const size_t          cuts[4] = {0, nPts / 7, nPts / 2, nPts};
-                for (int i = 0; i < 3; i++)
+                for (int useRobinMap = 0; useRobinMap < 2; useRobinMap++)
                 {
-                    pieces[i].setConfiguration(kVoxelSize, true);
-                    pieces[i].processPointCloud(*sweptCloud, cuts[i], cuts[i + 1] - cuts[i]);
+                    PointCloudToVoxelGrid whole;
+                    whole.setConfiguration(kVoxelSize, useRobinMap != 0);
+                    whole.processPointCloud(*sweptCloud);
+
+                    // Three arbitrary, unequal pieces, as parallel blocks would be:
+                    PointCloudToVoxelGrid pieces[3];
+                    const size_t          cuts[4] = {0, nPts / 7, nPts / 2, nPts};
+                    for (int i = 0; i < 3; i++)
+                    {
+                        pieces[i].setConfiguration(kVoxelSize, useRobinMap != 0);
+                        pieces[i].processPointCloud(*sweptCloud, cuts[i], cuts[i + 1] - cuts[i]);
+                    }
+
+                    PointCloudToVoxelGrid merged;
+                    merged.setConfiguration(kVoxelSize, useRobinMap != 0);
+                    for (const auto& p : pieces)
+                    {
+                        merged.mergeFrom(p);
+                    }
+                    merged.sortVoxelPointIndices();
+
+                    ASSERT_EQUAL_(merged.size(), whole.size());
+                    ASSERT_(voxelContents(merged) == voxelContents(whole));
+
+                    contentsPerMapType[useRobinMap] = voxelContents(merged);
+
+                    std::cout << "[Test Passed] mergeFrom() equals one-pass binning ("
+                              << merged.size() << " voxels, "
+                              << (useRobinMap ? "robin_map" : "std::map") << ")\n";
                 }
 
-                PointCloudToVoxelGrid merged;
-                merged.setConfiguration(kVoxelSize, true);
-                for (const auto& p : pieces)
-                {
-                    merged.mergeFrom(p);
-                }
-                merged.sortVoxelPointIndices();
-
-                ASSERT_EQUAL_(merged.size(), whole.size());
-                ASSERT_(voxelContents(merged) == voxelContents(whole));
-
-                std::cout << "[Test Passed] mergeFrom() equals one-pass binning (" << merged.size()
-                          << " voxels)\n";
+                ASSERT_(contentsPerMapType[0] == contentsPerMapType[1]);
+                std::cout << "[Test Passed] merged voxels do not depend on the map type\n";
             }
         }
 

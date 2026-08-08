@@ -51,7 +51,7 @@ class PointCloudToVoxelGrid
      *  input cloud is binned in parallel: without it, one spatial voxel remains
      *  split into one fragment per thread.
      *
-     *  Both grids must have the same resolution. Point indices are left in
+     *  Both grids must have the same resolution and map type. Point indices are left in
      *  arbitrary order; call sortVoxelPointIndices() afterwards to restore the
      *  ascending order that sequential binning would have produced.
      */
