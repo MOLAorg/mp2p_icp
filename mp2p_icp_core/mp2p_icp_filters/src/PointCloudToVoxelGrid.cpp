@@ -23,6 +23,7 @@
 // Used in the PIMP:
 #include <tsl/robin_map.h>
 
+#include <algorithm>
 #include <map>
 
 using namespace mp2p_icp_filters;
@@ -79,6 +80,76 @@ void PointCloudToVoxelGrid::processPointCloud(
     else
     {
         pass(impl_->pts_voxels_std_map);
+    }
+}
+
+void PointCloudToVoxelGrid::mergeFrom(const PointCloudToVoxelGrid& other)
+{
+    MRPT_START
+
+    ASSERT_EQUAL_(resolution_, other.resolution_);
+
+    auto append = [](auto& dest, const auto& src)
+    {
+        for (const auto& [key, entry] : src)
+        {
+            auto& destIndices = dest[key].indices;
+            destIndices.insert(destIndices.end(), entry.indices.begin(), entry.indices.end());
+        }
+    };
+
+    // The source may use a different map type than this grid, so all four
+    // combinations must be handled:
+    const auto& o = *other.impl_;
+
+    if (use_tsl_robin_map_)
+    {
+        if (other.use_tsl_robin_map_)
+        {
+            append(impl_->pts_voxels, o.pts_voxels);
+        }
+        else
+        {
+            append(impl_->pts_voxels, o.pts_voxels_std_map);
+        }
+    }
+    else
+    {
+        if (other.use_tsl_robin_map_)
+        {
+            append(impl_->pts_voxels_std_map, o.pts_voxels);
+        }
+        else
+        {
+            append(impl_->pts_voxels_std_map, o.pts_voxels_std_map);
+        }
+    }
+
+    MRPT_END
+}
+
+void PointCloudToVoxelGrid::sortVoxelPointIndices()
+{
+    auto sortAll = [](auto& voxels)
+    {
+        for (auto it = voxels.begin(); it != voxels.end(); ++it)
+        {
+            // tsl::robin_map only exposes mutable values via value():
+            auto& indices = it.value().indices;
+            std::sort(indices.begin(), indices.end());
+        }
+    };
+
+    if (use_tsl_robin_map_)
+    {
+        sortAll(impl_->pts_voxels);
+    }
+    else
+    {
+        for (auto& [key, entry] : impl_->pts_voxels_std_map)
+        {
+            std::sort(entry.indices.begin(), entry.indices.end());
+        }
     }
 }
 

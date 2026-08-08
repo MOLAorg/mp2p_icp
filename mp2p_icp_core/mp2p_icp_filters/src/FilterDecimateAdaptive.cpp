@@ -27,6 +27,8 @@
 #include <mrpt/random/RandomGenerators.h>
 #include <mrpt/version.h>
 
+#include <algorithm>
+
 #if defined(MP2P_HAS_TBB)
 #include <tbb/enumerable_thread_specific.h>
 #include <tbb/parallel_for.h>
@@ -79,6 +81,10 @@ struct FilterDecimateAdaptive::Impl
 {
 #if defined(MP2P_HAS_TBB)
     tbb::enumerable_thread_specific<PointCloudToVoxelGrid> tls;
+
+    /// Where the per-thread grids of `tls` are reassembled. Owning the merged
+    /// voxels here is what keeps voxel_t a plain non-owning span.
+    PointCloudToVoxelGrid merged_grid;
 #else
     PointCloudToVoxelGrid filter_grid;
 #endif
@@ -200,10 +206,22 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
             grid.processPointCloud(pc, start, length);
         });
 
-    for (auto& grid : impl_->tls)
+    // Reassemble the per-thread grids: a voxel key is global, so the same
+    // spatial voxel is present in every grid whose block saw points in it.
+    // Visiting the grids separately would treat each fragment as an
+    // independent voxel, which both breaks the one-representative-per-voxel
+    // contract and makes the result depend on how work was split.
+    impl_->merged_grid.setConfiguration(params.voxel_size, true);
+
+    for (const auto& grid : impl_->tls)
     {
-        grid.visit_voxels(lambdaVisitVoxel);
+        impl_->merged_grid.mergeFrom(grid);
     }
+    impl_->merged_grid.sortVoxelPointIndices();
+
+    voxels.reserve(impl_->merged_grid.size());
+
+    impl_->merged_grid.visit_voxels(lambdaVisitVoxel);
 
 #else
     impl_->filter_grid.clear();
@@ -215,6 +233,15 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     impl_->filter_grid.visit_voxels(lambdaVisitVoxel);
 
 #endif
+
+    // Canonical voxel order. Hash map traversal order is an implementation
+    // detail, and the resampling below walks this list with a stride, so which
+    // voxels make it to the output would otherwise depend on it. Ordering by
+    // the first input point of each voxel gives the same list for any map type
+    // and any number of threads.
+    std::sort(
+        voxels.begin(), voxels.end(),
+        [](const DataPerVoxel& a, const DataPerVoxel& b) { return a.voxel[0] < b.voxel[0]; });
 
     const size_t nVoxels = voxels.size();
 

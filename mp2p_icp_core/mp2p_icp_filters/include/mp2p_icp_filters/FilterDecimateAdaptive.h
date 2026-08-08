@@ -53,9 +53,9 @@ namespace mp2p_icp_filters
  *   DecimateMethod::VoxelAverage generates new points, so per-point fields
  *   (intensity, ring, timestamp, ...) are not propagated to the output.
  *
- * When built with TBB, voxels are accumulated per thread and not merged, so the
- * per-voxel averages above are computed over the subset of points that fell in
- * the same thread block.
+ * When built with TBB the input is binned in parallel, but the resulting
+ * per-thread grids are merged by voxel key before sampling, so the output does
+ * not depend on the number of threads or on how the work was split.
  *
  * Not compatible with calling from different threads simultaneously for
  * different input point clouds. Use independent instances for each thread if

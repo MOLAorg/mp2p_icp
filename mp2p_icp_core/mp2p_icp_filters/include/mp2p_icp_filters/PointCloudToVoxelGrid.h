@@ -44,6 +44,24 @@ class PointCloudToVoxelGrid
         const mrpt::maps::CPointsMap& p, const std::size_t first_pt_idx = 0,
         const std::size_t points_to_process = 0);
 
+    /** Appends the contents of another grid into this one, joining the point
+     *  indices of voxels sharing the same key.
+     *
+     *  Intended to reassemble the partial grids built by each thread when the
+     *  input cloud is binned in parallel: without it, one spatial voxel remains
+     *  split into one fragment per thread.
+     *
+     *  Both grids must have the same resolution. Point indices are left in
+     *  arbitrary order; call sortVoxelPointIndices() afterwards to restore the
+     *  ascending order that sequential binning would have produced.
+     */
+    void mergeFrom(const PointCloudToVoxelGrid& other);
+
+    /** Sorts the point indices of every voxel in ascending order, so that the
+     *  contents no longer depend on the order in which points were binned.
+     */
+    void sortVoxelPointIndices();
+
     /** Remove all points and internal data.
      */
     void clear();
