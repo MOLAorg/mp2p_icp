@@ -85,6 +85,9 @@ struct FilterDecimateAdaptive::Impl
     /// Where the per-thread grids of `tls` are reassembled. Owning the merged
     /// voxels here is what keeps voxel_t a plain non-owning span.
     PointCloudToVoxelGrid merged_grid;
+
+    /// Reusable list of the `tls` grids to merge, to avoid reallocating it.
+    std::vector<const PointCloudToVoxelGrid*> parts;
 #else
     PointCloudToVoxelGrid filter_grid;
 #endif
@@ -138,8 +141,8 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     struct DataPerVoxel
     {
-        // voxel_t is a non-owning span (16 bytes); copy by value so we don't
-        // hold a dangling pointer to the temporary built inside visit_voxels.
+        // voxel_t is a non-owning span; copy by value so we don't hold a
+        // dangling pointer to the temporary built inside visit_voxels.
         PointCloudToVoxelGrid::voxel_t voxel;
         uint32_t                       nextIdx   = 0;
         bool                           exhausted = false;
@@ -213,10 +216,12 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
     // contract and makes the result depend on how work was split.
     impl_->merged_grid.setConfiguration(params.voxel_size, true);
 
+    impl_->parts.clear();
     for (const auto& grid : impl_->tls)
     {
-        impl_->merged_grid.mergeFrom(grid);
+        impl_->parts.push_back(&grid);
     }
+    impl_->merged_grid.mergeFrom(impl_->parts);
     impl_->merged_grid.sortVoxelPointIndices();
 
     voxels.reserve(impl_->merged_grid.size());
