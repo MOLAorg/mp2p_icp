@@ -367,6 +367,16 @@ int main()
                     ASSERT_EQUAL_(merged.size(), whole.size());
                     ASSERT_(voxelContents(merged) == voxelContents(whole));
 
+                    // Merging all the pieces in one single call, as the filter
+                    // does, must give exactly the same result:
+                    PointCloudToVoxelGrid mergedAtOnce;
+                    mergedAtOnce.setConfiguration(kVoxelSize, useRobinMap != 0);
+                    mergedAtOnce.mergeFrom({&pieces[0], &pieces[1], &pieces[2]});
+                    mergedAtOnce.sortVoxelPointIndices();
+
+                    ASSERT_EQUAL_(mergedAtOnce.size(), whole.size());
+                    ASSERT_(voxelContents(mergedAtOnce) == voxelContents(whole));
+
                     contentsPerMapType[useRobinMap] = voxelContents(merged);
 
                     std::cout << "[Test Passed] mergeFrom() equals one-pass binning ("
