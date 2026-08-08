@@ -26,6 +26,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <map>
+#include <vector>
 
 using namespace mp2p_icp_filters;
 
@@ -202,6 +204,178 @@ int main()
 
                 std::cout << "[Test Passed] decimate_method=" << method << " (" << out->size()
                           << " points)\n";
+            }
+        }
+
+        // ---------------------------------------------------------
+        // Test: parallel binning must not fragment voxels
+        //
+        // A rotating lidar revisits the same voxel at input indices that are
+        // far apart, so a voxel's points end up in different parallel blocks.
+        // The cloud below reproduces that: kSweeps passes over the same
+        // kColumns positions, so voxel j holds exactly kSweeps points, at
+        // indices j, kColumns+j, 2*kColumns+j, ...
+        // ---------------------------------------------------------
+        {
+            constexpr int   kColumns   = 5000;
+            constexpr int   kSweeps    = 8;
+            constexpr float kVoxelSize = 0.5f;
+
+            const auto sweptCloud = mrpt::maps::CSimplePointsMap::Create();
+            for (int s = 0; s < kSweeps; ++s)
+            {
+                for (int j = 0; j < kColumns; ++j)
+                {
+                    // One voxel per column, plus a jitter well inside it so the
+                    // kSweeps points of a voxel are all distinct:
+                    sweptCloud->insertPoint(
+                        static_cast<float>(j) + 0.05f * static_cast<float>(s), 0.25f, 0.25f);
+                }
+            }
+
+            const auto runFilter = [&](unsigned int minPointsPerVoxel, unsigned int desiredCount)
+            {
+                mp2p_icp::metric_map_t m;
+                m.layers["raw"] = sweptCloud;
+
+                FilterDecimateAdaptive filter;
+                mrpt::containers::yaml p;
+                p["input_pointcloud_layer"]         = "raw";
+                p["output_pointcloud_layer"]        = "out";
+                p["desired_output_point_count"]     = desiredCount;
+                p["voxel_size"]                     = kVoxelSize;
+                p["minimum_input_points_per_voxel"] = minPointsPerVoxel;
+                // Force many blocks, so several threads see the same voxels:
+                p["parallelization_grain_size"] = 512;
+
+                filter.initialize(p);
+                filter.filter(m);
+
+                auto out = m.layer<mrpt::maps::CPointsMap>("out");
+                ASSERT_(out);
+                return out;
+            };
+
+            // (a) A voxel above the threshold must survive, no matter how its
+            //     points were distributed across threads:
+            {
+                auto out = runFilter(kSweeps, kColumns);
+                ASSERT_EQUAL_(out->size(), static_cast<size_t>(kColumns));
+                std::cout
+                    << "[Test Passed] minimum_input_points_per_voxel under parallel binning\n";
+            }
+
+            // (b) Asking for exactly one point per voxel must give one point
+            //     per voxel, not one per voxel fragment:
+            {
+                auto out = runFilter(1, kColumns);
+                ASSERT_EQUAL_(out->size(), static_cast<size_t>(kColumns));
+
+                std::vector<bool> seen(kColumns, false);
+                for (size_t i = 0; i < out->size(); i++)
+                {
+                    float x = 0;
+                    float y = 0;
+                    float z = 0;
+                    out->getPointFast(i, x, y, z);
+
+                    const int col = static_cast<int>(std::round(x - 0.05f * 0.5f * (kSweeps - 1)));
+                    ASSERT_GE_(col, 0);
+                    ASSERT_LT_(col, kColumns);
+                    ASSERTMSG_(!seen[col], "Two output points fell in the same voxel");
+                    seen[col] = true;
+                }
+                std::cout << "[Test Passed] one representative per voxel under parallel binning\n";
+            }
+
+            // (c) Two identical runs must give bit-identical output:
+            {
+                auto outA = runFilter(1, kColumns / 3);
+                auto outB = runFilter(1, kColumns / 3);
+
+                ASSERT_EQUAL_(outA->size(), outB->size());
+                ASSERT_(outA->size() > 0);
+
+                for (size_t i = 0; i < outA->size(); i++)
+                {
+                    float ax = 0;
+                    float ay = 0;
+                    float az = 0;
+                    float bx = 0;
+                    float by = 0;
+                    float bz = 0;
+                    outA->getPointFast(i, ax, ay, az);
+                    outB->getPointFast(i, bx, by, bz);
+                    ASSERT_EQUAL_(ax, bx);
+                    ASSERT_EQUAL_(ay, by);
+                    ASSERT_EQUAL_(az, bz);
+                }
+                std::cout << "[Test Passed] run-to-run determinism (" << outA->size()
+                          << " points)\n";
+            }
+
+            // (d) The merge itself, independently of how many workers TBB
+            //     happens to give this machine: binning a cloud in pieces and
+            //     merging must equal binning it in one go. The checks above
+            //     only exercise the merge when the run really is concurrent.
+            {
+                const auto voxelContents = [](const PointCloudToVoxelGrid& g)
+                {
+                    std::map<
+                        PointCloudToVoxelGrid::indices_t, std::vector<std::size_t>,
+                        PointCloudToVoxelGrid::IndicesHash>
+                        out;
+                    g.visit_voxels([&](const PointCloudToVoxelGrid::indices_t idx,
+                                       const PointCloudToVoxelGrid::voxel_t&  vxl)
+                                   { out[idx].assign(vxl.begin(), vxl.end()); });
+                    return out;
+                };
+
+                const size_t nPts = sweptCloud->size();
+
+                // Both backing map types, which must also agree with each
+                // other: the voxel contents are what the canonical ordering is
+                // built from, so they cannot depend on the container.
+                std::map<
+                    PointCloudToVoxelGrid::indices_t, std::vector<std::size_t>,
+                    PointCloudToVoxelGrid::IndicesHash>
+                    contentsPerMapType[2];
+
+                for (int useRobinMap = 0; useRobinMap < 2; useRobinMap++)
+                {
+                    PointCloudToVoxelGrid whole;
+                    whole.setConfiguration(kVoxelSize, useRobinMap != 0);
+                    whole.processPointCloud(*sweptCloud);
+
+                    // Three arbitrary, unequal pieces, as parallel blocks would be:
+                    PointCloudToVoxelGrid pieces[3];
+                    const size_t          cuts[4] = {0, nPts / 7, nPts / 2, nPts};
+                    for (int i = 0; i < 3; i++)
+                    {
+                        pieces[i].setConfiguration(kVoxelSize, useRobinMap != 0);
+                        pieces[i].processPointCloud(*sweptCloud, cuts[i], cuts[i + 1] - cuts[i]);
+                    }
+
+                    PointCloudToVoxelGrid merged;
+                    merged.setConfiguration(kVoxelSize, useRobinMap != 0);
+                    for (const auto& p : pieces)
+                    {
+                        merged.mergeFrom(p);
+                    }
+                    merged.sortVoxelPointIndices();
+
+                    ASSERT_EQUAL_(merged.size(), whole.size());
+                    ASSERT_(voxelContents(merged) == voxelContents(whole));
+
+                    contentsPerMapType[useRobinMap] = voxelContents(merged);
+
+                    std::cout << "[Test Passed] mergeFrom() equals one-pass binning ("
+                              << merged.size() << " voxels, "
+                              << (useRobinMap ? "robin_map" : "std::map") << ")\n";
+                }
+
+                ASSERT_(contentsPerMapType[0] == contentsPerMapType[1]);
+                std::cout << "[Test Passed] merged voxels do not depend on the map type\n";
             }
         }
 
