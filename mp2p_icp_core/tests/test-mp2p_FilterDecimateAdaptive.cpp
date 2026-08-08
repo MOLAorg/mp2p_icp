@@ -26,6 +26,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <map>
+#include <vector>
 
 using namespace mp2p_icp_filters;
 
@@ -310,6 +312,53 @@ int main()
                 }
                 std::cout << "[Test Passed] run-to-run determinism (" << outA->size()
                           << " points)\n";
+            }
+
+            // (d) The merge itself, independently of how many workers TBB
+            //     happens to give this machine: binning a cloud in pieces and
+            //     merging must equal binning it in one go. The checks above
+            //     only exercise the merge when the run really is concurrent.
+            {
+                const auto voxelContents = [](const PointCloudToVoxelGrid& g)
+                {
+                    std::map<
+                        PointCloudToVoxelGrid::indices_t, std::vector<std::size_t>,
+                        PointCloudToVoxelGrid::IndicesHash>
+                        out;
+                    g.visit_voxels([&](const PointCloudToVoxelGrid::indices_t idx,
+                                       const PointCloudToVoxelGrid::voxel_t&  vxl)
+                                   { out[idx].assign(vxl.begin(), vxl.end()); });
+                    return out;
+                };
+
+                const size_t nPts = sweptCloud->size();
+
+                PointCloudToVoxelGrid whole;
+                whole.setConfiguration(kVoxelSize, true);
+                whole.processPointCloud(*sweptCloud);
+
+                // Three arbitrary, unequal pieces, as parallel blocks would be:
+                PointCloudToVoxelGrid pieces[3];
+                const size_t          cuts[4] = {0, nPts / 7, nPts / 2, nPts};
+                for (int i = 0; i < 3; i++)
+                {
+                    pieces[i].setConfiguration(kVoxelSize, true);
+                    pieces[i].processPointCloud(*sweptCloud, cuts[i], cuts[i + 1] - cuts[i]);
+                }
+
+                PointCloudToVoxelGrid merged;
+                merged.setConfiguration(kVoxelSize, true);
+                for (const auto& p : pieces)
+                {
+                    merged.mergeFrom(p);
+                }
+                merged.sortVoxelPointIndices();
+
+                ASSERT_EQUAL_(merged.size(), whole.size());
+                ASSERT_(voxelContents(merged) == voxelContents(whole));
+
+                std::cout << "[Test Passed] mergeFrom() equals one-pass binning (" << merged.size()
+                          << " voxels)\n";
             }
         }
 
