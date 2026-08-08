@@ -259,7 +259,8 @@ int main()
             {
                 auto out = runFilter(kSweeps, kColumns);
                 ASSERT_EQUAL_(out->size(), static_cast<size_t>(kColumns));
-                std::cout << "[Test Passed] minimum_input_points_per_voxel under parallel binning\n";
+                std::cout
+                    << "[Test Passed] minimum_input_points_per_voxel under parallel binning\n";
             }
 
             // (b) Asking for exactly one point per voxel must give one point
