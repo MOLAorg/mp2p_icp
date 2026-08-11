@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/MatchingDistanceProfile.h>
 #include <mp2p_icp/point_with_cov_pair_t.h>
 #include <mrpt/math/CMatrixFixed.h>
 #include <mrpt/poses/CPose3D.h>
@@ -46,7 +47,8 @@ class NearestPointWithCovCapable
      */
     virtual void nn_search_cov2cov(
         const NearestPointWithCovCapable& localMap, const mrpt::poses::CPose3D& localMapPose,
-        const float max_search_distance, MatchedPointWithCovList& outPairings) const = 0;
+        const MatchingDistanceProfile& matchingDistance,
+        MatchedPointWithCovList&       outPairings) const = 0;
 
     [[nodiscard]] virtual std::size_t point_count() const = 0;
 };
