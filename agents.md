@@ -155,13 +155,11 @@ All components are `Parameterizable` — configured via YAML at runtime, loaded 
 `Matcher_Cov2Cov`'s acceptance criteria live in `mp2p_icp::MatchingDistanceProfile`
 (`mp2p_icp_map/include/mp2p_icp/MatchingDistanceProfile.h`), passed to
 `NearestPointWithCovCapable::nn_search_cov2cov()`. It is implicitly constructible from a
-`float`, so a flat threshold stays the default and the fast path. Two opt-in refinements:
-a logistic range-adaptive distance (`thresholdFar`/`thresholdKneeRange`/
-`thresholdTransitionWidth`) and a first-to-second-nearest ambiguity test
-(`firstToSecondDistanceMin`/`firstToSecondMinRange`). All are declared with
-`DECLARE_PARAMETER_OPT`, not `MCP_LOAD_OPT`, so they accept dynamic formulas such as
-`"3.0*ADAPTIVE_THRESHOLD_SIGMA"`; a static load would silently truncate the string at the
-first non-numeric character.
+`float`, so a flat threshold stays the default and the fast path. Opt-in refinement: a
+logistic range-adaptive distance (`thresholdFar`/`thresholdKneeRange`/
+`thresholdTransitionWidth`). These are declared with `DECLARE_PARAMETER_OPT`, not
+`MCP_LOAD_OPT`, so they accept dynamic formulas such as `"3.0*ADAPTIVE_THRESHOLD_SIGMA"`;
+a static load would silently truncate the string at the first non-numeric character.
 
 ---
 

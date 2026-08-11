@@ -76,24 +76,6 @@ class Matcher_Cov2Cov : public Matcher
      * `thresholdFar` is set. */
     float thresholdTransitionWidth = 5.0f;
 
-    /** Optional ambiguity test: reject a correspondence unless the
-     * second-nearest map point is at least this many times farther than the
-     * nearest one. Anything <= 1 disables it (the default), since the ratio
-     * is >= 1 by construction. Typical useful values are small, ~1.1-1.3:
-     * in an accumulated point cloud the runner-up usually lies on the same
-     * surface as the winner, so the ratio sits just above 1 even for a
-     * perfectly good match.
-     *
-     * Same quantity as `Matcher_Adaptive::firstToSecondDistanceMax`, bounded
-     * from the opposite side. */
-    float firstToSecondDistanceMin = 0.0f;
-
-    /** Minimum query-point range [m] at which the ambiguity test is applied;
-     * closer points are accepted on distance alone. Default 0 (everywhere).
-     * Set it to `thresholdKneeRange` to aim the test at the widened far-range
-     * acceptance window only, leaving the dense near field untouched. */
-    float firstToSecondMinRange = 0.0f;
-
     /** Common parameters to all derived classes:
      *
      * - `threshold`: Inliers distance threshold [meters][mandatory]
@@ -102,9 +84,6 @@ class Matcher_Cov2Cov : public Matcher
      *   Optional range-adaptive matching distance, see the field docs above.
      *   Like `threshold`, they accept dynamic formulas, e.g.
      *   "3.0*ADAPTIVE_THRESHOLD_SIGMA".
-     *
-     * - `firstToSecondDistanceMin`: Optional ambiguity test, see the field
-     *   doc above. Also accepts dynamic formulas.
      *
      * - `layerMatches`: Optional map of layer names to match.
      *  Refer to example YAML files.

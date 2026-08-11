@@ -98,9 +98,6 @@ MatchingDistanceProfile Matcher_Cov2Cov::matchingDistanceProfile() const
             threshold, thresholdFar, thresholdKneeRange, thresholdTransitionWidth);
     }
 
-    p.firstToSecondDistanceMin = firstToSecondDistanceMin;
-    p.firstToSecondMinRange    = firstToSecondMinRange;
-
     return p;
 }
 
@@ -116,8 +113,6 @@ void Matcher_Cov2Cov::initialize(const mrpt::containers::yaml& params)
     DECLARE_PARAMETER_OPT(params, thresholdFar);
     DECLARE_PARAMETER_OPT(params, thresholdKneeRange);
     DECLARE_PARAMETER_OPT(params, thresholdTransitionWidth);
-    DECLARE_PARAMETER_OPT(params, firstToSecondDistanceMin);
-    DECLARE_PARAMETER_OPT(params, firstToSecondMinRange);
     MCP_LOAD_OPT(params, bounding_box_intersection_check_epsilon);
 
     if (params.has("layerMatches"))

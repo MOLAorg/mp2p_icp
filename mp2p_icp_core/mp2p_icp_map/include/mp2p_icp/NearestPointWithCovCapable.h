@@ -64,7 +64,7 @@ class NearestPointWithCovCapable
         const float max_search_distance, MatchedPointWithCovList& outPairings) const = 0;
 
     /** As above, but with the full acceptance criteria: an optionally range-adaptive
-     * matching distance and an optional ambiguity test.
+     * matching distance.
      *
      * Not pure: the default implementation forwards to the flat overload above, so an
      * implementation predating this API keeps working. Since such an implementation
@@ -76,12 +76,11 @@ class NearestPointWithCovCapable
         const MatchingDistanceProfile& matchingDistance, MatchedPointWithCovList& outPairings) const
     {
         ASSERTMSG_(
-            matchingDistance.isFlat() && !matchingDistance.hasAmbiguityGate(),
+            matchingDistance.isFlat(),
             "This map class only implements the flat-threshold nn_search_cov2cov() "
-            "overload, so it cannot honor a range-adaptive matching distance or an "
-            "ambiguity gate. Rebuild against a map implementation that overrides the "
-            "MatchingDistanceProfile overload, or keep the matcher's thresholdFar and "
-            "firstToSecondDistanceMin at their defaults.");
+            "overload, so it cannot honor a range-adaptive matching distance. Rebuild "
+            "against a map implementation that overrides the MatchingDistanceProfile "
+            "overload, or keep the matcher's thresholdFar at its default.");
 
         nn_search_cov2cov(localMap, localMapPose, matchingDistance.near, outPairings);
     }
