@@ -211,6 +211,54 @@ void test_empty_maps()
     ASSERT_EQUAL_(pairs.paired_pt2ln.size(), 0);
 }
 
+// `distanceThreshold` must accept a formula that is re-evaluated on every
+// ParameterSource::realize(), not only parsed once at initialization time.
+void test_dynamic_distance_threshold()
+{
+    auto globalPts = createLineGlobalMap();
+
+    // A single local point clearly farther than 0.3 m and closer than 1.5 m
+    // from the global line:
+    auto localPts = createPointsMap({{5.0f, 0.6f, 0.0f}});
+
+    metric_map_t pcGlobal;
+    pcGlobal.layers["raw"] = globalPts;
+
+    metric_map_t pcLocal;
+    pcLocal.layers["raw"] = localPts;
+
+    Matcher_Point2Line     matcher;
+    mrpt::containers::yaml params;
+    params["distanceThreshold"]  = "1.0*MATCH_THRESHOLD";
+    params["knn"]                = 4;
+    params["lineEigenThreshold"] = 0.01;
+    params["minimumLinePoints"]  = 4;
+
+    matcher.initialize(params);
+
+    ParameterSource globalParams;
+    globalParams.attach(matcher);
+
+    const auto lambdaCountPairings = [&]()
+    {
+        Pairings   pairs;
+        MatchState ms(pcGlobal, pcLocal);
+        matcher.match(pcGlobal, pcLocal, {0, 0, 0, 0, 0, 0}, {}, ms, pairs);
+        return pairs.paired_pt2ln.size();
+    };
+
+    // Too tight for the point at 0.6 m:
+    globalParams.updateVariable("MATCH_THRESHOLD", 0.3);
+    globalParams.realize();
+    ASSERT_EQUAL_(lambdaCountPairings(), 0U);
+
+    // Loose enough now. This is the assertion that fails if the formula was
+    // truncated to its leading numeric literal at load time:
+    globalParams.updateVariable("MATCH_THRESHOLD", 1.5);
+    globalParams.realize();
+    ASSERT_GT_(lambdaCountPairings(), 0U);
+}
+
 void test_line_direction()
 {
     // Create global map with line segments (as point cloud)
@@ -273,6 +321,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_line_direction();
         std::cout << "test_line_direction: Success ✅" << std::endl;
+
+        test_dynamic_distance_threshold();
+        std::cout << "test_dynamic_distance_threshold: Success ✅" << std::endl;
 
         return 0;
     }

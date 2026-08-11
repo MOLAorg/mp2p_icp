@@ -55,8 +55,16 @@ class Matcher_Adaptive : public Matcher_Points_Base
 
     /** Parameters:
      * - `confidenceInterval`: Inliers top-confidence interval. (0-1)
-     * - `firstToSecondDistanceMax`:
-     * - `absoluteMaxSearchDistance`:
+     * - `firstToSecondDistanceMax`: Maximum ratio between the 1st and 2nd
+     *   closest pairing errors.
+     * - `absoluteMaxSearchDistance`: Maximum neighbor search radius [meters]
+     * - `minimumCorrDist`: Lower bound for the adaptive inliers distance
+     *   [meters][optional]
+     * - `planeMinimumDistance`: Maximum point-to-plane distance to accept a
+     *   plane pairing [meters][optional]
+     *
+     * The three distance parameters above accept dynamic formulas, e.g.
+     * "2.0*ADAPTIVE_THRESHOLD_SIGMA".
      *
      * Plus: the parameters of Matcher_Points_Base::initialize()
      */

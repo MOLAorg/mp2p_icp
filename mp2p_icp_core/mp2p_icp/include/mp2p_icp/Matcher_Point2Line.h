@@ -43,7 +43,8 @@ class Matcher_Point2Line : public Matcher_Points_Base
     Matcher_Point2Line();
 
     /** Parameters:
-     * - `distanceThreshold`: Inliers distance threshold [meters][mandatory]
+     * - `distanceThreshold`: Inliers distance threshold [meters][mandatory].
+     *   Accepts dynamic formulas, e.g. "2.0*ADAPTIVE_THRESHOLD_SIGMA".
      * - `knn`: Number of neighbors to look for [mandatory]
      * - `minimumLinePoints`: Minimum number of found points [mandatory]
      * - `lineEigenThreshold`: maximum e0/e2 and e1/e2 ratio [mandatory]

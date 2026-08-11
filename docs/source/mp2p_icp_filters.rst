@@ -323,6 +323,8 @@ Useful for edge extraction (LOAM-style).
 
 * **max\_gap** (:cpp:type:`float`, default: `1.00f`): The maximum gap distance between a point and its neighbor (m).
 
+The three numeric parameters above accept dynamic formulas, e.g. `"0.02*ESTIMATED_OBSERVATION_RADIUS"`.
+
 .. code-block:: yaml
 
     filters:
