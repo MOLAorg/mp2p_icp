@@ -23,6 +23,13 @@
 #include <algorithm>
 #include <cmath>
 
+/** Feature-detection macro for downstream packages: defined only by mp2p_icp
+ * releases that have MatchingDistanceProfile and the corresponding
+ * `NearestPointWithCovCapable::nn_search_cov2cov()` overload. Guard with
+ * `__has_include(<mp2p_icp/MatchingDistanceProfile.h>)` first, since an older
+ * release does not ship this header at all. */
+#define MP2P_ICP_HAS_MATCHING_DISTANCE_PROFILE 1
+
 namespace mp2p_icp
 {
 /** The correspondence-acceptance criteria used by
