@@ -35,13 +35,17 @@ IMPLEMENTS_MRPT_OBJECT(FilterCurvature, mp2p_icp_filters::FilterBase, mp2p_icp_f
 
 using namespace mp2p_icp_filters;
 
-void FilterCurvature::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
+void FilterCurvature::Parameters::load_from_yaml(
+    const mrpt::containers::yaml& c, FilterCurvature& parent)
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
 
-    MCP_LOAD_REQ(c, max_cosine);
-    MCP_LOAD_REQ(c, min_clearance);
-    MCP_LOAD_REQ(c, max_gap);
+    // Declared (not statically loaded) so they accept dynamic formulas, as the
+    // equivalent parameters of GeneratorEdgesFromCurvature already do. A static
+    // load silently truncates an expression at the first non-numeric character.
+    DECLARE_PARAMETER_IN_REQ(c, max_cosine, parent);
+    DECLARE_PARAMETER_IN_REQ(c, min_clearance, parent);
+    DECLARE_PARAMETER_IN_REQ(c, max_gap, parent);
 
     MCP_LOAD_OPT(c, output_layer_larger_curvature);
     MCP_LOAD_OPT(c, output_layer_smaller_curvature);
@@ -53,12 +57,14 @@ FilterCurvature::FilterCurvature() = default;
 void FilterCurvature::initialize_filter(const mrpt::containers::yaml& c)
 {
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params.load_from_yaml(c);
+    params.load_from_yaml(c, *this);
 }
 
 void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
 {
     MRPT_START
+
+    checkAllParametersAreRealized();
 
     // In:
     const auto& pcPtr = inOut.point_layer(params.input_pointcloud_layer);

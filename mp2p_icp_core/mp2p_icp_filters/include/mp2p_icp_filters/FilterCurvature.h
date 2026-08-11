@@ -46,7 +46,7 @@ class FilterCurvature : public mp2p_icp_filters::FilterBase
 
     struct Parameters
     {
-        void load_from_yaml(const mrpt::containers::yaml& c);
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterCurvature& parent);
 
         std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
@@ -62,9 +62,11 @@ class FilterCurvature : public mp2p_icp_filters::FilterBase
          * are stored here. */
         std::string output_layer_other;
 
+        /** These three accept dynamic formulas, e.g.
+         *  "0.02*ESTIMATED_OBSERVATION_RADIUS". */
         float max_cosine    = 0.5f;
-        float min_clearance = 0.02f;
-        float max_gap       = 1.00f;
+        float min_clearance = 0.02f;  //!< [meters]
+        float max_gap       = 1.00f;  //!< [meters]
     };
 
     /** Algorithm parameters */
