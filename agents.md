@@ -250,6 +250,11 @@ Tests use gtest. Each filter, matcher, solver, and serializer has its own test f
 - Implementations in `<module>/src/`
 - All classes registered with MRPT's RTTI: `DEFINE_MRPT_OBJECT` / `IMPLEMENTS_MRPT_OBJECT`
 - Parameters follow the `Parameterizable` interface: `initialize(mrpt::containers::yaml)`
+- Load numeric parameters that users may want to write as a formula (distances, thresholds,
+  radii, kernel scales) with `DECLARE_PARAMETER_{REQ,OPT}` / `DECLARE_PARAMETER_IN_{REQ,OPT}`,
+  never with `MCP_LOAD_{REQ,OPT}`: the latter is a static YAML read that silently truncates
+  an expression such as `"2.0*ADAPTIVE_THRESHOLD_SIGMA"` at its first non-numeric character.
+  Reserve `MCP_LOAD_*` for strings, enums, booleans, and counts.
 - Always use braces `{}` for all `if`/`for`/`while` blocks
 - Coordinate frame naming: `T_A_to_B` = pose of {B} as seen from {A}; `composePoint` transforms FROM the local (B) frame TO the reference (A) frame
 - Don't use long hyphens. Use American spelling.

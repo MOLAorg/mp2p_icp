@@ -36,8 +36,13 @@ void Matcher_Adaptive::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_REQ(params, confidenceInterval);
     MCP_LOAD_REQ(params, firstToSecondDistanceMax);
 
-    MCP_LOAD_REQ(params, absoluteMaxSearchDistance);
-    MCP_LOAD_OPT(params, minimumCorrDist);
+    // The parameters below are distances in meters, so they must be declared
+    // (not statically loaded) to accept dynamic formulas, just like the
+    // equivalent parameters of the other distance-based matchers. A static
+    // load silently truncates an expression such as
+    // "2.0*ADAPTIVE_THRESHOLD_SIGMA" at the first non-numeric character.
+    DECLARE_PARAMETER_REQ(params, absoluteMaxSearchDistance);
+    DECLARE_PARAMETER_OPT(params, minimumCorrDist);
 
     MCP_LOAD_REQ(params, enableDetectPlanes);
 
@@ -45,7 +50,7 @@ void Matcher_Adaptive::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_OPT(params, planeMinimumFoundPoints);
     MCP_LOAD_OPT(params, planeEigenThreshold);
     MCP_LOAD_OPT(params, maxPt2PtCorrespondences);
-    MCP_LOAD_OPT(params, planeMinimumDistance);
+    DECLARE_PARAMETER_OPT(params, planeMinimumDistance);
 
     ASSERT_LT_(confidenceInterval, 1.0);
     ASSERT_GT_(confidenceInterval, 0.0);
@@ -62,6 +67,8 @@ void Matcher_Adaptive::implMatchOneLayer(
     const layer_name_t& localName, Pairings& out) const
 {
     MRPT_START
+
+    checkAllParametersAreRealized();
 
     const mrpt::maps::NearestNeighborsCapable& nnGlobal =
         *mp2p_icp::MapToNN(pcGlobalMap, true /*throw if cannot convert*/);

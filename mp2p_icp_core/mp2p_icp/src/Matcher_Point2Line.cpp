@@ -36,7 +36,11 @@ void Matcher_Point2Line::initialize(const mrpt::containers::yaml& params)
 {
     Matcher_Points_Base::initialize(params);
 
-    MCP_LOAD_REQ(params, distanceThreshold);
+    // Must be declared (not statically loaded) so it accepts dynamic formulas,
+    // just like the equivalent parameter of the other distance-based matchers.
+    // A static load silently truncates an expression such as
+    // "2.0*ADAPTIVE_THRESHOLD_SIGMA" at the first non-numeric character.
+    DECLARE_PARAMETER_REQ(params, distanceThreshold);
     MCP_LOAD_REQ(params, knn);
     MCP_LOAD_REQ(params, lineEigenThreshold);
     MCP_LOAD_REQ(params, minimumLinePoints);
@@ -50,6 +54,8 @@ void Matcher_Point2Line::implMatchOneLayer(
     Pairings& out) const
 {
     MRPT_START
+
+    checkAllParametersAreRealized();
 
     const mrpt::maps::NearestNeighborsCapable& nnGlobal =
         *mp2p_icp::MapToNN(pcGlobalMap, true /*throw if cannot convert*/);
