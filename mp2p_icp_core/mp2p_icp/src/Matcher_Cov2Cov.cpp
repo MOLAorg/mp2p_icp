@@ -80,11 +80,25 @@ bool Matcher_Cov2Cov::impl_match(
         out.potential_pairings += lcLayer->point_count();
 
         // matcher implementation:
-        glLayer->nn_search_cov2cov(*lcLayer, localPose, this->threshold, out.paired_cov2cov);
+        glLayer->nn_search_cov2cov(
+            *lcLayer, localPose, matchingDistanceProfile(), out.paired_cov2cov);
     }
 
     return true;
     MRPT_END
+}
+
+MatchingDistanceProfile Matcher_Cov2Cov::matchingDistanceProfile() const
+{
+    MatchingDistanceProfile p(threshold);  // flat, the default
+
+    if (thresholdFar > 0 && thresholdFar != threshold)
+    {
+        p = MatchingDistanceProfile(
+            threshold, thresholdFar, thresholdKneeRange, thresholdTransitionWidth);
+    }
+
+    return p;
 }
 
 void Matcher_Cov2Cov::initialize(const mrpt::containers::yaml& params)
@@ -92,6 +106,13 @@ void Matcher_Cov2Cov::initialize(const mrpt::containers::yaml& params)
     Matcher::initialize(params);
 
     DECLARE_PARAMETER_REQ(params, threshold);
+    // These must be declared (not MCP_LOAD_OPT'd) so they accept dynamic
+    // formulas just like `threshold` does. A plain static load silently
+    // truncates an expression such as "3.0*ADAPTIVE_THRESHOLD_SIGMA" at the
+    // first non-numeric character, yielding a fixed value in meters.
+    DECLARE_PARAMETER_OPT(params, thresholdFar);
+    DECLARE_PARAMETER_OPT(params, thresholdKneeRange);
+    DECLARE_PARAMETER_OPT(params, thresholdTransitionWidth);
     MCP_LOAD_OPT(params, bounding_box_intersection_check_epsilon);
 
     if (params.has("layerMatches"))

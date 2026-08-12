@@ -20,6 +20,7 @@
 #pragma once
 
 #include <mp2p_icp/Matcher.h>
+#include <mp2p_icp/MatchingDistanceProfile.h>
 #include <mrpt/math/TPoint3D.h>
 
 #include <cstdlib>
@@ -52,12 +53,37 @@ class Matcher_Cov2Cov : public Matcher
      * enlarged for checking the feasibility of pairings to exist. */
     float bounding_box_intersection_check_epsilon = 0.20f;
 
-    /** Inliers distance threshold [meters] */
+    /** Inliers distance threshold [meters]. Also the near-range value of the
+     * matching distance when `thresholdFar` is set (see below). */
     float threshold = 0.40f;
+
+    /** Optional: matching distance at long range [meters]. Leave at 0 (the
+     * default) for a flat threshold, i.e. today's behavior. When positive
+     * and different from `threshold`, the matching distance becomes a
+     * logistic function of the query point's range, transitioning from
+     * `threshold` to `thresholdFar` around `thresholdKneeRange`. Map point
+     * density falls off with range, so a flat threshold is loose near the
+     * sensor and tight far away; see
+     * `~/plans/icp-bench-range-adaptive-matching.md` for the measurement
+     * behind this option. */
+    float thresholdFar = 0.0f;
+
+    /** Range [meters] at which the near/far transition is centered. Only
+     * used when `thresholdFar` is set. */
+    float thresholdKneeRange = 15.0f;
+
+    /** Width [meters] of the near/far logistic transition. Only used when
+     * `thresholdFar` is set. */
+    float thresholdTransitionWidth = 5.0f;
 
     /** Common parameters to all derived classes:
      *
      * - `threshold`: Inliers distance threshold [meters][mandatory]
+     *
+     * - `thresholdFar`, `thresholdKneeRange`, `thresholdTransitionWidth`:
+     *   Optional range-adaptive matching distance, see the field docs above.
+     *   Like `threshold`, they accept dynamic formulas, e.g.
+     *   "3.0*ADAPTIVE_THRESHOLD_SIGMA".
      *
      * - `layerMatches`: Optional map of layer names to match.
      *  Refer to example YAML files.
@@ -67,6 +93,10 @@ class Matcher_Cov2Cov : public Matcher
      * checking the feasibility of pairings to exist.
      */
     void initialize(const mrpt::containers::yaml& params) override;
+
+    /** The effective matching-distance profile built from `threshold` and,
+     * if set, `thresholdFar`/`thresholdKneeRange`/`thresholdTransitionWidth`. */
+    [[nodiscard]] MatchingDistanceProfile matchingDistanceProfile() const;
 
    protected:
     bool impl_match(

@@ -19,6 +19,7 @@
  * @date   Jan 25, 2026
  */
 
+#include <mp2p_icp/Matcher_Cov2Cov.h>
 #include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/Results.h>
 #include <mp2p_icp/covariance.h>
@@ -574,6 +575,60 @@ void test_cov2cov_large_scale()
 }  // namespace
 
 // ===========================================================================
+//  Matcher_Cov2Cov acceptance-criteria parameters
+// ===========================================================================
+
+/** The optional range-adaptive matching-distance knobs must (a) leave the
+ *  default profile flat, and (b) be declared as *dynamic* parameters, so that
+ *  a formula such as "2.0*SIGMA" is evaluated rather than silently truncated
+ *  at the first non-numeric character by a static YAML load.
+ */
+void test_cov2cov_matcher_acceptance_params()
+{
+    // (a) Defaults: flat distance.
+    {
+        mp2p_icp::Matcher_Cov2Cov m;
+        mrpt::containers::yaml    p;
+        p["threshold"] = 0.4;
+        m.initialize(p);
+
+        const auto prof = m.matchingDistanceProfile();
+        ASSERT_(prof.isFlat());
+        ASSERT_NEAR_(prof.near, 0.4, 1e-6);
+    }
+
+    // (b) All of them accept formulas and re-evaluate when the source changes.
+    {
+        mp2p_icp::Matcher_Cov2Cov m;
+        mrpt::containers::yaml    p;
+        p["threshold"]                = "2.0*SIGMA";
+        p["thresholdFar"]             = "5.0*SIGMA";
+        p["thresholdKneeRange"]       = 25.0;
+        p["thresholdTransitionWidth"] = 5.0;
+        m.initialize(p);
+
+        mp2p_icp::ParameterSource globalParams;
+        globalParams.attach(m);
+
+        globalParams.updateVariable("SIGMA", 0.1);
+        globalParams.realize();
+
+        auto prof = m.matchingDistanceProfile();
+        ASSERT_NEAR_(prof.near, 0.2, 1e-6);
+        ASSERT_NEAR_(prof.far, 0.5, 1e-6);
+        ASSERT_(!prof.isFlat());
+
+        // A static load would have frozen these at their first value:
+        globalParams.updateVariable("SIGMA", 0.2);
+        globalParams.realize();
+
+        prof = m.matchingDistanceProfile();
+        ASSERT_NEAR_(prof.near, 0.4, 1e-6);
+        ASSERT_NEAR_(prof.far, 1.0, 1e-6);
+    }
+}
+
+// ===========================================================================
 //  Main
 // ===========================================================================
 
@@ -594,6 +649,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_cov2cov_empty_pairings();
         test_cov2cov_solver_covariance_consistency();
         test_cov2cov_large_scale();
+        test_cov2cov_matcher_acceptance_params();
 
         std::cout << "\n========================================\n";
         std::cout << "All cov2cov tests PASSED!\n";
