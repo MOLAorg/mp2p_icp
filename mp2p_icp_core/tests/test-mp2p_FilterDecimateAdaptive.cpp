@@ -19,6 +19,7 @@
  * @date   Jan 27, 2026
  */
 
+#include <mp2p_icp/Parameterizable.h>
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterDecimateAdaptive.h>
 #include <mrpt/core/exceptions.h>
@@ -140,6 +141,134 @@ int main()
             ASSERT_(didThrow);
 
             std::cout << "[Test Passed] Mutually-exclusive output parameters check\n";
+        }
+
+        // ---------------------------------------------------------
+        // Test: the point budget and the voxel size accept formulas
+        //
+        // Loading these through the plain YAML-to-number path parses up to the
+        // first non-numeric character and silently keeps the truncated value,
+        // so a budget written as an expression would quietly become something
+        // else entirely. Both the single-output and the 'outputs' forms are
+        // covered, since they take different code paths.
+        // ---------------------------------------------------------
+        {
+            mp2p_icp::ParameterSource ps;
+            ps.updateVariable("SCENE_RADIUS", 20.0);
+
+            FilterDecimateAdaptive filter;
+            mrpt::containers::yaml p;
+            p["input_pointcloud_layer"]         = "raw";
+            p["minimum_input_points_per_voxel"] = 1;
+            p["voxel_size"]                     = "0.25*2";  // -> 0.5
+            p["outputs"]                        = mrpt::containers::yaml::Sequence();
+            p["outputs"].push_back(mrpt::containers::yaml::Map(
+                {{"output_pointcloud_layer", "expr_out_map"},
+                 {"desired_output_point_count", "25*SCENE_RADIUS"}}));  // -> 500
+            p["outputs"].push_back(mrpt::containers::yaml::Map(
+                {{"output_pointcloud_layer", "expr_out_icp"},
+                 {"desired_output_point_count", "150"}}));
+
+            filter.initialize(p);
+            filter.attachToParameterSource(ps);
+            ps.realize();
+            filter.filter(map);
+
+            ASSERT_EQUAL_(filter.params.voxel_size, 0.5f);
+            ASSERT_EQUAL_(filter.params.outputs.at(0).desired_output_point_count, 500U);
+            ASSERT_EQUAL_(filter.params.outputs.at(1).desired_output_point_count, 150U);
+
+            auto outMap = map.layer<mrpt::maps::CPointsMap>("expr_out_map");
+            auto outIcp = map.layer<mrpt::maps::CPointsMap>("expr_out_icp");
+            ASSERT_(outMap);
+            ASSERT_(outIcp);
+            ASSERT_NEAR_(outMap->size(), 500, 20);
+            ASSERT_NEAR_(outIcp->size(), 150, 20);
+
+            // The same variable, changed, must move the budget:
+            ps.updateVariable("SCENE_RADIUS", 8.0);
+            ps.realize();
+            ASSERT_EQUAL_(filter.params.outputs.at(0).desired_output_point_count, 200U);
+
+            std::cout << "[Test Passed] Formula-valued budget and voxel size\n";
+        }
+
+        // ---------------------------------------------------------
+        // Test: single-output form, formula budget
+        // ---------------------------------------------------------
+        {
+            mp2p_icp::ParameterSource ps;
+            ps.updateVariable("SCENE_RADIUS", 12.0);
+
+            FilterDecimateAdaptive filter;
+            mrpt::containers::yaml p;
+            p["input_pointcloud_layer"]         = "raw";
+            p["output_pointcloud_layer"]        = "expr_single_out";
+            p["desired_output_point_count"]     = "10*SCENE_RADIUS";  // -> 120
+            p["voxel_size"]                     = 0.5f;
+            p["minimum_input_points_per_voxel"] = 1;
+
+            filter.initialize(p);
+            filter.attachToParameterSource(ps);
+            ps.realize();
+            filter.filter(map);
+
+            ASSERT_EQUAL_(filter.params.outputs.at(0).desired_output_point_count, 120U);
+
+            auto out = map.layer<mrpt::maps::CPointsMap>("expr_single_out");
+            ASSERT_(out);
+            ASSERT_NEAR_(out->size(), 120, 20);
+
+            std::cout << "[Test Passed] Formula-valued budget, single-output form\n";
+        }
+
+        // ---------------------------------------------------------
+        // Test: maximum_voxel_stride bounds the sampling ratio
+        //
+        // The 10k-point raw cloud fills a 10x10 m plane; at 0.5 m voxels that
+        // is 20x20 = 400 occupied cells. An absolute budget of 100 samples one
+        // cell in four; asking for a stride of 1 must instead visit all 400,
+        // and asking for 2 must visit half of them.
+        // ---------------------------------------------------------
+        {
+            const auto countFor = [&](double maxStride, unsigned int budget, const char* layer)
+            {
+                mp2p_icp::metric_map_t m;
+                m.layers["raw"] = pc;
+
+                FilterDecimateAdaptive filter;
+                mrpt::containers::yaml p;
+                p["input_pointcloud_layer"]         = "raw";
+                p["output_pointcloud_layer"]        = layer;
+                p["desired_output_point_count"]     = budget;
+                p["voxel_size"]                     = 0.5f;
+                p["minimum_input_points_per_voxel"] = 1;
+                if (maxStride > 0)
+                {
+                    p["maximum_voxel_stride"] = maxStride;
+                }
+
+                filter.initialize(p);
+                filter.filter(m);
+                return m.layer<mrpt::maps::CPointsMap>(layer)->size();
+            };
+
+            const size_t nCells = countFor(1.0, 1, "stride_all");
+            ASSERT_EQUAL_(nCells, 400U);
+
+            // Off (the default) leaves the absolute budget alone:
+            ASSERT_EQUAL_(countFor(0.0, 100, "stride_off"), 100U);
+
+            // On, and binding: the floor is raised to full coverage.
+            ASSERT_EQUAL_(countFor(1.0, 100, "stride_1"), nCells);
+
+            // On, one cell in two:
+            ASSERT_EQUAL_(countFor(2.0, 100, "stride_2"), nCells / 2);
+
+            // On, but not binding: it only ever raises the count.
+            ASSERT_EQUAL_(countFor(2.0, 350, "stride_floor"), 350U);
+
+            std::cout << "[Test Passed] maximum_voxel_stride (" << nCells << " occupied cells)\n";
         }
 
         // ---------------------------------------------------------

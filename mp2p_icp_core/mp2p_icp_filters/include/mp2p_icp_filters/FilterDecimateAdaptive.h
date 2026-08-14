@@ -27,6 +27,7 @@
 #include <mrpt/core/pimpl.h>
 #include <mrpt/maps/CPointsMap.h>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -53,6 +54,15 @@ namespace mp2p_icp_filters
  *   DecimateMethod::VoxelAverage generates new points, so per-point fields
  *   (intensity, ring, timestamp, ...) are not propagated to the output.
  *
+ * The voxel walk uses a stride of `nVoxels/desired_output_point_count` and
+ * stops as soon as the requested count is reached, so a stride above 1 means
+ * that only one in every `stride` occupied cells is ever sampled: coverage is
+ * a fixed fraction of the scene, and which fraction depends on how many
+ * occupied cells the input happens to have. An absolute point count therefore
+ * expresses very different sampling densities on a small room and on an open
+ * road. Set OutputTarget::maximum_voxel_stride to bound that ratio instead,
+ * leaving the absolute count as a floor for sparse inputs.
+ *
  * When built with TBB the input is binned in parallel, but the resulting
  * per-thread grids are merged by voxel key before sampling, so the output does
  * not depend on the number of threads or on how the work was split.
@@ -75,15 +85,30 @@ class FilterDecimateAdaptive : public mp2p_icp_filters::FilterBase
     /** One requested output layer, with its own target point count. */
     struct OutputTarget
     {
-        void load_from_yaml(const mrpt::containers::yaml& c);
+        /** \param parent The filter the parameters belong to, so dynamic
+         *  (formula) parameters can be declared on it. */
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterDecimateAdaptive& parent);
 
-        std::string  output_pointcloud_layer;
-        unsigned int desired_output_point_count = 1000;
+        std::string output_pointcloud_layer;
+
+        /** Dynamic parameter: may be given as a formula, e.g.
+         *  "500 + 15*ESTIMATED_OBSERVATION_RADIUS". */
+        uint32_t desired_output_point_count = 1000;
+
+        /** If non-zero, raises the effective point count for this output until
+         *  the voxel walk visits one in every `maximum_voxel_stride` occupied
+         *  cells at most, that is, until
+         *  `nVoxels/count <= maximum_voxel_stride`. See the class docs.
+         *
+         *  It only ever raises the count, never lowers it, so
+         *  desired_output_point_count keeps acting as a floor for sparse
+         *  inputs. Dynamic parameter: may be given as a formula. */
+        double maximum_voxel_stride = 0;
     };
 
     struct Parameters
     {
-        void load_from_yaml(const mrpt::containers::yaml& c);
+        void load_from_yaml(const mrpt::containers::yaml& c, FilterDecimateAdaptive& parent);
 
         std::string input_pointcloud_layer = mp2p_icp::metric_map_t::PT_LAYER_RAW;
 
@@ -96,6 +121,7 @@ class FilterDecimateAdaptive : public mp2p_icp_filters::FilterBase
          * layer */
         unsigned int minimum_input_points_per_voxel = 1;
 
+        /** Dynamic parameter: may be given as a formula. */
         float voxel_size = 0.10;
 
         /** The method to pick what point will be used as representative of each
