@@ -28,6 +28,8 @@
 #include <mrpt/version.h>
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/enumerable_thread_specific.h>
@@ -336,9 +338,18 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         uint32_t pointCountTarget = target.desired_output_point_count;
         if (target.maximum_voxel_stride > 0)
         {
-            const auto fromStride = static_cast<uint32_t>(
-                std::ceil(static_cast<double>(nVoxels) / target.maximum_voxel_stride));
-            pointCountTarget = std::max(pointCountTarget, fromStride);
+            // The input is the hard ceiling: no method can emit more points
+            // than it was given. Clamping there also keeps an arbitrarily
+            // small stride from overflowing the conversion below. Strides
+            // under 1 are legitimate for the methods that can take several
+            // points out of one voxel, so they are not rejected.
+            const double cap = static_cast<double>(
+                std::min<std::size_t>(pc.size(), std::numeric_limits<uint32_t>::max()));
+            const double wanted =
+                std::ceil(static_cast<double>(nVoxels) / target.maximum_voxel_stride);
+
+            pointCountTarget =
+                std::max(pointCountTarget, static_cast<uint32_t>(std::min(wanted, cap)));
         }
 
         // Create if new: Append to existing layer, if already existed.

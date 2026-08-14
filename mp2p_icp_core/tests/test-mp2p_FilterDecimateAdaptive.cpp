@@ -268,7 +268,14 @@ int main()
             // On, but not binding: it only ever raises the count.
             ASSERT_EQUAL_(countFor(2.0, 350, "stride_floor"), 350U);
 
-            std::cout << "[Test Passed] maximum_voxel_stride (" << nCells << " occupied cells)\n";
+            // A stride small enough to ask for more points than exist must
+            // clamp at the input size rather than overflow the conversion:
+            const size_t clamped = countFor(1e-12, 100, "stride_tiny");
+            ASSERT_LE_(clamped, pc->size());
+            ASSERT_GT_(clamped, nCells);
+
+            std::cout << "[Test Passed] maximum_voxel_stride (" << nCells << " occupied cells, "
+                      << clamped << " when clamped at the input size)\n";
         }
 
         // ---------------------------------------------------------
