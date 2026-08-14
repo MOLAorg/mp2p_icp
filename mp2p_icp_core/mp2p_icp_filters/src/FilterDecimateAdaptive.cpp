@@ -28,6 +28,8 @@
 #include <mrpt/version.h>
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/enumerable_thread_specific.h>
@@ -38,13 +40,16 @@ IMPLEMENTS_MRPT_OBJECT(FilterDecimateAdaptive, mp2p_icp_filters::FilterBase, mp2
 
 using namespace mp2p_icp_filters;
 
-void FilterDecimateAdaptive::OutputTarget::load_from_yaml(const mrpt::containers::yaml& c)
+void FilterDecimateAdaptive::OutputTarget::load_from_yaml(
+    const mrpt::containers::yaml& c, FilterDecimateAdaptive& parent)
 {
     MCP_LOAD_REQ(c, output_pointcloud_layer);
-    MCP_LOAD_REQ(c, desired_output_point_count);
+    DECLARE_PARAMETER_IN_REQ(c, desired_output_point_count, parent);
+    DECLARE_PARAMETER_IN_OPT(c, maximum_voxel_stride, parent);
 }
 
-void FilterDecimateAdaptive::Parameters::load_from_yaml(const mrpt::containers::yaml& c)
+void FilterDecimateAdaptive::Parameters::load_from_yaml(
+    const mrpt::containers::yaml& c, FilterDecimateAdaptive& parent)
 {
     MCP_LOAD_REQ(c, input_pointcloud_layer);
 
@@ -59,19 +64,25 @@ void FilterDecimateAdaptive::Parameters::load_from_yaml(const mrpt::containers::
 
         auto cfgOutputs = c["outputs"];
         ASSERTMSG_(cfgOutputs.isSequence(), "'outputs' must be a YAML sequence.");
+        ASSERTMSG_(!cfgOutputs.asSequence().empty(), "'outputs' cannot be an empty sequence.");
 
+        // Sized up front, never grown: declaring a dynamic parameter stores a
+        // pointer to the target field, which a reallocation would dangle.
+        outputs.resize(cfgOutputs.asSequence().size());
+
+        size_t idx = 0;
         for (const auto& entry : cfgOutputs.asSequence())
         {
-            outputs.emplace_back().load_from_yaml(entry);
+            outputs.at(idx++).load_from_yaml(entry, parent);
         }
-        ASSERTMSG_(!outputs.empty(), "'outputs' cannot be an empty sequence.");
     }
     else
     {
-        outputs.emplace_back().load_from_yaml(c);
+        outputs.resize(1);
+        outputs.front().load_from_yaml(c, parent);
     }
 
-    MCP_LOAD_OPT(c, voxel_size);
+    DECLARE_PARAMETER_IN_OPT(c, voxel_size, parent);
     MCP_LOAD_OPT(c, minimum_input_points_per_voxel);
     MCP_LOAD_OPT(c, parallelization_grain_size);
     MCP_LOAD_OPT(c, decimate_method);
@@ -103,7 +114,7 @@ void FilterDecimateAdaptive::initialize_filter(const mrpt::containers::yaml& c)
     MRPT_START
 
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
-    params.load_from_yaml(c);
+    params.load_from_yaml(c, *this);
 
     MRPT_END
 }
@@ -322,6 +333,25 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
     for (const auto& target : _.outputs)
     {
+        // Bound the sampling ratio, if asked to: the absolute count then acts
+        // as a floor, so this can only add coverage, never remove it.
+        uint32_t pointCountTarget = target.desired_output_point_count;
+        if (target.maximum_voxel_stride > 0)
+        {
+            // The input is the hard ceiling: no method can emit more points
+            // than it was given. Clamping there also keeps an arbitrarily
+            // small stride from overflowing the conversion below. Strides
+            // under 1 are legitimate for the methods that can take several
+            // points out of one voxel, so they are not rejected.
+            const double cap = static_cast<double>(
+                std::min<std::size_t>(pc.size(), std::numeric_limits<uint32_t>::max()));
+            const double wanted =
+                std::ceil(static_cast<double>(nVoxels) / target.maximum_voxel_stride);
+
+            pointCountTarget =
+                std::max(pointCountTarget, static_cast<uint32_t>(std::min(wanted, cap)));
+        }
+
         // Create if new: Append to existing layer, if already existed.
         mrpt::maps::CPointsMap::Ptr outPc = GetOrCreatePointLayer(
             inOut, target.output_pointcloud_layer,
@@ -330,7 +360,9 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
             /* create cloud of the same type */
             pcPtr->GetRuntimeClass()->className);
 
-        outPc->reserve(outPc->size() + target.desired_output_point_count);
+        const size_t sizeBefore = outPc->size();
+
+        outPc->reserve(sizeBefore + pointCountTarget);
         outPc->registerPointFieldsFrom(pc);
 
         if (nVoxels == 0)
@@ -349,10 +381,9 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         }
 
         float voxelIdxIncrement = 1.0f;
-        if (nVoxels > target.desired_output_point_count)
+        if (nVoxels > pointCountTarget)
         {
-            voxelIdxIncrement =
-                static_cast<float>(nVoxels) / static_cast<float>(target.desired_output_point_count);
+            voxelIdxIncrement = static_cast<float>(nVoxels) / static_cast<float>(pointCountTarget);
         }
 
         const auto voxelIdxIncrement_frac =
@@ -361,7 +392,7 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         bool anyInsertInTheRound = false;
 
         std::size_t i_frac = 0;
-        while (outPc->size() < target.desired_output_point_count)
+        while (outPc->size() < pointCountTarget)
         {
             std::size_t i = i_frac >> FRACTIONARY_BIT_COUNT;
 
@@ -416,6 +447,16 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
             i_frac += voxelIdxIncrement_frac;
         }
+
+        // A stride above 1 means the budget is binding: only one in
+        // `voxelIdxIncrement` occupied cells is ever visited, so coverage is a
+        // stride-shaped subsample of the scene rather than the whole of it.
+        // Reported so a configuration can be checked against its input instead
+        // of assumed.
+        MRPT_LOG_DEBUG_FMT(
+            "output '%s': nVoxels=%zu budget=%u stride=%.2f emitted=%zu",
+            target.output_pointcloud_layer.c_str(), nVoxels, pointCountTarget, voxelIdxIncrement,
+            outPc->size() - sizeBefore);
     }
 
     MRPT_LOG_DEBUG_STREAM("used voxels=" << nTotalVoxels);
