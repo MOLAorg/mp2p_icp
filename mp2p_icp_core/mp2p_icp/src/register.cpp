@@ -22,6 +22,7 @@
 #include <mp2p_icp/LogRecord.h>
 #include <mp2p_icp/Matcher_Adaptive.h>
 #include <mp2p_icp/Matcher_Cov2Cov.h>
+#include <mp2p_icp/Matcher_NDT_Blend.h>
 #include <mp2p_icp/Matcher_Point2Line.h>
 #include <mp2p_icp/Matcher_Point2Plane.h>
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
@@ -55,6 +56,7 @@ MRPT_INITIALIZER(register_mp2p_icp)
     registerClass(CLASS_ID(mp2p_icp::Matcher));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Adaptive));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Cov2Cov));
+    registerClass(CLASS_ID(mp2p_icp::Matcher_NDT_Blend));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Point2Line));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Point2Plane));
     registerClass(CLASS_ID(mp2p_icp::Matcher_Points_DistanceThreshold));

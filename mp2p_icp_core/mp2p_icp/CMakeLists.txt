@@ -14,6 +14,7 @@ set(LIB_SRCS
   src/Matcher_Adaptive.cpp
   src/Matcher_Cov2Cov.cpp
   src/Matcher_Point2Line.cpp
+  src/Matcher_NDT_Blend.cpp
   src/Matcher_Point2Plane.cpp
   src/Matcher_Points_Base.cpp
   src/Matcher_Points_DistanceThreshold.cpp
@@ -50,6 +51,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/Matcher_Adaptive.h
   include/mp2p_icp/Matcher_Cov2Cov.h
   include/mp2p_icp/Matcher_Point2Line.h
+  include/mp2p_icp/Matcher_NDT_Blend.h
   include/mp2p_icp/Matcher_Point2Plane.h
   include/mp2p_icp/Matcher_Points_Base.h
   include/mp2p_icp/Matcher_Points_DistanceThreshold.h

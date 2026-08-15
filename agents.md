@@ -161,6 +161,27 @@ logistic range-adaptive distance (`thresholdFar`/`thresholdKneeRange`/
 `MCP_LOAD_OPT`, so they accept dynamic formulas such as `"3.0*ADAPTIVE_THRESHOLD_SIGMA"`;
 a static load would silently truncate the string at the first non-numeric character.
 
+`Matcher_NDT_Blend` is `Matcher_Point2Plane` with the `argmin` over candidate
+planes replaced by a likelihood-weighted blend, so that the residual varies
+continuously with the pose instead of jumping when the winning candidate
+changes. It reads candidates through `NearestPlaneCapable::nn_visit_pt2pl_candidates()`,
+whose default implementation just reports the single best match, so maps that
+expose only an `argmin` keep working. Three things about it are load-bearing
+and easy to undo by accident:
+
+- `temperature: 0` takes the plain `nn_search_pt2pl()` path, so it reproduces
+  `Matcher_Point2Plane` bit for bit. That exactness is the control the
+  temperature sweeps are read against.
+- The weight fades to zero, with zero derivative, at `searchRadius`. A hard
+  cutoff would put back the same discontinuity at the window edge.
+- Normals are accumulated as outer products, never as vectors. The
+  point-to-plane cost is invariant to a plane's normal sign, and this keeps the
+  blend invariant too; averaging normals directly would make the result depend
+  on each map cell's sign bookkeeping. The known cost is that two *exactly*
+  perpendicular candidates with *exactly* equal weight switch rather than
+  interpolate; any other angle is smooth. See `test-mp2p_matcher_ndt_blend`,
+  which asserts all of the above, including that last limitation.
+
 ---
 
 ## Filter pipeline
