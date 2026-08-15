@@ -94,6 +94,8 @@ void Matcher_NDT_Blend::implMatchOneLayer(
 
     const TransformedLocalPointCloud tl = transform_local_to_global(pcLocal, localPose);
 
+    const bool blending = temperature > 0;
+
     // Blending window. Falling back to distanceThreshold keeps the parameter
     // set minimal for maps whose plane models live at the query's own scale.
     const double blendRadius = searchRadius > 0 ? searchRadius : distanceThreshold;
@@ -101,7 +103,12 @@ void Matcher_NDT_Blend::implMatchOneLayer(
     // The map enumerates candidates by cell index, so the region it walks must
     // cover the whole taper. Otherwise a candidate could still hold a nonzero
     // weight at the moment it drops out of the enumeration.
-    const auto enumRadius = static_cast<float>(std::max(distanceThreshold, blendRadius));
+    //
+    // At zero temperature nothing is blended, and the search reverts to
+    // distanceThreshold so that this whole path, the bounding-box test
+    // included, matches Matcher_Point2Plane exactly.
+    const auto enumRadius = blending ? static_cast<float>(std::max(distanceThreshold, blendRadius))
+                                     : static_cast<float>(distanceThreshold);
 
     // Try to do matching only if the bounding boxes have some overlap:
     if (!pcGlobalMap.boundingBox().intersection(
@@ -117,7 +124,6 @@ void Matcher_NDT_Blend::implMatchOneLayer(
     const auto& lys = pcLocal.getPointsBufferRef_y();
     const auto& lzs = pcLocal.getPointsBufferRef_z();
 
-    const bool   blending   = temperature > 0;
     const double invTwoTSqr = blending ? 0.5 / (temperature * temperature) : 0;
 
     std::vector<NearestPlaneCapable::PlaneCandidate> candidates;
