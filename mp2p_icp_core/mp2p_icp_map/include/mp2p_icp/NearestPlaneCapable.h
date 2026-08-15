@@ -22,6 +22,7 @@
 
 #include <mp2p_icp/point_plane_pair_t.h>
 
+#include <functional>
 #include <optional>
 
 namespace mp2p_icp
@@ -54,6 +55,39 @@ class NearestPlaneCapable
 
     virtual NearestPlaneResult nn_search_pt2pl(
         const mrpt::math::TPoint3Df& point, const float max_search_distance) const = 0;
+
+    /** One of the candidate planes examined while answering nn_search_pt2pl().
+     */
+    struct PlaneCandidate
+    {
+        PlaneCandidate() = default;
+
+        /// The candidate plane, with the centroid of its supporting elements:
+        point_plane_pair_t pairing{};
+
+        /// Absolute value of the plane-point distance:
+        float distance = 0;
+
+        /// Distance from the query point to the plane patch centroid.
+        /// Matchers that blend several candidates need this to fade the
+        /// contribution of distant ones smoothly to zero: the candidate set
+        /// itself is discrete, so without such a fade a candidate entering or
+        /// leaving it makes the result jump.
+        float centroidDistance = 0;
+    };
+
+    using plane_candidate_visitor_t = std::function<void(const PlaneCandidate&)>;
+
+    /** Visits all the plane candidates that nn_search_pt2pl() would examine for
+     *  the same query, in an unspecified but deterministic order.
+     *
+     *  Intended for matchers that combine the candidates instead of selecting
+     *  one of them. The default implementation reports at most the single best
+     *  candidate, so maps able to expose only an argmin remain usable.
+     */
+    virtual void nn_visit_pt2pl_candidates(
+        const mrpt::math::TPoint3Df& point, float max_search_distance,
+        const plane_candidate_visitor_t& visitor) const;
 };
 
 /** @} */

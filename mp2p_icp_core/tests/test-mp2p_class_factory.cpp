@@ -61,10 +61,12 @@ int test_class_factory()
         // mp2p_icp classes:
         "mp2p_icp::ICP", "mp2p_icp::Solver_GaussNewton", "mp2p_icp::Solver_Horn",
         "mp2p_icp::Solver_OLAE", "mp2p_icp::Matcher_Adaptive", "mp2p_icp::Matcher_Cov2Cov",
-        "mp2p_icp::Matcher_Point2Line", "mp2p_icp::Matcher_Point2Plane",
-        "mp2p_icp::Matcher_Points_DistanceThreshold", "mp2p_icp::Matcher_Points_InlierRatio",
-        "mp2p_icp::QualityEvaluator_PairedRatio", "mp2p_icp::QualityEvaluator_RangeImageSimilarity",
-        "mp2p_icp::QualityEvaluator_Voxels", "mp2p_icp::LogRecord", "mp2p_icp::Parameters"};
+        "mp2p_icp::Matcher_NDT_Blend", "mp2p_icp::Matcher_Point2Line",
+        "mp2p_icp::Matcher_Point2Plane", "mp2p_icp::Matcher_Points_Blend",
+        "mp2p_icp::Matcher_Points_DistanceThreshold", "mp2p_icp::Matcher_Points_KnnPlane",
+        "mp2p_icp::Matcher_Points_InlierRatio", "mp2p_icp::QualityEvaluator_PairedRatio",
+        "mp2p_icp::QualityEvaluator_RangeImageSimilarity", "mp2p_icp::QualityEvaluator_Voxels",
+        "mp2p_icp::LogRecord", "mp2p_icp::Parameters"};
 
     // Try to create an object of each known class:
     size_t failures = 0;

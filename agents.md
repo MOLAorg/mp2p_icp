@@ -161,6 +161,79 @@ logistic range-adaptive distance (`thresholdFar`/`thresholdKneeRange`/
 `MCP_LOAD_OPT`, so they accept dynamic formulas such as `"3.0*ADAPTIVE_THRESHOLD_SIGMA"`;
 a static load would silently truncate the string at the first non-numeric character.
 
+`Matcher_NDT_Blend` is `Matcher_Point2Plane` with the `argmin` over candidate
+planes replaced by a likelihood-weighted blend, so that the residual varies
+continuously with the pose instead of jumping when the winning candidate
+changes. It reads candidates through `NearestPlaneCapable::nn_visit_pt2pl_candidates()`,
+whose default implementation just reports the single best match, so maps that
+expose only an `argmin` keep working. Three things about it are load-bearing
+and easy to undo by accident:
+
+- `temperature: 0` takes the plain `nn_search_pt2pl()` path, so it reproduces
+  `Matcher_Point2Plane` bit for bit. That exactness is the control the
+  temperature sweeps are read against.
+- The weight fades to zero, with zero derivative, at `searchRadius`. A hard
+  cutoff would put back the same discontinuity at the window edge.
+- Normals are accumulated as outer products, never as vectors. The
+  point-to-plane cost is invariant to a plane's normal sign, and this keeps the
+  blend invariant too; averaging normals directly would make the result depend
+  on each map cell's sign bookkeeping. The known cost is that two *exactly*
+  perpendicular candidates with *exactly* equal weight switch rather than
+  interpolate; any other angle is smooth. See `test-mp2p_matcher_ndt_blend`,
+  which asserts all of the above, including that last limitation.
+
+At `DEBUG` verbosity it also logs one `blendstats` line per layer match, with
+the mean number of candidates enumerated, the mean number carrying nonzero
+weight, and the mean inverse participation ratio (1 for a pure `argmin`, the
+candidate count when they contribute equally). This answers "is this actually
+blending anything, or is it an `argmin` over a restricted window" by
+measurement; the statistics are not collected at any other verbosity.
+
+`Matcher_Points_Blend` is the point-based counterpart: it replaces
+`Matcher_Points_DistanceThreshold`'s nearest-neighbor target with the
+distance-weighted mean of the map points in `searchRadius`, and emits the same
+`paired_pt2pt`. The same three properties are load-bearing:
+
+- `temperature: 0` runs the very same `nn_single_search()` query, so it
+  reproduces `Matcher_Points_DistanceThreshold` with `pairingsPerPoint: 1` bit
+  for bit, ties included.
+- The neighborhood is a **radius** query, never a fixed-k one: a map point
+  entering or leaving a top-k list is a harder flip than the one being removed,
+  since `k` is a count rather than a geometric boundary.
+- The weight fades to zero, with zero derivative, at `searchRadius`.
+
+Its blended target is not a map point, so `globalIdx` carries the nearest
+neighbor's index; that field drives the already-paired bookkeeping.
+`errorSquareAfterTransformation` carries the blended residual, since
+`QualityEvaluator_PairedRatio` feeds it to the `adaptive_threshold` controller.
+The formulation has one intrinsic cost: a weighted mean of surface points is
+pulled toward the interior of the neighborhood, so at a temperature comparable
+to the map's point spacing the target leaves the surface. See
+`test-mp2p_matcher_points_blend`, which asserts that too.
+
+`Matcher_Points_KnnPlane` goes the opposite way from the two blend matchers and
+is deliberately the least smooth correspondence rule here: `knn` nearest map
+points, a least-squares plane through them, and three hard gates
+(`maxNeighborDistance`, `planeFitMaxDeviation`, and a residual gate scaled by
+the square root of the point's own range). It emits `paired_pt2pl`, so
+`Solver_GaussNewton` is unchanged. Defaults reproduce Fast-LIO2's constants.
+
+Two things about it are load-bearing:
+
+- The plane is fitted by solving `A x = -1` with a **column-pivoting Householder
+  QR in single precision**, not by an eigen/PCA fit. The two are not
+  numerically the same and differ in kind on near-degenerate neighborhoods, and
+  this matcher exists to reproduce a protocol faithfully.
+- Every gate is a constant or a function of a static property of the
+  measurement. None reads back the registration's own quality, which is what
+  distinguishes it from the `adaptive_threshold`-driven shipped matchers.
+
+Ships as its own pipeline (`lidar3d-fastlio-matching.yaml`) with the controller
+disabled; the default pipeline is untouched. Note that swapping it in for
+`Matcher_Cov2Cov` also changes what the Censi3D covariance estimate and the
+Birge-ratio prior balancing consume, so it is a residual-model change as well as
+a protocol one. See `test-mp2p_matcher_knn_plane`.
+
 ---
 
 ## Filter pipeline
