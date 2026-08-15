@@ -26,6 +26,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 #include <vector>
 
@@ -49,11 +50,34 @@ double smoothTaper(const double r, const double R)
     const double v = 1.0 - u * u;
     return v * v;
 }
+
+/** Whether to collect and report the blend's weight distribution.
+ *
+ *  Off unless MP2P_ICP_BLEND_STATS=1, because it costs an extra candidate
+ *  enumeration on the zero-temperature path and is of no use in production.
+ */
+bool blendStatsEnabled()
+{
+    static const bool enabled = []()
+    {
+        const char* v = ::getenv("MP2P_ICP_BLEND_STATS");
+        return v != nullptr && v[0] == '1' && v[1] == '\0';
+    }();
+    return enabled;
+}
 }  // namespace
 
 Matcher_NDT_Blend::Matcher_NDT_Blend()
 {
     mrpt::system::COutputLogger::setLoggerName("Matcher_NDT_Blend");
+
+    // The application sets its own logger's level, not this one's, so the
+    // statistics would otherwise be filtered out by the very verbosity setting
+    // that is supposed to reveal them.
+    if (blendStatsEnabled())
+    {
+        this->setMinLoggingLevel(mrpt::system::LVL_DEBUG);
+    }
 }
 
 void Matcher_NDT_Blend::initialize(const mrpt::containers::yaml& params)
@@ -80,6 +104,13 @@ void Matcher_NDT_Blend::implMatchOneLayer(
     MRPT_START
 
     checkAllParametersAreRealized();
+
+    // A negative value would silently select the zero-temperature path, or
+    // silently fall back to distanceThreshold, and so would quietly turn off
+    // the very behavior the caller asked for.
+    ASSERT_GE_(temperature, .0);
+    ASSERT_GE_(searchRadius, .0);
+    ASSERT_GT_(distanceThreshold, .0);
 
     const mp2p_icp::NearestPlaneCapable& nnGlobal =
         *mp2p_icp::MapToNP(pcGlobalMap, true /*throw if cannot convert*/);
@@ -129,6 +160,19 @@ void Matcher_NDT_Blend::implMatchOneLayer(
     std::vector<NearestPlaneCapable::PlaneCandidate> candidates;
     std::vector<double>                              weights;
 
+    // How concentrated the blend actually is. "How many candidates does a
+    // query really combine" is the question that decides whether this matcher
+    // is smoothing anything or is only an argmin over a restricted window, and
+    // it is cheap enough to answer directly instead of arguing about it.
+    const bool collectStats = blendStatsEnabled();
+
+    size_t statQueries    = 0;
+    size_t statEnumerated = 0;
+    size_t statInWindow   = 0;
+    double statEffective  = 0;  // sum over queries of 1/sum(w_norm^2)
+    double statTopWeight  = 0;
+    double statWinnerDist = 0;  // centroid distance of the heaviest candidate
+
     // Loop for each point in local map:
     // --------------------------------------------------
     for (size_t i = 0; i < tl.x_locals.size(); i++)
@@ -166,6 +210,25 @@ void Matcher_NDT_Blend::implMatchOneLayer(
                 continue;  // plane is too distant
             }
             targetPlane = np.pairing->pl_global;
+
+            if (collectStats)
+            {
+                // One candidate, by definition. What is worth recording here is
+                // how far the winner's cell actually sits from the query, since
+                // an argmin on the plane distance is free to select a distant
+                // cell whose plane merely happens to graze the query point.
+                size_t nEnum = 0;
+                nnGlobal.nn_visit_pt2pl_candidates(
+                    queryPt, enumRadius,
+                    [&nEnum](const NearestPlaneCapable::PlaneCandidate&) { nEnum++; });
+
+                statQueries++;
+                statEnumerated += nEnum;
+                statInWindow += 1;
+                statEffective += 1.0;
+                statTopWeight += 1.0;
+                statWinnerDist += (targetPlane.centroid - mrpt::math::TPoint3D(queryPt)).norm();
+            }
         }
         else
         {
@@ -222,6 +285,7 @@ void Matcher_NDT_Blend::implMatchOneLayer(
                 const auto&  c      = candidates[k];
                 const double energy = static_cast<double>(c.distance) * c.distance - minEnergy;
                 const double w      = weights[k] * std::exp(-energy * invTwoTSqr);
+                weights[k]          = w;
                 if (w <= 0)
                 {
                     continue;
@@ -254,6 +318,39 @@ void Matcher_NDT_Blend::implMatchOneLayer(
 
             blendedCentroid *= 1.0 / sumW;
 
+            if (collectStats)
+            {
+                double sumSqr    = 0;
+                double topW      = 0;
+                double topDist   = 0;
+                size_t nInWindow = 0;
+
+                for (size_t k = 0; k < candidates.size(); k++)
+                {
+                    const double wn = weights[k] / sumW;
+                    if (wn <= 0)
+                    {
+                        continue;
+                    }
+                    nInWindow++;
+                    sumSqr += wn * wn;
+                    if (wn > topW)
+                    {
+                        topW    = wn;
+                        topDist = candidates[k].centroidDistance;
+                    }
+                }
+
+                statQueries++;
+                statEnumerated += candidates.size();
+                statInWindow += nInWindow;
+                // Inverse participation ratio: 1 for a pure argmin, and the
+                // count of candidates when they contribute equally.
+                statEffective += sumSqr > 0 ? 1.0 / sumSqr : 0.0;
+                statTopWeight += topW;
+                statWinnerDist += topDist;
+            }
+
             // The blended direction is the dominant eigenvector of the weighted
             // structure tensor, which is what makes the result independent of
             // each candidate's arbitrary normal sign.
@@ -281,6 +378,16 @@ void Matcher_NDT_Blend::implMatchOneLayer(
         ms.localPairedBitField.point_layers[localName].mark_as_set(localIdx);
 
     }  // For each local point
+
+    if (collectStats && statQueries > 0)
+    {
+        const double inv = 1.0 / static_cast<double>(statQueries);
+        MRPT_LOG_DEBUG_FMT(
+            "blendstats T=%g R=%g queries=%zu enumerated=%.3f inWindow=%.3f effective=%.3f "
+            "topWeight=%.4f winnerCentroidDist=%.4f",
+            temperature, blendRadius, statQueries, statEnumerated * inv, statInWindow * inv,
+            statEffective * inv, statTopWeight * inv, statWinnerDist * inv);
+    }
 
     MRPT_END
 }

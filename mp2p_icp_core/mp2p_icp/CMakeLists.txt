@@ -17,7 +17,9 @@ set(LIB_SRCS
   src/Matcher_NDT_Blend.cpp
   src/Matcher_Point2Plane.cpp
   src/Matcher_Points_Base.cpp
+  src/Matcher_Points_Blend.cpp
   src/Matcher_Points_DistanceThreshold.cpp
+  src/Matcher_Points_KnnPlane.cpp
   src/Matcher_Points_InlierRatio.cpp
   src/Matcher.cpp
   src/optimal_tf_gauss_newton.cpp
@@ -54,7 +56,9 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/Matcher_NDT_Blend.h
   include/mp2p_icp/Matcher_Point2Plane.h
   include/mp2p_icp/Matcher_Points_Base.h
+  include/mp2p_icp/Matcher_Points_Blend.h
   include/mp2p_icp/Matcher_Points_DistanceThreshold.h
+  include/mp2p_icp/Matcher_Points_KnnPlane.h
   include/mp2p_icp/Matcher_Points_InlierRatio.h
   include/mp2p_icp/Matcher.h
   include/mp2p_icp/optimal_tf_gauss_newton.h

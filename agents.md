@@ -182,6 +182,58 @@ and easy to undo by accident:
   interpolate; any other angle is smooth. See `test-mp2p_matcher_ndt_blend`,
   which asserts all of the above, including that last limitation.
 
+At `DEBUG` verbosity it also logs one `blendstats` line per layer match, with
+the mean number of candidates enumerated, the mean number carrying nonzero
+weight, and the mean inverse participation ratio (1 for a pure `argmin`, the
+candidate count when they contribute equally). This answers "is this actually
+blending anything, or is it an `argmin` over a restricted window" by
+measurement; the statistics are not collected at any other verbosity.
+
+`Matcher_Points_Blend` is the point-based counterpart: it replaces
+`Matcher_Points_DistanceThreshold`'s nearest-neighbor target with the
+distance-weighted mean of the map points in `searchRadius`, and emits the same
+`paired_pt2pt`. The same three properties are load-bearing:
+
+- `temperature: 0` runs the very same `nn_single_search()` query, so it
+  reproduces `Matcher_Points_DistanceThreshold` with `pairingsPerPoint: 1` bit
+  for bit, ties included.
+- The neighborhood is a **radius** query, never a fixed-k one: a map point
+  entering or leaving a top-k list is a harder flip than the one being removed,
+  since `k` is a count rather than a geometric boundary.
+- The weight fades to zero, with zero derivative, at `searchRadius`.
+
+Its blended target is not a map point, so `globalIdx` carries the nearest
+neighbor's index; that field drives the already-paired bookkeeping.
+`errorSquareAfterTransformation` carries the blended residual, since
+`QualityEvaluator_PairedRatio` feeds it to the `adaptive_threshold` controller.
+The formulation has one intrinsic cost: a weighted mean of surface points is
+pulled toward the interior of the neighborhood, so at a temperature comparable
+to the map's point spacing the target leaves the surface. See
+`test-mp2p_matcher_points_blend`, which asserts that too.
+
+`Matcher_Points_KnnPlane` goes the opposite way from the two blend matchers and
+is deliberately the least smooth correspondence rule here: `knn` nearest map
+points, a least-squares plane through them, and three hard gates
+(`maxNeighborDistance`, `planeFitMaxDeviation`, and a residual gate scaled by
+the square root of the point's own range). It emits `paired_pt2pl`, so
+`Solver_GaussNewton` is unchanged. Defaults reproduce Fast-LIO2's constants.
+
+Two things about it are load-bearing:
+
+- The plane is fitted by solving `A x = -1` with a **column-pivoting Householder
+  QR in single precision**, not by an eigen/PCA fit. The two are not
+  numerically the same and differ in kind on near-degenerate neighborhoods, and
+  this matcher exists to reproduce a protocol faithfully.
+- Every gate is a constant or a function of a static property of the
+  measurement. None reads back the registration's own quality, which is what
+  distinguishes it from the `adaptive_threshold`-driven shipped matchers.
+
+Ships as its own pipeline (`lidar3d-fastlio-matching.yaml`) with the controller
+disabled; the default pipeline is untouched. Note that swapping it in for
+`Matcher_Cov2Cov` also changes what the Censi3D covariance estimate and the
+Birge-ratio prior balancing consume, so it is a residual-model change as well as
+a protocol one. See `test-mp2p_matcher_knn_plane`.
+
 ---
 
 ## Filter pipeline
