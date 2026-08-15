@@ -27,8 +27,8 @@
 #include <mp2p_icp/Matcher_Point2Plane.h>
 #include <mp2p_icp/Matcher_Points_Blend.h>
 #include <mp2p_icp/Matcher_Points_DistanceThreshold.h>
-#include <mp2p_icp/Matcher_Points_KnnPlane.h>
 #include <mp2p_icp/Matcher_Points_InlierRatio.h>
+#include <mp2p_icp/Matcher_Points_KnnPlane.h>
 #include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/QualityEvaluator_PairedRatio.h>
 #include <mp2p_icp/QualityEvaluator_RangeImageSimilarity.h>
