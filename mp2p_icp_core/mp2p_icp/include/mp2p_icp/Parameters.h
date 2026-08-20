@@ -54,6 +54,17 @@ struct Parameters : public mrpt::serialization::CSerializable
     double minAbsStep_rot{1e-4};
     /** @} */
 
+    /** Number of initial iterations during which the matchers are re-run; after
+     *  them the correspondence set is frozen and the remaining iterations reuse
+     *  it, refining the pose against fixed pairings. 0 (default) means the
+     *  pairings are re-decided at every iteration, i.e. the classic behavior.
+     *
+     *  Each re-association is an opportunity for the discrete correspondence
+     *  configuration to change, so freezing bounds how many such switches one
+     *  registration can go through. Filter-based LIO systems that iterate an
+     *  EKF update typically freeze after their first couple of iterations. */
+    uint32_t freezePairingsAfterIteration{0};
+
     /** @name Debugging and logging
         @{ */
 

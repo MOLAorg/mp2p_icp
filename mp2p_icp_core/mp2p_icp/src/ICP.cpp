@@ -199,8 +199,17 @@ void ICP::align(
 
         mrpt::system::CTimeLoggerEntry tle4(profiler_, "align.4.1_matchers");
 
-        state.currentPairings = run_matchers(
-            matchers_, state.pcGlobal, state.pcLocal, state.currentSolution.optimalPose, mc);
+        // Re-decide the correspondences, unless they were frozen after the first
+        // few iterations (then the remaining ones refine the pose against a
+        // fixed pairing set).
+        const bool pairingsFrozen = p.freezePairingsAfterIteration > 0 &&
+                                    state.currentIteration >= p.freezePairingsAfterIteration &&
+                                    !state.currentPairings.empty();
+        if (!pairingsFrozen)
+        {
+            state.currentPairings = run_matchers(
+                matchers_, state.pcGlobal, state.pcLocal, state.currentSolution.optimalPose, mc);
+        }
 
         tle4.stop();
 

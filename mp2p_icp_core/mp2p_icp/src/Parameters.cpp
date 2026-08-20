@@ -84,6 +84,7 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
     MCP_LOAD_REQ(p, maxIterations);
     MCP_LOAD_OPT(p, minAbsStep_trans);
     MCP_LOAD_OPT(p, minAbsStep_rot);
+    MCP_LOAD_OPT(p, freezePairingsAfterIteration);
     MCP_LOAD_OPT(p, generateDebugFiles);
     MCP_LOAD_OPT(p, debugFileNameFormat);
     MCP_LOAD_OPT(p, debugPrintIterationProgress);
@@ -125,6 +126,7 @@ void Parameters::save_to(mrpt::containers::yaml& p) const
     MCP_SAVE(p, maxIterations);
     MCP_SAVE(p, minAbsStep_trans);
     MCP_SAVE(p, minAbsStep_rot);
+    MCP_SAVE(p, freezePairingsAfterIteration);
     MCP_SAVE(p, generateDebugFiles);
     MCP_SAVE(p, debugFileNameFormat);
     MCP_SAVE(p, debugPrintIterationProgress);
