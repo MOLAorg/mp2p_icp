@@ -2,6 +2,430 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#91 <https://github.com/MOLAorg/mp2p_icp/issues/91>`_ from MOLAorg/feat/ndt-blend-matcher
+  Add Matcher_NDT_Blend: a smooth alternative to the nearest-plane argmin
+* Restore include ordering in the matcher registry
+* Add Matcher_Points_Blend and Matcher_Points_KnnPlane
+  Two more correspondence rules, at opposite ends of the same axis, so that the
+  question "does the discreteness of the correspondence rule drive the
+  sensitivity" can be measured rather than argued.
+  Matcher_Points_Blend is the point-based counterpart of Matcher_NDT_Blend: the
+  target is the distance-weighted mean of the map points in a radius instead of
+  the nearest one, so it moves continuously as the query crosses the
+  perpendicular bisector between two map points. temperature 0 runs the very same
+  nn_single_search() query as Matcher_Points_DistanceThreshold with
+  pairingsPerPoint 1, so it reproduces it exactly. The neighborhood is a radius
+  query and never a fixed-k one: a point entering or leaving a top-k list is a
+  harder flip than the one being removed. Its intrinsic cost is that a weighted
+  mean of surface points is pulled toward the interior of the neighborhood, so
+  the temperature has to be chosen against the map's point spacing.
+  Matcher_Points_KnnPlane goes the other way: k nearest map points, a
+  least-squares plane through them, and three hard gates. Every gate is a
+  constant or a function of a static property of the measurement, so nothing in
+  it reads back the registration's own quality. The plane is fitted by solving
+  A x = -1 with a column-pivoting Householder QR in single precision rather than
+  by an eigen fit, because the two are not numerically the same on
+  near-degenerate neighborhoods and this matcher exists to reproduce a protocol
+  faithfully. One consequence worth knowing: that form cannot represent a plane
+  through the origin.
+  Two hazards found while writing them, both silent:
+  - nn_radius_search() applies a small hard cap on the number of results whenever
+  maxPoints is nonzero, ranking candidates and keeping the best few. Only
+  maxPoints 0 keeps a radius query a radius query, so that is what the blend
+  passes, and the parameter that could change it is documented as such.
+  - A k-NN query asked for more neighbors than the map holds can still return
+  exactly k, padding the tail by repeating an earlier point under a fabricated
+  zero distance. The "reject if fewer than k were found" gate therefore cannot
+  be implemented as a size check; each neighbor is validated against its own
+  coordinates instead.
+  Matcher_NDT_Blend gains optional weight-distribution statistics, gated on
+  MP2P_ICP_BLEND_STATS, reporting how many candidates a query really combines,
+  and now rejects negative temperature and searchRadius rather than silently
+  falling back to the unblended path.
+* Formatting, and keep the zero-temperature bounding-box test identical too
+  At temperature 0 the search radius now reverts to distanceThreshold, so the
+  bounding-box early-return matches Matcher_Point2Plane as well, not just the
+  per-point query. Behavior is unchanged wherever the boxes overlap, which is
+  every case exercised so far, but the control is now exact by construction.
+* Add Matcher_NDT_Blend: a smooth alternative to the nearest-plane argmin
+  Matcher_Point2Plane resolves its candidate planes with a hard argmin, so an
+  arbitrarily small pose change can swap the winner and move the residual by the
+  full disagreement between the two candidates. Matcher_NDT_Blend keeps the same
+  inputs and emits the same one point-to-plane pairing per local point, but takes
+  a likelihood-weighted combination of the candidates instead of the best one, so
+  the residual varies continuously with the pose. Solvers are unchanged.
+  Candidates are read through a new NearestPlaneCapable::nn_visit_pt2pl_candidates(),
+  whose default implementation reports only the best match, so maps that expose
+  just an argmin keep working.
+  Three details carry the behavior:
+  - temperature 0 takes the plain nn_search_pt2pl() path and therefore reproduces
+  Matcher_Point2Plane exactly, which makes it a usable control.
+  - The weight fades to zero with zero derivative at searchRadius, so a candidate
+  entering or leaving the window does so continuously; a hard cutoff would
+  reintroduce the discontinuity at the window edge instead.
+  - Normals are combined through their outer products rather than as vectors. The
+  point-to-plane cost is invariant to a plane's normal sign, and this keeps the
+  blend invariant too; a vector average would instead depend on each map cell's
+  own sign bookkeeping. The cost is that two exactly perpendicular candidates
+  carrying exactly equal weight switch rather than interpolate, which no single
+  plane could represent anyway.
+  Defaults reproduce the previous behavior, so no shipped pipeline changes.
+* Merge pull request `#90 <https://github.com/MOLAorg/mp2p_icp/issues/90>`_ from MOLAorg/feat/decimate-adaptive-dynamic-budget
+  FilterDecimateAdaptive: dynamic point budgets, and a bound on the voxel stride
+* Clamp the stride-derived budget at the input point count
+  An arbitrarily small maximum_voxel_stride made ceil(nVoxels/stride) exceed
+  uint32_t, and the narrowing conversion is undefined there. The input is the
+  real ceiling anyway, since no decimation method can emit more points than it
+  was given. Strides below 1 stay legal: the methods that take several points
+  out of one voxel can honor them.
+* FilterDecimateAdaptive: dynamic point budgets, and a bound on the voxel stride
+  The point budget and the voxel size were loaded with MCP_LOAD\_*, which parses
+  a YAML scalar up to its first non-numeric character and keeps the truncated
+  value without complaint. A budget written as an expression therefore became
+  something else entirely, silently. Both are now declared parameters, so they
+  accept formulas over the pipeline's variables like the range and map-size
+  parameters already do.
+  The sampling walk uses a stride of nVoxels/desired_output_point_count and
+  stops as soon as the count is reached, so a stride above 1 means only one in
+  every `stride` occupied cells is ever visited. An absolute point count thus
+  expresses very different sampling densities depending on how many occupied
+  cells the input happens to have, which is a property of the scene, the sensor
+  and the voxel size rather than of the configuration. The new optional
+  `maximum_voxel_stride` bounds that ratio directly. It only ever raises the
+  effective count, so the absolute budget keeps acting as a floor and leaving it
+  unset preserves today's behavior exactly.
+  Also: size the `outputs` vector up front. Declaring a dynamic parameter stores
+  a pointer to its target field, and growing the vector afterwards would dangle
+  the ones already declared.
+  A DEBUG line now reports nVoxels, the effective budget, the stride and the
+  emitted count per output, so a configuration can be checked against its actual
+  input instead of assumed.
+* Merge pull request `#89 <https://github.com/MOLAorg/mp2p_icp/issues/89>`_ from MOLAorg/feat/cov2cov-ambiguity-gating
+  Matcher_Cov2Cov: optional range-adaptive matching distance and ambiguity gate
+* Merge branch 'develop' into feat/cov2cov-ambiguity-gating
+* Remove the ambiguity gate from MatchingDistanceProfile
+  firstToSecondDistanceMin/firstToSecondMinRange were not yet justified by
+  results (regressed translation error ~62% on a held-out sequence relative to
+  the range-adaptive distance alone). Drop the fields, Matcher_Cov2Cov params,
+  NearestPointWithCovCapable's guard against them, and the corresponding test
+  coverage, keeping only the range-adaptive matching distance.
+* Keep nn_search_cov2cov() source-compatible with older map implementations
+  The flat-threshold overload goes back to being the pure virtual, and the
+  MatchingDistanceProfile one becomes a non-pure overload whose default
+  implementation forwards to it. A map class written against an earlier release
+  therefore keeps compiling, overriding and behaving exactly as before, which is
+  what the downstream CI jobs need: they resolve mola_metric_maps to the last
+  released binary package, which is older than this source tree.
+  The forwarding default refuses, rather than silently ignores, a profile such an
+  implementation cannot honor: a range-adaptive distance or an active ambiguity
+  gate throws instead of quietly degrading to a flat threshold.
+  Adds MP2P_ICP_HAS_MATCHING_DISTANCE_PROFILE so downstream packages can detect
+  the new API. Since MatchingDistanceProfile.h is an entirely new header, a plain
+  __has_include() settles it for consumers; the macro is what survives if the
+  struct later grows members.
+  Also documents the name-hiding consequence: a derived class declaring only one
+  of the two overloads hides the other for calls on that derived type. Harmless
+  for the matchers, which always dispatch through a base reference.
+* Matcher_Cov2Cov: optional range-adaptive matching distance and ambiguity gate
+  Introduce mp2p_icp::MatchingDistanceProfile, the acceptance criteria used by
+  NearestPointWithCovCapable::nn_search_cov2cov(). It replaces the flat
+  `float max_search_distance` argument, and is implicitly constructible from a
+  float, so every existing caller keeps compiling and behaving as before.
+  Two opt-in refinements over a single flat distance, both disabled by default:
+  - Range-adaptive distance: `thresholdFar`, `thresholdKneeRange` and
+  `thresholdTransitionWidth` turn the acceptance distance into a logistic
+  function of the query point's range from the sensor. Map point density falls
+  off with range, so one flat threshold is loose near the sensor and tight far
+  away.
+  - Ambiguity test: `firstToSecondDistanceMin` rejects a correspondence whose
+  runner-up candidate is within that ratio of the winner's distance, i.e. the
+  match is too close to call. `firstToSecondMinRange` restricts the test to
+  beyond a given range, leaving the dense near field, where the runner-up is
+  the same surface seen again, untouched.
+  All five are declared with DECLARE_PARAMETER_OPT so they accept dynamic
+  formulas like "3.0*ADAPTIVE_THRESHOLD_SIGMA", exactly as `threshold` does. A
+  static YAML load would convert such a string by stopping at the first
+  non-numeric character and silently yield a fixed value in meters.
+  No shipped pipeline enables either refinement; defaults reproduce the previous
+  behavior bit for bit, including the k=1 KD-tree query and no per-point range
+  computation.
+* Merge pull request `#88 <https://github.com/MOLAorg/mp2p_icp/issues/88>`_ from MOLAorg/fix/matcher-param-formula-parsing
+  fix: load matcher/filter distance parameters as dynamic formulas
+* fix: load matcher/filter distance parameters as dynamic formulas
+  Several numeric parameters that pipelines legitimately want to express as
+  formulas were read with MCP_LOAD_REQ/MCP_LOAD_OPT, a static YAML load.
+  mrpt::containers::yaml::as<double>() truncates a string at the first
+  non-numeric character, so "2.0*ADAPTIVE_THRESHOLD_SIGMA" was silently
+  turned into the constant 2.0, with no warning and no error, and was never
+  re-evaluated afterwards. Since ADAPTIVE_THRESHOLD_SIGMA is the output of
+  the LO adaptive-threshold controller, the affected parameters were left
+  frozen at a value that is not even in the right units.
+  Switched to DECLARE_PARAMETER\_*, the same macros the equivalent parameters
+  of the other matchers already use:
+  * Matcher_Point2Line::distanceThreshold. Same name and same role as
+  Matcher_Point2Plane::distanceThreshold, which is dynamic and is set to
+  "1.0*ADAPTIVE_THRESHOLD_SIGMA" in the shipped lidar3d-ndt pipeline.
+  * Matcher_Adaptive::absoluteMaxSearchDistance, minimumCorrDist and
+  planeMinimumDistance: all distances in meters gating pairing acceptance.
+  * FilterCurvature::max_cosine, min_clearance and max_gap, which the
+  sibling GeneratorEdgesFromCurvature already declares dynamically.
+  Also added checkAllParametersAreRealized() to Matcher_Point2Line,
+  Matcher_Adaptive and FilterCurvature, so an unrealized formula now fails
+  loudly instead of running with a stale value.
+  Tests: test-mp2p_matcher_pt2pt_parameterizable now covers Point2Plane,
+  Point2Line and Adaptive; test-mp2p_matcher_pt2ln gets an end-to-end check
+  that the formula actually gates pairings across two realize() calls; new
+  test-mp2p_FilterCurvature. All of them fail against the previous code.
+* Merge pull request `#87 <https://github.com/MOLAorg/mp2p_icp/issues/87>`_ from MOLAorg/perf/decimate-adaptive-flat-voxel-index-array
+  Store voxel point indices in one flat array (recovers the FilterDecimateAdaptive regression)
+* Store voxel point indices in one flat array
+  PointCloudToVoxelGrid kept a std::vector per voxel, that is, one heap
+  allocation per voxel, rebuilt from scratch for every processed cloud.
+  The point indices now live in a single contiguous array, with each voxel
+  holding just an offset and a count into it, and are stored as 32 bit to
+  halve the memory traffic.
+  FilterDecimateAdaptive also merges all of its per-thread grids in one
+  single call, so that the flat array is laid out once instead of once per
+  merged grid. This matters because the thread-local grids accumulate over
+  successive runs, and most of them are empty on any given one.
+  The output is unchanged: voxel contents and their canonical ordering are
+  the same as before.
+* Merge per-thread voxel grids in FilterDecimateAdaptive (`#86 <https://github.com/MOLAorg/mp2p_icp/issues/86>`_)
+  * Merge per-thread voxel grids in FilterDecimateAdaptive
+  Under TBB the input cloud is binned in parallel into one grid per
+  thread, but the voxel key is global, so a single spatial voxel was left
+  split into one fragment per thread that saw points in it. The fragments
+  were then visited as if they were independent voxels.
+  That had three consequences:
+  - The output depended on how TBB happened to split and steal work, so
+  two identical runs gave different decimated clouds.
+  - Decimation emitted up to one representative per thread per voxel
+  instead of one per voxel, so the output was denser and less uniform
+  than requested.
+  - minimum_input_points_per_voxel was applied per fragment, so a voxel
+  legitimately above the threshold was dropped whenever its points were
+  split across threads. For a rotating lidar, whose consecutive point
+  indices sweep azimuth, this affected most voxels.
+  Reassemble the per-thread grids by voxel key before sampling, into an
+  owning grid, which keeps voxel_t a plain non-owning span. Voxel point
+  indices are then sorted so the contents no longer depend on the binning
+  order.
+  The voxel list is also given a canonical order, by the first input
+  point of each voxel, in both the parallel and the sequential paths.
+  The resampling walks this list with a stride, so which voxels reach the
+  output would otherwise depend on hash map traversal order, which is an
+  implementation detail of the map type.
+  Adds regression tests over a cloud that revisits voxels at distant
+  input indices, as a rotating lidar does. All three checks fail before
+  this change.
+  * Apply clang-format
+  * Test mergeFrom() directly, independently of worker count
+  The end-to-end fragmentation checks only exercise the merge when TBB
+  actually runs the blocks concurrently, so on a low-core machine they
+  would pass without touching it. Bin a cloud in three unequal pieces,
+  merge, and assert the result equals binning it in one pass.
+  * Require a matching map type in mergeFrom(), and cover both
+  The four-way dispatch handled combinations that cannot occur: only
+  FilterDecimateAdaptive merges grids, and it always uses robin maps.
+  Assert the two agree and keep the two reachable branches.
+  The merge test now runs over both backing map types and asserts they
+  produce the same voxel contents, which is what the canonical voxel
+  ordering is built from.
+* update robin-map to latest version (avoid cmake deprecation)
+* Merge pull request `#85 <https://github.com/MOLAorg/mp2p_icp/issues/85>`_ from MOLAorg/fix/decimate-voxels-maybe-uninitialized-warning
+  fix: spurious -Wmaybe-uninitialized in FilterDecimateVoxels::initialize_filter
+* fix: spurious -Wmaybe-uninitialized in FilterDecimateVoxels::initialize_filter
+  Both optional grid members were unconditionally .reset() before
+  .emplace()-ing only one of them, so the one about to be (re)constructed
+  was torn down twice in quick succession (once explicitly, once inside
+  emplace()). GCC 15's flow analysis loses track of the pimpl's
+  function-pointer deleter across that redundant double-teardown and
+  warns on an unrelated unique_ptr destructor.
+  Only reset the *other* optional, which was the only thing the explicit
+  reset() was ever needed for. Verified by compiling the function in
+  isolation before/after: warning count goes from 1 to 0, no new
+  warnings, and the pre-existing test suite (112/112) is unaffected.
+* Merge pull request `#83 <https://github.com/MOLAorg/mp2p_icp/issues/83>`_ from MOLAorg/feat/decimate-adaptive-multi-output
+  FilterDecimateAdaptive: several output layers from one voxelization pass, plus decimate_method
+* FilterDecimateAdaptive: several output layers from one voxelization pass, plus decimate_method
+  Two independent additions to FilterDecimateAdaptive:
+  1) An optional "outputs" YAML sequence, each entry holding its own
+  output_pointcloud_layer + desired_output_point_count. All of them are
+  sampled from ONE voxelization pass (the dominant cost), each walking the
+  shared voxel list with its own stride. The single-output keys keep working
+  exactly as before, and are mutually exclusive with "outputs".
+  This lets a consumer obtain a dense cloud for its local map and a sparse one
+  for ICP without paying for two full passes. Chaining two filters also
+  computed the second cloud from already-decimated voxel statistics rather
+  than from the full scan.
+  Measured on test-mp2p_gicp_pipeline_benchmark (new env var
+  MP2P_BENCH_SINGLE_DECIMATION=1 selects the single-pass variant there),
+  1st-pass filtering drops from ~15.0 ms to ~13.0 ms per 100k-point scan,
+  with unchanged ICP quality and recovered pose.
+  2) Support for decimate_method, as in FilterDecimateVoxels. The DecimateMethod
+  enum moves to its own header, mp2p_icp_filters/DecimateMethod.h, now shared
+  by both filters (FilterDecimateVoxels.h includes it, so its users are
+  unaffected).
+  Since this filter revisits voxels in as many rounds as needed to reach the
+  requested point count, the methods behave differently here:
+  - FirstPoint (default, previous behavior) and RandomPoint take successive
+  points out of each voxel, in insertion order or from a random per-voxel
+  offset.
+  - ClosestToAverage and VoxelAverage summarize the whole voxel and hence emit
+  one point per voxel only, so the output cannot exceed the number of valid
+  voxels. VoxelAverage synthesizes points, so per-point fields are not
+  propagated. Their per-voxel results are precomputed once and reused by all
+  output targets.
+  Unit tests cover the multiple outputs, the mutually-exclusive parameters and
+  the four decimation methods.
+* Merge pull request `#82 <https://github.com/MOLAorg/mp2p_icp/issues/82>`_ from MOLAorg/feat/filter-transform-pointcloud
+  Add FilterTransformPointCloud: rigidly transform a point-cloud layer by a pose or its inverse
+* test: cover view-direction field rotation in FilterTransformPointCloud
+  Addresses CodeRabbit nitpick: the existing tests only exercised XYZ
+  transform, never the rotateViewDirectionFields() path the filter also
+  runs. Mirrors the fixture pattern already used in
+  test-mp2p_FilterMerge_view.cpp.
+* fix: apply clang-format-14 to test-mp2p_FilterTransformPointCloud.cpp
+  CI's pinned clang-format-14 wants different alignment on the pose
+  assignment line than my local (newer) clang-format produced.
+* Add FilterTransformPointCloud: rigidly transform a point-cloud layer by a pose or its inverse
+  Some odometry systems (e.g. DLIO) voxelize incoming scans after transforming
+  them into the map/world frame, so voxel membership is anchored to the map
+  rather than to the vehicle's instantaneous local frame. No existing filter
+  in this library exposes that as a composable building block: FilterMerge
+  only inserts local points into an existing target map (one direction, and
+  tied to insertObservation()), so there was no way to get a plain, freshly
+  transformed point-cloud layer usable as input to another filter (e.g.
+  FilterDecimateAdaptive), nor any way to transform back by a pose's inverse.
+  FilterTransformPointCloud fills that gap: input layer -> output layer,
+  replacing each point p_i by pose (+) p_i (or pose^-1 (+) p_i if invert_pose
+  is set), reusing CPointsMap::insertAnotherMap() plus the same
+  rotateViewDirectionFields() call FilterMerge already relies on to keep
+  view-direction fields consistent.
+* fix format
+* Add robust_max_range(): percentile-based, outlier-robust point cloud extent
+  A plain bounding-box max norm is dominated by a single spurious far
+  return. Observed on Livox sensors (TIERS dataset): specular-reflection
+  artifacts hundreds of meters away in an otherwise <20 m scene inflate
+  any consumer's observation-radius estimate 10-40x, which then starves
+  a downstream range filter or voxel grid of the real, near-field points.
+  robust_max_range() returns a percentile of the per-point range
+  (default 0.95) instead of the raw maximum, computed with
+  std::nth_element (O(n) average, no full sort). Not wired into any
+  consumer yet; that is a separate follow-up.
+* Merge pull request `#80 <https://github.com/MOLAorg/mp2p_icp/issues/80>`_ from MOLAorg/fix/viz-skip-non-finite-points
+  fix: skip non-finite points when rendering a point map layer
+* fix: also drop non-finite points on the map's own-renderer viz path
+  get_visualization_map_layer() returns early when the layer is not a
+  CPointsMap, or when keep_original_cloud_color asks for the map's own colors:
+  both delegate to map->getVisualizationInto(). That return happens before the
+  source-map filtering added previously, so a map holding blank (NaN) storage
+  slots could still hang the renderer through this path.
+  Filtering the source beforehand is not possible here: the map draws itself,
+  so there is no input cloud, and in the non-CPointsMap case there is nothing
+  to filter either. Swapping in a filtered copy would discard the custom
+  renderer that this path exists to use. The non-finite points are therefore
+  dropped from the already-built render objects, in place, in the same loops
+  that already walk them to apply the point size. Each surviving point keeps
+  its own color, since colors are per point in the render object.
+* fix: skip non-finite points when rendering a point map layer
+  get_visualization_map_layer() copied the raw point buffers of a map layer
+  into a CPointCloud / CPointCloudColoured verbatim. Map classes that recycle
+  storage slots expose slots holding no point: mola::IncrementalPointCloud
+  blanks them to NaN, precisely so that generic code walking the inherited
+  CPointsMap buffers does not resurrect evicted geometry.
+  A single non-finite coordinate is enough to hang the GUI thread: MRPT's LOD
+  octree splits a node at the mean of its points, so the mean becomes NaN,
+  every comparison against it is false, all points land in the same child and
+  the recursive split repeats identically forever. Each level costs two passes
+  over the whole cloud, so it presents as a frozen viewer rather than a crash.
+  It only triggers once a cloud exceeds OCTREE_RENDER_MAX_POINTS_PER_NODE
+  (1e6 by default), which is why it appears at one reproducible point of a
+  mapping run.
+  The source map is filtered, not the render object, because recolorize3Dpc()
+  skips colorization unless both hold the same number of points. Maps whose
+  points are all finite (the usual case) are passed through untouched, with no
+  copy.
+* Merge pull request `#78 <https://github.com/MOLAorg/mp2p_icp/issues/78>`_ from MOLAorg/feature/serialize-gravity-prior-in-icplog
+  Record the GravityPrior in .icplog files
+* Record the GravityPrior in .icplog files
+  mp2p_icp::GravityPrior was passed to ICP::align() but never serialized, so the
+  verticality observation the solver actually received could not be recovered
+  from a log afterwards. That matters because its sigma is not necessarily the
+  configured one: callers may widen it at run time (mola_lidar_odometry's
+  adaptive_sigma does), and the only way to see the effective value was to re-run
+  the whole dataset with debug-level logging.
+  - Add CArchive operators for GravityPrior, plus DECLARE_TTYPENAME_CLASSNAME,
+  which std::optional serialization requires.
+  - Add LogRecord::gravityPrior, bumping the serialization version 2 -> 3. Older
+  logs still load: the new field is read only when version >= 3.
+  - Populate it in ICP::align(), next to the existing motion prior.
+* fix: remove racy per-point pt2pt weight path in Gauss-Newton solver (`#77 <https://github.com/MOLAorg/mp2p_icp/issues/77>`_)
+  * fix: remove racy per-point pt2pt weight path in Gauss-Newton solver
+  Pairings::point_weights fed a sequential run-length-encoded cursor that
+  optimal_tf_gauss_newton.cpp consumed from inside a tbb::parallel_reduce
+  lambda captured by reference. Concurrent threads processing different
+  point sub-ranges raced on the same shared cursor state, and the cursor
+  was never reset across inner Gauss-Newton iterations either, making the
+  per-layer `weight:` in pointLayerMatches silently unreliable in TBB
+  builds. visit_correspondences.h had the same cursor pattern, though it
+  was safe there since it only ever runs sequentially.
+  The per-layer weighting granularity was never exercised with differing
+  weights in any real pipeline (every pointLayerMatches block in-tree
+  uses a single layer pair), so instead of making the cursor
+  thread-safe, this drops per-point/per-layer pt2pt weighting entirely.
+  All pt2pt pairs now use the single PairWeights::pt2pt scalar, matching
+  every other pairing type. Matcher_Points_Base keeps pointLayerMatches
+  for selecting which local/global layers to pair, just without a
+  per-entry weight.
+  Pairings serialization bumped to v3; older archives are still read
+  correctly (the removed field is skipped).
+  * docs: fix stale pointLayerMatches doc comment in Matcher_Points_Base
+  Flagged by CodeRabbit on `#77 <https://github.com/MOLAorg/mp2p_icp/issues/77>`_: initialize()'s docstring still described
+  pointLayerMatches as relative weights after the per-layer weighting
+  removal; the class member's own docstring had already been updated.
+* feat: yaw-free rank-2 gravity prior for the Gauss-Newton solver (`#76 <https://github.com/MOLAorg/mp2p_icp/issues/76>`_)
+  Adds an optional gravity ("verticality") observation, independent of the
+  existing SE(3) `prior`, that constrains only the two tilt DOFs and leaves
+  rotation about gravity and all three translations exactly free.
+  Residual: r(R) = B^T (R u_body) in R^2, with B an orthonormal basis of the
+  plane orthogonal to `up_map`, weighted isotropically by 1/sigma^2. The
+  isotropy is what makes the cost invariant to rotation about gravity: the
+  induced 6x6 information has rank 2, a zero translation block, and null
+  space exactly span(u_body), so yaw stays free at any attitude.
+  This is the correct way to express a verticality constraint, versus
+  encoding tilt into a 6x6 SE(3) prior information matrix, whose diagonal
+  only isolates roll/pitch near yaw=0 and inevitably couples into
+  translation.
+  Purely additive and inert unless a caller sets it. Also documents that the
+  `prior` information matrix is expressed in the SE(3) Lie tangent, not
+  MRPT's (x,y,z,yaw,pitch,roll) Euler ordering; the two swap indices 3 and 5.
+  New unit test with 4 cases: yaw recovery to <5e-7 deg at yaw in
+  {0,45,90,170,-120}; leveling of a tilted solution; zero translation
+  injected by a consistent prior; convergence with a non-level map frame.
+* Merge pull request `#75 <https://github.com/MOLAorg/mp2p_icp/issues/75>`_ from MOLAorg/feat/expose-cov2cov-alpha
+  Expose cov2cov_alpha and cov2cov_auto_balance_with_prior in Solver_Ga…
+* Expose cov2cov_alpha and cov2cov_auto_balance_with_prior in Solver_GaussNewton
+  These OptimalTF_GN_Parameters knobs were hard-coded to their struct defaults
+  (1.0 and true). Load them via MCP_LOAD_OPT and forward them to gnParams so a
+  pipeline YAML can scale the cov-to-cov data block against the pose prior (e.g.
+  to let an IMU gravity pitch/roll prior carry more relative weight).
+* sm-cli info: report the first keyframe's pose
+  Useful to recover the absolute orientation a map was actually built with,
+  which is not always the one it was seeded with: MOLA-LO's IMU-based initial
+  leveling overwrites the configured pitch/roll at mapping time, so the only
+  reliable source is the stored keyframe itself.
+* fix: dont throw if saving icplogs to cwd
+* fix(sm-cli): restore brackets stripped by CLI11 from tf pose argument
+  CLI11 unconditionally strips a leading/trailing bracket pair from
+  variadic option values, so the "[x y z yaw pitch roll]" pose string
+  passed to `sm-cli tf` loses its brackets before CPose3D::fromString()
+  sees it, which then throws since it requires them.
+* cmake: add git submodule early fail
+* Contributors: Jose Luis Blanco-Claraco
+
 2.12.0 (2026-07-10)
 -------------------
 * add missing changelogs
