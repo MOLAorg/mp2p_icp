@@ -42,6 +42,14 @@ void Solver_GaussNewton::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_OPT(params, cov2cov_auto_balance_with_prior);
 
     if (params.has("pair_weights")) pairWeights.load_from(params["pair_weights"]);
+
+    // An absent block leaves the feature disabled, which is the default and
+    // must stay so: the weight makes the registration behave differently on
+    // ground than on walls, and no setting of it generalizes across scene
+    // classes, so it is only ever correct for a configuration someone chose it
+    // for.
+    if (params.has("geometry_class_weights"))
+        geometryClassWeights.load_from(params["geometry_class_weights"]);
 }
 
 bool Solver_GaussNewton::impl_optimal_pose(
@@ -56,6 +64,7 @@ bool Solver_GaussNewton::impl_optimal_pose(
     OptimalTF_GN_Parameters gnParams;
     gnParams.maxInnerLoopIterations          = maxIterations;
     gnParams.pairWeights                     = pairWeights;
+    gnParams.geometryClassWeights            = geometryClassWeights;
     gnParams.kernel                          = robustKernel;
     gnParams.kernelParam                     = robustKernelParam;
     gnParams.kernelPriorRefBlend             = robustKernelPriorRefBlend;

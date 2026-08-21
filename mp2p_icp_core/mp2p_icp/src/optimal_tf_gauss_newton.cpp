@@ -140,6 +140,86 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
     auto w = gnParams.pairWeights;
 
+    // Extra per-pairing weight by map surface class. Resolved once here, so the
+    // untouched path stays exactly as it was: when this is inactive the lambda
+    // below is never called and no branch is taken inside the accumulation.
+    const auto& gcw       = gnParams.geometryClassWeights;
+    const bool  gcwActive = gcw.active();
+
+    std::optional<Eigen::Vector3d> gcwUpInMap;
+    if (gcwActive && gcw.variable == GeometryClassWeights::Variable::Verticality)
+    {
+        if (gcw.gravitySource == GeometryClassWeights::GravitySource::MapFrame)
+        {
+            gcwUpInMap = Eigen::Vector3d(0, 0, 1);
+        }
+        else
+        {
+            // Refuse rather than silently fall back to the map frame: the whole
+            // reason to ask for the IMU vertical is that the map frame's own
+            // vertical is the quantity that drifts.
+            ASSERTMSG_(
+                gnParams.gravityPrior.has_value(),
+                "geometry_class_weights: variable 'verticality' with "
+                "gravity_source 'imu' needs a gravity observation, and none was "
+                "given to the solver. Provide one, or set gravity_source: "
+                "map_frame to accept the map frame's own +Z.");
+        }
+    }
+
+    // The class weight is resolved once per solver call rather than per inner
+    // iteration. The pairing set is fixed for the whole call -- correspondences
+    // are re-searched by the matcher between *outer* ICP iterations, not here --
+    // so the only thing that moves is the pose, and by less than the ramp width.
+    // That turns a 3x3 eigendecomposition per pairing per iteration into one per
+    // pairing per call.
+    std::vector<double> gcwPairWeight;
+    if (gcwActive)
+    {
+        gcwPairWeight.resize(nCov2Cov);
+
+        // Diagnostics: without these there is no way to tell an engaged weight
+        // from an inert one, and this program has shipped silently-misfiring
+        // thresholds before.
+        std::vector<double> classMass(gcw.weights.size(), 0.0);
+        std::vector<double> memb;
+        double              weightSum = 0;
+
+        for (size_t i = 0; i < nCov2Cov; i++)
+        {
+            const auto& p = in.paired_cov2cov[i];
+
+            // The surface normal is the axis of *largest* information, i.e. of
+            // smallest point variance: the same direction the matcher's metric
+            // is built around.
+            Eigen::Matrix3d M = p.cov_inv.asEigen().cast<double>();
+            M                 = 0.5 * (M + M.transpose());
+            const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(M);
+            const Eigen::Vector3d                                normal = es.eigenvectors().col(2);
+
+            gcwPairWeight[i] = gcw(normal, p.local, result.optimalPose, gcwUpInMap);
+            weightSum += gcwPairWeight[i];
+
+            gcw.memberships(
+                gcw.variable_value(normal, p.local, result.optimalPose, gcwUpInMap), memb);
+            for (size_t k = 0; k < classMass.size(); k++)
+            {
+                classMass[k] += memb[k];
+            }
+        }
+
+        if (gnParams.verbose && nCov2Cov > 0)
+        {
+            std::cout << "[GN] geometry_class_weights: n=" << nCov2Cov
+                      << " effective weight ratio=" << weightSum / nCov2Cov << " class mass";
+            for (size_t k = 0; k < classMass.size(); k++)
+            {
+                std::cout << " " << classMass[k] / nCov2Cov;
+            }
+            std::cout << "\n";
+        }
+    }
+
     for (size_t iter = 0; iter < gnParams.maxInnerLoopIterations; iter++)
     {
         // Note: Using Matrix<N,1> instead of Vector<N> for compatibility
@@ -297,6 +377,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                         priorSqrNorm = pr.transpose() * cov_inv * pr.asEigen();
                     }
                     weight *= robustWeight(retSqrNorm, priorSqrNorm);
+                    if (gcwActive) weight *= gcwPairWeight[idx_pairing];
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
@@ -340,6 +421,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                 priorSqrNorm  = pr.transpose() * cov_inv * pr.asEigen();
             }
             weight *= robustWeight(retSqrNorm, priorSqrNorm);
+            if (gcwActive) weight *= gcwPairWeight[idx_pairing];
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();

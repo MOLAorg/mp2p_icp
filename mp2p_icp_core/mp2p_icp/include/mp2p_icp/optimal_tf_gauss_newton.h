@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/GeometryClassWeights.h>
 #include <mp2p_icp/GravityPrior.h>
 #include <mp2p_icp/OptimalTF_Result.h>
 #include <mp2p_icp/PairWeights.h>
@@ -68,6 +69,12 @@ struct OptimalTF_GN_Parameters
     double maxCost = 0;
 
     PairWeights pairWeights;
+
+    /** Optional extra per-pairing weight from the map-side surface geometry.
+     *  Disabled by default; see GeometryClassWeights. Only cov-to-cov pairings
+     *  can be classified (they are the only ones carrying a surface normal),
+     *  so every other pairing type keeps weight 1 unconditionally. */
+    GeometryClassWeights geometryClassWeights;
 
     /** Maximum number of iterations trying to solve for the optimal pose */
     uint32_t maxInnerLoopIterations = 6;

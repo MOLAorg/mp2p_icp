@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include <mp2p_icp/GeometryClassWeights.h>
 #include <mp2p_icp/PairWeights.h>
 #include <mp2p_icp/Solver.h>
 #include <mp2p_icp/robust_kernels.h>
@@ -37,6 +38,11 @@ class Solver_GaussNewton : public Solver
    public:
     uint32_t    maxIterations = 5;
     PairWeights pairWeights;
+
+    /** Extra per-pairing weight by map surface class. Disabled by default, and
+     *  a weight vector of all ones is bit-exactly inert. See
+     *  GeometryClassWeights for why this is opt-in and has no default value. */
+    GeometryClassWeights geometryClassWeights;
 
     RobustKernel robustKernel      = RobustKernel::None;
     double       robustKernelParam = 1.0;
