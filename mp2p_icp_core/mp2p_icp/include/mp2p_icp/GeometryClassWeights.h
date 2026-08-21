@@ -43,6 +43,13 @@ namespace mp2p_icp
  *  belong to a particular platform-and-environment configuration and must be
  *  chosen deliberately. A vector of all ones is bit-exactly inert.
  *
+ *  That last point is measured, not assumed. A weight fitted on one dataset
+ *  family and applied unchanged to three others produced no coherent effect at
+ *  all -- improving 2 of 12 sequences, with per-sequence ratios spanning two
+ *  orders of magnitude -- while on its own family it improved 12 of 13
+ *  consistently. **Enabling this with someone else's numbers therefore spends
+ *  observability for no bias reduction.** It is not a neutral default.
+ *
  *  Two class variables are offered and they are not equivalent:
  *
  *  - `Incidence` (default): the angle between the ray and the surface normal.
