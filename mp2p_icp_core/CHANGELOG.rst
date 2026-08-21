@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.13.0 (2026-08-21)
+-------------------
 * Merge pull request `#91 <https://github.com/MOLAorg/mp2p_icp/issues/91>`_ from MOLAorg/feat/ndt-blend-matcher
   Add Matcher_NDT_Blend: a smooth alternative to the nearest-plane argmin
 * Restore include ordering in the matcher registry
