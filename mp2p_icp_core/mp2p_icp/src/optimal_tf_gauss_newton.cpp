@@ -105,6 +105,37 @@ void dumpHSpectrum(
       << '\t' << deltaNorm << '\n';
 }
 
+/** Optional diagnostic: append the Birge-ratio rescaling of the cov2cov data
+ *  block to a TSV file, one row per inner Gauss-Newton iteration.
+ *
+ *  Enabled only if the environment variable MP2P_ICP_BIRGE_FILE is set to a
+ *  writable path, so it costs one cached lookup when unused. The ratio divides
+ *  the whole cov2cov block of H and g, so how much of the LiDAR information
+ *  actually survives into the normal equations is not observable from the
+ *  trajectory, nor from the H spectrum alone.
+ *
+ *  Not thread-safe by design: it is for single-threaded diagnostic runs.
+ */
+std::ostream* birgeStream()
+{
+    static std::unique_ptr<std::ofstream> s_file = []() -> std::unique_ptr<std::ofstream>
+    {
+        const char* path = ::getenv("MP2P_ICP_BIRGE_FILE");
+        if (!path || !path[0])
+        {
+            return {};
+        }
+        auto f = std::make_unique<std::ofstream>(path, std::ios::out | std::ios::app);
+        if (!f->is_open())
+        {
+            return {};
+        }
+        *f << "# call\titer\tnCov2Cov\tchi2_cc\tdof\tkappa\tcc_scale\tactive\n";
+        return f;
+    }();
+    return s_file ? s_file.get() : nullptr;
+}
+
 /** Skew-symmetric matrix of a 3-vector, i.e. [v]_x such that [v]_x·w = v × w */
 Eigen::Matrix3d skewSymmetric(const Eigen::Vector3d& v)
 {
@@ -430,17 +461,26 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         // pairings carry correlated information not captured by their per-pair
         // modeled covariances. See OptimalTF_GN_Parameters docs.
         {
-            double cc_scale = gnParams.cov2cov_alpha;
-            if (gnParams.cov2cov_auto_balance_with_prior && gnParams.prior.has_value() &&
-                nCov2Cov >= 3)
+            double       cc_scale    = gnParams.cov2cov_alpha;
+            const double dof         = std::max(1.0, 3.0 * static_cast<double>(nCov2Cov) - 6.0);
+            double       kappa       = 1.0;
+            const bool   birgeActive = gnParams.cov2cov_auto_balance_with_prior &&
+                                     gnParams.prior.has_value() && nCov2Cov >= 3;
+            if (birgeActive)
             {
-                const double dof   = std::max(1.0, 3.0 * static_cast<double>(nCov2Cov) - 6.0);
-                const double kappa = std::max(1.0, chi2_cc / dof);
+                kappa = std::max(1.0, chi2_cc / dof);
                 cc_scale /= kappa;
             }
             H.noalias() += cc_scale * H_cc;
             g.noalias() += cc_scale * g_cc;
             errNormSqr += cc_scale * chi2_cc;
+
+            if (auto* bs = birgeStream(); bs)
+            {
+                *bs << hSpectrumCall << '\t' << iter << '\t' << nCov2Cov << '\t' << chi2_cc << '\t'
+                    << dof << '\t' << kappa << '\t' << cc_scale << '\t' << (birgeActive ? 1 : 0)
+                    << '\n';
+            }
         }
         //
         // ============== Point-to-line ===============
