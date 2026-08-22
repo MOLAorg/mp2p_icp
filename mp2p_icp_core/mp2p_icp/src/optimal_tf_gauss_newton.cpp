@@ -25,6 +25,7 @@
 #include <mrpt/poses/Lie/SE.h>
 
 #include <Eigen/Dense>
+#include <atomic>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
@@ -52,7 +53,7 @@ namespace
  *
  *  Not thread-safe by design: it is for single-threaded diagnostic runs.
  */
-uint64_t hSpectrumCallCounter = 0;
+std::atomic<uint64_t> hSpectrumCallCounter{0};
 
 std::ostream* hSpectrumStream()
 {
@@ -69,7 +70,8 @@ std::ostream* hSpectrumStream()
             return {};
         }
         *f << "# call\titer\tnPairs\terrNorm\tev0\tev1\tev2\tev3\tev4\tev5\tcond"
-              "\tmeas_ev0\tmeas_ev5\tmeas_cond\ttrace_meas_over_prior\tdeltaNorm\n";
+              "\tmeas_ev0\tmeas_ev1\tmeas_ev2\tmeas_ev3\tmeas_ev4\tmeas_ev5"
+              "\tmeas_cond\ttrace_meas_over_reg\tdeltaNorm\n";
         return f;
     }();
     return s_file ? s_file.get() : nullptr;
@@ -90,19 +92,25 @@ void dumpHSpectrum(
 
     const double cond  = ev[0] > 0 ? ev[5] / ev[0] : std::numeric_limits<double>::infinity();
     const double condM = evM[0] > 0 ? evM[5] / evM[0] : std::numeric_limits<double>::infinity();
-    // How hard the prior pulls back, in the one unit that is comparable across
-    // frameworks: the share of the total information it contributes.
-    const double tracePrior = H.trace() - H_meas.trace();
+    // How hard everything added AFTER the measurement block pulls back, in the
+    // one unit that is comparable across frameworks: the share of the total
+    // information it contributes. That is the pose prior plus the rank-2
+    // gravity term, not the pose prior alone, hence the column name.
+    const double traceReg = H.trace() - H_meas.trace();
     const double traceRatio =
-        tracePrior > 0 ? H_meas.trace() / tracePrior : std::numeric_limits<double>::infinity();
+        traceReg > 0 ? H_meas.trace() / traceReg : std::numeric_limits<double>::infinity();
 
     o << call << '\t' << iter << '\t' << nPairs << '\t' << errNorm;
     for (int i = 0; i < 6; i++)
     {
         o << '\t' << ev[i];
     }
-    o << '\t' << cond << '\t' << evM[0] << '\t' << evM[5] << '\t' << condM << '\t' << traceRatio
-      << '\t' << deltaNorm << '\n';
+    o << '\t' << cond;
+    for (int i = 0; i < 6; i++)
+    {
+        o << '\t' << evM[i];
+    }
+    o << '\t' << condM << '\t' << traceRatio << '\t' << deltaNorm << '\n';
 }
 
 /** Optional diagnostic: append the Birge-ratio rescaling of the cov2cov data
@@ -719,6 +727,14 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         const double errNorm = std::sqrt(errNormSqr);
         if (errNorm <= gnParams.maxCost)
         {
+            // Terminal row: this iteration assembled H but takes no step, so
+            // the increment is reported as NaN rather than omitting the row.
+            if (auto* hs = hSpectrumStream(); hs)
+            {
+                dumpHSpectrum(
+                    *hs, hSpectrumCall, iter, nPt2Pt + nCov2Cov + nPt2Ln + nPt2Pl + nPl2Pl + nLn2Ln,
+                    errNorm, H, H_meas, std::numeric_limits<double>::quiet_NaN());
+            }
             break;
         }
 
