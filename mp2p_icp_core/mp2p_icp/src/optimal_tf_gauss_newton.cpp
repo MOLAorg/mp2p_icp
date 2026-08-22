@@ -72,8 +72,18 @@ std::ostream* hSpectrumStream()
         *f << "# call\titer\tnPairs\terrNorm\tev0\tev1\tev2\tev3\tev4\tev5\tcond"
               "\tmeas_ev0\tmeas_ev1\tmeas_ev2\tmeas_ev3\tmeas_ev4\tmeas_ev5"
               "\tmeas_cond\ttrace_meas_over_reg\tdeltaNorm\n";
+        if (!f->good())
+        {
+            return {};
+        }
         return f;
     }();
+    // A write that failed silently would leave a truncated log looking like a
+    // complete one, so stop handing out a stream that has already gone bad.
+    if (s_file && !s_file->good())
+    {
+        s_file.reset();
+    }
     return s_file ? s_file.get() : nullptr;
 }
 
@@ -139,8 +149,18 @@ std::ostream* birgeStream()
             return {};
         }
         *f << "# call\titer\tnCov2Cov\tchi2_cc\tdof\tkappa\tcc_scale\tactive\n";
+        if (!f->good())
+        {
+            return {};
+        }
         return f;
     }();
+    // A write that failed silently would leave a truncated log looking like a
+    // complete one, so stop handing out a stream that has already gone bad.
+    if (s_file && !s_file->good())
+    {
+        s_file.reset();
+    }
     return s_file ? s_file.get() : nullptr;
 }
 
