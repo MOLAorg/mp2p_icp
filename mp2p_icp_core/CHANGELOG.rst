@@ -2,6 +2,54 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#94 <https://github.com/MOLAorg/mp2p_icp/issues/94>`_ from MOLAorg/feat/mm-filter-generators-create-layer
+  mm-filter: create new metric map layers via generators:
+* Fix stale doc URLs missing the mp2p_icp_core path segment
+  These sm2mm/mm-filter demo comments and the sm2mm.h docstring still
+  pointed at pre-split paths (apps/sm2mm, apps/mm-filter, top-level
+  demos/), left over from the mp2p_icp_core/mp2p_icp_viz package split.
+  Same class of issue as flagged in review for the new demo added in
+  this branch; fixing the other pre-existing occurrences found by a
+  repo-wide search.
+* Address review: fix demo URL, doc precedence, and unresolved formula check
+  - Fix stale doc link in the new demo (missing mp2p_icp_core path segment).
+  - CreateMetricMapFromDefinition(): docs said "exactly one" of the two
+  definition sources must be given, but the implementation actually
+  prefers metricMapDefinitionIniFile if both are non-empty; reword to
+  match.
+  - Generator::createTargetLayerIfNeeded(): call
+  Parameterizable::checkAllParametersAreRealized() before creating the
+  map, matching the guard Generator::process() already has. Without it,
+  a metric_map_definition formula (e.g. "$f{...}") referencing a
+  variable that's never bound in this code path (createTargetLayerIfNeeded
+  has no attached ParameterSource) would silently serialize as its
+  unresolved 0.0 placeholder instead of raising a clear error.
+* Let mm-filter pipelines create new metric map layers via generators:
+  mm-filter operates on an already-built .mm file, so it had no way to
+  instantiate a brand-new layer of an arbitrary mrpt::maps::CMetricMap
+  subclass (e.g. mola::KeyframePointCloudMap): that logic lived inside
+  Generator, and only ran as a side effect of processing an observation,
+  which mm-filter does not have.
+  Factor the map-creation logic (TSetOfMetricMapInitializers +
+  CMultiMetricMap, driven by a metric_map_definition YAML block) out of
+  Generator::implProcessCustomMap() into a standalone
+  mp2p_icp_filters::CreateMetricMapFromDefinition(), and expose it via a
+  new Generator::createTargetLayerIfNeeded(), callable without any
+  observation at hand.
+  mm-filter now optionally parses a generators: section (same schema as
+  sm2mm) and uses it only to pre-create each generator's target_layer if
+  missing, before running filters:. A plain FilterMerge step can then
+  insert an existing point cloud layer into it, closing the gap reported
+  in `MOLAorg/mola#147 <https://github.com/MOLAorg/mola/issues/147>`_.
+* Add feature-detection macro for nn_visit_pt2pl_candidates()
+  Downstream code (e.g. mola) needs to build against both this and
+  older mp2p_icp releases still distributed via ROS binary repos, which
+  predate NearestPlaneCapable::nn_visit_pt2pl_candidates() and the
+  PlaneCandidate/plane_candidate_visitor_t types.
+* Contributors: Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco
+
 2.13.0 (2026-08-21)
 -------------------
 * Merge pull request `#91 <https://github.com/MOLAorg/mp2p_icp/issues/91>`_ from MOLAorg/feat/ndt-blend-matcher
