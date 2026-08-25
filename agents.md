@@ -127,6 +127,21 @@ CLI argument parsing uses CLI11 (`find_package(CLI11 REQUIRED)`, `CLI11::CLI11`)
 | `txt2mm` | mp2p_icp_core | Convert TXT/CSV point clouds → .mm |
 | `rawlog-filter` | mp2p_icp_core | Filter MRPT RawLog files |
 
+### `mm-filter` layer creation via `generators:`
+
+`mm-filter` pipeline YAML files may optionally include a `generators:` section (same schema
+as `sm2mm`). Since `mm-filter` runs over an already-built `.mm` file (no observation stream),
+each generator with a `metric_map_definition` block is used only to pre-create its
+`target_layer` as an empty instance of that map class, if missing, before `filters:` runs;
+generators in the default point-cloud mode are ignored. This lets a plain `FilterMerge` step
+insert an existing point cloud layer into a brand-new layer of an arbitrary
+`mrpt::maps::CMetricMap` subclass (e.g. `mola::KeyframePointCloudMap`, for GICP
+localization-only mode) without going through `sm2mm`. Implemented by
+`Generator::createTargetLayerIfNeeded()`, built on the standalone
+`mp2p_icp_filters::CreateMetricMapFromDefinition()` (which factors out the same
+`TSetOfMetricMapInitializers`/`CMultiMetricMap` logic `Generator` uses internally when it
+first sees a matching observation). See `demos/mm-filter_create_keyframe_map_layer.yaml`.
+
 ### `mm2las` geodetic export (`--frame geodetic`)
 
 Exports WGS-84 lon/lat/alt with EPSG:4979 WKT2 CRS embedded as VLR.
