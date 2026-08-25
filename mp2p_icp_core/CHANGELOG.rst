@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.13.1 (2026-08-25)
+-------------------
 * Merge pull request `#94 <https://github.com/MOLAorg/mp2p_icp/issues/94>`_ from MOLAorg/feat/mm-filter-generators-create-layer
   mm-filter: create new metric map layers via generators:
 * Fix stale doc URLs missing the mp2p_icp_core path segment
