@@ -43,11 +43,14 @@ namespace mp2p_icp_filters
  *  standalone function so it can also be used without any observation at hand, e.g. to pre-create
  *  a layer for an `mm-filter` pipeline (see Generator::createTargetLayerIfNeeded()).
  *
- *  Exactly one of `metricMapDefinition` or `metricMapDefinitionIniFile` must be non-empty.
+ *  At least one of `metricMapDefinition` or `metricMapDefinitionIniFile` must be non-empty. If
+ *  both are given, `metricMapDefinitionIniFile` takes precedence and `metricMapDefinition` is
+ *  ignored.
  *
- * \param[in] metricMapDefinition YAML map with, at least, a `class` key.
+ * \param[in] metricMapDefinition YAML map with, at least, a `class` key. Ignored if
+ *            `metricMapDefinitionIniFile` is not empty.
  * \param[in] metricMapDefinitionIniFile Alternative to the above: a path to an external `.ini`
- *            file. Ignored if `metricMapDefinition` is not empty.
+ *            file, taking precedence over `metricMapDefinition` if both are given.
  * \param[in] logger Optional logger, forwarded to mp2p_icp::load_plugin() if a `plugin` key is
  *            given.
  *

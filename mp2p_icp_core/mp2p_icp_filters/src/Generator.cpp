@@ -757,6 +757,11 @@ bool Generator::createTargetLayerIfNeeded(mp2p_icp::metric_map_t& out) const
         return false;  // already exists
     }
 
+    // Formulas in metric_map_definition (e.g. "$f{...}") must be resolved before being
+    // read out below; otherwise, an unattached/unrealized one would silently serialize as
+    // its 0.0 placeholder instead of throwing.
+    Parameterizable::checkAllParametersAreRealized();
+
     out.layers[params.target_layer] = CreateMetricMapFromDefinition(
         params.metric_map_definition, params.metric_map_definition_ini_file, this);
 
