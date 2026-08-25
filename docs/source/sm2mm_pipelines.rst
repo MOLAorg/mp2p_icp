@@ -44,7 +44,7 @@ Each pipeline file can contain these sections:
 - ``filters:``: A list of filters to apply to each key-frame observations, after generators have been applied. For example, here one typically removes the robot body, de-skew the scan, downsamples the point cloud, and merges the result into one or several final metric map layers used to accumulate the result.
 - ``final_filters:``: An optional list of filters to apply to the final map layers, after all key-frames have been processed.
 
-Refer to example pipeline files `sm2mm_*.yaml` under the `demos directory <https://github.com/MOLAorg/mp2p_icp/tree/develop/demos>`_.
+Refer to example pipeline files `sm2mm_*.yaml` under the `demos directory <https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/demos>`_.
 Some of them are explained below with a diagram.
 
 
