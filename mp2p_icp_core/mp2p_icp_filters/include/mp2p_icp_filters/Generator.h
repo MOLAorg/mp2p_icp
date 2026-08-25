@@ -105,6 +105,21 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
         const mrpt::obs::CObservation& input_raw, mp2p_icp::metric_map_t& inOut,
         const std::optional<mrpt::poses::CPose3D>& robotPose = std::nullopt) const;
 
+    /** If this generator was configured with a custom `metric_map_definition` (or
+     *  `metric_map_definition_ini_file`), and `out` does not already contain a layer named
+     *  `target_layer`, creates an empty instance of that map class and inserts it into `out`.
+     *
+     *  Unlike process(), this does not require any observation to be at hand. It is used, e.g.,
+     *  by the `mm-filter` CLI tool to pre-create custom-class layers (such as
+     *  `mola::KeyframePointCloudMap`) directly on a `.mm` file, from a `generators:` pipeline
+     *  section, so that a later `FilterMerge` filter can insert existing point cloud layers into
+     *  them.
+     *
+     *  \return true if a new layer was actually created; false if it already existed, or if this
+     *  generator uses the default point-cloud generation mode (no `metric_map_definition` given).
+     */
+    bool createTargetLayerIfNeeded(mp2p_icp::metric_map_t& out) const;
+
     struct Parameters
     {
         void load_from_yaml(const mrpt::containers::yaml& c, Generator& parent);

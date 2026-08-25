@@ -15,6 +15,7 @@ else()
 endif()
 
 set(LIB_SRCS
+  src/CreateMetricMapFromDefinition.cpp
   src/FilterAbsoluteTimestamp.cpp
   src/FilterAdjustTimestamps.cpp
   src/FilterBase.cpp
@@ -60,6 +61,7 @@ set(LIB_SRCS
 )
 
 set(LIB_PUBLIC_HDRS
+  include/mp2p_icp_filters/CreateMetricMapFromDefinition.h
   include/mp2p_icp_filters/FilterAbsoluteTimestamp.h
   include/mp2p_icp_filters/FilterAdjustTimestamps.h
   include/mp2p_icp_filters/FilterBase.h
