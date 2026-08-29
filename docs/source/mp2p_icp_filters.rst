@@ -398,6 +398,8 @@ If the output layer already exists, new points are accumulated on it; previous c
 ---
 
 
+.. _FilterDecimateAdaptive:
+
 Filter: `FilterDecimateAdaptive`
 --------------------------------
 
@@ -524,6 +526,8 @@ single YAML config work across heterogeneous LiDAR sensors without retuning.
 |
 
 ---
+
+.. _FilterDecimateVoxels:
 
 Filter: `FilterDecimateVoxels`
 ------------------------------
@@ -739,6 +743,8 @@ Filter: `FilterFartherPointSampling`
 |
 
 ---
+
+.. _FilterMerge:
 
 Filter: `FilterMerge`
 ---------------------

@@ -80,7 +80,7 @@ and store the resulting map into a ``mola::KeyframePointCloudMap`` layer named `
 .. dropdown:: Pipeline YAML code
     :icon: list-unordered
 
-    .. literalinclude:: ../../../mp2p_icp/demos/sm2mm_no_decim_imu_mls_keyframe_map.yaml
+    .. literalinclude:: ../../../mp2p_icp/mp2p_icp_core/demos/sm2mm_no_decim_imu_mls_keyframe_map.yaml
        :language: yaml
 
 
@@ -126,7 +126,7 @@ creating a more memory-efficient representation.
 .. dropdown:: Pipeline YAML code
     :icon: list-unordered
 
-    .. literalinclude:: ../../../mp2p_icp/demos/sm2mm_pointcloud_voxelize.yaml
+    .. literalinclude:: ../../../mp2p_icp/mp2p_icp_core/demos/sm2mm_pointcloud_voxelize.yaml
        :language: yaml
 
 
@@ -189,5 +189,5 @@ enabling differentiation between stationary map features and moving objects for 
 .. dropdown:: Pipeline YAML code
     :icon: list-unordered
 
-    .. literalinclude:: ../../../mp2p_icp/demos/sm2mm_voxels_static_dynamic_points.yaml
+    .. literalinclude:: ../../../mp2p_icp/mp2p_icp_core/demos/sm2mm_voxels_static_dynamic_points.yaml
        :language: yaml
