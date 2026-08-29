@@ -1,0 +1,14 @@
+# This repository contributes .rst pages that are included into the Sphinx
+# project in MOLAorg/mola, so a broken include or a dangling reference added
+# here only shows up when the whole doc set is built. Reuse mola's job to build
+# it against this pull request.
+name: Check docs
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+
+jobs:
+  check-docs:
+    uses: MOLAorg/mola/.github/workflows/check-docs.yml@develop
