@@ -11,4 +11,8 @@ on:
 
 jobs:
   check-docs:
+    # Caps what the reusable workflow's token can ever be granted, regardless
+    # of what the shared workflow itself asks for.
+    permissions:
+      contents: read
     uses: MOLAorg/mola/.github/workflows/check-docs.yml@develop
