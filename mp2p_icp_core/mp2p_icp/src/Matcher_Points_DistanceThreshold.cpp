@@ -134,9 +134,30 @@ void Matcher_Points_DistanceThreshold::implMatchOneLayer(
     // TBB call structure based on the beautiful implementation in KISS-ICP.
     using Result = mrpt::tfest::TMatchingPairList;
 
-    auto newPairs = tbb::parallel_reduce(
+    // parallel_DETERMINISTIC_reduce, not parallel_reduce, and the grainsize is
+    // part of that: this reduction JOINS BY CONCATENATION, so the order of the
+    // resulting correspondence list is the shape of the reduction tree. Plain
+    // parallel_reduce shapes that tree from whichever workers happen to be free,
+    // which makes the pairing order -- and therefore the ICP result, and every
+    // decision downstream of it -- vary from run to run on an otherwise
+    // identical input. The deterministic form splits a fixed way for a given
+    // range and grainsize, regardless of thread count, so the concatenation
+    // order is a function of the input alone.
+    //
+    // It needs an explicit grainsize: it partitions down to grainsize (unlike
+    // auto_partitioner, which the plain form uses and which ignores the
+    // blocked_range default of 1), so leaving the default would split to single
+    // elements and drown the work in task overhead.
+    //
+    // Only the two matchers that concatenate need this. Matcher_Cov2Cov and the
+    // rest do not reduce at all, which is why LiDAR odometry -- which matches
+    // cov2cov -- has been bit-reproducible on many cores while loop closure,
+    // which matches point-to-point, was not.
+    constexpr size_t kDeterministicGrainSize = 512;
+
+    auto newPairs = tbb::parallel_deterministic_reduce(
         // Range
-        tbb::blocked_range<size_t>{0, nLocalPts},
+        tbb::blocked_range<size_t>{0, nLocalPts, kDeterministicGrainSize},
         // Identity
         Result(),
         // 1st lambda: Parallel computation
