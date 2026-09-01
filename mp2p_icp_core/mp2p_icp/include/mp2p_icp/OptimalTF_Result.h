@@ -36,6 +36,17 @@ struct OptimalTF_Result
 
     /** Correspondence that were detected as outliers. */
     OutlierIndices outliers;
+
+    /** Share of the final rotational information that came from the gravity
+     *  prior, in [0,1], on the last Gauss-Newton iteration; <0 when no prior
+     *  was given.
+     *
+     *  A verticality prior competes against the point pairs for the same two
+     *  tilt DOFs, but it is expressed in radians while they are in metres, so
+     *  its influence is set by the pair count and their lever arms and is not
+     *  readable from `sigma_rad` alone. This reports what it actually was.
+     */
+    double gravity_information_share = -1.0;
 };
 
 /** @} */

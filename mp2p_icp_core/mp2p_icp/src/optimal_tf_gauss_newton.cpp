@@ -74,6 +74,11 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 {
     using std::size_t;
 
+    // Reset here, not only where it is written: `result` carries the running pose
+    // between calls, so a reused instance would otherwise report the share of an
+    // earlier solve that did have a gravity prior.
+    result.gravity_information_share = -1.0;
+
     MRPT_START
 
     // Run Gauss-Newton steps, using SE(3) relinearization at the current solution:
@@ -593,8 +598,18 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             const double w_g =
                 1.0 / (gnParams.gravityPrior->sigma_rad * gnParams.gravityPrior->sigma_rad);
 
+            const Eigen::Matrix<double, 6, 6> Hg = w_g * Jg.transpose() * Jg;
+
+            // How much of the rotational information this term actually
+            // supplies, against everything the pairs contribute to the same
+            // block. Sigma alone does not say: the pairs' contribution scales
+            // with their number and the square of their lever arms.
+            const double trRotPairs          = H.block<3, 3>(3, 3).trace();
+            const double trRotGrav           = Hg.block<3, 3>(3, 3).trace();
+            result.gravity_information_share = trRotGrav / std::max(1e-30, trRotPairs + trRotGrav);
+
             g.noalias() += w_g * Jg.transpose() * r_g;
-            H.noalias() += w_g * Jg.transpose() * Jg;
+            H.noalias() += Hg;
         }
 
         // ============ Termination criterion =============
