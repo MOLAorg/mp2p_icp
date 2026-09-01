@@ -25,8 +25,10 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/random/RandomGenerators.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 namespace
 {
@@ -170,6 +172,54 @@ void test_is_deterministic()
     }
 }
 
+void test_is_independent_of_input_order()
+{
+    // The contract is not just "same run twice": an upstream parallel stage may
+    // hand the same points over in a different order, and the patches must not
+    // move because of it.
+    const auto f = makeFilter();
+
+    auto a = makeRoom();
+    auto b = makeRoom();
+
+    {
+        auto& pcB      = *std::dynamic_pointer_cast<mrpt::maps::CSimplePointsMap>(b.layers["raw"]);
+        const size_t n = pcB.size();
+        auto&        rng = mrpt::random::getRandomGenerator();
+        rng.randomize(7U);
+        std::vector<mrpt::math::TPoint3D> pts;
+        pts.reserve(n);
+        for (size_t i = 0; i < n; i++)
+        {
+            mrpt::math::TPoint3D p;
+            pcB.getPoint(i, p.x, p.y, p.z);
+            pts.push_back(p);
+        }
+        for (size_t i = n; i > 1; i--)
+        {
+            const auto j = static_cast<size_t>(rng.drawUniform32bit() % i);
+            std::swap(pts[i - 1], pts[j]);
+        }
+        pcB.clear();
+        for (const auto& p : pts) pcB.insertPointFast(p.x, p.y, p.z);
+        pcB.mark_as_modified();
+    }
+
+    f.filter(a);
+    f.filter(b);
+
+    ASSERT_EQUAL_(a.planes.size(), b.planes.size());
+    for (size_t i = 0; i < a.planes.size(); i++)
+    {
+        ASSERT_EQUAL_(a.planes[i].num_points, b.planes[i].num_points);
+        ASSERT_LT_(std::abs(a.planes[i].area - b.planes[i].area), 1e-9);
+        for (int k = 0; k < 4; k++)
+        {
+            ASSERT_LT_(std::abs(a.planes[i].plane.coefs[k] - b.planes[i].plane.coefs[k]), 1e-12);
+        }
+    }
+}
+
 void test_min_span_rejects_a_sliver()
 {
     // A 6 x 0.3 m strip: plenty of points and perfectly planar, but too narrow
@@ -222,6 +272,9 @@ int main()
 
         test_is_deterministic();
         std::cout << "test_is_deterministic: Success" << std::endl;
+
+        test_is_independent_of_input_order();
+        std::cout << "test_is_independent_of_input_order: Success" << std::endl;
 
         test_min_span_rejects_a_sliver();
         std::cout << "test_min_span_rejects_a_sliver: Success" << std::endl;

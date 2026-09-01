@@ -917,7 +917,7 @@ The data is updated **in-place** in the input/output layer.
 ---
 
 Filter: `FilterPlanePatches`
----------------------------
+----------------------------
 
 **Description**: Extracts large planar patches from a point layer and appends them to
 :cpp:member:`mp2p_icp::metric_map_t::planes`, each with the surface area it was fitted from.

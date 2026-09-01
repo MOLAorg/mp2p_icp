@@ -96,7 +96,14 @@ void FilterPlanePatches::Parameters::load_from_yaml(
     ASSERT_GT_(distance_threshold, 0.0);
     ASSERT_GT_(min_points, 2U);
     ASSERT_GE_(min_span, 0.0);
+    // A negative range_min would be squared below into a positive threshold,
+    // silently rejecting everything nearer than |range_min|.
+    ASSERT_GE_(range_min, 0.0);
     ASSERT_GT_(range_max, range_min);
+    // Past 90 deg the cosine turns negative and the agreement test stops
+    // rejecting anything at all.
+    ASSERT_GE_(normal_agreement_deg, 0.0);
+    ASSERT_LE_(normal_agreement_deg, 90.0);
     ASSERT_GT_(normal_knn, 3U);
     ASSERT_GT_(seed_candidates, 0U);
 
@@ -139,11 +146,30 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
     const double r2max  = params.range_max * params.range_max;
     const double invVox = 1.0 / params.voxel_size;
 
-    std::vector<Eigen::Vector3d>                         P;
-    std::unordered_map<VoxelKey, uint32_t, VoxelKeyHash> seen;
-    P.reserve(nIn / 4 + 16);
-    seen.reserve(nIn / 4 + 16);
+    // Keeping "the first point seen" in each voxel would make the whole result
+    // depend on the order the caller happened to deliver the points in, which an
+    // upstream parallel stage is free to change between runs. Instead every
+    // survivor is sorted by (voxel, coordinates) and the smallest point of each
+    // voxel is kept, so the downsampled cloud is a function of the SET of input
+    // points and of nothing else.
+    struct Candidate
+    {
+        VoxelKey        k;
+        Eigen::Vector3d p;
 
+        bool operator<(const Candidate& o) const
+        {
+            if (k.x != o.k.x) return k.x < o.k.x;
+            if (k.y != o.k.y) return k.y < o.k.y;
+            if (k.z != o.k.z) return k.z < o.k.z;
+            if (p.x() != o.p.x()) return p.x() < o.p.x();
+            if (p.y() != o.p.y()) return p.y() < o.p.y();
+            return p.z() < o.p.z();
+        }
+    };
+
+    std::vector<Candidate> cand;
+    cand.reserve(nIn);
     for (size_t i = 0; i < nIn; i++)
     {
         const double x = xs[i], y = ys[i], z = zs[i];
@@ -151,11 +177,20 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
         const double r2 = x * x + y * y + z * z;
         if (r2 < r2min || r2 > r2max) continue;
 
-        const VoxelKey k{
-            static_cast<int64_t>(std::floor(x * invVox)),
-            static_cast<int64_t>(std::floor(y * invVox)),
-            static_cast<int64_t>(std::floor(z * invVox))};
-        if (seen.emplace(k, static_cast<uint32_t>(P.size())).second) P.emplace_back(x, y, z);
+        cand.push_back(Candidate{
+            VoxelKey{
+                static_cast<int64_t>(std::floor(x * invVox)),
+                static_cast<int64_t>(std::floor(y * invVox)),
+                static_cast<int64_t>(std::floor(z * invVox))},
+            Eigen::Vector3d(x, y, z)});
+    }
+    std::sort(cand.begin(), cand.end());
+
+    std::vector<Eigen::Vector3d> P;
+    P.reserve(cand.size());
+    for (size_t i = 0; i < cand.size(); i++)
+    {
+        if (i == 0 || !(cand[i].k == cand[i - 1].k)) P.push_back(cand[i].p);
     }
 
     const size_t N = P.size();
@@ -229,7 +264,7 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
             {
                 const uint32_t j  = ids[t];
                 const bool     ok = std::abs((P[j] - p0).dot(n0)) < params.distance_threshold &&
-                                std::abs(NRM[j].dot(n0)) > cosTh;
+                                std::abs(NRM[j].dot(n0)) >= cosTh;
                 inl[t] = ok ? 1 : 0;
                 cnt += ok ? 1 : 0;
             }
@@ -278,7 +313,7 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
         {
             const uint32_t j  = ids[t];
             const bool     ok = std::abs((P[j] - c).dot(n)) < params.distance_threshold &&
-                            std::abs(NRM[j].dot(n)) > cosTh;
+                            std::abs(NRM[j].dot(n)) >= cosTh;
             sel[t] = ok ? 1 : 0;
             selCount += ok ? 1 : 0;
         }
