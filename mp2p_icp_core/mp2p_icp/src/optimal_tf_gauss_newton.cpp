@@ -74,6 +74,11 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 {
     using std::size_t;
 
+    // Reset here, not only where it is written: `result` carries the running pose
+    // between calls, so a reused instance would otherwise report the share of an
+    // earlier solve that did have a gravity prior.
+    result.gravity_information_share = -1.0;
+
     MRPT_START
 
     // Run Gauss-Newton steps, using SE(3) relinearization at the current solution:
