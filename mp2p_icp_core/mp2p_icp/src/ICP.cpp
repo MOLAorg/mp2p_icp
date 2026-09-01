@@ -417,10 +417,10 @@ void ICP::align(
     tle7.stop();
 
     // Store output:
-    result.optimal_tf.mean = state.currentSolution.optimalPose;
+    result.optimal_tf.mean           = state.currentSolution.optimalPose;
     result.gravity_information_share = state.currentSolution.gravity_information_share;
-    result.optimalScale    = state.currentSolution.optimalScale;
-    result.finalPairings   = std::move(state.currentPairings);
+    result.optimalScale              = state.currentSolution.optimalScale;
+    result.finalPairings             = std::move(state.currentPairings);
 
     // Covariance of the estimated SE(3) registration:
     {

@@ -599,10 +599,9 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             // supplies, against everything the pairs contribute to the same
             // block. Sigma alone does not say: the pairs' contribution scales
             // with their number and the square of their lever arms.
-            const double trRotPairs = H.block<3, 3>(3, 3).trace();
-            const double trRotGrav  = Hg.block<3, 3>(3, 3).trace();
-            result.gravity_information_share =
-                trRotGrav / std::max(1e-30, trRotPairs + trRotGrav);
+            const double trRotPairs          = H.block<3, 3>(3, 3).trace();
+            const double trRotGrav           = Hg.block<3, 3>(3, 3).trace();
+            result.gravity_information_share = trRotGrav / std::max(1e-30, trRotPairs + trRotGrav);
 
             g.noalias() += w_g * Jg.transpose() * r_g;
             H.noalias() += Hg;
