@@ -47,8 +47,7 @@ struct VoxelKeyHash
     std::size_t operator()(const VoxelKey& k) const
     {
         // Three odd 64-bit constants; collisions only cost a bucket walk.
-        return static_cast<std::size_t>(
-            k.x * 73856093LL ^ k.y * 19349663LL ^ k.z * 83492791LL);
+        return static_cast<std::size_t>(k.x * 73856093LL ^ k.y * 19349663LL ^ k.z * 83492791LL);
     }
 };
 
@@ -126,21 +125,21 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
 
     if (params.clear_previous) inOut.planes.clear();
 
-    const auto&  pc = *pcPtr;
-    const auto&  xs = pc.getPointsBufferRef_x();
-    const auto&  ys = pc.getPointsBufferRef_y();
-    const auto&  zs = pc.getPointsBufferRef_z();
+    const auto&  pc  = *pcPtr;
+    const auto&  xs  = pc.getPointsBufferRef_x();
+    const auto&  ys  = pc.getPointsBufferRef_y();
+    const auto&  zs  = pc.getPointsBufferRef_z();
     const size_t nIn = xs.size();
     if (nIn == 0) return;
 
     // 1) Range gate and voxel downsample in one pass. Keeping the first point
     // that lands in each voxel makes the result independent of any ordering
     // the caller's decimation happened to leave behind.
-    const double r2min = params.range_min * params.range_min;
-    const double r2max = params.range_max * params.range_max;
+    const double r2min  = params.range_min * params.range_min;
+    const double r2max  = params.range_max * params.range_max;
     const double invVox = 1.0 / params.voxel_size;
 
-    std::vector<Eigen::Vector3d>                          P;
+    std::vector<Eigen::Vector3d>                         P;
     std::unordered_map<VoxelKey, uint32_t, VoxelKeyHash> seen;
     P.reserve(nIn / 4 + 16);
     seen.reserve(nIn / 4 + 16);
@@ -156,8 +155,7 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
             static_cast<int64_t>(std::floor(x * invVox)),
             static_cast<int64_t>(std::floor(y * invVox)),
             static_cast<int64_t>(std::floor(z * invVox))};
-        if (seen.emplace(k, static_cast<uint32_t>(P.size())).second)
-            P.emplace_back(x, y, z);
+        if (seen.emplace(k, static_cast<uint32_t>(P.size())).second) P.emplace_back(x, y, z);
     }
 
     const size_t N = P.size();
@@ -170,7 +168,7 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
     for (const auto& p : P) kdMap->insertPointFast(p.x(), p.y(), p.z());
     kdMap->mark_as_modified();
 
-    const size_t K = std::min<size_t>(params.normal_knn, N);
+    const size_t                 K = std::min<size_t>(params.normal_knn, N);
     std::vector<Eigen::Vector3d> NRM(N);
     {
         std::vector<size_t> idx;
@@ -195,11 +193,11 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
     }
 
     // 3) Greedy extraction.
-    const double cosTh   = std::cos(mrpt::DEG2RAD(params.normal_agreement_deg));
+    const double cosTh       = std::cos(mrpt::DEG2RAD(params.normal_agreement_deg));
     const double areaPerCell = params.voxel_size * params.voxel_size;
 
-    std::vector<uint8_t> live(N, 1);
-    std::vector<uint32_t> ids;      // live indices, rebuilt each round
+    std::vector<uint8_t>  live(N, 1);
+    std::vector<uint32_t> ids;  // live indices, rebuilt each round
     std::vector<uint8_t>  inl, best;
     ids.reserve(N);
     inl.reserve(N);
@@ -224,8 +222,8 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
 
         for (size_t s = 0; s < ids.size(); s += stride)
         {
-            const Eigen::Vector3d& n0 = NRM[ids[s]];
-            const Eigen::Vector3d& p0 = P[ids[s]];
+            const Eigen::Vector3d& n0  = NRM[ids[s]];
+            const Eigen::Vector3d& p0  = P[ids[s]];
             size_t                 cnt = 0;
             for (size_t t = 0; t < ids.size(); t++)
             {
@@ -249,7 +247,7 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
         const auto fitAndSelect = [&](const std::vector<uint8_t>& sel, Eigen::Vector3d& c,
                                       Eigen::Vector3d& n, Eigen::Matrix3d& evecs)
         {
-            c = Eigen::Vector3d::Zero();
+            c        = Eigen::Vector3d::Zero();
             size_t m = 0;
             for (size_t t = 0; t < ids.size(); t++)
                 if (sel[t])
@@ -303,7 +301,7 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
         // would credit that surface with up to twice its real area purely
         // because of where the grid fell.
         const Eigen::Vector3d a1 = evecs.col(2), a2 = evecs.col(1);
-        double lo1 = 1e300, hi1 = -1e300, lo2 = 1e300, hi2 = -1e300;
+        double                lo1 = 1e300, hi1 = -1e300, lo2 = 1e300, hi2 = -1e300;
         std::unordered_map<CellKey, uint8_t, CellKeyHash> cells;
         cells.reserve(selCount);
         for (size_t t = 0; t < ids.size(); t++)
@@ -331,7 +329,7 @@ void FilterPlanePatches::filter(mp2p_icp::metric_map_t& inOut) const
         mp2p_icp::plane_patch_t pp;
         pp.centroid = {c.x(), c.y(), c.z()};
         pp.plane    = mrpt::math::TPlane(
-            mrpt::math::TPoint3D(c.x(), c.y(), c.z()), mrpt::math::TVector3D(n.x(), n.y(), n.z()));
+               mrpt::math::TPoint3D(c.x(), c.y(), c.z()), mrpt::math::TVector3D(n.x(), n.y(), n.z()));
         // Surface area, not the bounding box: a sparse plane fitted across a
         // cluttered volume must not outweigh a solid wall of the same extent.
         pp.area       = static_cast<double>(cells.size()) * areaPerCell;

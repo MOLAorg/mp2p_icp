@@ -20,8 +20,9 @@
 #pragma once
 
 #include <mrpt/math/TPlane.h>
-#include <cstdint>
 #include <mrpt/math/TPoint3D.h>
+
+#include <cstdint>
 
 namespace mp2p_icp
 {

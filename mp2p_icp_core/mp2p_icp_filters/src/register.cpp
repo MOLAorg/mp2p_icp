@@ -32,7 +32,6 @@
 #include <mp2p_icp_filters/FilterByRing.h>
 #include <mp2p_icp_filters/FilterClear.h>
 #include <mp2p_icp_filters/FilterCurvature.h>
-#include <mp2p_icp_filters/FilterPlanePatches.h>
 #include <mp2p_icp_filters/FilterDecimate.h>
 #include <mp2p_icp_filters/FilterDecimateAdaptive.h>
 #include <mp2p_icp_filters/FilterDecimateRangeAdaptive.h>
@@ -44,6 +43,7 @@
 #include <mp2p_icp_filters/FilterMLS.h>
 #include <mp2p_icp_filters/FilterMerge.h>
 #include <mp2p_icp_filters/FilterNormalizeIntensity.h>
+#include <mp2p_icp_filters/FilterPlanePatches.h>
 #include <mp2p_icp_filters/FilterPoleDetector.h>
 #include <mp2p_icp_filters/FilterPolygon2D.h>
 #include <mp2p_icp_filters/FilterRemoveByVoxelOccupancy.h>

@@ -111,7 +111,7 @@ void test_finds_the_six_faces()
     double totalArea = 0;
     for (const auto& p : m.planes)
     {
-        const auto& n  = p.plane.coefs;
+        const auto&  n  = p.plane.coefs;
         const double nn = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
         const double nz = std::abs(n[2]) / nn;
         if (nz > std::cos(mrpt::DEG2RAD(2.0)))
@@ -125,8 +125,7 @@ void test_finds_the_six_faces()
     ASSERT_EQUAL_(nHoriz, 2UL);
     ASSERT_EQUAL_(nVert, 4UL);
 
-    const double expected =
-        2 * ROOM_X * ROOM_Y + 2 * ROOM_X * ROOM_Z + 2 * ROOM_Y * ROOM_Z;
+    const double expected = 2 * ROOM_X * ROOM_Y + 2 * ROOM_X * ROOM_Z + 2 * ROOM_Y * ROOM_Z;
     ASSERT_LT_(std::abs(totalArea - expected) / expected, 0.15);
 }
 
