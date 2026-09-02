@@ -27,9 +27,28 @@ namespace mp2p_icp
 /** \addtogroup  mp2p_icp_grp
  * @{ */
 
-/** Relative weight of points, lines, and planes. They will be automatically
- * normalized to sum the unity, so feel free of setting weights at any
- * convenient scale.
+/** Relative weight of points, lines, and planes.
+ *
+ * \note Solvers read these differently, and the difference matters:
+ *
+ * - Solver_OLAE normalizes them to sum to unity, so only their ratios are
+ *   meaningful there and any convenient scale will do.
+ *
+ * - Solver_GaussNewton uses them as given. In a weighted least-squares sum a
+ *   weight IS an inverse variance: a pairing contributes `w * J^t * J` to the
+ *   normal equations, and its robust-kernel argument is whitened by the same
+ *   `w`. So there `w = 1/sigma^2` for the assumed residual sigma of that pair
+ *   type, and the ABSOLUTE scale matters, not just the ratios.
+ *
+ * The whitening is what puts every residual type on one scale before the robust
+ * kernel compares it against `robustKernelParam`. Cov-to-cov pairings need no
+ * weight for this: their residual is a Mahalanobis norm and is already whitened.
+ *
+ * This all becomes load-bearing when one ICP pipeline mixes pair types. A metric
+ * point-to-plane residual and a dimensionless cov-to-cov one are not comparable
+ * at equal weight: leaving both at 1.0 lets the cov-to-cov block dominate the
+ * normal equations by the inverse of its own surface regularization, and leaves
+ * the geometric block with a robust kernel that never fires.
  */
 struct PairWeights
 {
