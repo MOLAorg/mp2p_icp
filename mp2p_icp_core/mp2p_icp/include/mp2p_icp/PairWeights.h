@@ -30,6 +30,19 @@ namespace mp2p_icp
 /** Relative weight of points, lines, and planes. They will be automatically
  * normalized to sum the unity, so feel free of setting weights at any
  * convenient scale.
+ *
+ * \note In a weighted least-squares sum a weight IS an inverse variance, and
+ * Solver_GaussNewton uses these as such: a pairing contributes
+ * `w * J^t * J` to the normal equations, and its robust-kernel argument is
+ * whitened by the same `w`. So `w = 1/sigma^2` for the assumed residual sigma
+ * of that pair type, and the solver's `robustKernelParam` is in sigmas for
+ * every pair type, including cov-to-cov, whose residual is a Mahalanobis norm
+ * and is therefore already whitened.
+ *
+ * This matters when one ICP pipeline mixes pair types: a metric point-to-plane
+ * residual and a dimensionless cov-to-cov one are not comparable at equal
+ * weight, and leaving both at 1.0 lets the cov-to-cov block dominate the
+ * normal equations by the inverse of its own surface regularization.
  */
 struct PairWeights
 {

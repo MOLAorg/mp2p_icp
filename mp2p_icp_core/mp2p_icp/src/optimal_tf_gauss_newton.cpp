@@ -99,6 +99,15 @@ bool mp2p_icp::optimal_tf_gauss_newton(
 
     // Returns the robust square-root weight multiplier for a factor, given its
     // residual squared-norm at the current iterate and at the prior mean pose.
+    //
+    // Both arguments must be WHITENED, i.e. already divided by the factor's
+    // variance, so that `kernelParam` means the same number of sigmas for every
+    // residual type. Cov-to-cov pairings pass a Mahalanobis norm and are
+    // whitened by construction; the geometric ones are metric, so they scale
+    // their norm by their PairWeights entry, which is an inverse variance.
+    // Without that, one kernel threshold would be read as sigmas for one block
+    // and as metres for another, and the kernel would be inert on any block
+    // whose residuals are small in absolute units.
     const auto robustWeight = [&](double curSqrNorm, double priorSqrNorm) -> double
     {
         if (!robustSqrtWeightFunc)
@@ -207,7 +216,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                                            .asEigen()
                                            .squaredNorm();
                     }
-                    weight *= robustWeight(retSqrNorm, priorSqrNorm);
+                    weight *= robustWeight(weight * retSqrNorm, weight * priorSqrNorm);
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
@@ -244,7 +253,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                                    .asEigen()
                                    .squaredNorm();
             }
-            weight *= robustWeight(retSqrNorm, priorSqrNorm);
+            weight *= robustWeight(weight * retSqrNorm, weight * priorSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
@@ -387,7 +396,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             {
                 priorSqrNorm = mp2p_icp::error_point2line(p, priorRefPose).asEigen().squaredNorm();
             }
-            weight *= robustWeight(retSqrNorm, priorSqrNorm);
+            weight *= robustWeight(weight * retSqrNorm, weight * priorSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
@@ -416,7 +425,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             {
                 priorSqrNorm = mp2p_icp::error_line2line(p, priorRefPose).asEigen().squaredNorm();
             }
-            weight *= robustWeight(retSqrNorm, priorSqrNorm);
+            weight *= robustWeight(weight * retSqrNorm, weight * priorSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector4d err_i = ret.asEigen();
@@ -456,7 +465,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
                         priorSqrNorm =
                             mp2p_icp::error_point2plane(p, priorRefPose).asEigen().squaredNorm();
                     }
-                    weight *= robustWeight(retSqrNorm, priorSqrNorm);
+                    weight *= robustWeight(weight * retSqrNorm, weight * priorSqrNorm);
 
                     // Error and Jacobian:
                     const Eigen::Vector3d err_i = ret.asEigen();
@@ -491,7 +500,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             {
                 priorSqrNorm = mp2p_icp::error_point2plane(p, priorRefPose).asEigen().squaredNorm();
             }
-            weight *= robustWeight(retSqrNorm, priorSqrNorm);
+            weight *= robustWeight(weight * retSqrNorm, weight * priorSqrNorm);
 
             // Error and Jacobian:
             const Eigen::Vector3d err_i = ret.asEigen();
@@ -520,7 +529,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             {
                 priorSqrNorm = mp2p_icp::error_plane2plane(p, priorRefPose).asEigen().squaredNorm();
             }
-            weight *= robustWeight(retSqrNorm, priorSqrNorm);
+            weight *= robustWeight(weight * retSqrNorm, weight * priorSqrNorm);
 
             const Eigen::Vector3d err_i = ret.asEigen();
             errNormSqr += weight * retSqrNorm;
