@@ -101,12 +101,12 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     // residual squared-norm at the current iterate and at the prior mean pose.
     //
     // Both arguments must be WHITENED, i.e. already divided by the factor's
-    // variance, so that `kernelParam` means the same number of sigmas for every
-    // residual type. Cov-to-cov pairings pass a Mahalanobis norm and are
+    // variance, so that `kernelParam` is compared against one common scale for
+    // every residual type. Cov-to-cov pairings pass a Mahalanobis norm and are
     // whitened by construction; the geometric ones are metric, so they scale
     // their norm by their PairWeights entry, which is an inverse variance.
-    // Without that, one kernel threshold would be read as sigmas for one block
-    // and as metres for another, and the kernel would be inert on any block
+    // Without that, one kernel threshold would be read in sigmas for one block
+    // and in metres for another, and the kernel would be inert on any block
     // whose residuals are small in absolute units.
     const auto robustWeight = [&](double curSqrNorm, double priorSqrNorm) -> double
     {
