@@ -25,16 +25,16 @@
 #include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/maps/CVoxelMapRGB.h>
 #include <mrpt/obs/customizable_obs_viz.h>
-#include <mrpt/opengl/CGridPlaneXY.h>
-#include <mrpt/opengl/CPointCloud.h>
-#include <mrpt/opengl/CPointCloudColoured.h>
-#include <mrpt/opengl/CSetOfLines.h>
-#include <mrpt/opengl/CSetOfObjects.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/optional_serialization.h>
 #include <mrpt/serialization/stl_serialization.h>
 #include <mrpt/system/string_utils.h>  // unitsFormat()
 #include <mrpt/version.h>
+#include <mrpt/viz/CGridPlaneXY.h>
+#include <mrpt/viz/CPointCloud.h>
+#include <mrpt/viz/CPointCloudColoured.h>
+#include <mrpt/viz/CSetOfLines.h>
+#include <mrpt/viz/CSetOfObjects.h>
 
 #if MRPT_VERSION >= 0x020f07
 #include <mrpt/io/CCompressedInputStream.h>
@@ -111,7 +111,7 @@ inline bool isFiniteXYZ(const mrpt::math::TPoint3Df& p)
  *  itself, so there is no source cloud to filter beforehand, and replacing it
  *  with a filtered copy would lose the very renderer that path exists to use.
  */
-void dropNonFinitePoints(mrpt::opengl::CPointCloudColoured& glPts)
+void dropNonFinitePoints(mrpt::viz::CPointCloudColoured& glPts)
 {
     const size_t n   = glPts.size();
     size_t       dst = 0;
@@ -130,7 +130,7 @@ void dropNonFinitePoints(mrpt::opengl::CPointCloudColoured& glPts)
     if (dst != n) glPts.resize(dst);
 }
 
-void dropNonFinitePoints(mrpt::opengl::CPointCloud& glPts)
+void dropNonFinitePoints(mrpt::viz::CPointCloud& glPts)
 {
     const size_t n   = glPts.size();
     size_t       dst = 0;
@@ -291,10 +291,10 @@ void metric_map_t::serializeFrom(mrpt::serialization::CArchive& in, uint8_t vers
 }
 
 auto metric_map_t::get_visualization(const render_params_t& p) const
-    -> std::shared_ptr<mrpt::opengl::CSetOfObjects>
+    -> std::shared_ptr<mrpt::viz::CSetOfObjects>
 {
     MRPT_START
-    auto o = mrpt::opengl::CSetOfObjects::Create();
+    auto o = mrpt::viz::CSetOfObjects::Create();
 
     get_visualization_planes(*o, p.planes);
     get_visualization_lines(*o, p.lines);
@@ -305,7 +305,7 @@ auto metric_map_t::get_visualization(const render_params_t& p) const
 }
 
 void metric_map_t::get_visualization_planes(
-    mrpt::opengl::CSetOfObjects& o, const render_params_planes_t& p) const
+    mrpt::viz::CSetOfObjects& o, const render_params_planes_t& p) const
 {
     MRPT_START
     if (!p.visible)
@@ -318,7 +318,7 @@ void metric_map_t::get_visualization_planes(
 
     for (const auto& plane : planes)
     {
-        auto gl_pl = mrpt::opengl::CGridPlaneXY::Create(-pw, pw, -pw, pw, .0, pf);
+        auto gl_pl = mrpt::viz::CGridPlaneXY::Create(-pw, pw, -pw, pw, .0, pf);
         gl_pl->setColor_u8(p.color);
         mrpt::math::TPose3D planePose;
         plane.plane.getAsPose3DForcingOrigin(plane.centroid, planePose);
@@ -330,11 +330,11 @@ void metric_map_t::get_visualization_planes(
 }
 
 void metric_map_t::get_visualization_lines(
-    mrpt::opengl::CSetOfObjects& o, const render_params_lines_t& p) const
+    mrpt::viz::CSetOfObjects& o, const render_params_lines_t& p) const
 {
     MRPT_START
 
-    auto glLin = mrpt::opengl::CSetOfLines::Create();
+    auto glLin = mrpt::viz::CSetOfLines::Create();
     glLin->setColor_u8(p.color);
 
     for (size_t idxLine = 0; idxLine < lines.size(); idxLine++)
@@ -350,7 +350,7 @@ void metric_map_t::get_visualization_lines(
 }
 
 void metric_map_t::get_visualization_points(
-    mrpt::opengl::CSetOfObjects& o, const render_params_points_t& p) const
+    mrpt::viz::CSetOfObjects& o, const render_params_points_t& p) const
 {
     MRPT_START
     // Planes:
@@ -389,7 +389,7 @@ void metric_map_t::get_visualization_points(
 }
 
 void metric_map_t::get_visualization_map_layer(
-    mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
+    mrpt::viz::CSetOfObjects& o, const render_params_point_layer_t& p,
     const mrpt::maps::CMetricMap::Ptr& map)
 {
     mrpt::maps::CPointsMap::Ptr pts;
@@ -443,7 +443,7 @@ void metric_map_t::get_visualization_map_layer(
         // non-finite points the map may have drawn (see dropNonFinitePoints()):
         for (size_t ith = 0;; ith++)
         {
-            auto glPtsCol = o.getByClass<mrpt::opengl::CPointCloudColoured>(ith);
+            auto glPtsCol = o.getByClass<mrpt::viz::CPointCloudColoured>(ith);
             if (!glPtsCol)
             {
                 break;
@@ -457,7 +457,7 @@ void metric_map_t::get_visualization_map_layer(
         }
         for (size_t ith = 0;; ith++)
         {
-            auto glPts = o.getByClass<mrpt::opengl::CPointCloud>(ith);
+            auto glPts = o.getByClass<mrpt::viz::CPointCloud>(ith);
             if (!glPts)
             {
                 break;
@@ -488,7 +488,7 @@ void metric_map_t::get_visualization_map_layer(
     if (p.colorMode.has_value())
     {
         // color point cloud:
-        auto glPts = mrpt::opengl::CPointCloudColoured::Create();
+        auto glPts = mrpt::viz::CPointCloudColoured::Create();
         glPts->loadFromPointsMap(pts.get());
 
         glPts->setPointSize(p.pointSize);
@@ -517,7 +517,7 @@ void metric_map_t::get_visualization_map_layer(
     else
     {
         // uniform color point cloud:
-        auto glPts = mrpt::opengl::CPointCloud::Create();
+        auto glPts = mrpt::viz::CPointCloud::Create();
         glPts->loadFromPointsMap(pts.get());
 
         glPts->setPointSize(p.pointSize);

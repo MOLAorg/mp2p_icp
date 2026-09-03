@@ -224,7 +224,7 @@ class metric_map_t : public mrpt::serialization::CSerializable,
      *  common elements.
      */
     virtual auto get_visualization(const render_params_t& p = render_params_t()) const
-        -> std::shared_ptr<mrpt::opengl::CSetOfObjects>;
+        -> std::shared_ptr<mrpt::viz::CSetOfObjects>;
 
     /** Merges all geometric entities from another point cloud into this one,
      * with an optional relative pose transformation.
@@ -241,19 +241,18 @@ class metric_map_t : public mrpt::serialization::CSerializable,
 
     /** Used inside get_visualization(), renders planes only. */
     void get_visualization_planes(
-        mrpt::opengl::CSetOfObjects& o, const render_params_planes_t& p) const;
+        mrpt::viz::CSetOfObjects& o, const render_params_planes_t& p) const;
 
     /** Used inside get_visualization(), renders lines only. */
-    void get_visualization_lines(
-        mrpt::opengl::CSetOfObjects& o, const render_params_lines_t& p) const;
+    void get_visualization_lines(mrpt::viz::CSetOfObjects& o, const render_params_lines_t& p) const;
 
     /** Used inside get_visualization(), renders points only. */
     void get_visualization_points(
-        mrpt::opengl::CSetOfObjects& o, const render_params_points_t& p) const;
+        mrpt::viz::CSetOfObjects& o, const render_params_points_t& p) const;
 
     /** Used inside get_visualization_points(), renders points only. */
     static void get_visualization_map_layer(
-        mrpt::opengl::CSetOfObjects& o, const render_params_point_layer_t& p,
+        mrpt::viz::CSetOfObjects& o, const render_params_point_layer_t& p,
         const mrpt::maps::CMetricMap::Ptr& map);
 
     /** Returns a shared_ptr to this object, if it was already created initially

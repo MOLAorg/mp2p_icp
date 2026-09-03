@@ -25,14 +25,10 @@
 #include <mrpt/gui/CDisplayWindowGUI.h>
 
 // other deps:
-#include <mrpt/config.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/core/round.h>
-#include <mrpt/opengl/CEllipsoid3D.h>
-#include <mrpt/opengl/CGridPlaneXY.h>
-#include <mrpt/opengl/COpenGLScene.h>
-#include <mrpt/opengl/stock_objects.h>
+#include <mrpt/gui/config.h>
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/system/CDirectoryExplorer.h>
@@ -40,6 +36,10 @@
 #include <mrpt/system/os.h>
 #include <mrpt/system/progress.h>
 #include <mrpt/system/string_utils.h>  // unitsFormat()
+#include <mrpt/viz/CEllipsoid3D.h>
+#include <mrpt/viz/CGridPlaneXY.h>
+#include <mrpt/viz/Scene.h>
+#include <mrpt/viz/stock_objects.h>
 
 #include <CLI/CLI.hpp>
 #include <iostream>
@@ -70,7 +70,7 @@ CLI::Option* argMinQualityOpt  = nullptr;
 
 namespace
 {
-auto                              glVizICP = mrpt::opengl::CSetOfObjects::Create();
+auto                              glVizICP = mrpt::viz::CSetOfObjects::Create();
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
 nanogui::Slider* slSelectorICP   = nullptr;
@@ -198,7 +198,7 @@ void updateMiniCornerView()
         return;
     }
 
-    mrpt::opengl::CCamera& view_cam = gl_view->getCamera();
+    mrpt::viz::CCamera& view_cam = gl_view->getCamera();
 
     view_cam.setAzimuthDegrees(win->camera().getAzimuthDegrees());
     view_cam.setElevationDegrees(win->camera().getElevationDegrees());
@@ -322,14 +322,14 @@ void main_show_gui()
     win          = mrpt::gui::CDisplayWindowGUI::Create(APP_NAME, 1024, 800, cp);
 
     // Add a background scene:
-    auto scene = mrpt::opengl::COpenGLScene::Create();
+    auto scene = mrpt::viz::Scene::Create();
     {
-        auto glGrid = mrpt::opengl::CGridPlaneXY::Create();
+        auto glGrid = mrpt::viz::CGridPlaneXY::Create();
         glGrid->setColor_u8(0xff, 0xff, 0xff, 0x10);
         scene->insert(glGrid);
     }
 
-    auto gl_base = mrpt::opengl::stock_objects::CornerXYZ(1.0f);
+    auto gl_base = mrpt::viz::stock_objects::CornerXYZ(1.0f);
     gl_base->setName("Global");
     gl_base->enableShowName();
     scene->insert(gl_base);
@@ -1123,17 +1123,17 @@ try
         conditionNumber(relativePose.cov)));
 
     // 3D objects -------------------
-    auto glCornerFrom = mrpt::opengl::stock_objects::CornerXYZSimple(0.75f, 3.0f);
+    auto glCornerFrom = mrpt::viz::stock_objects::CornerXYZSimple(0.75f, 3.0f);
     glCornerFrom->setPose(poseFromCorner);
     glVizICP->insert(glCornerFrom);
 
-    auto glCornerLocal = mrpt::opengl::stock_objects::CornerXYZSimple(0.85f, 5.0f);
+    auto glCornerLocal = mrpt::viz::stock_objects::CornerXYZSimple(0.85f, 5.0f);
     glCornerLocal->setPose(relativePose.mean);
     glCornerLocal->setName("Local");
     glCornerLocal->enableShowName(true);
     glVizICP->insert(glCornerLocal);
 
-    auto glCornerToCov = mrpt::opengl::CEllipsoid3D::Create();
+    auto glCornerToCov = mrpt::viz::CEllipsoid3D::Create();
     glCornerToCov->set3DsegmentsCount(16);
     glCornerToCov->enableDrawSolid3D(true);
     glCornerToCov->setColor_u8(0xff, 0x00, 0x00, 0x40);
@@ -1147,7 +1147,7 @@ try
     {
         const auto priorCov = mrpt::math::CMatrixDouble66(lr.prior->cov_inv.inverse());
 
-        auto glPriorEllipsoid = mrpt::opengl::CEllipsoid3D::Create();
+        auto glPriorEllipsoid = mrpt::viz::CEllipsoid3D::Create();
         glPriorEllipsoid->set3DsegmentsCount(16);
         glPriorEllipsoid->enableDrawSolid3D(true);
         glPriorEllipsoid->setColor_u8(0xff, 0xff, 0x00, 0x50);
@@ -1200,7 +1200,7 @@ try
         }
     }
 
-    static mrpt::opengl::CSetOfObjects::Ptr lastGlobalPts;
+    static mrpt::viz::CSetOfObjects::Ptr lastGlobalPts;
 
     if (!lastGlobalPts || regenerateMaps)
     {
@@ -1266,7 +1266,7 @@ try
         }
     }
 
-    static mrpt::opengl::CSetOfObjects::Ptr lastLocalPts;
+    static mrpt::viz::CSetOfObjects::Ptr lastLocalPts;
 
     if (!lastLocalPts || regenerateMaps)
     {
@@ -1291,7 +1291,7 @@ try
     // Global view options:
     {
         std::lock_guard<std::mutex> lck(win->background_scene_mtx);
-        win->camera().setCameraProjective(!cbViewOrtho->checked());
+        win->camera().setProjectiveModel(!cbViewOrtho->checked());
 
         if (cbCameraFollowsLocal->checked())
         {
@@ -1314,7 +1314,9 @@ try
 
         win->background_scene->getViewport()->setViewportClipDistances(
             static_cast<float>(clipNear), static_cast<float>(clipFar));
-        win->camera().setMaximumZoom(std::max<float>(1000, static_cast<float>(3.0 * clipFar)));
+        win->camera().setZoomLimits(
+            win->camera().getZoomLimits().first,
+            std::max<float>(1000, static_cast<float>(3.0 * clipFar)));
     }
 
     // Pairings ------------------
@@ -1354,21 +1356,21 @@ try
         gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
         gl_view->setTransparent(true);
         {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+            mrpt::viz::CText::Ptr obj = mrpt::viz::CText::Create("X");
             obj->setLocation(1.1, 0, 0);
             gl_view->insert(obj);
         }
         {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+            mrpt::viz::CText::Ptr obj = mrpt::viz::CText::Create("Y");
             obj->setLocation(0, 1.1, 0);
             gl_view->insert(obj);
         }
         {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+            mrpt::viz::CText::Ptr obj = mrpt::viz::CText::Create("Z");
             obj->setLocation(0, 0, 1.1);
             gl_view->insert(obj);
         }
-        gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
+        gl_view->insert(mrpt::viz::stock_objects::CornerXYZ());
     }
 }
 catch (const std::exception& e)

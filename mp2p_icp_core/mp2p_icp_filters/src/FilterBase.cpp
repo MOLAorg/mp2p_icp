@@ -113,16 +113,16 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
 
     for (const auto& entry : c.asSequence())
     {
-        const auto& e = entry.asMap();
+        const mrpt::containers::yaml e(entry);
 
         // optional plugin module?
-        if (const auto itPlugin = e.find("plugin"); itPlugin != e.end())
+        if (e.has("plugin"))
         {
-            const auto moduleToLoad = itPlugin->second.as<std::string>();
+            const auto moduleToLoad = e["plugin"].as<std::string>();
             mp2p_icp::load_plugin(moduleToLoad);
         }
 
-        const auto sClass = e.at("class_name").as<std::string>();
+        const auto sClass = e["class_name"].as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
         ASSERTMSG_(
             o,
@@ -134,7 +134,7 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
 
         f->setMinLoggingLevel(vLevel);
 
-        f->initialize(e.at("params"));
+        f->initialize(e["params"]);
         filters.push_back(f);
     }
 

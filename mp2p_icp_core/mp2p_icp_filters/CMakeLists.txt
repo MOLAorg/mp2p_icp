@@ -119,6 +119,7 @@ mola_add_library(
   PRIVATE_LINK_LIBRARIES
     ${imu_pub_link_}
     tsl::robin_map
+    Eigen3::Eigen
   CMAKE_DEPENDENCIES
     mp2p_icp
     mp2p_icp_common

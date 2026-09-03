@@ -50,13 +50,13 @@ mola_add_library(
   PRIVATE_LINK_LIBRARIES
     ${imu_pub_link_}
   PUBLIC_LINK_LIBRARIES
-    mrpt::maps
-    mrpt::opengl
-    mrpt::topography
+    mrpt::mrpt_maps
+    mrpt::mrpt_viz
+    mrpt::mrpt_topography
   CMAKE_DEPENDENCIES
-    mrpt-maps
-    mrpt-opengl
-    mrpt-topography
+    mrpt_maps
+    mrpt_viz
+    mrpt_topography
     ${imu_cmake_dep_}
 )
 

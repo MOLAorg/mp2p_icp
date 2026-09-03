@@ -18,18 +18,12 @@
 
 // other deps:
 #include <mp2p_icp/pointcloud_sanity_check.h>
-#include <mrpt/config.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/core/round.h>
+#include <mrpt/gui/config.h>
 #include <mrpt/io/CCompressedInputStream.h>
 #include <mrpt/math/TObject3D.h>
 #include <mrpt/math/geometry.h>
-#include <mrpt/opengl/CArrow.h>
-#include <mrpt/opengl/CGridPlaneXY.h>
-#include <mrpt/opengl/COpenGLScene.h>
-#include <mrpt/opengl/CPointCloudColoured.h>
-#include <mrpt/opengl/CSetOfLines.h>
-#include <mrpt/opengl/stock_objects.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>
@@ -37,6 +31,12 @@
 #include <mrpt/system/string_utils.h>  // unitsFormat()
 #include <mrpt/topography/conversions.h>
 #include <mrpt/version.h>
+#include <mrpt/viz/CArrow.h>
+#include <mrpt/viz/CGridPlaneXY.h>
+#include <mrpt/viz/CPointCloudColoured.h>
+#include <mrpt/viz/CSetOfLines.h>
+#include <mrpt/viz/Scene.h>
+#include <mrpt/viz/stock_objects.h>
 
 #include <CLI/CLI.hpp>
 #include <fstream>
@@ -64,12 +64,12 @@ static std::string              arg_georefPolygon;
 // =========== Declare global variables ===========
 #if MRPT_HAS_NANOGUI
 
-auto                             glVizMap = mrpt::opengl::CSetOfObjects::Create();
-auto                             glGrid   = mrpt::opengl::CGridPlaneXY::Create();
-mrpt::opengl::CSetOfObjects::Ptr glENUCorner;
-mrpt::opengl::CSetOfObjects::Ptr glMapCorner;
-mrpt::opengl::CSetOfObjects::Ptr glTrajectory;
-mrpt::opengl::CSetOfObjects::Ptr glVizObjects;
+auto                          glVizMap = mrpt::viz::CSetOfObjects::Create();
+auto                          glGrid   = mrpt::viz::CGridPlaneXY::Create();
+mrpt::viz::CSetOfObjects::Ptr glENUCorner;
+mrpt::viz::CSetOfObjects::Ptr glMapCorner;
+mrpt::viz::CSetOfObjects::Ptr glTrajectory;
+mrpt::viz::CSetOfObjects::Ptr glVizObjects;
 
 mrpt::gui::CDisplayWindowGUI::Ptr win;
 
@@ -126,9 +126,9 @@ mrpt::poses::CPose3DInterpolator trajectory;
 // Extra viz layers from 3Dscene files (optional)
 struct ExtraVizLayer
 {
-    std::string                      fileName;
-    mrpt::opengl::CSetOfObjects::Ptr glObjects;
-    nanogui::CheckBox*               checkBox = nullptr;
+    std::string                   fileName;
+    mrpt::viz::CSetOfObjects::Ptr glObjects;
+    nanogui::CheckBox*            checkBox = nullptr;
 };
 static std::vector<ExtraVizLayer> extraVizLayers;
 
@@ -204,11 +204,11 @@ std::vector<mrpt::math::TPoint2D> readLatLonPolygonFile(const std::string& fileP
  * from a set of WGS84 lat/lon vertices, using the loaded map's
  * georeferencing information.
  */
-mrpt::opengl::CSetOfObjects::Ptr buildGeorefPolygonLayer(
+mrpt::viz::CSetOfObjects::Ptr buildGeorefPolygonLayer(
     const std::vector<mrpt::math::TPoint2D>&      latLonPoints,
     const mp2p_icp::metric_map_t::Georeferencing& georef)
 {
-    auto glLayer = mrpt::opengl::CSetOfObjects::Create();
+    auto glLayer = mrpt::viz::CSetOfObjects::Create();
 
     std::vector<mrpt::math::TPoint3D> mapPoints;
     mapPoints.reserve(latLonPoints.size());
@@ -225,7 +225,7 @@ mrpt::opengl::CSetOfObjects::Ptr buildGeorefPolygonLayer(
 
     if (mapPoints.size() >= 2)
     {
-        auto glLines = mrpt::opengl::CSetOfLines::Create();
+        auto glLines = mrpt::viz::CSetOfLines::Create();
         glLines->setColor_u8(0xff, 0xd0, 0x00, 0xff);
         glLines->setLineWidth(3.0f);
 
@@ -482,9 +482,10 @@ void updateMouseCoordinates()
 {
     const auto mouse_xy = win->mousePos();
 
-    mrpt::math::TLine3D mouse_ray;
-    win->background_scene->getViewport("main")->get3DRayForPixelCoord(
-        mouse_xy.x(), mouse_xy.y(), mouse_ray);
+    const auto mouse_ray_opt = win->background_scene->getViewport("main")->get3DRayForPixelCoord(
+        mrpt::img::TPixelCoord(mouse_xy.x(), mouse_xy.y()));
+    if (!mouse_ray_opt) return;  // viewport not rendered yet
+    const mrpt::math::TLine3D mouse_ray = *mouse_ray_opt;
 
     // Create a 3D plane, e.g. Z=0
     using mrpt::math::TPoint3D;
@@ -529,12 +530,12 @@ void updateMiniCornerView()
         return;
     }
 
-    mrpt::opengl::TFontParams fp;
+    mrpt::viz::TFontParams fp;
     fp.draw_shadow = true;
     fp.vfont_scale = 9.0f;
 
     {
-        mrpt::opengl::CCamera& view_cam = gl_view1->getCamera();
+        mrpt::viz::CCamera& view_cam = gl_view1->getCamera();
 
         view_cam.setAzimuthDegrees(win->camera().getAzimuthDegrees());
         view_cam.setElevationDegrees(win->camera().getElevationDegrees());
@@ -571,7 +572,7 @@ void updateMiniCornerView()
         mrpt::math::TVector3D(0, 0, 0)));
 
     {
-        mrpt::opengl::CCamera& view_cam = gl_view2->getCamera();
+        mrpt::viz::CCamera& view_cam = gl_view2->getCamera();
 
         view_cam.setAzimuthDegrees(win->camera().getAzimuthDegrees());
         view_cam.setElevationDegrees(win->camera().getElevationDegrees());
@@ -677,7 +678,34 @@ void onKeyboardAction(int key, int modifiers)
     constexpr float SLIDE_VELOCITY     = 0.01;
     constexpr float SENSIBILITY_ROTATE = 1.0;
 
-    auto cam = win->camera().cameraParams();
+    // COrbitCameraController (MRPT 3.x) has no bundled get/set-all-params
+    // pair any more, only per-field accessors; mirror the old struct-copy
+    // pattern locally so the lambda bodies below stay unchanged.
+    struct CamParamsCopy
+    {
+        float cameraPointingX, cameraPointingY, cameraPointingZ;
+        float cameraZoomDistance;
+        float cameraAzimuthDeg;
+        float cameraElevationDeg;
+        // setElevationDegrees() itself clamps to (-90, 90); mirror that here.
+        void setElevationDeg(float deg) { cameraElevationDeg = deg; }
+    };
+    auto readCamParams = [&]() -> CamParamsCopy
+    {
+        auto& c = win->camera();
+        return {c.getCameraPointingX(), c.getCameraPointingY(), c.getCameraPointingZ(),
+                c.getZoomDistance(),    c.getAzimuthDegrees(),  c.getElevationDegrees()};
+    };
+    auto writeCamParams = [&](const CamParamsCopy& c)
+    {
+        auto& camera = win->camera();
+        camera.setCameraPointing(c.cameraPointingX, c.cameraPointingY, c.cameraPointingZ);
+        camera.setZoomDistance(c.cameraZoomDistance);
+        camera.setAzimuthDegrees(c.cameraAzimuthDeg);
+        camera.setElevationDegrees(c.cameraElevationDeg);
+    };
+
+    auto cam = readCamParams();
 
     auto doStrideSides = [&](bool toTheRight)
     {
@@ -686,7 +714,7 @@ void onKeyboardAction(int key, int modifiers)
         const float d  = toTheRight ? 1.0f : -1.0f;
         cam.cameraPointingX += d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
         cam.cameraPointingY += d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
-        win->camera().setCameraParams(cam);
+        writeCamParams(cam);
     };
 
     auto doRotateEyeYaw = [&](bool toTheRight)
@@ -718,7 +746,7 @@ void onKeyboardAction(int key, int modifiers)
         cam.cameraPointingZ =
             static_cast<float>(eye_z - dis * sin(DEG2RAD(cam.cameraElevationDeg)));
 
-        win->camera().setCameraParams(cam);
+        writeCamParams(cam);
     };
 
     auto doRotateEyeUpDown = [&](bool toUp)
@@ -728,14 +756,14 @@ void onKeyboardAction(int key, int modifiers)
         const float d  = toUp ? -1.0f : 1.0f;
         cam.cameraPointingX += d * dx * cam.cameraZoomDistance * SLIDE_VELOCITY;
         cam.cameraPointingY += d * dy * cam.cameraZoomDistance * SLIDE_VELOCITY;
-        win->camera().setCameraParams(cam);
+        writeCamParams(cam);
     };
 
     auto doMoveVertically = [&](bool toUp)
     {
         const float d = toUp ? 1.0f : -1.0f;
         cam.cameraPointingZ += d * cam.cameraZoomDistance * SLIDE_VELOCITY;
-        win->camera().setCameraParams(cam);
+        writeCamParams(cam);
     };
 
     switch (key)
@@ -828,7 +856,7 @@ void updateCameraClipDistances()
         const float cameraZ = static_cast<float>(win->camera().getCameraPointingZ()) +
                               win->camera().getZoomDistance() * sinEl;
 
-        const float orthoFactor = win->camera().isCameraProjective() ? 1.0f : 2.0f;
+        const float orthoFactor = win->camera().isProjectiveModel() ? 1.0f : 2.0f;
         const float zFloor      = orthoFactor * slClipNear->value();  // near in world Z = floor
         const float zCeiling    = orthoFactor * slClipFar->value();  // far in world Z = ceiling
 
@@ -846,8 +874,9 @@ void updateCameraClipDistances()
     }
 
     const float cameraFOV = slCameraFOV->value();
-    win->camera().setCameraFOV(cameraFOV);
-    win->camera().setMaximumZoom(std::max<float>(1000.0f, 3.0f * clipFar));
+    win->camera().setFOVdeg(cameraFOV);
+    win->camera().setZoomLimits(
+        win->camera().getZoomLimits().first, std::max<float>(1000.0f, 3.0f * clipFar));
 
     lbDepthFieldValues->setCaption(
         mrpt::format("Frustum: near=%.02g far=%.02g", clipNear, clipFar));
@@ -961,20 +990,20 @@ void main_show_gui()
     win          = mrpt::gui::CDisplayWindowGUI::Create(APP_NAME, 1024, 800, cp);
 
     // Add a background scene:
-    auto scene = mrpt::opengl::COpenGLScene::Create();
+    auto scene = mrpt::viz::Scene::Create();
     {
         glGrid->setColor_u8(0xff, 0xff, 0xff, 0x10);
         scene->insert(glGrid);
     }
 
-    glMapCorner = mrpt::opengl::stock_objects::CornerXYZ(1.0f);
+    glMapCorner = mrpt::viz::stock_objects::CornerXYZ(1.0f);
     glMapCorner->setName("map");
     glMapCorner->enableShowName();
 
-    glTrajectory = mrpt::opengl::CSetOfObjects::Create();
-    glVizObjects = mrpt::opengl::CSetOfObjects::Create();
+    glTrajectory = mrpt::viz::CSetOfObjects::Create();
+    glVizObjects = mrpt::viz::CSetOfObjects::Create();
 
-    glENUCorner = mrpt::opengl::stock_objects::CornerXYZ(2.0f);
+    glENUCorner = mrpt::viz::stock_objects::CornerXYZ(2.0f);
     glENUCorner->setName("ENU");
     glENUCorner->enableShowName();
     scene->insert(glENUCorner);
@@ -1464,12 +1493,11 @@ void main_show_gui()
             [edTime]()
             {
                 const auto p = mrpt::math::TPose3D(
-                    win->camera().cameraParams().cameraPointingX,
-                    win->camera().cameraParams().cameraPointingY,
-                    win->camera().cameraParams().cameraPointingZ,
-                    mrpt::DEG2RAD(win->camera().cameraParams().cameraAzimuthDeg),
-                    mrpt::DEG2RAD(win->camera().cameraParams().cameraElevationDeg),
-                    win->camera().cameraParams().cameraZoomDistance * TRAVELING_ZOOM2ROLL);
+                    win->camera().getCameraPointingX(), win->camera().getCameraPointingY(),
+                    win->camera().getCameraPointingZ(),
+                    mrpt::DEG2RAD(win->camera().getAzimuthDegrees()),
+                    mrpt::DEG2RAD(win->camera().getElevationDegrees()),
+                    win->camera().getZoomDistance() * TRAVELING_ZOOM2ROLL);
                 camTravelling.insert(mrpt::Clock::fromDouble(std::stod(edTime->value())), p);
                 rebuildCamTravellingCombo();
 
@@ -1871,7 +1899,7 @@ void rebuild_3d_view(bool force_rebuild_view)
             {
                 const auto& p0 = prevPose.value();
 
-                auto glSegment = mrpt::opengl::CArrow::Create();
+                auto glSegment = mrpt::viz::CArrow::Create();
                 glSegment->setArrowEnds(p0.translation(), p.translation());
                 glSegment->setHeadRatio(.0);
                 glSegment->setLargeRadius(trajectoryCylRadius);
@@ -1899,21 +1927,21 @@ void rebuild_3d_view(bool force_rebuild_view)
         gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
         gl_view->setTransparent(true);
         {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+            mrpt::viz::CText::Ptr obj = mrpt::viz::CText::Create("X");
             obj->setLocation(1.1, 0, 0);
             gl_view->insert(obj);
         }
         {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+            mrpt::viz::CText::Ptr obj = mrpt::viz::CText::Create("Y");
             obj->setLocation(0, 1.1, 0);
             gl_view->insert(obj);
         }
         {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+            mrpt::viz::CText::Ptr obj = mrpt::viz::CText::Create("Z");
             obj->setLocation(0, 0, 1.1);
             gl_view->insert(obj);
         }
-        gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
+        gl_view->insert(mrpt::viz::stock_objects::CornerXYZ());
     }
     if (!win->background_scene->getViewport(SECOND_MINI_VIEW_NAME))
     {
@@ -1922,31 +1950,31 @@ void rebuild_3d_view(bool force_rebuild_view)
         gl_view->setViewportPosition(0.1, 0, 0.1, 0.1 * 16.0 / 9.0);
         gl_view->setTransparent(true);
 
-        auto glRoot = mrpt::opengl::CSetOfObjects::Create();
+        auto glRoot = mrpt::viz::CSetOfObjects::Create();
         gl_view->insert(glRoot);
 
         {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+            mrpt::viz::CText::Ptr obj = mrpt::viz::CText::Create("X");
             obj->setLocation(1.1, 0, 0);
             glRoot->insert(obj);
         }
         {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+            mrpt::viz::CText::Ptr obj = mrpt::viz::CText::Create("Y");
             obj->setLocation(0, 1.1, 0);
             glRoot->insert(obj);
         }
         {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+            mrpt::viz::CText::Ptr obj = mrpt::viz::CText::Create("Z");
             obj->setLocation(0, 0, 1.1);
             glRoot->insert(obj);
         }
-        glRoot->insert(mrpt::opengl::stock_objects::CornerXYZ());
+        glRoot->insert(mrpt::viz::stock_objects::CornerXYZ());
     }
 
     // Global view options:
     {
         std::lock_guard<std::mutex> lck(win->background_scene_mtx);
-        win->camera().setCameraProjective(!cbViewOrtho->checked() && !cbView2D->checked());
+        win->camera().setProjectiveModel(!cbViewOrtho->checked() && !cbView2D->checked());
 
         // Clip plane calculation is delegated to be done in the idle loop so it's refreshed as the
         // user zooms/pans, etc. since the camera data is needed for the "linear" mode.
@@ -2024,13 +2052,13 @@ int main(int argc, char** argv)
         for (const auto& path : arg_add3dScenes)
         {
             ASSERT_FILE_EXISTS_(path);
-            auto scene  = mrpt::opengl::Scene::Create();
+            auto scene  = mrpt::viz::Scene::Create();
             bool readOk = scene->loadFromFile(path);
             ASSERT_(readOk);
 
             ExtraVizLayer evl;
             evl.fileName  = mrpt::system::extractFileName(path);
-            evl.glObjects = mrpt::opengl::CSetOfObjects::Create();
+            evl.glObjects = mrpt::viz::CSetOfObjects::Create();
             evl.glObjects->setName(evl.fileName);
 
             // Move all objects from the loaded scene into our set

@@ -23,7 +23,7 @@
 #include <mp2p_icp/layer_name_t.h>
 #include <mrpt/img/TColor.h>
 #include <mrpt/img/color_maps.h>
-#include <mrpt/opengl/opengl_frwds.h>
+#include <mrpt/viz/viz_frwds.h>
 
 #include <map>
 #include <optional>

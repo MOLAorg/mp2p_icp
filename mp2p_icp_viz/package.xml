@@ -6,7 +6,7 @@
 <package format="3">
   <name>mp2p_icp_viz</name>
   <version>2.13.1</version>
-  <description>GUI applications for mp2p_icp: mm-viewer (interactive *.mm map viewer) and icp-log-viewer (ICP log inspector). Kept in a separate package from mp2p_icp_core so headless consumers don't need to pull in mrpt_libgui.</description>
+  <description>GUI applications for mp2p_icp: mm-viewer (interactive *.mm map viewer) and icp-log-viewer (ICP log inspector). Kept in a separate package from mp2p_icp_core so headless consumers don't need to pull in mrpt_gui.</description>
 
   <maintainer email="joseluisblancoc@gmail.com">Jose-Luis Blanco-Claraco</maintainer>
   <license file="COPYING">BSD-3-Clause</license>
@@ -20,7 +20,7 @@
 
   <depend>mola_common</depend>
   <depend>mp2p_icp_core</depend>
-  <depend>mrpt_libgui</depend>
+  <depend>mrpt_gui</depend>
   <depend>cli11</depend>
 
   <test_depend condition="$ROS_VERSION == 1">catkin</test_depend>

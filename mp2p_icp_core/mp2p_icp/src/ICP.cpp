@@ -627,21 +627,21 @@ void ICP::initialize_solvers(const mrpt::containers::yaml& params, ICP::solver_l
     ASSERT_(params.isSequence());
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = entry.asMap();
+        const mrpt::containers::yaml e(entry);
         // disabled?
-        if (e.count("enabled") && e.at("enabled").as<bool>() == false)
+        if (e.has("enabled") && e["enabled"].as<bool>() == false)
         {
             continue;
         }
 
         // optional plugin module?
-        if (const auto itPlugin = e.find("plugin"); itPlugin != e.end())
+        if (e.has("plugin"))
         {
-            const auto moduleToLoad = itPlugin->second.as<std::string>();
+            const auto moduleToLoad = e["plugin"].as<std::string>();
             mp2p_icp::load_plugin(moduleToLoad);
         }
 
-        const auto sClass = e.at("class").as<std::string>();
+        const auto sClass = e["class"].as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
         ASSERT_(o);
 
@@ -649,7 +649,7 @@ void ICP::initialize_solvers(const mrpt::containers::yaml& params, ICP::solver_l
         ASSERTMSG_(
             m, mrpt::format("`%s` class seems not to be derived from Solver", sClass.c_str()));
 
-        m->initialize(e.at("params"));
+        m->initialize(e["params"]);
         lst.push_back(m);
     }
 }
@@ -666,21 +666,21 @@ void ICP::initialize_matchers(const mrpt::containers::yaml& params, matcher_list
     ASSERT_(params.isSequence());
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = entry.asMap();
+        const mrpt::containers::yaml e(entry);
         // disabled?
-        if (e.count("enabled") && e.at("enabled").as<bool>() == false)
+        if (e.has("enabled") && e["enabled"].as<bool>() == false)
         {
             continue;
         }
 
         // optional plugin module?
-        if (const auto itPlugin = e.find("plugin"); itPlugin != e.end())
+        if (e.has("plugin"))
         {
-            const auto moduleToLoad = itPlugin->second.as<std::string>();
+            const auto moduleToLoad = e["plugin"].as<std::string>();
             mp2p_icp::load_plugin(moduleToLoad);
         }
 
-        const auto sClass = e.at("class").as<std::string>();
+        const auto sClass = e["class"].as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
         ASSERTMSG_(
             o, mrpt::format("`%s` matcher class seems not to be registered", sClass.c_str()));
@@ -689,7 +689,7 @@ void ICP::initialize_matchers(const mrpt::containers::yaml& params, matcher_list
         ASSERTMSG_(
             m, mrpt::format("`%s` class seems not to be derived from Matcher", sClass.c_str()));
 
-        m->initialize(e.at("params"));
+        m->initialize(e["params"]);
         lst.push_back(m);
     }
 }
@@ -704,21 +704,21 @@ void ICP::initialize_quality_evaluators(
 
     for (const auto& entry : params.asSequence())
     {
-        const auto& e = entry.asMap();
+        const mrpt::containers::yaml e(entry);
         // disabled?
-        if (e.count("enabled") && e.at("enabled").as<bool>() == false)
+        if (e.has("enabled") && e["enabled"].as<bool>() == false)
         {
             continue;
         }
 
         // optional plugin module?
-        if (const auto itPlugin = e.find("plugin"); itPlugin != e.end())
+        if (e.has("plugin"))
         {
-            const auto moduleToLoad = itPlugin->second.as<std::string>();
+            const auto moduleToLoad = e["plugin"].as<std::string>();
             mp2p_icp::load_plugin(moduleToLoad);
         }
 
-        const auto sClass = e.at("class").as<std::string>();
+        const auto sClass = e["class"].as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
         ASSERT_(o);
 
@@ -727,12 +727,12 @@ void ICP::initialize_quality_evaluators(
             m, mrpt::format(
                    "`%s` class seems not to be derived from QualityEvaluator", sClass.c_str()));
 
-        m->initialize(e.at("params"));
+        m->initialize(e["params"]);
 
         double weight = 1.0;
-        if (numEntries > 0 && e.count("weight") > 0)
+        if (numEntries > 0 && e.has("weight"))
         {
-            weight = e.at("weight").as<double>();
+            weight = e["weight"].as<double>();
         }
         lst.emplace_back(m, weight);
     }

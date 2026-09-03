@@ -24,13 +24,13 @@
 #include <mrpt/io/CMemoryStream.h>
 #include <mrpt/math/TLine3D.h>
 #include <mrpt/math/TPlane.h>
-#include <mrpt/opengl/CEllipsoid3D.h>
-#include <mrpt/opengl/CSetOfLines.h>
-#include <mrpt/opengl/CSetOfObjects.h>
-#include <mrpt/opengl/CTexturedPlane.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/stl_serialization.h>
+#include <mrpt/viz/CEllipsoid3D.h>
+#include <mrpt/viz/CSetOfLines.h>
+#include <mrpt/viz/CSetOfObjects.h>
+#include <mrpt/viz/CTexturedPlane.h>
 
 #include <iostream>
 
@@ -252,15 +252,15 @@ void test_Pairings_Viz()
 
     for (const auto& obj : *glObjs)
     {
-        if (std::dynamic_pointer_cast<mrpt::opengl::CSetOfLines>(obj))
+        if (std::dynamic_pointer_cast<mrpt::viz::CSetOfLines>(obj))
         {
             lineSets++;
         }
-        if (std::dynamic_pointer_cast<mrpt::opengl::CTexturedPlane>(obj))
+        if (std::dynamic_pointer_cast<mrpt::viz::CTexturedPlane>(obj))
         {
             planes++;
         }
-        if (std::dynamic_pointer_cast<mrpt::opengl::CEllipsoid3D>(obj))
+        if (std::dynamic_pointer_cast<mrpt::viz::CEllipsoid3D>(obj))
         {
             ellipsoids++;
         }

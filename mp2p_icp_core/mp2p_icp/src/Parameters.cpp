@@ -106,9 +106,9 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
                 "Entries within 'quality_checkpoints' must be a Map. See "
                 "mp2p_icp::Parameters docs.");
 
+            const mrpt::containers::yaml ee(e);
             quality_checkpoints.emplace(
-                e.asMap().at("iteration").as<size_t>(),
-                e.asMap().at("minimum_quality").as<double>());
+                ee["iteration"].as<size_t>(), ee["minimum_quality"].as<double>());
         }
     }
 

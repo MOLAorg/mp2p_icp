@@ -103,28 +103,30 @@ void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Gene
                 THROW_EXCEPTION_FMT("key '%s' must be either a scalar or a map", key.c_str());
             }
 
-            trg[key]     = mrpt::containers::yaml::Map();
-            auto& newMap = trg.asMap().at(key).asMap();
+            trg[key] = mrpt::containers::yaml::Map();
+            // Reserve so later insertions cannot reallocate the underlying
+            // vector-backed map and invalidate `placeholder` references
+            // taken below.
+            trg[key].asMap().reserve(v.asMap().size());
 
             for (const auto& [kk, vv] : v.asMap())
             {
                 const std::string val = vv.as<std::string>();
+                const auto        ks  = kk.as<std::string>();
                 // Special case: handle parameterizable formulas:
                 if (val.substr(0, 3) == "$f{"s)
                 {
                     ASSERTMSG_(val.back() == '}', "Missing '}' in '$f{' formula");
 
-                    const auto ks = kk.as<std::string>();
-
-                    auto [it, exist]    = newMap.insert({ks, .0});
-                    double& placeholder = *std::any_cast<double>(&it->second.asScalar());
+                    trg[key][ks]        = .0;
+                    double& placeholder = std::get<double>(trg[key][ks].asScalar());
 
                     parent.parseAndDeclareParameter(val.substr(3, val.size() - 4), placeholder);
                 }
                 else
                 {
                     // regular entry:
-                    newMap[kk.as<std::string>()] = val;
+                    trg[key][ks] = val;
                 }
             }
         }
@@ -587,9 +589,9 @@ GeneratorSet mp2p_icp_filters::generators_from_yaml(
 
     for (const auto& entry : c.asSequence())
     {
-        const auto& e = entry.asMap();
+        const mrpt::containers::yaml e(entry);
 
-        const auto sClass = e.at("class_name").as<std::string>();
+        const auto sClass = e["class_name"].as<std::string>();
         auto       o      = mrpt::rtti::classFactory(sClass);
         ASSERT_(o);
 
@@ -599,7 +601,7 @@ GeneratorSet mp2p_icp_filters::generators_from_yaml(
 
         f->setMinLoggingLevel(vLevel);
 
-        f->initialize(e.at("params"));
+        f->initialize(e["params"]);
         generators.push_back(f);
     }
 
