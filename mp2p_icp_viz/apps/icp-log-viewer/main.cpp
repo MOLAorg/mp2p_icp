@@ -1,4 +1,4 @@
-﻿/*               _
+/*               _
  _ __ ___   ___ | | __ _
 | '_ ` _ \ / _ \| |/ _` | Modular Optimization framework for
 | | | | | | (_) | | (_| | Localization and mApping (MOLA)
@@ -19,12 +19,21 @@
  * @date   Sep 15, 2021
  */
 
+// Must come before the MRPT math headers below: without nanogui (which used to pull this in
+// transitively), MatrixVectorBase::head<N>() otherwise instantiates against an incomplete
+// Eigen::Map forward declaration.
+#include <Eigen/Dense>
+
 // The goal is to visualize these guys:
 #include <mp2p_icp/LogRecord.h>
 // using this:
-#include <mrpt/gui/CDisplayWindowGUI.h>
+#include <mrpt/imgui/CImGuiSceneView.h>
 
 // other deps:
+#include <imgui.h>
+#include <imgui_app_common/ImGuiAppShell.h>
+#include <imgui_app_common/SimpleFileDialog.h>
+#include <imgui_internal.h>  // DockBuilder* API (default docking layout)
 #include <mrpt/config.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/core/Clock.h>
@@ -32,6 +41,7 @@
 #include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/COpenGLScene.h>
+#include <mrpt/opengl/CText.h>
 #include <mrpt/opengl/stock_objects.h>
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/poses/Lie/SO.h>
@@ -46,14 +56,13 @@
 
 #include "../libcfgpath/cfgpath.h"
 
-constexpr const char* APP_NAME           = "icp-log-viewer";
-constexpr int         MID_FONT_SIZE      = 14;
-constexpr int         SMALL_FONT_SIZE    = 12;
-constexpr int         WINDOW_FIXED_WIDTH = 400;
-
-// =========== Declare supported cli switches ===========
 namespace
 {
+constexpr const char* APP_NAME = "icp-log-viewer";
+
+constexpr const char* MINI_VIEW_NAME = "small-view";
+
+// =========== Declare supported cli switches ===========
 CLI::App cmd{APP_NAME};
 
 std::string  argExtension = "icplog";
@@ -63,67 +72,8 @@ std::string  arg_plugins;
 double       argAutoPlayPeriod = 0.1;
 double       argMinQuality     = 0.0;
 CLI::Option* argMinQualityOpt  = nullptr;
-}  // namespace
 
-// =========== Declare global variables ===========
-#if MRPT_HAS_NANOGUI
-
-namespace
-{
-auto                              glVizICP = mrpt::opengl::CSetOfObjects::Create();
-mrpt::gui::CDisplayWindowGUI::Ptr win;
-
-nanogui::Slider* slSelectorICP   = nullptr;
-nanogui::Button *btnSelectorBack = nullptr, *btnSelectorForw = nullptr;
-nanogui::Button* btnSelectorAutoplay = nullptr;
-bool             isAutoPlayActive    = false;
-double           lastAutoPlayTime    = .0;
-
-std::array<nanogui::TextBox*, 5> lbICPStats         = {nullptr, nullptr, nullptr, nullptr, nullptr};
-nanogui::CheckBox*               cbShowInitialPose  = nullptr;
-nanogui::Label*                  lbICPIteration     = nullptr;
-nanogui::Slider*                 slIterationDetails = nullptr;
-
-const size_t                   MAX_VARIABLE_LIST = 100;
-std::vector<nanogui::TextBox*> lbDynVariables;
-
-nanogui::CheckBox* cbViewOrtho           = nullptr;
-nanogui::CheckBox* cbCameraFollowsLocal  = nullptr;
-nanogui::CheckBox* cbViewVoxelsAsPoints  = nullptr;
-nanogui::CheckBox* cbViewVoxelsFreeSpace = nullptr;
-nanogui::CheckBox* cbColorizeLocalMap    = nullptr;
-nanogui::CheckBox* cbColorizeGlobalMap   = nullptr;
-
-nanogui::CheckBox* cbViewPairings = nullptr;
-
-nanogui::CheckBox* cbViewPairings_pt2pt   = nullptr;
-nanogui::CheckBox* cbViewPairings_pt2pl   = nullptr;
-nanogui::CheckBox* cbViewPairings_pt2ln   = nullptr;
-nanogui::CheckBox* cbViewPairings_cov2cov = nullptr;
-
-nanogui::CheckBox* cbViewPriorEllipsoid = nullptr;
-
-nanogui::TextBox *tbLogPose = nullptr, *tbInitialGuess = nullptr, *tbInit2Final = nullptr,
-                 *tbCovariance = nullptr, *tbConditionNumber = nullptr, *tbPairings = nullptr,
-                 *tbPriorMean = nullptr, *tbPriorInfo = nullptr;
-
-nanogui::Slider* slPairingsPl2PlSize         = nullptr;
-nanogui::Slider* slPairingsPl2LnSize         = nullptr;
-nanogui::Slider* slPairingsCov2CovDecimation = nullptr;
-nanogui::Slider* slGlobalPointSize           = nullptr;
-nanogui::Slider* slLocalPointSize            = nullptr;
-nanogui::Slider* slMidDepthField             = nullptr;
-nanogui::Slider* slThicknessDepthField       = nullptr;
-nanogui::Label * lbDepthFieldValues = nullptr, *lbDepthFieldMid = nullptr,
-               *lbDepthFieldThickness = nullptr;
-
-nanogui::Slider* slGTPose[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
-
-std::vector<std::string> layerNames_global, layerNames_local;
-
-std::map<std::string, nanogui::CheckBox*> cbLayersByName_global;
-std::map<std::string, nanogui::CheckBox*> cbLayersByName_local;
-
+/** Lazily loads a *.icplog file on first access, and can drop it again to free memory. */
 class DelayedLoadLog
 {
    public:
@@ -155,60 +105,831 @@ class DelayedLoadLog
 
    private:
     std::optional<mp2p_icp::LogRecord> log_;
-    std::string                        filename_, shortFileName_;
+    std::string                        filename_;
+    std::string                        shortFileName_;
 };
 
-std::vector<DelayedLoadLog> logRecords;
-
-}  // namespace
-
-void rebuild_3d_view(bool regenerateMaps = true);
-
-namespace
+/** All mutable application state (see the analogous struct in mm-viewer/main.cpp for the same
+ *  immediate-mode-GUI rationale). */
+struct AppState
 {
-void rebuild_3d_view_fast() { rebuild_3d_view(false); }
+    mp2p_icp_viz::ImGuiAppShell      shell;
+    mrpt::imgui::CImGuiSceneView     sceneView;
+    mrpt::opengl::Scene::Ptr         scene    = mrpt::opengl::COpenGLScene::Create();
+    mrpt::opengl::CSetOfObjects::Ptr glVizICP = mrpt::opengl::CSetOfObjects::Create();
+
+    std::vector<DelayedLoadLog> logRecords;
+
+    std::vector<std::string> layerNamesGlobal;
+    std::vector<std::string> layerNamesLocal;
+
+    std::map<std::string, bool> layerVisibleGlobal;
+    std::map<std::string, bool> layerVisibleLocal;
+
+    // Selector / navigation:
+    int    selectorIdx      = 0;
+    bool   isAutoPlayActive = false;
+    double lastAutoPlayTime = 0.0;
+
+    // ICP iteration slider:
+    bool        showInitialPose  = false;
+    float       iterationValue   = 0.0f;
+    int         iterationMax     = 0;
+    bool        iterationEnabled = false;
+    std::string iterationCaption = "Show ICP iteration:";
+
+    // View options:
+    bool  viewOrtho           = false;
+    bool  cameraFollowsLocal  = false;
+    bool  viewVoxelsAsPoints  = true;
+    bool  viewVoxelsFreeSpace = false;
+    bool  colorizeLocalMap    = false;
+    bool  colorizeGlobalMap   = false;
+    bool  viewPriorEllipsoid  = true;
+    float globalPointSize     = 2.0f;
+    float localPointSize      = 2.0f;
+    float midDepthField       = 1.0f;
+    float thicknessDepthField = 3.0f;
+
+    // Pairings:
+    bool        viewPairings         = false;
+    bool        viewPairingsPt2Pt    = true;
+    bool        viewPairingsPt2Pl    = true;
+    bool        viewPairingsPt2Ln    = true;
+    bool        viewPairingsCov2Cov  = true;
+    float       pairingsPl2PlSize    = -1.0f;
+    float       pairingsPl2LnSize    = -1.0f;
+    float       pairingsCov2CovDecim = 2.7f;  // stored as log10 (~500), see slider range below
+    std::string pairingsSummary      = "None selected (mark one of the checkboxes below)";
+
+    // Manual pose tweak (6-DoF):
+    float gtPose[6] = {0, 0, 0, 0, 0, 0};
+
+    // Text/stat fields:
+    std::string statFileName;
+    std::string statLogSummary;
+    std::string statQuality;
+    std::string statGlobalSummary;
+    std::string statLocalSummary;
+    std::string statInitialGuess;
+    std::string statPriorMean = "(none)";
+    std::string statPriorInfo = "(none)";
+    std::string statLogPose;
+    std::string statInit2Final;
+    std::string statCovariance;
+    std::string statConditionNumber;
+
+    static constexpr size_t  kMaxDynVariables = 100;
+    std::vector<std::string> dynVariableLines;
+
+    mp2p_icp_viz::SimpleFileDialog exportDialog;
+    int                            exportWhich = 0;  // 0=local, 1=global
+
+    std::optional<size_t> lastIdx;
+
+    // Set when DelayedLoadLog::get() throws for this index, so rebuild_3d_view()/onExport()/
+    // renderManualPanel() don't keep retrying (and re-logging) a load failure every single
+    // frame. Reset whenever the selected index changes.
+    std::optional<size_t> loadFailedIdx;
+};
+
+AppState app;
+
+template <class MATRIX>
+double conditionNumber(const MATRIX& m)
+{
+    MATRIX              eVecs;
+    std::vector<double> eVals;
+    m.eig_symmetric(eVecs, eVals);
+    return eVals.back() / eVals.front();
+}
 
 void processAutoPlay()
 {
-    if (!isAutoPlayActive)
+    if (!app.isAutoPlayActive)
     {
         return;
     }
 
     const double tNow = mrpt::Clock::nowDouble();
-    if (tNow - lastAutoPlayTime < argAutoPlayPeriod)
+    if (tNow - app.lastAutoPlayTime < argAutoPlayPeriod)
+    {
+        return;
+    }
+    app.lastAutoPlayTime = tNow;
+
+    if (app.selectorIdx < static_cast<int>(app.logRecords.size()) - 1)
+    {
+        app.selectorIdx++;
+    }
+}
+
+/** Creates the small XYZ axis-corner overlay viewport once. See the note in agents.md: not
+ * currently rendered under MRPT 2.x (`CImGuiSceneView` only renders the "main" viewport), kept
+ * for when this project moves to MRPT 3.x. */
+void ensureMiniCornerViewport()
+{
+    if (app.scene->getViewport(MINI_VIEW_NAME))
     {
         return;
     }
 
-    lastAutoPlayTime = tNow;
-
-    if (slSelectorICP->value() < slSelectorICP->range().second - 0.01f)
+    auto gl_view = app.scene->createViewport(MINI_VIEW_NAME);
+    gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
+    gl_view->setTransparent(true);
     {
-        slSelectorICP->setValue(slSelectorICP->value() + 1);
-        rebuild_3d_view();
+        mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
+        obj->setLocation(1.1, 0, 0);
+        gl_view->insert(obj);
     }
+    {
+        mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
+        obj->setLocation(0, 1.1, 0);
+        gl_view->insert(obj);
+    }
+    {
+        mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
+        obj->setLocation(0, 0, 1.1);
+        gl_view->insert(obj);
+    }
+    gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
 }
 
 void updateMiniCornerView()
 {
-    auto gl_view = win->background_scene->getViewport("small-view");
+    auto gl_view = app.scene->getViewport(MINI_VIEW_NAME);
     if (!gl_view)
     {
         return;
     }
-
     mrpt::opengl::CCamera& view_cam = gl_view->getCamera();
-
-    view_cam.setAzimuthDegrees(win->camera().getAzimuthDegrees());
-    view_cam.setElevationDegrees(win->camera().getElevationDegrees());
+    view_cam.setAzimuthDegrees(app.sceneView.camera().getAzimuthDegrees());
+    view_cam.setElevationDegrees(app.sceneView.camera().getElevationDegrees());
     view_cam.setZoomDistance(5);
 }
 
-void main_show_gui()
+void handleKeyboard()
+{
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantTextInput)
+    {
+        return;
+    }
+
+    int increment = 0;
+    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow, true))
+    {
+        increment = -1;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow, true))
+    {
+        increment = +1;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_PageDown, true))
+    {
+        increment = +100;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_PageUp, true))
+    {
+        increment = -100;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_Space, false))
+    {
+        app.isAutoPlayActive = !app.isAutoPlayActive;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_I, false))
+    {
+        app.showInitialPose = !app.showInitialPose;
+    }
+
+    if (increment != 0)
+    {
+        app.selectorIdx =
+            std::clamp(app.selectorIdx + increment, 0, static_cast<int>(app.logRecords.size()) - 1);
+    }
+}
+
+/** Equivalent to the old `rebuild_3d_view(bool regenerateMaps)`: called unconditionally every
+ * frame; regeneration of the (expensive) point-cloud OpenGL representations is only actually
+ * performed when the selected record or the relevant render params changed since the last call
+ * (see `indexChanged`/`regenGlobal`/`regenLocal` below), mirroring mm-viewer's approach. */
+void rebuild_3d_view()
+try
 {
     using namespace std::string_literals;
 
+    const size_t idx = static_cast<size_t>(app.selectorIdx);
+    if (idx >= app.logRecords.size())
+    {
+        return;
+    }
+
+    const bool indexChanged = !app.lastIdx.has_value() || *app.lastIdx != idx;
+    if (indexChanged)
+    {
+        if (app.lastIdx.has_value())
+        {
+            app.logRecords.at(*app.lastIdx).dispose();
+        }
+        app.lastIdx = idx;
+        app.loadFailedIdx.reset();
+    }
+
+    if (app.loadFailedIdx.has_value() && *app.loadFailedIdx == idx)
+    {
+        return;  // already failed to load this record; don't retry (and re-log) every frame
+    }
+
+    app.glVizICP->clear();
+
+    // lazy load from disk happens in the "get()":
+    const auto& lr = app.logRecords.at(idx).get();
+
+    if (indexChanged)
+    {
+        // Seed the manual-nudge sliders from this record's own pose, instead of leaving
+        // whatever the previous record's edits left behind (or all-zeros on first load).
+        const auto p = lr.icpResult.optimal_tf.mean.asTPose();
+        for (int i = 0; i < 6; i++)
+        {
+            app.gtPose[i] = static_cast<float>(p[i]);
+        }
+    }
+
+    app.statFileName = app.logRecords.at(idx).shortFileName();
+
+    app.statLogSummary = mrpt::format(
+        "ICP log #%zu | Local: ID:%u%s | Global: ID:%u%s", idx,
+        static_cast<unsigned int>(lr.pcLocal->id ? lr.pcLocal->id.value() : 0),
+        lr.pcLocal->label ? lr.pcLocal->label.value().c_str() : "",
+        static_cast<unsigned int>(lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
+        lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : "");
+
+    app.statQuality = mrpt::format(
+        "Quality: %.02f%% | Iters: %u | Term.Reason: %s", 100.0 * lr.icpResult.quality,
+        static_cast<unsigned int>(lr.icpResult.nIterations),
+        mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str());
+
+    app.statGlobalSummary = "Global: "s + lr.pcGlobal->contents_summary();
+    app.statLocalSummary  = "Local: "s + lr.pcLocal->contents_summary();
+
+    app.statInitialGuess = lr.initialGuessLocalWrtGlobal.asString();
+
+    if (lr.prior.has_value())
+    {
+        app.statPriorMean = lr.prior->mean.asString();
+
+        std::string s;
+        const auto  cov = mrpt::math::CMatrixDouble66(lr.prior->cov_inv.inverse());
+        for (int i = 0; i < 6; i++)
+        {
+            const auto sigma = std::sqrt(cov(i, i));
+            s += (i < 3) ? mrpt::format("%.02fm ", sigma)
+                         : mrpt::format("%.02fd ", mrpt::RAD2DEG(sigma));
+        }
+        app.statPriorInfo = s;
+    }
+    else
+    {
+        app.statPriorMean = "(none)";
+        app.statPriorInfo = "(none)";
+    }
+
+    app.statLogPose = lr.icpResult.optimal_tf.mean.asString();
+
+    // dyn variables:
+    app.dynVariableLines.clear();
+    for (const auto& [name, value] : lr.dynamicVariables)
+    {
+        app.dynVariableLines.push_back(mrpt::format("%s = %g", name.c_str(), value));
+        if (app.dynVariableLines.size() >= AppState::kMaxDynVariables)
+        {
+            break;
+        }
+    }
+
+    {
+        const auto poseChange =
+            lr.icpResult.optimal_tf.mean - mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
+
+        app.statInit2Final = mrpt::format(
+            "|T|=%.03f [m]  |R|=%.03f [deg]", poseChange.norm(),
+            mrpt::RAD2DEG(mrpt::poses::Lie::SO<3>::log(poseChange.getRotationMatrix()).norm()));
+    }
+
+    const auto                      poseFromCorner = mrpt::poses::CPose3D::Identity();
+    mrpt::poses::CPose3DPDFGaussian relativePose;
+    const mp2p_icp::Pairings*       pairsToViz = nullptr;
+
+    if (!lr.iterationsDetails.has_value() || lr.iterationsDetails->empty())
+    {
+        app.iterationEnabled = false;
+
+        if (app.showInitialPose)
+        {
+            relativePose.mean    = mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
+            app.iterationCaption = "Show ICP iteration: INITIAL";
+        }
+        else
+        {
+            relativePose         = lr.icpResult.optimal_tf;
+            app.iterationCaption = "Show ICP iteration: FINAL";
+        }
+
+        if (app.viewPairings)
+        {
+            pairsToViz = &lr.icpResult.finalPairings;
+        }
+    }
+    else
+    {
+        app.iterationEnabled = true;
+        app.iterationMax     = static_cast<int>(lr.iterationsDetails->size()) - 1;
+
+        if (indexChanged)
+        {
+            app.iterationValue = app.showInitialPose ? 0.0f : static_cast<float>(app.iterationMax);
+        }
+
+        auto   it    = lr.iterationsDetails->begin();
+        size_t nIter = mrpt::round(app.iterationValue);
+        mrpt::keep_min(nIter, lr.iterationsDetails->size() - 1);
+        std::advance(it, static_cast<std::ptrdiff_t>(nIter));
+
+        relativePose.mean = it->second.optimalPose;
+        if (app.viewPairings)
+        {
+            pairsToViz = &it->second.pairings;
+        }
+
+        app.iterationCaption = "Show ICP iteration: "s + std::to_string(it->first) + "/"s +
+                               std::to_string(lr.iterationsDetails->rbegin()->first);
+    }
+
+    {
+        std::string s;
+        for (int i = 0; i < 6; i++)
+        {
+            const auto sigma = std::sqrt(relativePose.cov(i, i));
+            s += (i < 3) ? mrpt::format("%.02fm ", sigma)
+                         : mrpt::format("%.02fd ", mrpt::RAD2DEG(sigma));
+        }
+        s += mrpt::format(
+            " det(XYZ)=%.02e det(rot)=%.02e", relativePose.cov.blockCopy<3, 3>(0, 0).det(),
+            relativePose.cov.blockCopy<3, 3>(3, 3).det());
+        app.statCovariance = s;
+    }
+
+    const mrpt::poses::CPosePDFGaussian pose2D(relativePose);
+
+    app.statConditionNumber = mrpt::format(
+        " cn{XYZ}=%.02f cn{SO(3)}=%.02f cn{SE(2)}=%.02f cn{SE(3)}=%.02f",
+        conditionNumber(relativePose.cov.blockCopy<3, 3>(0, 0)),
+        conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)), conditionNumber(pose2D.cov),
+        conditionNumber(relativePose.cov));
+
+    // 3D objects -------------------
+    auto glCornerFrom = mrpt::opengl::stock_objects::CornerXYZSimple(0.75f, 3.0f);
+    glCornerFrom->setPose(poseFromCorner);
+    app.glVizICP->insert(glCornerFrom);
+
+    auto glCornerLocal = mrpt::opengl::stock_objects::CornerXYZSimple(0.85f, 5.0f);
+    glCornerLocal->setPose(relativePose.mean);
+    glCornerLocal->setName("Local");
+    glCornerLocal->enableShowName(true);
+    app.glVizICP->insert(glCornerLocal);
+
+    auto glCornerToCov = mrpt::opengl::CEllipsoid3D::Create();
+    glCornerToCov->set3DsegmentsCount(16);
+    glCornerToCov->enableDrawSolid3D(true);
+    glCornerToCov->setColor_u8(0xff, 0x00, 0x00, 0x40);
+    glCornerToCov->setCovMatrixAndMean(
+        relativePose.cov.blockCopy<3, 3>(0, 0), relativePose.mean.asVectorVal().head<3>());
+    app.glVizICP->insert(glCornerToCov);
+
+    if (lr.prior.has_value() && app.viewPriorEllipsoid)
+    {
+        const auto priorCov = mrpt::math::CMatrixDouble66(lr.prior->cov_inv.inverse());
+
+        auto glPriorEllipsoid = mrpt::opengl::CEllipsoid3D::Create();
+        glPriorEllipsoid->set3DsegmentsCount(16);
+        glPriorEllipsoid->enableDrawSolid3D(true);
+        glPriorEllipsoid->setColor_u8(0xff, 0xff, 0x00, 0x50);
+        glPriorEllipsoid->setCovMatrixAndMean(
+            priorCov.blockCopy<3, 3>(0, 0), lr.prior->mean.asVectorVal().head<3>());
+        glPriorEllipsoid->setName("Prior");
+        glPriorEllipsoid->enableShowName(true);
+        app.glVizICP->insert(glPriorEllipsoid);
+    }
+
+    // GLOBAL PC:
+    mp2p_icp::render_params_t rpGlobal;
+    rpGlobal.points.visible = false;
+    for (const auto& lyName : app.layerNamesGlobal)
+    {
+        if (!app.layerVisibleGlobal[lyName])
+        {
+            continue;
+        }
+        rpGlobal.points.visible = true;
+
+        auto& rpL                       = rpGlobal.points.perLayer[lyName];
+        rpL.pointSize                   = app.globalPointSize;
+        rpL.render_voxelmaps_as_points  = app.viewVoxelsAsPoints;
+        rpL.render_voxelmaps_free_space = app.viewVoxelsFreeSpace;
+
+        if (app.colorizeGlobalMap)
+        {
+            auto& cm             = rpL.colorMode.emplace();
+            cm.colorMap          = mrpt::img::TColormap::cmHOT;
+            cm.recolorizeByField = "z";
+        }
+    }
+    for (auto& rpL : rpGlobal.points.perLayer)
+    {
+        rpL.second.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+    }
+    rpGlobal.points.allLayers.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
+
+    static std::optional<mp2p_icp::render_params_t> prevRpGlobal;
+    static mrpt::opengl::CSetOfObjects::Ptr         lastGlobalPts;
+
+    if (indexChanged || !prevRpGlobal.has_value() || *prevRpGlobal != rpGlobal)
+    {
+        prevRpGlobal  = rpGlobal;
+        lastGlobalPts = lr.pcGlobal->get_visualization(rpGlobal);
+    }
+    app.glVizICP->insert(lastGlobalPts);
+
+    // LOCAL PC:
+    mp2p_icp::render_params_t rpLocal;
+    rpLocal.points.visible = false;
+    for (const auto& lyName : app.layerNamesLocal)
+    {
+        if (!app.layerVisibleLocal[lyName])
+        {
+            continue;
+        }
+        rpLocal.points.visible = true;
+
+        auto& rpL                       = rpLocal.points.perLayer[lyName];
+        rpL.pointSize                   = app.localPointSize;
+        rpL.render_voxelmaps_as_points  = app.viewVoxelsAsPoints;
+        rpL.render_voxelmaps_free_space = app.viewVoxelsFreeSpace;
+
+        if (app.colorizeLocalMap)
+        {
+            auto& cm             = rpL.colorMode.emplace();
+            cm.colorMap          = mrpt::img::TColormap::cmHOT;
+            cm.recolorizeByField = "z";
+        }
+    }
+    for (auto& rpL : rpLocal.points.perLayer)
+    {
+        rpL.second.color = mrpt::img::TColor(0x00, 0x00, 0xff, 0xff);
+    }
+
+    static std::optional<mp2p_icp::render_params_t> prevRpLocal;
+    static mrpt::opengl::CSetOfObjects::Ptr         lastLocalPts;
+
+    if (indexChanged || !prevRpLocal.has_value() || *prevRpLocal != rpLocal)
+    {
+        prevRpLocal  = rpLocal;
+        lastLocalPts = lr.pcLocal->get_visualization(rpLocal);
+    }
+    app.glVizICP->insert(lastLocalPts);
+    lastLocalPts->setPose(relativePose.mean);
+
+    // Global view options:
+    auto& cam = app.sceneView.camera();
+    cam.setProjectiveModel(!app.viewOrtho);
+
+    if (app.cameraFollowsLocal)
+    {
+        const auto camLoc = relativePose.mean.translation().cast<float>();
+        cam.setPointingAt(camLoc.x, camLoc.y, camLoc.z);
+    }
+
+    const auto depthFieldMid       = std::pow(10.0, app.midDepthField);
+    const auto depthFieldThickness = std::pow(10.0, app.thicknessDepthField);
+    const auto clipNear            = std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
+    const auto clipFar             = depthFieldMid + 0.5 * depthFieldThickness;
+
+    app.scene->getViewport("main")->setViewportClipDistances(
+        static_cast<float>(clipNear), static_cast<float>(clipFar));
+
+    // Pairings ------------------
+    if (pairsToViz)
+    {
+        const double planeCovScale = std::pow(10.0, app.pairingsPl2PlSize);
+
+        mp2p_icp::pairings_render_params_t rp;
+        rp.pt2pt.visible        = app.viewPairingsPt2Pt;
+        rp.pt2pl.visible        = app.viewPairingsPt2Pl;
+        rp.pt2pl.planePatchSize = planeCovScale;
+
+        rp.cov2cov.visible    = app.viewPairingsCov2Cov;
+        rp.cov2cov.decimation = static_cast<std::size_t>(std::pow(10.0, app.pairingsCov2CovDecim));
+        rp.cov2cov.covScale   = planeCovScale;
+
+        rp.pt2ln.visible    = app.viewPairingsPt2Ln;
+        rp.pt2ln.lineLength = std::pow(10.0, app.pairingsPl2LnSize);
+
+        app.glVizICP->insert(pairsToViz->get_visualization(relativePose.mean, rp));
+        app.pairingsSummary = pairsToViz->contents_summary();
+    }
+    else
+    {
+        app.pairingsSummary = "None selected (mark one of the checkboxes below)";
+    }
+
+    ensureMiniCornerViewport();
+}
+catch (const std::exception& e)
+{
+    std::cerr << "[rebuild_3d_view] Exception: " << mrpt::exception_to_str(e) << std::endl;
+    app.statFileName  = std::string("ERROR: ") + mrpt::exception_to_str(e).substr(0, 80);
+    app.loadFailedIdx = static_cast<size_t>(app.selectorIdx);
+}
+
+void onExport(const std::string& outFile)
+try
+{
+    const size_t idx = static_cast<size_t>(app.selectorIdx);
+    auto&        lr  = app.logRecords.at(idx).get();
+
+    const mp2p_icp::metric_map_t& m = (app.exportWhich == 0) ? *lr.pcLocal : *lr.pcGlobal;
+    if (bool ok = m.save_to_file(outFile); !ok)
+    {
+        std::cerr << "Error saving file: " << outFile << "\n";
+    }
+}
+catch (const std::exception& e)
+{
+    std::cerr << "[onExport] Exception: " << mrpt::exception_to_str(e) << std::endl;
+}
+
+/** "Control" window: file selector, navigation, iteration slider, summary stat lines. */
+void renderControlPanel()
+{
+    ImGui::Begin("Control");
+
+    ImGui::Checkbox("Show at INITIAL GUESS pose", &app.showInitialPose);
+
+    ImGui::BeginDisabled(!app.iterationEnabled);
+    ImGui::TextUnformatted(app.iterationCaption.c_str());
+    ImGui::SetNextItemWidth(-1);
+    ImGui::SliderFloat(
+        "##iterationSlider", &app.iterationValue, 0.0f,
+        static_cast<float>(std::max(0, app.iterationMax)));
+    ImGui::EndDisabled();
+
+    ImGui::Separator();
+    ImGui::Text("Select ICP record file (N=%u)", static_cast<unsigned int>(app.logRecords.size()));
+    ImGui::SetNextItemWidth(-1);
+    ImGui::SliderInt(
+        "##selectorIdx", &app.selectorIdx, 0, static_cast<int>(app.logRecords.size()) - 1);
+
+    ImGui::TextUnformatted(app.statFileName.c_str());
+    ImGui::TextUnformatted(app.statLogSummary.c_str());
+    ImGui::TextUnformatted(app.statQuality.c_str());
+    ImGui::TextWrapped("%s", app.statGlobalSummary.c_str());
+    ImGui::TextWrapped("%s", app.statLocalSummary.c_str());
+
+    ImGui::BeginDisabled(app.selectorIdx <= 0);
+    if (ImGui::Button("<<"))
+    {
+        app.selectorIdx--;
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(app.selectorIdx >= static_cast<int>(app.logRecords.size()) - 1);
+    if (ImGui::Button(">>"))
+    {
+        app.selectorIdx++;
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::Checkbox("Autoplay", &app.isAutoPlayActive);
+
+    ImGui::End();
+}
+
+/** "Summary" window: ICP result pose, deltas, covariance, prior. */
+void renderSummaryPanel()
+{
+    ImGui::Begin("Summary");
+
+    ImGui::TextUnformatted("ICP result pose [x y z yaw(deg) pitch(deg) roll(deg)]:");
+    ImGui::TextWrapped("%s", app.statLogPose.c_str());
+
+    ImGui::TextUnformatted("Initial -> final pose change:");
+    ImGui::TextWrapped("%s", app.statInit2Final.c_str());
+
+    ImGui::TextUnformatted("Uncertainty: diagonal sigmas (x y z [m] yaw pitch roll [deg])");
+    ImGui::TextWrapped("%s", app.statCovariance.c_str());
+
+    ImGui::TextUnformatted("Uncertainty: Covariance condition numbers");
+    ImGui::TextWrapped("%s", app.statConditionNumber.c_str());
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Initial guess pose:");
+    ImGui::TextWrapped("%s", app.statInitialGuess.c_str());
+
+    ImGui::TextUnformatted("Prior mean pose (if any):");
+    ImGui::TextWrapped("%s", app.statPriorMean.c_str());
+
+    ImGui::TextUnformatted("Prior: diagonal sigmas (x y z [m] yaw pitch roll [deg])");
+    ImGui::TextWrapped("%s", app.statPriorInfo.c_str());
+
+    ImGui::End();
+}
+
+/** "Variables" window: dynamic (YAML-expression) variables active in this ICP record. */
+void renderVariablesPanel()
+{
+    ImGui::Begin("Variables");
+    ImGui::TextUnformatted("Dynamic variables:");
+    if (ImGui::BeginChild("##dynVars", ImVec2(0, 0), true))
+    {
+        for (const auto& line : app.dynVariableLines)
+        {
+            ImGui::TextUnformatted(line.c_str());
+        }
+    }
+    ImGui::EndChild();
+    ImGui::End();
+}
+
+/** "Maps" window: global/local layer visibility + export buttons. */
+void renderMapsPanel()
+{
+    ImGui::Begin("Maps");
+
+    if (ImGui::Button("Export 'local' map..."))
+    {
+        app.exportWhich = 0;
+        app.exportDialog.open(
+            mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"mm", "(*.mm)"}}, "Export local map");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Export 'global' map..."))
+    {
+        app.exportWhich = 1;
+        app.exportDialog.open(
+            mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"mm", "(*.mm)"}}, "Export global map");
+    }
+    ImGui::Separator();
+    ImGui::TextUnformatted("[GLOBAL map] Visible layers:");
+    ImGui::PushID("globalLayers");
+    for (const auto& lyName : app.layerNamesGlobal)
+    {
+        ImGui::Checkbox(lyName.c_str(), &app.layerVisibleGlobal[lyName]);
+    }
+    ImGui::PopID();
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("[LOCAL map] Visible layers:");
+    ImGui::PushID("localLayers");
+    for (const auto& lyName : app.layerNamesLocal)
+    {
+        ImGui::Checkbox(lyName.c_str(), &app.layerVisibleLocal[lyName]);
+    }
+    ImGui::PopID();
+
+    ImGui::End();
+}
+
+/** "Pairings" window: pairing type toggles, sizes/decimation, summary. */
+void renderPairingsPanel()
+{
+    ImGui::Begin("Pairings");
+
+    ImGui::TextWrapped("%s", app.pairingsSummary.c_str());
+
+    ImGui::Checkbox("View pairings", &app.viewPairings);
+
+    ImGui::Checkbox("View: point-to-point", &app.viewPairingsPt2Pt);
+
+    ImGui::Checkbox("View: cov-to-cov", &app.viewPairingsCov2Cov);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(140);
+    ImGui::SliderFloat("Decimation", &app.pairingsCov2CovDecim, 0.0f, 3.0f);
+
+    ImGui::Checkbox("View: point-to-plane", &app.viewPairingsPt2Pl);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(140);
+    ImGui::SliderFloat("Plane size", &app.pairingsPl2PlSize, -4.0f, 2.0f);
+
+    ImGui::Checkbox("View: point-to-line", &app.viewPairingsPt2Ln);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(140);
+    ImGui::SliderFloat("Line length", &app.pairingsPl2LnSize, -2.0f, 2.0f);
+
+    ImGui::End();
+}
+
+/** "View" window: point sizes, depth clip, ortho, camera-follow, voxel/colorize options. */
+void renderViewPanel()
+{
+    ImGui::Begin("View");
+
+    ImGui::SliderFloat("Global map point size", &app.globalPointSize, 1.0f, 10.0f);
+    ImGui::SliderFloat("Local map point size", &app.localPointSize, 1.0f, 10.0f);
+
+    ImGui::SliderFloat("Center depth clip plane", &app.midDepthField, -2.0f, 3.0f);
+    ImGui::SliderFloat("Max-Min depth thickness", &app.thicknessDepthField, -2.0f, 6.0f);
+
+    const auto depthFieldMid       = std::pow(10.0, app.midDepthField);
+    const auto depthFieldThickness = std::pow(10.0, app.thicknessDepthField);
+    const auto clipNear            = std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
+    const auto clipFar             = depthFieldMid + 0.5 * depthFieldThickness;
+    ImGui::Text("Frustum: near=%.02f far=%.02f", clipNear, clipFar);
+
+    ImGui::Checkbox("Orthogonal view", &app.viewOrtho);
+    ImGui::Checkbox("Camera follows 'local'", &app.cameraFollowsLocal);
+    ImGui::Checkbox("Render voxel maps as point clouds", &app.viewVoxelsAsPoints);
+    ImGui::Checkbox("Render free space of voxel maps", &app.viewVoxelsFreeSpace);
+    ImGui::Checkbox("Recolorize local map", &app.colorizeLocalMap);
+    ImGui::Checkbox("Recolorize global map", &app.colorizeGlobalMap);
+    ImGui::Checkbox("View prior ellipsoid", &app.viewPriorEllipsoid);
+
+    ImGui::End();
+}
+
+/** "Manual" window: 6-DoF manual nudge of the current record's optimal_tf pose. */
+void renderManualPanel()
+{
+    ImGui::Begin("Manual");
+    ImGui::TextUnformatted("Manual solution modification:");
+
+    constexpr float handTunedRange[6] = {
+        4.0f, 4.0f, 10.0f, 0.5f * static_cast<float>(M_PI), 0.25f * static_cast<float>(M_PI), 0.5f};
+    constexpr const char* labels[6] = {"X", "Y", "Z", "Yaw", "Pitch", "Roll"};
+
+    const size_t idx        = static_cast<size_t>(app.selectorIdx);
+    const bool   loadFailed = app.loadFailedIdx.has_value() && *app.loadFailedIdx == idx;
+    for (int i = 0; i < 6; i++)
+    {
+        if (ImGui::SliderFloat(labels[i], &app.gtPose[i], -handTunedRange[i], handTunedRange[i]) &&
+            idx < app.logRecords.size() && !loadFailed)
+        {
+            try
+            {
+                auto& lr                     = app.logRecords.at(idx).get();
+                auto  p                      = lr.icpResult.optimal_tf.mean.asTPose();
+                p[i]                         = app.gtPose[i];
+                lr.icpResult.optimal_tf.mean = mrpt::poses::CPose3D(p);
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "[renderManualPanel] Exception: " << mrpt::exception_to_str(e)
+                          << std::endl;
+            }
+        }
+    }
+
+    ImGui::End();
+}
+
+/** Rendered at top level, outside any other window's Begin/End -- nesting it inside e.g. "Maps"
+ * would silently cancel an open dialog whenever that window is collapsed (BeginPopupModal()
+ * fails to start, which SimpleFileDialog::render() treats as a dismiss). */
+void renderFileDialogs()
+{
+    if (auto path = app.exportDialog.render(); path.has_value())
+    {
+        onExport(*path);
+    }
+}
+
+void renderSceneWindow()
+{
+    ImGui::Begin("3D View");
+    app.sceneView.render();
+    ImGui::End();
+}
+
+void renderFrame()
+{
+    handleKeyboard();
+    processAutoPlay();
+    rebuild_3d_view();
+    updateMiniCornerView();
+
+    renderControlPanel();
+    renderSummaryPanel();
+    renderVariablesPanel();
+    renderMapsPanel();
+    renderPairingsPanel();
+    renderViewPanel();
+    renderFileDialogs();
+    renderManualPanel();
+    renderSceneWindow();
+}
+
+int mainShowGui()
+{
     mrpt::system::CDirectoryExplorer::TFileInfoList files;
 
     if (argSingleFile.empty())
@@ -227,14 +948,11 @@ void main_show_gui()
     }
     else
     {
-        // Load one single file:
         std::cout << "Loading one single log file: " << argSingleFile << std::endl;
-
         files.resize(1);
         files[0].wholePath = argSingleFile;
     }
 
-    // Apply minimum quality filter if requested:
     if (argMinQualityOpt && argMinQualityOpt->count() > 0)
     {
         const double minQ = argMinQuality;
@@ -266,1130 +984,170 @@ void main_show_gui()
         std::cout << "Quality filter: kept " << filteredFiles.size() << " / " << files.size()
                   << " files." << std::endl;
 
-        if (files.empty())
+        if (filteredFiles.empty())
         {
             THROW_EXCEPTION_FMT(
                 "No log files passed --min-quality=%.03f. Lower the threshold or check input logs.",
                 minQ);
         }
-
         files = std::move(filteredFiles);
     }
 
-    // load files:
     for (const auto& file : files)
     {
-        logRecords.emplace_back(file.wholePath, file.name);
+        app.logRecords.emplace_back(file.wholePath, file.name);
     }
+    ASSERT_(!app.logRecords.empty());
 
-    ASSERT_(!logRecords.empty());
-
-    // Obtain layer info from first entry:
     {
-        const auto& lr = logRecords.front().get();
-        if (layerNames_global.empty() && lr.pcGlobal)
+        const auto& lr = app.logRecords.front().get();
+        if (app.layerNamesGlobal.empty() && lr.pcGlobal)
         {
             for (const auto& layer : lr.pcGlobal->layers)
             {
-                layerNames_global.push_back(layer.first);
+                app.layerNamesGlobal.push_back(layer.first);
+                app.layerVisibleGlobal[layer.first] = true;
                 std::cout << "Global point cloud: Found point layer='" << layer.first << "'\n";
             }
         }
-        if (layerNames_local.empty() && lr.pcLocal)
+        if (app.layerNamesLocal.empty() && lr.pcLocal)
         {
             for (const auto& layer : lr.pcLocal->layers)
             {
-                layerNames_local.push_back(layer.first);
+                app.layerNamesLocal.push_back(layer.first);
+                app.layerVisibleLocal[layer.first] = true;
                 std::cout << "Local point cloud: Found point layer='" << layer.first << "'\n";
             }
         }
     }
 
-    // Get user app config file
-    char appCfgFile[1024];
-    ::get_user_config_file(appCfgFile, sizeof(appCfgFile), APP_NAME);
-    mrpt::config::CConfigFile appCfg(appCfgFile);
+    if (!app.shell.init(APP_NAME, 1280, 800))
+    {
+        return 1;
+    }
 
-    /*
-     * -------------------------------------------------------------------
-     * GUI
-     * --------------------------------------------------------------------
-     */
-    nanogui::init();
+    // Default docking layout (only applied once, when no imgui.ini layout exists yet):
+    // "Control" as a thin left strip, the option panels tabbed below it, "3D View" filling the
+    // remaining (background) area.
+    app.shell.setupDefaultLayout = [](unsigned int dockspaceId)
+    {
+        ImGuiID rightId = 0;
+        ImGuiID leftId =
+            ImGui::DockBuilderSplitNode(dockspaceId, ImGuiDir_Left, 0.30f, nullptr, &rightId);
 
-    mrpt::gui::CDisplayWindowGUI_Params cp;
-    cp.maximized = true;
-    win          = mrpt::gui::CDisplayWindowGUI::Create(APP_NAME, 1024, 800, cp);
+        ImGuiID leftBottomId = 0;
+        ImGuiID leftTopId =
+            ImGui::DockBuilderSplitNode(leftId, ImGuiDir_Up, 0.4f, nullptr, &leftBottomId);
 
-    // Add a background scene:
-    auto scene = mrpt::opengl::COpenGLScene::Create();
+        ImGui::DockBuilderDockWindow("Control", leftTopId);
+        ImGui::DockBuilderDockWindow("Summary", leftBottomId);
+        ImGui::DockBuilderDockWindow("Variables", leftBottomId);
+        ImGui::DockBuilderDockWindow("Maps", leftBottomId);
+        ImGui::DockBuilderDockWindow("Pairings", leftBottomId);
+        ImGui::DockBuilderDockWindow("View", leftBottomId);
+        ImGui::DockBuilderDockWindow("Manual", leftBottomId);
+        ImGui::DockBuilderDockWindow("3D View", rightId);
+    };
+
+    // Background scene:
     {
         auto glGrid = mrpt::opengl::CGridPlaneXY::Create();
         glGrid->setColor_u8(0xff, 0xff, 0xff, 0x10);
-        scene->insert(glGrid);
+        app.scene->insert(glGrid);
     }
 
-    auto gl_base = mrpt::opengl::stock_objects::CornerXYZ(1.0f);
-    gl_base->setName("Global");
-    gl_base->enableShowName();
-    scene->insert(gl_base);
+    auto glBase = mrpt::opengl::stock_objects::CornerXYZ(1.0f);
+    glBase->setName("Global");
+    glBase->enableShowName();
+    app.scene->insert(glBase);
 
-    scene->insert(glVizICP);
+    app.scene->insert(app.glVizICP);
 
+    app.sceneView.setScene(app.scene);
+
+    app.sceneView.camera().setPointingAt(8.0f, 0.0f, 0.0f);
+    app.sceneView.camera().setAzimuthDegrees(110.0f);
+    app.sceneView.camera().setElevationDegrees(15.0f);
+    app.sceneView.camera().setZoomDistance(30.0f);
+
+    // Load/save persistent UI+camera state across sessions:
+    char appCfgFile[1024];
+    ::get_user_config_file(appCfgFile, sizeof(appCfgFile), APP_NAME);
+    if (appCfgFile[0] == '\0')
     {
-        std::lock_guard<std::mutex> lck(win->background_scene_mtx);
-        win->background_scene = std::move(scene);
+        std::cerr << "Warning: could not determine a user config file path; "
+                     "UI/camera settings will not be persisted.\n";
     }
-
-    // Control GUI sub-window:
-    auto w = win->createManagedSubWindow("Control");
-    w->setPosition({5, 25});
-    w->requestFocus();
-    w->setLayout(
-        new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 5, 2));
-    w->setFixedWidth(WINDOW_FIXED_WIDTH);
-
-    cbShowInitialPose = w->add<nanogui::CheckBox>("Show at INITIAL GUESS pose");
-    cbShowInitialPose->setCallback(
-        [=](bool v)
-        {
-            if (slIterationDetails->enabled())
-            {
-                const auto& r = slIterationDetails->range();
-                slIterationDetails->setValue(v ? r.first : r.second);
-            }
-            rebuild_3d_view_fast();
-        });
-    lbICPIteration     = w->add<nanogui::Label>("Show ICP iteration:");
-    slIterationDetails = w->add<nanogui::Slider>();
-    slIterationDetails->setRange({.0f, 1.0f});
-    slIterationDetails->setCallback([](float) { rebuild_3d_view_fast(); });
-
-    //
-    w->add<nanogui::Label>(" ");  // separator
-    w->add<nanogui::Label>(mrpt::format(
-        "Select ICP record file (N=%u)", static_cast<unsigned int>(logRecords.size())));
-    slSelectorICP = w->add<nanogui::Slider>();
-    slSelectorICP->setRange({.0f, logRecords.size() - 1});
-    slSelectorICP->setValue(0);
-    slSelectorICP->setCallback([&](float /*v*/) { rebuild_3d_view(); });
-
-    for (auto& lb : lbICPStats)
-    {
-        lb = w->add<nanogui::TextBox>("  ");
-        lb->setFontSize(MID_FONT_SIZE);
-        lb->setAlignment(nanogui::TextBox::Alignment::Left);
-        lb->setEditable(true);
-    }
-
-    // navigation panel:
-    {
-        auto pn = w->add<nanogui::Widget>();
-        pn->setLayout(new nanogui::BoxLayout(nanogui::Orientation::Horizontal));
-
-        // shortcut:
-        auto s = slSelectorICP;
-
-        btnSelectorBack = pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_FAST_BACKWARD);
-        btnSelectorBack->setCallback(
-            [=]()
-            {
-                if (s->value() > 0)
-                {
-                    s->setValue(s->value() - 1);
-                    s->callback()(s->value());
-                }
-            });
-
-        btnSelectorForw = pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_FAST_FORWARD);
-        btnSelectorForw->setCallback(
-            [=]()
-            {
-                if (s->value() < s->range().second - 0.01f)
-                {
-                    s->setValue(s->value() + 1);
-                    rebuild_3d_view();
-                }
-            });
-
-        pn->add<nanogui::Label>(" ");  // separator
-
-        btnSelectorAutoplay = pn->add<nanogui::Button>("", ENTYPO_ICON_CONTROLLER_PLAY);
-        btnSelectorAutoplay->setFlags(nanogui::Button::ToggleButton);
-
-        btnSelectorAutoplay->setChangeCallback([&](bool active) { isAutoPlayActive = active; });
-    }
-
-    //
-    w->add<nanogui::Label>(" ");  // separator
-
-    auto tabWidget = w->add<nanogui::TabWidget>();
-
-    auto* tab1 = tabWidget->createTab("Summary");
-    tab1->setLayout(
-        new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
-
-    auto* tab2 = tabWidget->createTab("Variables");
-    tab2->setLayout(
-        new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
-
-    auto* tab3 = tabWidget->createTab("Maps");
-    tab3->setLayout(new nanogui::GroupLayout());
-
-    auto* tab4 = tabWidget->createTab("Pairings");
-    tab4->setLayout(new nanogui::GroupLayout());
-
-    auto* tab5 = tabWidget->createTab("View");
-    tab5->setLayout(new nanogui::GroupLayout());
-
-    auto* tab6 = tabWidget->createTab("Manual");
-    tab6->setLayout(new nanogui::GroupLayout());
-
-    tabWidget->setActiveTab(0);
-
-    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
-    tab1->add<nanogui::Label>("ICP result pose [x y z yaw(deg) pitch(deg) roll(deg)]:")
-        ->setFontSize(MID_FONT_SIZE);
-    tbLogPose = tab1->add<nanogui::TextBox>();
-    tbLogPose->setFontSize(MID_FONT_SIZE);
-    tbLogPose->setEditable(true);
-    tbLogPose->setAlignment(nanogui::TextBox::Alignment::Left);
-    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
-
-    tab1->add<nanogui::Label>("Initial -> final pose change:")->setFontSize(MID_FONT_SIZE);
-    tbInit2Final = tab1->add<nanogui::TextBox>();
-    tbInit2Final->setFontSize(MID_FONT_SIZE);
-    tbInit2Final->setEditable(false);
-    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
-
-    tab1->add<nanogui::Label>("Uncertainty: diagonal sigmas (x y z [m] yaw pitch roll [deg])")
-        ->setFontSize(MID_FONT_SIZE);
-    tbCovariance = tab1->add<nanogui::TextBox>();
-    tbCovariance->setFontSize(MID_FONT_SIZE);
-    tbCovariance->setEditable(false);
-    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
-
-    tab1->add<nanogui::Label>("Uncertainty: Covariance condition numbers")
-        ->setFontSize(MID_FONT_SIZE);
-    tbConditionNumber = tab1->add<nanogui::TextBox>();
-    tbConditionNumber->setFontSize(MID_FONT_SIZE);
-    tbConditionNumber->setEditable(false);
-    tab1->add<nanogui::Label>(" ");
-
-    tab6->add<nanogui::Label>("Manual solution modification:");
-    const float handTunedRange[6] = {4.0, 4.0, 10.0, 0.5 * M_PI, 0.25 * M_PI, 0.5};
-
-    for (int i = 0; i < 6; i++)
-    {
-        slGTPose[i] = tab6->add<nanogui::Slider>();
-        slGTPose[i]->setRange({-handTunedRange[i], handTunedRange[i]});
-        slGTPose[i]->setValue(0.0f);
-
-        slGTPose[i]->setCallback(
-            [=](float v)
-            {
-                const size_t idx = mrpt::round(slSelectorICP->value());
-                auto&        lr  = logRecords.at(idx).get();
-
-                auto p                       = lr.icpResult.optimal_tf.mean.asTPose();
-                p[i]                         = v;
-                lr.icpResult.optimal_tf.mean = mrpt::poses::CPose3D(p);
-
-                rebuild_3d_view_fast();
-            });
-    }
-
-    tab1->add<nanogui::Label>("Initial guess pose:");
-    tbInitialGuess = tab1->add<nanogui::TextBox>();
-    tbInitialGuess->setFontSize(14);
-    tbInitialGuess->setEditable(true);
-    tbInitialGuess->setAlignment(nanogui::TextBox::Alignment::Left);
-    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
-
-    tab1->add<nanogui::Label>("Prior mean pose (if any):")->setFontSize(MID_FONT_SIZE);
-    tbPriorMean = tab1->add<nanogui::TextBox>();
-    tbPriorMean->setFontSize(MID_FONT_SIZE);
-    tbPriorMean->setEditable(false);
-    tbPriorMean->setAlignment(nanogui::TextBox::Alignment::Left);
-
-    tab1->add<nanogui::Label>("Prior: diagonal sigmas (x y z [m] yaw pitch roll [deg])")
-        ->setFontSize(MID_FONT_SIZE);
-    tbPriorInfo = tab1->add<nanogui::TextBox>();
-    tbPriorInfo->setFontSize(MID_FONT_SIZE);
-    tbPriorInfo->setEditable(false);
-    tbPriorInfo->setAlignment(nanogui::TextBox::Alignment::Left);
-    tab1->add<nanogui::Label>(" ")->setFontSize(SMALL_FONT_SIZE);
-
-    // Save map buttons:
-    auto lambdaSave = [&](const mp2p_icp::metric_map_t& m)
-    {
-        const std::string outFile = nanogui::file_dialog(
-            {{"mm", "mp2p_icp::metric_map_t binary serialized object (*.mm)"}}, true /*save*/);
-        if (outFile.empty())
-        {
-            return;
-        }
-        if (bool ok = m.save_to_file(outFile); !ok)
-        {
-            std::cerr << "Error saving file: " << outFile << "\n";
-        }
-    };
-
-    // tab 2: variables
-    {
-        tab2->add<nanogui::Label>("Dynamic variables:");
-
-        auto vscroll = tab2->add<nanogui::VScrollPanel>();
-        vscroll->setFixedSize({WINDOW_FIXED_WIDTH - 15, 300});
-
-        auto wrapper = vscroll->add<nanogui::Widget>();
-
-        wrapper->setFixedSize({WINDOW_FIXED_WIDTH - 30, 300});
-        wrapper->setLayout(
-            new nanogui::BoxLayout(nanogui::Orientation::Vertical, nanogui::Alignment::Fill));
-
-        for (size_t i = 0; i < MAX_VARIABLE_LIST; i++)
-        {
-            auto* tb = wrapper->add<nanogui::TextBox>("aaaa");
-            tb->setAlignment(nanogui::TextBox::Alignment::Left);
-            tb->setEditable(true);
-            tb->setFontSize(MID_FONT_SIZE);
-            lbDynVariables.push_back(tb);
-        }
-    }
-
-    // tab 3: maps
-    {
-        auto pn = tab3->add<nanogui::Widget>();
-        pn->setLayout(
-            new nanogui::BoxLayout(nanogui::Orientation::Horizontal, nanogui::Alignment::Fill));
-        pn->add<nanogui::Button>("Export 'local' map...")
-            ->setCallback(
-                [&]()
-                {
-                    const size_t idx = mrpt::round(slSelectorICP->value());
-                    auto&        lr  = logRecords.at(idx).get();
-                    ASSERT_(lr.pcLocal);
-                    lambdaSave(*lr.pcLocal);
-                });
-        pn->add<nanogui::Button>("Export 'global' map...")
-            ->setCallback(
-                [&]()
-                {
-                    const size_t idx = mrpt::round(slSelectorICP->value());
-                    auto&        lr  = logRecords.at(idx).get();
-                    ASSERT_(lr.pcGlobal);
-                    lambdaSave(*lr.pcGlobal);
-                });
-    }
-
-    tab3->add<nanogui::Label>("[GLOBAL map] Visible layers:");
-
-    for (size_t i = 0; i < layerNames_global.size(); i++)
-    {
-        auto cb = tab3->add<nanogui::CheckBox>(layerNames_global.at(i));
-        cb->setChecked(true);
-        cb->setCallback([](bool) { rebuild_3d_view(); });
-        cb->setFontSize(13);
-
-        cbLayersByName_global[layerNames_global.at(i)] = cb;
-    }
-
-    tab3->add<nanogui::Label>("[LOCAL map] Visible layers:");
-    for (size_t i = 0; i < layerNames_local.size(); i++)
-    {
-        auto cb = tab3->add<nanogui::CheckBox>(layerNames_local.at(i));
-        cb->setChecked(true);
-        cb->setCallback([](bool) { rebuild_3d_view(); });
-        cb->setFontSize(13);
-
-        cbLayersByName_local[layerNames_local.at(i)] = cb;
-    }
-
-    // tab4: pairings:
-    tbPairings = tab4->add<nanogui::TextBox>();
-    tbPairings->setFontSize(16);
-    tbPairings->setEditable(false);
-
-    cbViewPairings = tab4->add<nanogui::CheckBox>("View pairings");
-    cbViewPairings->setCallback([](bool) { rebuild_3d_view_fast(); });
-
-    cbViewPairings_pt2pt = tab4->add<nanogui::CheckBox>("View: point-to-point");
-    cbViewPairings_pt2pt->setChecked(true);
-    cbViewPairings_pt2pt->setCallback([](bool) { rebuild_3d_view_fast(); });
-
-    {
-        auto pn = tab4->add<nanogui::Widget>();
-        pn->setLayout(
-            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
-
-        cbViewPairings_cov2cov = pn->add<nanogui::CheckBox>("View: cov-to-cov");
-        cbViewPairings_cov2cov->setChecked(true);
-        cbViewPairings_cov2cov->setCallback([](bool) { rebuild_3d_view_fast(); });
-
-        pn->add<nanogui::Label>("Decimation:");
-        slPairingsCov2CovDecimation = pn->add<nanogui::Slider>();
-        slPairingsCov2CovDecimation->setRange({0.0f, 3.0f});
-        slPairingsCov2CovDecimation->setValue(500.0f);
-        slPairingsCov2CovDecimation->setCallback([&](float) { rebuild_3d_view_fast(); });
-    }
-
-    {
-        auto pn = tab4->add<nanogui::Widget>();
-        pn->setLayout(
-            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
-
-        cbViewPairings_pt2pl = pn->add<nanogui::CheckBox>("View: point-to-plane");
-        cbViewPairings_pt2pl->setChecked(true);
-        cbViewPairings_pt2pl->setCallback([](bool) { rebuild_3d_view_fast(); });
-
-        pn->add<nanogui::Label>("Plane size:");
-        slPairingsPl2PlSize = pn->add<nanogui::Slider>();
-        slPairingsPl2PlSize->setRange({-4.0f, 2.0f});
-        slPairingsPl2PlSize->setValue(-1.0f);
-        slPairingsPl2PlSize->setCallback([&](float) { rebuild_3d_view_fast(); });
-    }
-
-    {
-        auto pn = tab4->add<nanogui::Widget>();
-        pn->setLayout(
-            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 3, nanogui::Alignment::Fill));
-
-        cbViewPairings_pt2ln = pn->add<nanogui::CheckBox>("View: point-to-line");
-        cbViewPairings_pt2ln->setChecked(true);
-        cbViewPairings_pt2ln->setCallback([](bool) { rebuild_3d_view_fast(); });
-
-        pn->add<nanogui::Label>("Line length:");
-        slPairingsPl2LnSize = pn->add<nanogui::Slider>();
-        slPairingsPl2LnSize->setRange({-2.0f, 2.0f});
-        slPairingsPl2LnSize->setValue(-1.0f);
-        slPairingsPl2LnSize->setCallback([&](float) { rebuild_3d_view_fast(); });
-    }
-
-    // tab5: view
-    {
-        auto pn = tab5->add<nanogui::Widget>();
-        pn->setLayout(
-            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
-
-        pn->add<nanogui::Label>("Global map point size");
-
-        slGlobalPointSize = pn->add<nanogui::Slider>();
-        slGlobalPointSize->setRange({1.0f, 10.0f});
-        slGlobalPointSize->setValue(2.0f);
-        slGlobalPointSize->setCallback([&](float) { rebuild_3d_view(); });
-    }
-    {
-        auto pn = tab5->add<nanogui::Widget>();
-        pn->setLayout(
-            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
-
-        pn->add<nanogui::Label>("Local map point size");
-
-        slLocalPointSize = pn->add<nanogui::Slider>();
-        slLocalPointSize->setRange({1.0f, 10.0f});
-        slLocalPointSize->setValue(2.0f);
-        slLocalPointSize->setCallback([&](float) { rebuild_3d_view(); });
-    }
-    {
-        auto pn = tab5->add<nanogui::Widget>();
-        pn->setLayout(
-            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
-
-        lbDepthFieldMid = pn->add<nanogui::Label>("Center depth clip plane:");
-        slMidDepthField = pn->add<nanogui::Slider>();
-    }
-    slMidDepthField->setRange({-2.0, 3.0});
-    slMidDepthField->setValue(1.0f);
-    slMidDepthField->setCallback([&](float) { rebuild_3d_view_fast(); });
-
-    {
-        auto pn = tab5->add<nanogui::Widget>();
-        pn->setLayout(
-            new nanogui::GridLayout(nanogui::Orientation::Horizontal, 2, nanogui::Alignment::Fill));
-
-        lbDepthFieldThickness = pn->add<nanogui::Label>("Max-Min depth thickness:");
-        slThicknessDepthField = pn->add<nanogui::Slider>();
-    }
-    slThicknessDepthField->setRange({-2.0, 6.0});
-    slThicknessDepthField->setValue(3.0);
-    slThicknessDepthField->setCallback([&](float) { rebuild_3d_view_fast(); });
-    lbDepthFieldValues = tab5->add<nanogui::Label>(" ");
-
-    cbViewOrtho = tab5->add<nanogui::CheckBox>("Orthogonal view");
-    cbViewOrtho->setCallback([&](bool) { rebuild_3d_view_fast(); });
-
-    cbCameraFollowsLocal = tab5->add<nanogui::CheckBox>("Camera follows 'local'");
-    cbCameraFollowsLocal->setCallback([&](bool) { rebuild_3d_view_fast(); });
-
-    cbViewVoxelsAsPoints = tab5->add<nanogui::CheckBox>("Render voxel maps as point clouds");
-    cbViewVoxelsAsPoints->setChecked(true);
-    cbViewVoxelsAsPoints->setCallback([&](bool) { rebuild_3d_view(); });
-
-    cbViewVoxelsFreeSpace = tab5->add<nanogui::CheckBox>("Render free space of voxel maps");
-    cbViewVoxelsFreeSpace->setChecked(false);
-    cbViewVoxelsFreeSpace->setCallback([&](bool) { rebuild_3d_view(); });
-
-    cbColorizeLocalMap = tab5->add<nanogui::CheckBox>("Recolorize local map");
-    cbColorizeLocalMap->setCallback([&](bool) { rebuild_3d_view(); });
-
-    cbColorizeGlobalMap = tab5->add<nanogui::CheckBox>("Recolorize global map");
-    cbColorizeGlobalMap->setCallback([&](bool) { rebuild_3d_view(); });
-
-    cbViewPriorEllipsoid = tab5->add<nanogui::CheckBox>("View prior ellipsoid");
-    cbViewPriorEllipsoid->setChecked(true);
-    cbViewPriorEllipsoid->setCallback([&](bool) { rebuild_3d_view(); });
-
-    // ----
-    w->add<nanogui::Label>(" ");  // separator
-    w->add<nanogui::Button>("Quit", ENTYPO_ICON_ARROW_BOLD_LEFT)
-        ->setCallback([]() { win->setVisible(false); });
-
-    win->setKeyboardCallback(
-        [&](int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int modifiers)
-        {
-            if (action != GLFW_PRESS && action != GLFW_REPEAT)
-            {
-                return false;
-            }
-
-            int increment = 0;
-            switch (key)
-            {
-                case GLFW_KEY_LEFT:
-                    increment = -1;
-                    break;
-                case GLFW_KEY_RIGHT:
-                    increment = +1;
-                    break;
-                case GLFW_KEY_PAGE_DOWN:
-                    increment = +100;
-                    break;
-                case GLFW_KEY_PAGE_UP:
-                    increment = -100;
-                    break;
-                case GLFW_KEY_SPACE:
-                    isAutoPlayActive = !isAutoPlayActive;
-                    btnSelectorAutoplay->setPushed(isAutoPlayActive);
-                    break;
-                case 'i':
-                case 'I':
-                    cbShowInitialPose->setChecked(!cbShowInitialPose->checked());
-                    cbShowInitialPose->callback()(cbShowInitialPose->checked());
-                    break;
-                default:
-                    // do nothing
-                    break;
-            };
-
-            if (increment != 0)
-            {
-                nanogui::Slider* sl = slSelectorICP;  // shortcut
-                sl->setValue(sl->value() + static_cast<float>(increment));
-                if (sl->value() < 0)
-                {
-                    sl->setValue(0);
-                }
-                if (sl->value() > sl->range().second)
-                {
-                    sl->setValue(sl->range().second);
-                }
-                rebuild_3d_view();
-            }
-
-            return false;
-        });
-
-    win->performLayout();
-    win->camera().setCameraPointing(8.0f, .0f, .0f);
-    win->camera().setAzimuthDegrees(110.0f);
-    win->camera().setElevationDegrees(15.0f);
-    win->camera().setZoomDistance(30.0f);
-
-    // save and load UI state:
-#define LOAD_CB_STATE(CB_NAME__) do_cb(CB_NAME__, #CB_NAME__)
-#define SAVE_CB_STATE(CB_NAME__) appCfg.write("", #CB_NAME__, (CB_NAME__)->checked())
-
-#define LOAD_SL_STATE(SL_NAME__) do_sl(SL_NAME__, #SL_NAME__)
-#define SAVE_SL_STATE(SL_NAME__) appCfg.write("", #SL_NAME__, (SL_NAME__)->value())
-
-    auto load_UI_state_from_user_config = [&]()
-    {
-        auto do_cb = [&](nanogui::CheckBox* cb, const std::string& name)
-        { cb->setChecked(appCfg.read_bool("", name, cb->checked())); };
-        auto do_sl = [&](nanogui::Slider* sl, const std::string& name)
-        { sl->setValue(appCfg.read_float("", name, sl->value())); };
-
-        LOAD_CB_STATE(cbColorizeLocalMap);
-        LOAD_CB_STATE(cbColorizeGlobalMap);
-        LOAD_CB_STATE(cbShowInitialPose);
-        LOAD_CB_STATE(cbViewOrtho);
-        LOAD_CB_STATE(cbCameraFollowsLocal);
-        LOAD_CB_STATE(cbViewVoxelsAsPoints);
-        LOAD_CB_STATE(cbViewPairings);
-        LOAD_CB_STATE(cbViewPairings_pt2pt);
-        LOAD_CB_STATE(cbViewPairings_pt2pl);
-        LOAD_CB_STATE(cbViewPairings_pt2ln);
-        LOAD_CB_STATE(cbViewPairings_cov2cov);
-        LOAD_CB_STATE(cbViewPriorEllipsoid);
-
-        LOAD_SL_STATE(slPairingsPl2PlSize);
-        LOAD_SL_STATE(slPairingsPl2LnSize);
-        LOAD_SL_STATE(slPairingsCov2CovDecimation);
-        LOAD_SL_STATE(slGlobalPointSize);
-        LOAD_SL_STATE(slLocalPointSize);
-        LOAD_SL_STATE(slMidDepthField);
-        LOAD_SL_STATE(slThicknessDepthField);
-
-        win->camera().setCameraPointing(
-            appCfg.read_float("", "cam_x", win->camera().getCameraPointingX()),
-            appCfg.read_float("", "cam_y", win->camera().getCameraPointingY()),
-            appCfg.read_float("", "cam_z", win->camera().getCameraPointingZ()));
-        win->camera().setAzimuthDegrees(
-            appCfg.read_float("", "cam_az", win->camera().getAzimuthDegrees()));
-        win->camera().setElevationDegrees(
-            appCfg.read_float("", "cam_el", win->camera().getElevationDegrees()));
-        win->camera().setZoomDistance(
-            appCfg.read_float("", "cam_d", win->camera().getZoomDistance()));
-    };
-    auto save_UI_state_to_user_config = [&]()
-    {
-        SAVE_CB_STATE(cbColorizeLocalMap);
-        SAVE_CB_STATE(cbColorizeGlobalMap);
-        SAVE_CB_STATE(cbShowInitialPose);
-        SAVE_CB_STATE(cbViewOrtho);
-        SAVE_CB_STATE(cbCameraFollowsLocal);
-        SAVE_CB_STATE(cbViewVoxelsAsPoints);
-        SAVE_CB_STATE(cbViewPairings);
-        SAVE_CB_STATE(cbViewPairings_pt2pt);
-        SAVE_CB_STATE(cbViewPairings_cov2cov);
-        SAVE_CB_STATE(cbViewPairings_pt2pl);
-        SAVE_CB_STATE(cbViewPairings_pt2ln);
-        SAVE_CB_STATE(cbViewPriorEllipsoid);
-
-        SAVE_SL_STATE(slPairingsPl2PlSize);
-        SAVE_SL_STATE(slPairingsPl2LnSize);
-        SAVE_SL_STATE(slPairingsCov2CovDecimation);
-        SAVE_SL_STATE(slGlobalPointSize);
-        SAVE_SL_STATE(slLocalPointSize);
-        SAVE_SL_STATE(slMidDepthField);
-        SAVE_SL_STATE(slThicknessDepthField);
-
-        appCfg.write("", "cam_x", win->camera().getCameraPointingX());
-        appCfg.write("", "cam_y", win->camera().getCameraPointingY());
-        appCfg.write("", "cam_z", win->camera().getCameraPointingZ());
-        appCfg.write("", "cam_az", win->camera().getAzimuthDegrees());
-        appCfg.write("", "cam_el", win->camera().getElevationDegrees());
-        appCfg.write("", "cam_d", win->camera().getZoomDistance());
-    };
-
-    // load UI state from last session:
-    load_UI_state_from_user_config();
-
-    rebuild_3d_view();
-
-    // Main loop
-    // ---------------------
-    win->drawAll();
-    win->setVisible(true);
-
-    win->addLoopCallback(
-        [&]()
-        {
-            processAutoPlay();
-            updateMiniCornerView();
-        });
-
-    nanogui::mainloop(1000 /*idleLoopPeriod ms*/, 25 /* minRepaintPeriod ms */);
-
-    nanogui::shutdown();
-
-    // save UI state:
-    save_UI_state_to_user_config();
+    mrpt::config::CConfigFile appCfg(appCfgFile);
+
+    auto& cam              = app.sceneView.camera();
+    app.colorizeLocalMap   = appCfg.read_bool("", "cbColorizeLocalMap", app.colorizeLocalMap);
+    app.colorizeGlobalMap  = appCfg.read_bool("", "cbColorizeGlobalMap", app.colorizeGlobalMap);
+    app.showInitialPose    = appCfg.read_bool("", "cbShowInitialPose", app.showInitialPose);
+    app.viewOrtho          = appCfg.read_bool("", "cbViewOrtho", app.viewOrtho);
+    app.cameraFollowsLocal = appCfg.read_bool("", "cbCameraFollowsLocal", app.cameraFollowsLocal);
+    app.viewVoxelsAsPoints = appCfg.read_bool("", "cbViewVoxelsAsPoints", app.viewVoxelsAsPoints);
+    app.viewPairings       = appCfg.read_bool("", "cbViewPairings", app.viewPairings);
+    app.viewPairingsPt2Pt  = appCfg.read_bool("", "cbViewPairings_pt2pt", app.viewPairingsPt2Pt);
+    app.viewPairingsPt2Pl  = appCfg.read_bool("", "cbViewPairings_pt2pl", app.viewPairingsPt2Pl);
+    app.viewPairingsPt2Ln  = appCfg.read_bool("", "cbViewPairings_pt2ln", app.viewPairingsPt2Ln);
+    app.viewPairingsCov2Cov =
+        appCfg.read_bool("", "cbViewPairings_cov2cov", app.viewPairingsCov2Cov);
+    app.viewPriorEllipsoid = appCfg.read_bool("", "cbViewPriorEllipsoid", app.viewPriorEllipsoid);
+
+    app.pairingsPl2PlSize = appCfg.read_float("", "slPairingsPl2PlSize", app.pairingsPl2PlSize);
+    app.pairingsPl2LnSize = appCfg.read_float("", "slPairingsPl2LnSize", app.pairingsPl2LnSize);
+    app.pairingsCov2CovDecim =
+        appCfg.read_float("", "slPairingsCov2CovDecimation", app.pairingsCov2CovDecim);
+    app.globalPointSize = appCfg.read_float("", "slGlobalPointSize", app.globalPointSize);
+    app.localPointSize  = appCfg.read_float("", "slLocalPointSize", app.localPointSize);
+    app.midDepthField   = appCfg.read_float("", "slMidDepthField", app.midDepthField);
+    app.thicknessDepthField =
+        appCfg.read_float("", "slThicknessDepthField", app.thicknessDepthField);
+
+    cam.setPointingAt(
+        appCfg.read_float("", "cam_x", cam.getPointingAtX()),
+        appCfg.read_float("", "cam_y", cam.getPointingAtY()),
+        appCfg.read_float("", "cam_z", cam.getPointingAtZ()));
+    cam.setAzimuthDegrees(appCfg.read_float("", "cam_az", cam.getAzimuthDegrees()));
+    cam.setElevationDegrees(appCfg.read_float("", "cam_el", cam.getElevationDegrees()));
+    cam.setZoomDistance(appCfg.read_float("", "cam_d", cam.getZoomDistance()));
+
+    app.shell.run(&renderFrame);
+
+    appCfg.write("", "cbColorizeLocalMap", app.colorizeLocalMap);
+    appCfg.write("", "cbColorizeGlobalMap", app.colorizeGlobalMap);
+    appCfg.write("", "cbShowInitialPose", app.showInitialPose);
+    appCfg.write("", "cbViewOrtho", app.viewOrtho);
+    appCfg.write("", "cbCameraFollowsLocal", app.cameraFollowsLocal);
+    appCfg.write("", "cbViewVoxelsAsPoints", app.viewVoxelsAsPoints);
+    appCfg.write("", "cbViewPairings", app.viewPairings);
+    appCfg.write("", "cbViewPairings_pt2pt", app.viewPairingsPt2Pt);
+    appCfg.write("", "cbViewPairings_pt2pl", app.viewPairingsPt2Pl);
+    appCfg.write("", "cbViewPairings_pt2ln", app.viewPairingsPt2Ln);
+    appCfg.write("", "cbViewPairings_cov2cov", app.viewPairingsCov2Cov);
+    appCfg.write("", "cbViewPriorEllipsoid", app.viewPriorEllipsoid);
+
+    appCfg.write("", "slPairingsPl2PlSize", app.pairingsPl2PlSize);
+    appCfg.write("", "slPairingsPl2LnSize", app.pairingsPl2LnSize);
+    appCfg.write("", "slPairingsCov2CovDecimation", app.pairingsCov2CovDecim);
+    appCfg.write("", "slGlobalPointSize", app.globalPointSize);
+    appCfg.write("", "slLocalPointSize", app.localPointSize);
+    appCfg.write("", "slMidDepthField", app.midDepthField);
+    appCfg.write("", "slThicknessDepthField", app.thicknessDepthField);
+
+    appCfg.write("", "cam_x", cam.getPointingAtX());
+    appCfg.write("", "cam_y", cam.getPointingAtY());
+    appCfg.write("", "cam_z", cam.getPointingAtZ());
+    appCfg.write("", "cam_az", cam.getAzimuthDegrees());
+    appCfg.write("", "cam_el", cam.getElevationDegrees());
+    appCfg.write("", "cam_d", cam.getZoomDistance());
+
+    app.shell.shutdown();
+    return 0;
 }
 
 }  // namespace
-
-template <class MATRIX>  //
-double conditionNumber(const MATRIX& m)
-{
-    MATRIX              eVecs;
-    std::vector<double> eVals;
-    m.eig_symmetric(eVecs, eVals);
-    return eVals.back() / eVals.front();
-}
-
-// ==============================
-// rebuild_3d_view
-// ==============================
-void rebuild_3d_view(bool regenerateMaps)
-try
-{
-    using namespace std::string_literals;
-
-    const size_t idx = mrpt::round(slSelectorICP->value());
-
-    btnSelectorBack->setEnabled(!logRecords.empty() && idx > 0);
-    btnSelectorForw->setEnabled(!logRecords.empty() && idx < logRecords.size() - 1);
-
-    if (idx >= logRecords.size())
-    {
-        return;
-    }
-
-    glVizICP->clear();
-
-    // Free memory
-    static std::optional<size_t> lastIdx;
-    bool                         mustResetIterationSlider = false;
-
-    if (!lastIdx || (lastIdx && idx != *lastIdx))
-    {
-        // free memory:
-        if (lastIdx)
-        {
-            logRecords.at(*lastIdx).dispose();
-        }
-
-        // and note that we should show the first/last ICP iteration:
-        mustResetIterationSlider = true;
-    }
-    lastIdx = idx;
-
-    // lazy load from disk happens in the "get()":
-    const auto& lr = logRecords.at(idx).get();
-
-    lbICPStats[0]->setValue(logRecords.at(idx).shortFileName());
-
-    lbICPStats[1]->setValue(mrpt::format(
-        "ICP log #%zu | Local: ID:%u%s | Global: ID:%u%s", idx,
-        static_cast<unsigned int>(lr.pcLocal->id ? lr.pcLocal->id.value() : 0),
-        lr.pcLocal->label ? lr.pcLocal->label.value().c_str() : "",
-        static_cast<unsigned int>(lr.pcGlobal->id ? lr.pcGlobal->id.value() : 0),
-        lr.pcGlobal->label ? lr.pcGlobal->label.value().c_str() : ""));
-
-    lbICPStats[2]->setValue(mrpt::format(
-        "Quality: %.02f%% | Iters: %u | Term.Reason: %s", 100.0 * lr.icpResult.quality,
-        static_cast<unsigned int>(lr.icpResult.nIterations),
-        mrpt::typemeta::enum2str(lr.icpResult.terminationReason).c_str()));
-
-    lbICPStats[3]->setValue("Global: "s + lr.pcGlobal->contents_summary());
-    lbICPStats[4]->setValue("Local: "s + lr.pcLocal->contents_summary());
-
-    tbInitialGuess->setValue(lr.initialGuessLocalWrtGlobal.asString());
-
-    // Prior:
-    if (lr.prior.has_value())
-    {
-        tbPriorMean->setValue(lr.prior->mean.asString());
-
-        std::string s;
-        const auto  cov = mrpt::math::CMatrixDouble66(lr.prior->cov_inv.inverse());
-        for (int i = 0; i < 6; i++)
-        {
-            const auto sigma = std::sqrt(cov(i, i));
-            if (i < 3)
-            {
-                s += mrpt::format("%.02fm ", sigma);
-            }
-            else
-            {
-                s += mrpt::format("%.02fd ", mrpt::RAD2DEG(sigma));
-            }
-        }
-        tbPriorInfo->setValue(s);
-    }
-    else
-    {
-        tbPriorMean->setValue("(none)");
-        tbPriorInfo->setValue("(none)");
-    }
-
-    tbLogPose->setValue(lr.icpResult.optimal_tf.mean.asString());
-
-    // dyn variables:
-    {
-        for (auto* lb : lbDynVariables)
-        {
-            lb->setValue("");
-        }
-
-        size_t lbIdx = 0;
-        for (const auto& [name, value] : lr.dynamicVariables)
-        {
-            lbDynVariables[lbIdx++]->setValue(mrpt::format("%s = %g", name.c_str(), value));
-            if (lbIdx >= MAX_VARIABLE_LIST)
-            {
-                break;
-            }
-        }
-    }
-
-    {
-        const auto poseChange =
-            lr.icpResult.optimal_tf.mean - mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
-
-        tbInit2Final->setValue(mrpt::format(
-            "|T|=%.03f [m]  |R|=%.03f [deg]", poseChange.norm(),
-            mrpt::RAD2DEG(mrpt::poses::Lie::SO<3>::log(poseChange.getRotationMatrix()).norm())));
-    }
-
-    const auto                      poseFromCorner = mrpt::poses::CPose3D::Identity();
-    mrpt::poses::CPose3DPDFGaussian relativePose;
-    const mp2p_icp::Pairings*       pairsToViz = nullptr;
-
-    if (!lr.iterationsDetails.has_value() || lr.iterationsDetails->empty())
-    {
-        slIterationDetails->setEnabled(false);
-
-        if (cbShowInitialPose->checked())
-        {
-            relativePose.mean = mrpt::poses::CPose3D(lr.initialGuessLocalWrtGlobal);
-            lbICPIteration->setCaption("Show ICP iteration: INITIAL");
-        }
-        else
-        {
-            relativePose = lr.icpResult.optimal_tf;
-            lbICPIteration->setCaption("Show ICP iteration: FINAL");
-        }
-
-        if (cbViewPairings->checked())
-        {
-            pairsToViz = &lr.icpResult.finalPairings;
-        }
-    }
-    else
-    {
-        slIterationDetails->setEnabled(true);
-        slIterationDetails->setRange({.0f, static_cast<float>(lr.iterationsDetails->size() - 1)});
-
-        if (mustResetIterationSlider)
-        {
-            slIterationDetails->setValue(
-                cbShowInitialPose->checked() ? slIterationDetails->range().first
-                                             : slIterationDetails->range().second);
-        }
-
-        // final or partial solution?
-        auto it = lr.iterationsDetails->begin();
-
-        size_t nIter = mrpt::round(slIterationDetails->value());
-        mrpt::keep_min(nIter, lr.iterationsDetails->size() - 1);
-
-        std::advance(it, nIter);
-
-        relativePose.mean = it->second.optimalPose;
-        if (cbViewPairings->checked())
-        {
-            pairsToViz = &it->second.pairings;
-        }
-
-        lbICPIteration->setCaption(
-            "Show ICP iteration: "s + std::to_string(it->first) + "/"s +
-            std::to_string(lr.iterationsDetails->rbegin()->first));
-    }
-
-    {
-        std::string s;
-        for (int i = 0; i < 6; i++)
-        {
-            auto sigma = std::sqrt(relativePose.cov(i, i));
-            if (i < 3)
-            {
-                s += mrpt::format("%.02fm ", sigma);
-            }
-            else
-            {
-                s += mrpt::format("%.02fd ", mrpt::RAD2DEG(sigma));
-            }
-        }
-
-        s += mrpt::format(
-            " det(XYZ)=%.02e det(rot)=%.02e", relativePose.cov.blockCopy<3, 3>(0, 0).det(),
-            relativePose.cov.blockCopy<3, 3>(3, 3).det());
-
-        tbCovariance->setValue(s);
-    }
-
-    // Extract SE(2) covariance:
-    const mrpt::poses::CPosePDFGaussian pose2D(relativePose);
-
-    // Condition numbers:
-    tbConditionNumber->setValue(mrpt::format(
-        " cn{XYZ}=%.02f cn{SO(3)}=%.02f cn{SE(2)}=%.02f "
-        "cn{SE(3)}=%.02f",
-        conditionNumber(relativePose.cov.blockCopy<3, 3>(0, 0)),
-        conditionNumber(relativePose.cov.blockCopy<3, 3>(3, 3)), conditionNumber(pose2D.cov),
-        conditionNumber(relativePose.cov)));
-
-    // 3D objects -------------------
-    auto glCornerFrom = mrpt::opengl::stock_objects::CornerXYZSimple(0.75f, 3.0f);
-    glCornerFrom->setPose(poseFromCorner);
-    glVizICP->insert(glCornerFrom);
-
-    auto glCornerLocal = mrpt::opengl::stock_objects::CornerXYZSimple(0.85f, 5.0f);
-    glCornerLocal->setPose(relativePose.mean);
-    glCornerLocal->setName("Local");
-    glCornerLocal->enableShowName(true);
-    glVizICP->insert(glCornerLocal);
-
-    auto glCornerToCov = mrpt::opengl::CEllipsoid3D::Create();
-    glCornerToCov->set3DsegmentsCount(16);
-    glCornerToCov->enableDrawSolid3D(true);
-    glCornerToCov->setColor_u8(0xff, 0x00, 0x00, 0x40);
-    //  std::cout << "cov:\n" << relativePose.cov << "\n";
-    glCornerToCov->setCovMatrixAndMean(
-        relativePose.cov.blockCopy<3, 3>(0, 0), relativePose.mean.asVectorVal().head<3>());
-    glVizICP->insert(glCornerToCov);
-
-    // Prior ellipsoid (yellow, at prior mean, translational part only):
-    if (lr.prior.has_value() && cbViewPriorEllipsoid->checked())
-    {
-        const auto priorCov = mrpt::math::CMatrixDouble66(lr.prior->cov_inv.inverse());
-
-        auto glPriorEllipsoid = mrpt::opengl::CEllipsoid3D::Create();
-        glPriorEllipsoid->set3DsegmentsCount(16);
-        glPriorEllipsoid->enableDrawSolid3D(true);
-        glPriorEllipsoid->setColor_u8(0xff, 0xff, 0x00, 0x50);
-        glPriorEllipsoid->setCovMatrixAndMean(
-            priorCov.blockCopy<3, 3>(0, 0), lr.prior->mean.asVectorVal().head<3>());
-        glPriorEllipsoid->setName("Prior");
-        glPriorEllipsoid->enableShowName(true);
-        glVizICP->insert(glPriorEllipsoid);
-    }
-
-    // GLOBAL PC:
-    mp2p_icp::render_params_t rpGlobal;
-
-    rpGlobal.points.visible = false;
-    for (const auto& [lyName, cb] : cbLayersByName_global)
-    {
-        // Update stats in the cb label:
-        cb->setCaption(lyName);  // default
-        if (auto itL = lr.pcGlobal->layers.find(lyName); itL != lr.pcGlobal->layers.end())
-        {
-            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second); pc)
-            {
-                cb->setCaption(
-                    lyName + " | "s + mrpt::system::unitsFormat(static_cast<double>(pc->size())) +
-                    " points"s + " | class="s + pc->GetRuntimeClass()->className);
-            }
-            else
-            {
-                cb->setCaption(lyName + " | class="s + itL->second->GetRuntimeClass()->className);
-            }
-        }
-
-        // show/hide:
-        if (!cb->checked())
-        {
-            continue;  // hidden
-        }
-        rpGlobal.points.visible = true;
-
-        auto& rpL                       = rpGlobal.points.perLayer[lyName];
-        rpL.pointSize                   = slGlobalPointSize->value();
-        rpL.render_voxelmaps_as_points  = cbViewVoxelsAsPoints->checked();
-        rpL.render_voxelmaps_free_space = cbViewVoxelsFreeSpace->checked();
-
-        if (cbColorizeGlobalMap->checked())
-        {
-            auto& cm             = rpL.colorMode.emplace();
-            cm.colorMap          = mrpt::img::TColormap::cmHOT;
-            cm.recolorizeByField = "z";
-        }
-    }
-
-    static mrpt::opengl::CSetOfObjects::Ptr lastGlobalPts;
-
-    if (!lastGlobalPts || regenerateMaps)
-    {
-        // Show all or selected layers:
-        for (auto& rpL : rpGlobal.points.perLayer)
-        {
-            rpL.second.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
-        }
-
-        auto glPts    = lr.pcGlobal->get_visualization(rpGlobal);
-        lastGlobalPts = glPts;
-
-        // Show all or selected layers:
-        rpGlobal.points.allLayers.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
-
-        glVizICP->insert(glPts);
-    }
-    else
-    {
-        // avoid the costly method of re-rendering maps, if possible:
-        glVizICP->insert(lastGlobalPts);
-    }
-
-    // LOCAL PC:
-    mp2p_icp::render_params_t rpLocal;
-
-    rpLocal.points.visible = false;
-    for (const auto& [lyName, cb] : cbLayersByName_local)
-    {
-        // Update stats in the cb label:
-        cb->setCaption(lyName);  // default
-        if (auto itL = lr.pcLocal->layers.find(lyName); itL != lr.pcLocal->layers.end())
-        {
-            if (auto pc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(itL->second); pc)
-            {
-                cb->setCaption(
-                    lyName + " | "s +
-                    mrpt::system::unitsFormat(static_cast<double>(pc->size()), 2, false) +
-                    " points"s + " | class="s + pc->GetRuntimeClass()->className);
-            }
-            else
-            {
-                cb->setCaption(lyName + " | class="s + itL->second->GetRuntimeClass()->className);
-            }
-        }
-
-        // show/hide:
-        if (!cb->checked())
-        {
-            continue;  // hidden
-        }
-        rpLocal.points.visible = true;
-
-        auto& rpL                       = rpLocal.points.perLayer[lyName];
-        rpL.pointSize                   = slLocalPointSize->value();
-        rpL.render_voxelmaps_as_points  = cbViewVoxelsAsPoints->checked();
-        rpL.render_voxelmaps_free_space = cbViewVoxelsFreeSpace->checked();
-        if (cbColorizeLocalMap->checked())
-        {
-            auto& cm             = rpL.colorMode.emplace();
-            cm.colorMap          = mrpt::img::TColormap::cmHOT;
-            cm.recolorizeByField = "z";
-        }
-    }
-
-    static mrpt::opengl::CSetOfObjects::Ptr lastLocalPts;
-
-    if (!lastLocalPts || regenerateMaps)
-    {
-        // Show all or selected layers:
-        for (auto& rpL : rpLocal.points.perLayer)
-        {
-            rpL.second.color = mrpt::img::TColor(0x00, 0x00, 0xff, 0xff);
-        }
-
-        auto glPts   = lr.pcLocal->get_visualization(rpLocal);
-        lastLocalPts = glPts;
-
-        glVizICP->insert(glPts);
-    }
-    else
-    {
-        // avoid the costly method of re-rendering maps, if possible:
-        glVizICP->insert(lastLocalPts);
-    }
-    lastLocalPts->setPose(relativePose.mean);
-
-    // Global view options:
-    {
-        std::lock_guard<std::mutex> lck(win->background_scene_mtx);
-        win->camera().setCameraProjective(!cbViewOrtho->checked());
-
-        if (cbCameraFollowsLocal->checked())
-        {
-            const auto camLoc = relativePose.mean.translation().cast<float>();
-            win->camera().setCameraPointing(camLoc.x, camLoc.y, camLoc.z);
-        }
-
-        // clip planes:
-        const auto depthFieldMid       = std::pow(10.0, slMidDepthField->value());
-        const auto depthFieldThickness = std::pow(10.0, slThicknessDepthField->value());
-
-        const auto clipNear = std::max(1e-2, depthFieldMid - 0.5 * depthFieldThickness);
-        const auto clipFar  = depthFieldMid + 0.5 * depthFieldThickness;
-
-        lbDepthFieldMid->setCaption(mrpt::format("Frustrum depth center: %.03f", depthFieldMid));
-        lbDepthFieldThickness->setCaption(
-            mrpt::format("Frustum depth thickness: %.03f", depthFieldThickness));
-        lbDepthFieldValues->setCaption(
-            mrpt::format("Frustum: near=%.02f far=%.02f", clipNear, clipFar));
-
-        win->background_scene->getViewport()->setViewportClipDistances(
-            static_cast<float>(clipNear), static_cast<float>(clipFar));
-        win->camera().setMaximumZoom(std::max<float>(1000, static_cast<float>(3.0 * clipFar)));
-    }
-
-    // Pairings ------------------
-
-    // viz pairings:
-    if (pairsToViz)
-    {
-        const double planeCovScale = std::pow(10.0, slPairingsPl2PlSize->value());
-
-        mp2p_icp::pairings_render_params_t rp;
-
-        rp.pt2pt.visible        = cbViewPairings_pt2pt->checked();
-        rp.pt2pl.visible        = cbViewPairings_pt2pl->checked();
-        rp.pt2pl.planePatchSize = planeCovScale;
-
-        rp.cov2cov.visible = cbViewPairings_cov2cov->checked();
-        rp.cov2cov.decimation =
-            static_cast<std::size_t>(std::pow(10.0, slPairingsCov2CovDecimation->value()));
-        rp.cov2cov.covScale = planeCovScale;
-
-        rp.pt2ln.visible    = cbViewPairings_pt2ln->checked();
-        rp.pt2ln.lineLength = std::pow(10.0, slPairingsPl2LnSize->value());
-
-        glVizICP->insert(pairsToViz->get_visualization(relativePose.mean, rp));
-
-        tbPairings->setValue(pairsToViz->contents_summary());
-    }
-    else
-    {
-        tbPairings->setValue("None selected (mark one of the checkboxes below)");
-    }
-
-    // XYZ corner overlay viewport:
-    {
-        auto gl_view = win->background_scene->createViewport("small-view");
-
-        gl_view->setViewportPosition(0, 0, 0.1, 0.1 * 16.0 / 9.0);
-        gl_view->setTransparent(true);
-        {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("X");
-            obj->setLocation(1.1, 0, 0);
-            gl_view->insert(obj);
-        }
-        {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Y");
-            obj->setLocation(0, 1.1, 0);
-            gl_view->insert(obj);
-        }
-        {
-            mrpt::opengl::CText::Ptr obj = mrpt::opengl::CText::Create("Z");
-            obj->setLocation(0, 0, 1.1);
-            gl_view->insert(obj);
-        }
-        gl_view->insert(mrpt::opengl::stock_objects::CornerXYZ());
-    }
-}
-catch (const std::exception& e)
-{
-    std::cerr << "[rebuild_3d_view] Exception: " << mrpt::exception_to_str(e) << std::endl;
-    if (lbICPStats[0])
-        lbICPStats[0]->setValue(std::string("ERROR: ") + mrpt::exception_to_str(e).substr(0, 80));
-}
-
-#else  // MRPT_HAS_NANOGUI
-namespace
-{
-void main_show_gui()
-{
-    THROW_EXCEPTION(
-        "This application requires a version of MRPT built with nanogui "
-        "support.");
-}
-}  // namespace
-
-#endif  // MRPT_HAS_NANOGUI
 
 int main(int argc, char** argv)
 {
@@ -1403,8 +1161,7 @@ int main(int argc, char** argv)
         "One or more (comma separated) *.so files to load as plugins");
     cmd.add_option(
         "--autoplay-period", argAutoPlayPeriod,
-        "The period (in seconds) between timestamps to load and show in autoplay "
-        "mode.");
+        "The period (in seconds) between timestamps to load and show in autoplay mode.");
     argMinQualityOpt = cmd.add_option(
         "-q,--min-quality", argMinQuality,
         "Minimum ICP quality (range [0,1], i.e. 0%-100%) to load a log file. "
@@ -1414,21 +1171,18 @@ int main(int argc, char** argv)
 
     try
     {
-        // Load plugins:
         if (!arg_plugins.empty())
         {
             std::string errMsg;
-            const auto& plugins = arg_plugins;
-            std::cout << "Loading plugin(s): " << plugins << std::endl;
-            if (!mrpt::system::loadPluginModules(plugins, errMsg))
+            std::cout << "Loading plugin(s): " << arg_plugins << std::endl;
+            if (!mrpt::system::loadPluginModules(arg_plugins, errMsg))
             {
                 std::cerr << errMsg << std::endl;
                 return 1;
             }
         }
 
-        main_show_gui();
-        return 0;
+        return mainShowGui();
     }
     catch (std::exception& e)
     {

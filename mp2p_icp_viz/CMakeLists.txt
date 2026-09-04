@@ -24,6 +24,16 @@ find_package(mp2p_icp REQUIRED)
 
 find_package(Threads REQUIRED)
 
+# -- Dear ImGui static library (from 3rdparty submodule) ---------------------
+#
+# The submodule lives at:  3rdparty/imgui   (docking branch)
+# The helper CMakeLists that builds it as a static lib lives at:
+#   3rdparty/imgui_static/CMakeLists.txt
+#
+# Built here (once) and shared by both apps/mm-viewer and apps/icp-log-viewer.
+# Not installed: "imgui::imgui" is an internal build detail only.
+add_subdirectory(3rdparty/imgui_static imgui_static_build)
+
 #----
 # Extract version from package.xml
 file(READ package.xml contentPackageXML)

@@ -1,3 +1,7 @@
 [submodule "3rdparty/robin-map"]
 	path = mp2p_icp_core/3rdparty/robin-map
 	url = https://github.com/Tessil/robin-map.git
+[submodule "mp2p_icp_viz/3rdparty/imgui"]
+	path = mp2p_icp_viz/3rdparty/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking
