@@ -48,6 +48,13 @@ struct Results
     /** A copy of the pairings found in the last ICP iteration. */
     Pairings finalPairings;
 
+    /** Share of the final rotational information supplied by the gravity
+     *  prior, in [0,1]; <0 when none was given. See
+     *  OptimalTF_Result::gravity_information_share: a verticality prior's
+     *  actual influence depends on the pair count and lever arms, not on its
+     *  sigma alone, and this is the only place it can be read off. */
+    double gravity_information_share = -1.0;
+
     void serializeTo(mrpt::serialization::CArchive& out) const;
     void serializeFrom(mrpt::serialization::CArchive& in);
 

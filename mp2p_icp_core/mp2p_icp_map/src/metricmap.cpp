@@ -147,7 +147,7 @@ void dropNonFinitePoints(mrpt::opengl::CPointCloud& glPts)
 }  // namespace
 
 // Implementation of the CSerializable virtual interface:
-uint8_t metric_map_t::serializeGetVersion() const { return 5; }
+uint8_t metric_map_t::serializeGetVersion() const { return 6; }
 void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << lines;
@@ -156,6 +156,7 @@ void    metric_map_t::serializeTo(mrpt::serialization::CArchive& out) const
     for (const auto& p : planes)
     {
         out << p.plane << p.centroid;
+        out << p.area << p.num_points;  // new in v6
     }
 
     out.WriteAs<uint32_t>(lines.size());
@@ -198,6 +199,7 @@ void metric_map_t::serializeFrom(mrpt::serialization::CArchive& in, uint8_t vers
         case 3:
         case 4:
         case 5:
+        case 6:
         {
             in >> lines;
             const auto nPls = in.ReadAs<uint32_t>();
@@ -205,6 +207,15 @@ void metric_map_t::serializeFrom(mrpt::serialization::CArchive& in, uint8_t vers
             for (auto& pl : planes)
             {
                 in >> pl.plane >> pl.centroid;
+                if (version >= 6)
+                {
+                    in >> pl.area >> pl.num_points;
+                }
+                else
+                {
+                    pl.area       = 0;
+                    pl.num_points = 0;
+                }
             }
 
             const auto nLins = in.ReadAs<uint32_t>();

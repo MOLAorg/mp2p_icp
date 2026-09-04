@@ -22,17 +22,14 @@
 #include <mola_imu_preintegration/ImuTransformer.h>
 #endif
 
-#include <mp2p_icp/load_plugin.h>
 #include <mp2p_icp/pointcloud_sanity_check.h>
+#include <mp2p_icp_filters/CreateMetricMapFromDefinition.h>
 #include <mp2p_icp_filters/Generator.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
-#include <mrpt/config/CConfigFile.h>
-#include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/cpu.h>
 #include <mrpt/core/get_env.h>
 #include <mrpt/maps/CGenericPointsMap.h>
-#include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
@@ -745,6 +742,32 @@ bool Generator::implProcessDefault(
     // o.unload();  // DON'T! We don't know who else is using the data
 }
 
+bool Generator::createTargetLayerIfNeeded(mp2p_icp::metric_map_t& out) const
+{
+    ASSERTMSG_(
+        initialized_, "initialize() must be called once before using createTargetLayerIfNeeded().");
+
+    if (params.metric_map_definition_ini_file.empty() && params.metric_map_definition.empty())
+    {
+        return false;  // default point-cloud generation mode: nothing to pre-create
+    }
+
+    if (out.layers.count(params.target_layer) != 0)
+    {
+        return false;  // already exists
+    }
+
+    // Formulas in metric_map_definition (e.g. "$f{...}") must be resolved before being
+    // read out below; otherwise, an unattached/unrealized one would silently serialize as
+    // its 0.0 placeholder instead of throwing.
+    Parameterizable::checkAllParametersAreRealized();
+
+    out.layers[params.target_layer] = CreateMetricMapFromDefinition(
+        params.metric_map_definition, params.metric_map_definition_ini_file, this);
+
+    return true;
+}
+
 bool Generator::implProcessCustomMap(
     const mrpt::obs::CObservation& o, mp2p_icp::metric_map_t& out,
     const std::optional<mrpt::poses::CPose3D>& robotPose) const
@@ -753,89 +776,9 @@ bool Generator::implProcessCustomMap(
 
     const auto obsClassName = o.GetRuntimeClass()->className;
 
-    // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CMetricMap::Ptr outMap;
-
-    if (auto itLy = out.layers.find(params.target_layer); itLy != out.layers.end())
-    {
-        outMap = itLy->second;
-    }
-    else
-    {
-        // insert new layer:
-        mrpt::maps::TSetOfMetricMapInitializers mapInits;
-
-        const std::string cfgPrefix = "map"s;
-
-        // Create from either a INI file or the YAML version of it:
-        if (!params.metric_map_definition_ini_file.empty())
-        {
-            // Load from INI file
-            // ------------------------------
-            ASSERT_FILE_EXISTS_(params.metric_map_definition_ini_file);
-            mrpt::config::CConfigFile cfg(params.metric_map_definition_ini_file);
-            mapInits.loadFromConfigFile(cfg, cfgPrefix);
-        }
-        else
-        {
-            // Load from YAML file (with parameterizable values)
-            // ------------------------------------------------------
-            ASSERT_(!params.metric_map_definition.empty());
-            const auto& c = params.metric_map_definition;
-
-            // Build an in-memory INI file with the structure expected by
-            // loadFromConfigFile():
-            mrpt::config::CConfigFileMemory cfg;
-
-            ASSERT_(c.has("class"));
-            const std::string mapClass = c["class"].as<std::string>();
-            cfg.write(cfgPrefix, mapClass + "_count"s, "1");
-
-            // optional plugin module?
-            if (c.has("plugin"))
-            {
-                const auto moduleToLoad = c["plugin"].as<std::string>();
-                MRPT_LOG_DEBUG_STREAM("About to load user-defined plugin: " << moduleToLoad);
-                mp2p_icp::load_plugin(moduleToLoad, this);
-            }
-
-            // fill the rest sub-sections:
-            for (const auto& [k, v] : c.asMap())
-            {
-                if (!v.isMap())
-                {
-                    continue;
-                }
-                const auto keyVal   = k.as<std::string>();
-                const auto sectName = cfgPrefix + "_"s + mapClass + "_00_"s + keyVal;
-                for (const auto& [kk, vv] : v.asMap())
-                {
-                    ASSERT_(kk.isScalar());
-                    ASSERT_(vv.isScalar());
-
-                    cfg.write(sectName, kk.as<std::string>(), vv.as<std::string>());
-                }
-            }
-
-            MRPT_LOG_DEBUG_STREAM(
-                "Built INI-like block for layer '" << params.target_layer << "':\n"
-                                                   << cfg.getContent());
-
-            // parse it:
-            mapInits.loadFromConfigFile(cfg, cfgPrefix);
-        }
-
-        // create the map:
-        mrpt::maps::CMultiMetricMap theMap;
-        theMap.setListOfMaps(mapInits);
-
-        ASSERT_(theMap.maps.size() >= 1);
-        outMap = theMap.maps.at(0);
-
-        out.layers[params.target_layer] = outMap;
-    }
-
-    ASSERT_(outMap);
+    // Create the layer if it did not exist yet; append to it otherwise.
+    createTargetLayerIfNeeded(out);
+    const mrpt::maps::CMetricMap::Ptr outMap = out.layers.at(params.target_layer);
 
     // user-given filters: Done *AFTER* creating the map, if needed.
     if (obsClassName == "mrpt::obs::CObservationComment"s ||

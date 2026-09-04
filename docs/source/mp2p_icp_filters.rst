@@ -398,6 +398,8 @@ If the output layer already exists, new points are accumulated on it; previous c
 ---
 
 
+.. _FilterDecimateAdaptive:
+
 Filter: `FilterDecimateAdaptive`
 --------------------------------
 
@@ -524,6 +526,8 @@ single YAML config work across heterogeneous LiDAR sensors without retuning.
 |
 
 ---
+
+.. _FilterDecimateVoxels:
 
 Filter: `FilterDecimateVoxels`
 ------------------------------
@@ -740,6 +744,8 @@ Filter: `FilterFartherPointSampling`
 
 ---
 
+.. _FilterMerge:
+
 Filter: `FilterMerge`
 ---------------------
 
@@ -905,6 +911,75 @@ The data is updated **in-place** in the input/output layer.
 
 .. image:: normalize_intensity_example.png
    :alt: Screenshot showing point cloud before and after applying FilterNormalizeIntensity
+
+|
+
+---
+
+Filter: `FilterPlanePatches`
+----------------------------
+
+**Description**: Extracts large planar patches from a point layer and appends them to
+:cpp:member:`mp2p_icp::metric_map_t::planes`, each with the surface area it was fitted from.
+
+Unlike `FilterEdgesPlanes`, which labels individual *points* as planar in the LOAM sense, this
+produces actual patches: a plane equation, a centroid, and an extent. That is what an estimator
+needs when it has to weigh one surface against another, e.g. to read gravity off the assumption
+that large patches in a built environment are plumb or level.
+
+The extraction is greedy and seeded by per-point normals: voxel-downsample, estimate a normal for
+every remaining point once from its k nearest neighbors, then repeatedly take the seed whose plane
+holds the most points, refit that plane by PCA on its inliers, and remove them. A patch is kept
+only if its smaller in-plane extent reaches ``min_span``, which is what separates a wall from a
+sliver fitted across a cluttered surface. The reported area counts occupied cells of a grid laid
+out *in the plane*, not inlier points, so a surface that happens to straddle a voxel boundary is
+not credited with twice its real area.
+
+Deterministic by construction: the seeds are a fixed stride through the surviving points rather
+than a random sample, so two runs over the same scan produce identical patches regardless of
+thread count.
+
+**Parameters**:
+
+* **input\_pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): The input point cloud layer name.
+
+* **clear\_previous** (:cpp:type:`bool`, default: `true`): Empty `planes` before appending. Leave on for a per-scan observation map.
+
+* **voxel\_size** (:cpp:type:`double`, default: `0.10`): Downsampling applied before anything else (m). Also sets the resolution of the area count.
+
+* **distance\_threshold** (:cpp:type:`double`, default: `0.06`): Maximum point-to-plane distance for an inlier (m).
+
+* **normal\_agreement\_deg** (:cpp:type:`double`, default: `12.0`): Maximum angle between a point's own normal and the candidate plane's (deg).
+
+* **min\_points** (:cpp:type:`uint32\_t`, default: `300`): Minimum inlier count for a patch. At the default voxel size, 300 points is 3 m2.
+
+* **min\_span** (:cpp:type:`double`, default: `1.5`): Minimum extent along the *shorter* in-plane axis (m).
+
+* **range\_min** / **range\_max** (:cpp:type:`double`, defaults: `1.0` / `60.0`): Points outside this range from the layer origin are ignored (m).
+
+* **max\_patches** (:cpp:type:`uint32\_t`, default: `12`): Stop after this many patches.
+
+* **normal\_knn** (:cpp:type:`uint32\_t`, default: `13`): Neighbors used to estimate each point's normal.
+
+* **seed\_candidates** (:cpp:type:`uint32\_t`, default: `120`): How many seeds to try per patch. Cost is linear in this.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterPlanePatches
+        params:
+          input_pointcloud_layer: 'deskewed'
+          voxel_size: 0.10
+          min_points: 300
+          min_span: 1.5
+          max_patches: 12
+
+.. note::
+
+   The extraction is not cheap: on a 128-beam scan of a construction site it costs about 75 ms
+   per scan, which is more than a whole real-time LIO pipeline's budget. Enable it only where the
+   patches are actually consumed.
 
 |
 

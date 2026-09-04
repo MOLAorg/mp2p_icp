@@ -25,6 +25,12 @@
 #include <functional>
 #include <optional>
 
+/** Feature-detection macro for `mp2p_icp::NearestPlaneCapable::nn_visit_pt2pl_candidates()`
+ *  and the associated `PlaneCandidate`/`plane_candidate_visitor_t` types. Downstream code
+ *  that must build against both this and older mp2p_icp versions can
+ *  `#if defined(MP2P_ICP_HAS_NN_VISIT_PT2PL_CANDIDATES)`. */
+#define MP2P_ICP_HAS_NN_VISIT_PT2PL_CANDIDATES 1
+
 namespace mp2p_icp
 {
 /** \addtogroup  mp2p_icp_map_grp

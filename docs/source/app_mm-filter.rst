@@ -32,7 +32,10 @@ The tool can operate in two modes:
 
     -p <pipeline.yaml>,  --pipeline <pipeline.yaml>
         YAML file with the mp2p_icp_filters pipeline to load. It must contain
-        a `filters:` section. See the app README for examples:
+        a `filters:` section, and may optionally contain a `generators:`
+        section (same syntax as in sm2mm pipelines) used to create brand-new,
+        empty layers of an arbitrary metric map class before the `filters:`
+        section runs. See the app README for examples:
         https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/apps/mm-filter
 
     -l <foobar.so>,  --load-plugins <foobar.so>
@@ -80,3 +83,16 @@ Load custom plugins and apply a pipeline:
 .. code-block:: bash
 
     mm-filter -i input.mm -o output.mm -p pipeline.yaml -l my_custom_filters.so
+
+Create a new layer of an arbitrary map class, then merge points into it:
+
+.. code-block:: bash
+
+    mm-filter -i input.mm -o output.mm -p mm-filter_create_keyframe_map_layer.yaml -l libmola_metric_maps.so
+
+See `demos/mm-filter_create_keyframe_map_layer.yaml
+<https://github.com/MOLAorg/mp2p_icp/blob/develop/mp2p_icp_core/demos/mm-filter_create_keyframe_map_layer.yaml>`_
+for a complete example using a `generators:` section to instantiate an empty
+``mola::KeyframePointCloudMap`` layer, then ``FilterMerge`` to insert an existing point
+cloud layer into it -- useful e.g. to turn a map built with ``txt2mm``, ``kitti2mm``, or
+``sm2mm`` into one suitable for GICP localization-only mode.

@@ -20,6 +20,7 @@
  */
 
 #include <mp2p_icp_filters/FilterBase.h>
+#include <mp2p_icp_filters/Generator.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/system/filesystem.h>
 
@@ -51,7 +52,10 @@ struct Cli
         cmd.add_option(
             "-p,--pipeline", argPipeline,
             "YAML file with the mp2p_icp_filters pipeline to load. It must "
-            "contain a `filters:` section."
+            "contain a `filters:` section, and may optionally contain a "
+            "`generators:` section (same syntax as in sm2mm pipelines) used to "
+            "create brand-new, empty layers of an arbitrary metric map class "
+            "before the `filters:` section runs.\n"
             "See the app README for examples:\n"
             "https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/apps/mm-filter");
         cmd.add_option(
@@ -108,8 +112,33 @@ void run_mm_filter(Cli& cli)
 
     if (!cli.argPipeline.empty())
     {
+        const auto yamlData = mrpt::containers::yaml::FromFile(cli.argPipeline);
+
+        // Optional `generators:` section: only used here to pre-create brand-new,
+        // empty layers of an arbitrary metric map class (e.g. mola::KeyframePointCloudMap),
+        // since there is no observation stream to run full generators against.
+        if (yamlData.has("generators"))
+        {
+            const auto generators =
+                mp2p_icp_filters::generators_from_yaml(yamlData["generators"], logLevel);
+
+            for (const auto& gen : generators)
+            {
+                if (gen->createTargetLayerIfNeeded(mm))
+                {
+                    const auto layerClass =
+                        gen->params.metric_map_definition.has("class")
+                            ? gen->params.metric_map_definition["class"].as<std::string>()
+                            : std::string("?");
+                    std::cout << "[mm-filter] Created new empty layer '" << gen->params.target_layer
+                              << "' (class: " << layerClass << ")" << std::endl;
+                }
+            }
+        }
+
+        ASSERT_(yamlData.has("filters") && yamlData["filters"].isSequence());
         const auto pipeline =
-            mp2p_icp_filters::filter_pipeline_from_yaml_file(cli.argPipeline, logLevel);
+            mp2p_icp_filters::filter_pipeline_from_yaml(yamlData["filters"], logLevel);
 
         // Apply:
         std::cout << "[mm-filter] Applying filter pipeline..." << std::endl;

@@ -95,6 +95,49 @@ generators:
     auto voxelMap = map.layer<mrpt::maps::CVoxelMap>("voxelmap");
     ASSERT_(voxelMap);
 }
+
+void test_generator_create_target_layer_if_needed()
+{
+    constexpr const char* yaml_content = R"(
+generators:
+  - class_name: mp2p_icp_filters::Generator
+    params:
+      target_layer: "voxelmap"
+      process_class_names_regex: ""
+      metric_map_definition:
+        class: mrpt::maps::CVoxelMap
+        creationOpts:
+          resolution: 0.20 # [m]
+
+  - class_name: mp2p_icp_filters::Generator
+    params:
+      target_layer: "raw"
+    )";
+
+    const auto generators = mp2p_icp_filters::generators_from_yaml(
+        mrpt::containers::yaml::FromText(yaml_content)["generators"]);
+
+    ASSERT_EQUAL_(generators.size(), 2UL);
+
+    mp2p_icp::metric_map_t mm;
+
+    // The default-mode generator ("raw") has no metric_map_definition, so it must not
+    // pre-create anything:
+    ASSERT_(!generators.at(1)->createTargetLayerIfNeeded(mm));
+    ASSERT_EQUAL_(mm.layers.count("raw"), 0UL);
+
+    // The custom-class generator must create the empty "voxelmap" layer:
+    ASSERT_(generators.at(0)->createTargetLayerIfNeeded(mm));
+    ASSERT_EQUAL_(mm.layers.count("voxelmap"), 1UL);
+
+    auto voxelMap = mm.layer<mrpt::maps::CVoxelMap>("voxelmap");
+    ASSERT_(voxelMap);
+    ASSERT_EQUAL_(voxelMap->getOccupiedVoxels()->size(), 0UL);
+
+    // Calling it again must be a no-op (layer already exists):
+    ASSERT_(!generators.at(0)->createTargetLayerIfNeeded(mm));
+    ASSERT_EQUAL_(mm.layers.count("voxelmap"), 1UL);
+}
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -102,6 +145,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     try
     {
         test_generator_create_map();
+        test_generator_create_target_layer_if_needed();
     }
     catch (std::exception& e)
     {

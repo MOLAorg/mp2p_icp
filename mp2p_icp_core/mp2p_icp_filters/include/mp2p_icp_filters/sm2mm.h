@@ -81,7 +81,7 @@ struct sm2mm_options_t
  *  as a simple map ("*.sm"). For a ready-to-use CLI application exposing
  *  this function, as well as documentation on the meaning of each argument,
  *  see
- * [sm2mm](https://github.com/MOLAorg/mp2p_icp/tree/develop/apps/sm2mm).
+ * [sm2mm](https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/apps/sm2mm).
  *
  * The former contents of outMap are cleared.
  *

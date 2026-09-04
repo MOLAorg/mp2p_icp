@@ -44,7 +44,7 @@ Each pipeline file can contain these sections:
 - ``filters:``: A list of filters to apply to each key-frame observations, after generators have been applied. For example, here one typically removes the robot body, de-skew the scan, downsamples the point cloud, and merges the result into one or several final metric map layers used to accumulate the result.
 - ``final_filters:``: An optional list of filters to apply to the final map layers, after all key-frames have been processed.
 
-Refer to example pipeline files `sm2mm_*.yaml` under the `demos directory <https://github.com/MOLAorg/mp2p_icp/tree/develop/demos>`_.
+Refer to example pipeline files `sm2mm_*.yaml` under the `demos directory <https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/demos>`_.
 Some of them are explained below with a diagram.
 
 
@@ -80,7 +80,7 @@ and store the resulting map into a ``mola::KeyframePointCloudMap`` layer named `
 .. dropdown:: Pipeline YAML code
     :icon: list-unordered
 
-    .. literalinclude:: ../../../mp2p_icp/demos/sm2mm_no_decim_imu_mls_keyframe_map.yaml
+    .. literalinclude:: ../../../mp2p_icp/mp2p_icp_core/demos/sm2mm_no_decim_imu_mls_keyframe_map.yaml
        :language: yaml
 
 
@@ -126,7 +126,7 @@ creating a more memory-efficient representation.
 .. dropdown:: Pipeline YAML code
     :icon: list-unordered
 
-    .. literalinclude:: ../../../mp2p_icp/demos/sm2mm_pointcloud_voxelize.yaml
+    .. literalinclude:: ../../../mp2p_icp/mp2p_icp_core/demos/sm2mm_pointcloud_voxelize.yaml
        :language: yaml
 
 
@@ -189,5 +189,5 @@ enabling differentiation between stationary map features and moving objects for 
 .. dropdown:: Pipeline YAML code
     :icon: list-unordered
 
-    .. literalinclude:: ../../../mp2p_icp/demos/sm2mm_voxels_static_dynamic_points.yaml
+    .. literalinclude:: ../../../mp2p_icp/mp2p_icp_core/demos/sm2mm_voxels_static_dynamic_points.yaml
        :language: yaml
