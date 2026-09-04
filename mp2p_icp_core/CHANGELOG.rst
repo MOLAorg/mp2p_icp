@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.14.0 (2026-09-05)
+-------------------
 * Point matchers (Matcher_Points_DistanceThreshold, Matcher_Points_Blend):
   fixed a nondeterministic pairing order caused by parallel reduction depending
   on TBB thread scheduling; the correspondence list is now a function of the
