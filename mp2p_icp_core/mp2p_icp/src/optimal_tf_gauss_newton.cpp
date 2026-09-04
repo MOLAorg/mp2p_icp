@@ -25,7 +25,13 @@
 #include <mrpt/poses/Lie/SE.h>
 
 #include <Eigen/Dense>
+#include <atomic>
+#include <cstdint>
+#include <cstdlib>
+#include <fstream>
 #include <iostream>
+#include <limits>
+#include <memory>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>
@@ -36,6 +42,128 @@ using namespace mp2p_icp;
 
 namespace
 {
+/** Optional diagnostic: append the eigenvalue spectrum of the normal-equations
+ *  matrix H to a TSV file, one row per inner Gauss-Newton iteration.
+ *
+ *  Enabled only if the environment variable MP2P_ICP_H_SPECTRUM_FILE is set to
+ *  a writable path, so it costs one cached lookup when unused. Meant for
+ *  sensitivity studies: the increment is H^-1 g, so how far a perturbed
+ *  residual can move the solution is bounded by the conditioning of H, and
+ *  that is not observable from the trajectory alone.
+ *
+ *  Not thread-safe by design: it is for single-threaded diagnostic runs.
+ */
+std::atomic<uint64_t> hSpectrumCallCounter{0};
+
+std::ostream* hSpectrumStream()
+{
+    static std::unique_ptr<std::ofstream> s_file = []() -> std::unique_ptr<std::ofstream>
+    {
+        const char* path = ::getenv("MP2P_ICP_H_SPECTRUM_FILE");
+        if (!path || !path[0])
+        {
+            return {};
+        }
+        auto f = std::make_unique<std::ofstream>(path, std::ios::out | std::ios::app);
+        if (!f->is_open())
+        {
+            return {};
+        }
+        *f << "# call\titer\tnPairs\terrNorm\tev0\tev1\tev2\tev3\tev4\tev5\tcond"
+              "\tmeas_ev0\tmeas_ev1\tmeas_ev2\tmeas_ev3\tmeas_ev4\tmeas_ev5"
+              "\tmeas_cond\ttrace_meas_over_reg\tdeltaNorm\n";
+        if (!f->good())
+        {
+            return {};
+        }
+        return f;
+    }();
+    // A write that failed silently would leave a truncated log looking like a
+    // complete one, so stop handing out a stream that has already gone bad.
+    if (s_file && !s_file->good())
+    {
+        s_file.reset();
+    }
+    return s_file ? s_file.get() : nullptr;
+}
+
+void dumpHSpectrum(
+    std::ostream& o, uint64_t call, size_t iter, size_t nPairs, double errNorm,
+    const Eigen::Matrix<double, 6, 6>& H, const Eigen::Matrix<double, 6, 6>& H_meas,
+    double deltaNorm)
+{
+    // Eigenvalues come out sorted ascending, so the ratio of the extremes is the
+    // 2-norm condition number of these symmetric positive-semidefinite matrices.
+    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 6, 6>> es(H, Eigen::EigenvaluesOnly);
+    const auto                                                       ev = es.eigenvalues();
+    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 6, 6>> esM(
+        H_meas, Eigen::EigenvaluesOnly);
+    const auto evM = esM.eigenvalues();
+
+    const double cond  = ev[0] > 0 ? ev[5] / ev[0] : std::numeric_limits<double>::infinity();
+    const double condM = evM[0] > 0 ? evM[5] / evM[0] : std::numeric_limits<double>::infinity();
+    // How hard everything added AFTER the measurement block pulls back, in the
+    // one unit that is comparable across frameworks: the share of the total
+    // information it contributes. That is the pose prior plus the rank-2
+    // gravity term, not the pose prior alone, hence the column name.
+    const double traceReg = H.trace() - H_meas.trace();
+    const double traceRatio =
+        traceReg > 0 ? H_meas.trace() / traceReg : std::numeric_limits<double>::infinity();
+
+    o << call << '\t' << iter << '\t' << nPairs << '\t' << errNorm;
+    for (int i = 0; i < 6; i++)
+    {
+        o << '\t' << ev[i];
+    }
+    o << '\t' << cond;
+    for (int i = 0; i < 6; i++)
+    {
+        o << '\t' << evM[i];
+    }
+    o << '\t' << condM << '\t' << traceRatio << '\t' << deltaNorm << '\n';
+}
+
+/** Optional diagnostic: append the Birge-ratio rescaling of the cov2cov data
+ *  block to a TSV file, one row per inner Gauss-Newton iteration.
+ *
+ *  Enabled only if the environment variable MP2P_ICP_BIRGE_FILE is set to a
+ *  writable path, so it costs one cached lookup when unused. The ratio divides
+ *  the whole cov2cov block of H and g, so how much of the LiDAR information
+ *  actually survives into the normal equations is not observable from the
+ *  trajectory, nor from the H spectrum alone.
+ *
+ *  Not thread-safe by design: it is for single-threaded diagnostic runs.
+ */
+std::ostream* birgeStream()
+{
+    static std::unique_ptr<std::ofstream> s_file = []() -> std::unique_ptr<std::ofstream>
+    {
+        const char* path = ::getenv("MP2P_ICP_BIRGE_FILE");
+        if (!path || !path[0])
+        {
+            return {};
+        }
+        auto f = std::make_unique<std::ofstream>(path, std::ios::out | std::ios::app);
+        if (!f->is_open())
+        {
+            return {};
+        }
+        *f << "# call\titer\tnCov2Cov\tchi2_cc\tdof\tkappa\tcc_scale\tactive\n";
+        if (!f->good())
+        {
+            return {};
+        }
+        return f;
+    }();
+    // A write that failed silently would leave a truncated log looking like a
+    // complete one, so stop handing out a stream that has already gone bad.
+    if (s_file && !s_file->good())
+    {
+        s_file.reset();
+    }
+    return s_file ? s_file.get() : nullptr;
+}
+
 /** Skew-symmetric matrix of a 3-vector, i.e. [v]_x such that [v]_x·w = v × w */
 Eigen::Matrix3d skewSymmetric(const Eigen::Vector3d& v)
 {
@@ -80,6 +208,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     result.gravity_information_share = -1.0;
 
     MRPT_START
+
+    // Only read by the optional H-spectrum diagnostic, so that its rows can be
+    // grouped per solver call (i.e. per ICP iteration).
+    const uint64_t hSpectrumCall = hSpectrumCallCounter++;
 
     // Run Gauss-Newton steps, using SE(3) relinearization at the current solution:
     ASSERTMSG_(
@@ -371,17 +503,26 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         // pairings carry correlated information not captured by their per-pair
         // modeled covariances. See OptimalTF_GN_Parameters docs.
         {
-            double cc_scale = gnParams.cov2cov_alpha;
-            if (gnParams.cov2cov_auto_balance_with_prior && gnParams.prior.has_value() &&
-                nCov2Cov >= 3)
+            double       cc_scale    = gnParams.cov2cov_alpha;
+            const double dof         = std::max(1.0, 3.0 * static_cast<double>(nCov2Cov) - 6.0);
+            double       kappa       = 1.0;
+            const bool   birgeActive = gnParams.cov2cov_auto_balance_with_prior &&
+                                     gnParams.prior.has_value() && nCov2Cov >= 3;
+            if (birgeActive)
             {
-                const double dof   = std::max(1.0, 3.0 * static_cast<double>(nCov2Cov) - 6.0);
-                const double kappa = std::max(1.0, chi2_cc / dof);
+                kappa = std::max(1.0, chi2_cc / dof);
                 cc_scale /= kappa;
             }
             H.noalias() += cc_scale * H_cc;
             g.noalias() += cc_scale * g_cc;
             errNormSqr += cc_scale * chi2_cc;
+
+            if (auto* bs = birgeStream(); bs)
+            {
+                *bs << hSpectrumCall << '\t' << iter << '\t' << nCov2Cov << '\t' << chi2_cc << '\t'
+                    << dof << '\t' << kappa << '\t' << cc_scale << '\t' << (birgeActive ? 1 : 0)
+                    << '\n';
+            }
         }
         //
         // ============== Point-to-line ===============
@@ -544,6 +685,10 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             H.noalias() += weight * Ji.transpose() * Ji;
         }
 
+        // Kept for the optional H-spectrum diagnostic only: how much of the
+        // information is in the measurements, before the prior is added.
+        const Eigen::Matrix<double, 6, 6> H_meas = H;
+
         // Prior guess term:
         if (gnParams.prior.has_value())
         {
@@ -626,6 +771,14 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         const double errNorm = std::sqrt(errNormSqr);
         if (errNorm <= gnParams.maxCost)
         {
+            // Terminal row: this iteration assembled H but takes no step, so
+            // the increment is reported as NaN rather than omitting the row.
+            if (auto* hs = hSpectrumStream(); hs)
+            {
+                dumpHSpectrum(
+                    *hs, hSpectrumCall, iter, nPt2Pt + nCov2Cov + nPt2Ln + nPt2Pl + nPl2Pl + nLn2Ln,
+                    errNorm, H, H_meas, std::numeric_limits<double>::quiet_NaN());
+            }
             break;
         }
 
@@ -633,6 +786,13 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         // g = J.transpose() * err;
         // H = J.transpose() * J;
         const Eigen::Matrix<double, 6, 1> delta = -H.ldlt().solve(g);
+
+        if (auto* hs = hSpectrumStream(); hs)
+        {
+            dumpHSpectrum(
+                *hs, hSpectrumCall, iter, nPt2Pt + nCov2Cov + nPt2Ln + nPt2Pl + nPl2Pl + nLn2Ln,
+                errNorm, H, H_meas, delta.norm());
+        }
 
         // 4) add SE(3) increment:
         const auto dE = mrpt::poses::Lie::SE<3>::exp(mrpt::math::CVectorFixed<double, 6>(delta));
