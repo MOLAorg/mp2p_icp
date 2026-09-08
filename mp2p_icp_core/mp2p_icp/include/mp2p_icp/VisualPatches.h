@@ -127,9 +127,53 @@ struct VisualPatchTerm
     /** Margin [px] from the image border required by the patch center. */
     double border_margin = 4.0;
 
-    /** Global multiplier on the whole term, to trade it against the pairings
-     *  without touching the noise model. */
+    /** Global multiplier on the whole term. With `auto_balance` on this is a
+     *  nudge factor on top of the measured scale, not the scale itself. */
     double weight = 1.0;
+
+    /** Set the term's scale from the DATA instead of from `weight`, by making
+     *  its chi-square per degree of freedom match the LiDAR block's:
+     *
+     *      scale = (chi2_cov2cov / dof_cov2cov) / (chi2_visual / dof_visual)
+     *
+     *  Both blocks are then equally (mis)calibrated, which is the only sense
+     *  in which their relative weight is meaningful, and it is re-evaluated
+     *  at every Gauss-Newton iteration like the cov2cov Birge ratio.
+     *
+     *  Note this makes the WEIGHTING independent of `sigma_intensity`: the
+     *  scale goes as sigma^2 and the block goes as 1/sigma^2, so the noise
+     *  cancels exactly. That removes the knob rather than hiding it. What
+     *  sigma still sets, and should set, is the operating point of the robust
+     *  kernel and of `max_rms_sigmas`.
+     *
+     *  Requires cov-to-cov pairings, since those are the only ones carrying a
+     *  modeled covariance to compare against; falls back to `weight` alone
+     *  when there are too few of them.
+     */
+    bool auto_balance = true;
+
+    /** Effective number of INDEPENDENT residuals a patch supplies, which is
+     *  not its pixel count: a patch is a small window of a smooth image and
+     *  its residuals are strongly correlated. Measured at ~8 of 49 for a 7x7
+     *  patch on GrandTour (correlation +0.74 at one pixel, +0.33 at two, zero
+     *  by three). Using the pixel count here understates the chi-square per
+     *  degree of freedom by the same factor and over-weights the term.
+     *
+     *  Measure it with MP2P_ICP_VISUAL_RESIDUAL_FILE if the patch size,
+     *  interpolation or camera changes. */
+    double effective_pixels_per_patch = 8.0;
+
+    /** Safety rail on `auto_balance`, expressed as the largest share of the
+     *  total information the photometric block may take on one iteration.
+     *
+     *  It is a rail, not a target: measured shares are 0.005 to 0.18, so it
+     *  binds only on a frame whose photometric fit is anomalously good, where
+     *  the ratio above would hand the camera the whole solve on the strength
+     *  of one lucky frame. It is deliberately expressed as an information
+     *  share and not as a scale, because a scale limit would depend on
+     *  `sigma_intensity` and would reintroduce exactly the knob that
+     *  `auto_balance` removes. */
+    double max_information_share = 0.5;
 
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::VisualPatchTerm)
 };

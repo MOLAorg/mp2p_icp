@@ -699,25 +699,60 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             const auto vs =
                 accumulate_visual_patches(*gnParams.visualPatches, result.optimalPose, H_v, g_v);
 
-            // What the camera actually supplied against everything the pairs
-            // did, in the one comparable unit: the share of the information.
-            const double trPairs            = H.trace();
-            const double trVis              = H_v.trace();
-            result.visual_information_share = trVis / std::max(1e-30, trPairs + trVis);
-            result.visual_patches_used      = static_cast<uint32_t>(vs.used);
-            result.visual_patches_rejected  = static_cast<uint32_t>(vs.rejected);
+            const auto& vp = *gnParams.visualPatches;
 
-            const double nPix = static_cast<double>(gnParams.visualPatches->half_size * 2 + 1);
-            const double dof  = std::max(1.0, vs.used * nPix * nPix - 6.0);
-            // Reported WITHOUT the term's global weight, so the number answers
-            // "is sigma_intensity honest?" rather than "how hard is the block
-            // being pushed?". A calibrated noise gives one.
-            const double wGlobal       = std::max(1e-12, gnParams.visualPatches->weight);
-            result.visual_chi2_per_dof = vs.chi2 / dof / wGlobal;
+            result.visual_patches_used     = static_cast<uint32_t>(vs.used);
+            result.visual_patches_rejected = static_cast<uint32_t>(vs.rejected);
 
-            H.noalias() += H_v;
-            g.noalias() += g_v;
-            errNormSqr += vs.chi2;
+            // Strip the configured multiplier, so everything below is in the
+            // block's own units and `weight` cannot smuggle itself into the
+            // calibration it is supposed to be replaced by.
+            const double wGlobal = std::max(1e-12, vp.weight);
+            const double chi2Raw = vs.chi2 / wGlobal;
+            H_v /= wGlobal;
+            g_v /= wGlobal;
+
+            // A patch does not supply as many independent residuals as it has
+            // pixels; see VisualPatchTerm::effective_pixels_per_patch.
+            const double nEff          = std::max(1.0, vp.effective_pixels_per_patch);
+            const double dofV          = std::max(1.0, static_cast<double>(vs.used) * nEff - 6.0);
+            const double kV            = chi2Raw / dofV;
+            result.visual_chi2_per_dof = kV;
+
+            // Scale from the data when possible: make this block as
+            // (mis)calibrated as the cov2cov block it competes with, which is
+            // the only sense in which their relative weight means anything.
+            // Note this cancels sigma_intensity exactly, since kV goes as
+            // sigma^2 and H_v as 1/sigma^2.
+            double scale = wGlobal;
+            if (vp.auto_balance && nCov2Cov >= 30 && chi2_cc > 0 && kV > 0)
+            {
+                const double dofL = std::max(1.0, 3.0 * static_cast<double>(nCov2Cov) - 6.0);
+                const double kL   = chi2_cc / dofL;
+                scale             = (kL / kV) * wGlobal;
+
+                // Rail, applied on the information share so that it does not
+                // depend on sigma_intensity (see max_information_share).
+                const double trPairs = H.trace();
+                const double trVisU  = H_v.trace();
+                if (trVisU > 0 && vp.max_information_share > 0 && vp.max_information_share < 1)
+                {
+                    const double maxScale = vp.max_information_share * trPairs /
+                                            ((1.0 - vp.max_information_share) * trVisU);
+                    scale = std::min(scale, maxScale);
+                }
+            }
+            result.visual_auto_scale = scale;
+
+            H.noalias() += scale * H_v;
+            g.noalias() += scale * g_v;
+            errNormSqr += scale * chi2Raw;
+
+            // Reported after scaling, since what matters downstream is what the
+            // camera actually contributed, not what it offered. H already holds
+            // the pairings plus this block at this point.
+            const double trVis              = scale * H_v.trace();
+            result.visual_information_share = trVis / std::max(1e-30, H.trace());
         }
 
         // Kept for the optional H-spectrum diagnostic only: how much of the

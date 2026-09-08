@@ -22,7 +22,12 @@
 #include <mrpt/core/exceptions.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <cstdlib>
+#include <fstream>
+#include <memory>
+#include <ostream>
 
 #include "visual_patch_terms.h"
 
@@ -30,6 +35,47 @@ using namespace mp2p_icp;
 
 namespace
 {
+/** Optional diagnostic: append the mean-normalized residual of sampled patches
+ *  to a TSV file, one row per patch, so the spatial correlation INSIDE a patch
+ *  can be measured.
+ *
+ *  Enabled only if MP2P_ICP_VISUAL_RESIDUAL_FILE is set, so it costs one cached
+ *  lookup when unused. It exists because a patch does not supply as many
+ *  independent measurements as it has pixels, and the chi-square per degree of
+ *  freedom that sets this term's weight is wrong by exactly that factor.
+ *
+ *  Not thread-safe by design: it is for single-threaded diagnostic runs.
+ */
+std::atomic<uint64_t> residualCallCounter{0};
+
+std::ostream* residualStream()
+{
+    static std::unique_ptr<std::ofstream> s_file = []() -> std::unique_ptr<std::ofstream>
+    {
+        const char* path = ::getenv("MP2P_ICP_VISUAL_RESIDUAL_FILE");
+        if (!path || !path[0])
+        {
+            return {};
+        }
+        auto f = std::make_unique<std::ofstream>(path, std::ios::out | std::ios::app);
+        if (!f->is_open() || !f->good())
+        {
+            return {};
+        }
+        return f;
+    }();
+    if (s_file && !s_file->good())
+    {
+        s_file.reset();
+    }
+    return s_file ? s_file.get() : nullptr;
+}
+
+/// Only every N-th solver call is dumped: every patch of every inner iteration
+/// would be millions of rows for one mission, and the statistic converges long
+/// before that.
+constexpr uint64_t kResidualDumpDecimation = 97;
+
 /** Forward projection of a normalized image-plane point through the declared
  *  distortion model. Returns the distorted normalized coordinates. */
 void distortNormalized(const mrpt::img::TCamera& cam, double xn, double yn, double& xd, double& yd)
@@ -156,6 +202,10 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
 
     const double invSigma  = 1.0 / term.sigma_intensity;
     const double pixWeight = term.weight * invSigma * invSigma;
+
+    const uint64_t residualCall  = residualCallCounter++;
+    std::ostream*  residualOut   = residualStream();
+    const bool     dumpResiduals = residualOut && (residualCall % kResidualDumpDecimation) == 0;
 
     // Working buffers, reused across patches.
     std::vector<double> cur(nPix);
@@ -397,6 +447,15 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
             }
         }
         stats.used++;
+
+        if (dumpResiduals)
+        {
+            for (size_t i = 0; i < nPix; i++)
+            {
+                *residualOut << ((cur[i] - meanCur) - (patch.ref_patch[i] - meanRef))
+                             << (i + 1 == nPix ? '\n' : '\t');
+            }
+        }
     }
 
     return stats;

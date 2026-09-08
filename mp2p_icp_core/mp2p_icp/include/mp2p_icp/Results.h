@@ -63,6 +63,8 @@ struct Results
     uint32_t visual_patches_rejected  = 0;
     /// Weighted photometric chi-square per DOF; see OptimalTF_Result.
     double visual_chi2_per_dof = -1.0;
+    /// Scale actually applied to the photometric block; see OptimalTF_Result.
+    double visual_auto_scale = -1.0;
 
     void serializeTo(mrpt::serialization::CArchive& out) const;
     void serializeFrom(mrpt::serialization::CArchive& in);

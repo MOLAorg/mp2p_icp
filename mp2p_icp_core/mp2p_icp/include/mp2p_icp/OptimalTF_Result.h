@@ -74,6 +74,11 @@ struct OptimalTF_Result
      *  changes, the anchor's own 3D error), and the block is therefore
      *  over-weighted no matter what sigma was chosen. */
     double visual_chi2_per_dof = -1.0;
+
+    /** The scale actually applied to the photometric block on the last
+     *  iteration: either `VisualPatchTerm::weight`, or the automatic
+     *  calibration ratio when `auto_balance` is on. <0 when no term. */
+    double visual_auto_scale = -1.0;
 };
 
 /** @} */
