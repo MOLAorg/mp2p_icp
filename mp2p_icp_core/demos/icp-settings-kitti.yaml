@@ -32,8 +32,8 @@ solvers:
       maxIterations: 3
       robustKernel: "RobustKernel::GemanMcClure"
       # sqrt(0.15), the value this demo was tuned with, so it keeps its
-      # behavior now that the kernel parameter enters the weight squared:
-      robustKernelParam: 0.3872983
+      # behavior now that the kernel scale enters the weight squared:
+      robustKernelScale: 0.3872983
 
 # Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
 # instances to pair geometric entities between pointclouds.

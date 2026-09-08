@@ -38,9 +38,16 @@ class Solver_GaussNewton : public Solver
     uint32_t    maxIterations = 5;
     PairWeights pairWeights;
 
-    RobustKernel robustKernel      = RobustKernel::None;
-    double       robustKernelParam = 1.0;
-    bool         innerLoopVerbose  = false;  //!< Prints GN inner loop details
+    RobustKernel robustKernel     = RobustKernel::None;
+    bool         innerLoopVerbose = false;  //!< Prints GN inner loop details
+
+    /** Robust kernel scale, in sigmas of the whitened residual. See
+     *  OptimalTF_GN_Parameters::kernelScale.
+     *
+     *  YAML key: `robustKernelScale`. The former key `robustKernelParam` named
+     *  this quantity squared and is still accepted, converted, and warned
+     *  about, so a pipeline written for it keeps its exact behavior. */
+    double robustKernelScale = 1.0;
 
     /** Blend [0,1] for the robust kernel residual reference between the current
      *  linearization point (0, default) and the prior mean pose (1). See

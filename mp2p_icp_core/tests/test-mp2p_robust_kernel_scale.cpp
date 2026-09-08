@@ -89,7 +89,7 @@ double solve_z_error(double pt2plWeight, size_t nOutliers)
     mrpt::containers::yaml params;
     params["maxIterations"]     = 25;
     params["robustKernel"]      = "RobustKernel::GemanMcClure";
-    params["robustKernelParam"] = 3.0;
+    params["robustKernelScale"] = 3.0;
 
     mrpt::containers::yaml w;
     w["pt2pt"]             = 1.0;
@@ -201,6 +201,53 @@ void test_kernel_shape_is_a_function_of_the_normalized_residual()
         ASSERT_NEAR_(gm(square(x)), square(ca(square(x))), 1e-12);
     }
 }
+/** A pipeline written against the old key must keep the kernel it had. The
+ *  conversion is checked on the loaded parameter and not on a solution: this
+ *  problem is deliberately outlier-dominated, and its solve does not repeat to
+ *  more than three digits.
+ */
+void test_deprecated_kernel_key_is_converted()
+{
+    const auto load = [](const char* key, double value)
+    {
+        mp2p_icp::Solver_GaussNewton solver;
+
+        mrpt::containers::yaml params;
+        params["maxIterations"] = 10;
+        params["robustKernel"]  = "RobustKernel::GemanMcClure";
+        params[key]             = value;
+        solver.initialize(params);
+        return solver.robustKernelScale;
+    };
+
+    // The old key named the square of the new one:
+    ASSERT_NEAR_(load("robustKernelParam", 9.0), 3.0, 1e-12);
+    ASSERT_NEAR_(load("robustKernelScale", 3.0), 3.0, 1e-12);
+
+    // A formula-valued legacy entry is converted as a formula, not as a value:
+    ASSERT_NEAR_(load("robustKernelParam", 0.25), 0.5, 1e-12);
+
+    // Naming both is ambiguous, and silently picking one would be the very
+    // mistake this rename exists to prevent:
+    bool didThrow = false;
+    try
+    {
+        mp2p_icp::Solver_GaussNewton solver;
+
+        mrpt::containers::yaml params;
+        params["maxIterations"]     = 10;
+        params["robustKernel"]      = "RobustKernel::GemanMcClure";
+        params["robustKernelParam"] = 9.0;
+        params["robustKernelScale"] = 3.0;
+        solver.initialize(params);
+    }
+    catch (const std::exception&)
+    {
+        didThrow = true;
+    }
+    ASSERT_(didThrow);
+}
+
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -210,6 +257,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_kernel_shape_is_a_function_of_the_normalized_residual();
         test_weight_alone_does_not_move_the_solution();
         test_kernel_threshold_is_in_sigmas();
+        test_deprecated_kernel_key_is_converted();
     }
     catch (std::exception& e)
     {

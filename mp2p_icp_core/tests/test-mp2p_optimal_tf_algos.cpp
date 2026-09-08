@@ -357,7 +357,7 @@ bool test_icp_algos(
         if (use_robust && !TEST_LARGE_ROTATIONS)
         {
             wp.robust_kernel            = mp2p_icp::RobustKernel::GemanMcClure;
-            wp.robust_kernel_param      = 1.0;
+            wp.robust_kernel_scale      = 1.0;
             wp.currentEstimateForRobust = gt_pose;
             // mrpt::poses::CPose3D::Identity();
         }
@@ -441,7 +441,7 @@ bool test_icp_algos(
             if (use_robust)
             {
                 gnParams.kernel      = mp2p_icp::RobustKernel::GemanMcClure;
-                gnParams.kernelParam = 1;
+                gnParams.kernelScale = 1;
             }
 
             // NOTE: this is an "unfair" comparison, since we only run ONE

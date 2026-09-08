@@ -34,7 +34,28 @@ void Solver_GaussNewton::initialize(const mrpt::containers::yaml& params)
     MCP_LOAD_OPT(params, innerLoopVerbose);
     MCP_LOAD_OPT(params, robustKernel);
 
-    DECLARE_PARAMETER_OPT(params, robustKernelParam);
+    // The kernel parameter was renamed when it started to enter the weight
+    // squared, so that a file written for either meaning is read with the
+    // meaning it was written for: a legacy `robustKernelParam` of c is the
+    // same kernel as a `robustKernelScale` of sqrt(c). Wrapping the text, not
+    // the value, keeps formula-valued entries working.
+    if (params.has("robustKernelParam"))
+    {
+        ASSERTMSG_(
+            !params.has("robustKernelScale"),
+            "Give either `robustKernelScale` or the deprecated `robustKernelParam`, not both");
+
+        MRPT_LOG_WARN(
+            "Parameter `robustKernelParam` is deprecated: use `robustKernelScale`, whose value is "
+            "the square root of the old one. Converting it for now.");
+
+        Parameterizable::parseAndDeclareParameter(
+            "sqrt(" + params["robustKernelParam"].as<std::string>() + ")", robustKernelScale);
+    }
+    else
+    {
+        DECLARE_PARAMETER_OPT(params, robustKernelScale);
+    }
 
     MCP_LOAD_OPT(params, robustKernelPriorRefBlend);
 
@@ -57,7 +78,7 @@ bool Solver_GaussNewton::impl_optimal_pose(
     gnParams.maxInnerLoopIterations          = maxIterations;
     gnParams.pairWeights                     = pairWeights;
     gnParams.kernel                          = robustKernel;
-    gnParams.kernelParam                     = robustKernelParam;
+    gnParams.kernelScale                     = robustKernelScale;
     gnParams.kernelPriorRefBlend             = robustKernelPriorRefBlend;
     gnParams.cov2cov_alpha                   = cov2cov_alpha;
     gnParams.cov2cov_auto_balance_with_prior = cov2cov_auto_balance_with_prior;

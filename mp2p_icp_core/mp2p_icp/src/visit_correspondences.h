@@ -77,7 +77,7 @@ void visit_correspondences(
     double w_sum = .0;
 
     const robust_sqrt_weight_func_t robustSqrtWeightFunc =
-        mp2p_icp::create_robust_kernel(wp.robust_kernel, wp.robust_kernel_param);
+        mp2p_icp::create_robust_kernel(wp.robust_kernel, wp.robust_kernel_scale);
 
     OutlierIndices new_outliers;
     new_outliers.point2point.reserve(in_out_outliers.point2point.size());

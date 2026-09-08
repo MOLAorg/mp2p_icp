@@ -61,7 +61,13 @@ struct WeightParameters : public mrpt::serialization::CSerializable
      * use_robust_kernel==true. */
     std::optional<mrpt::poses::CPose3D> currentEstimateForRobust;
 
-    double robust_kernel_param = 1.0;
+    /** Robust kernel scale: the residual size at which down-weighting sets in,
+     *  in the units of the residual the kernel sees.
+     *
+     *  YAML key: `robust_kernel_scale`. The former key `robust_kernel_param`
+     *  named this quantity squared and is still accepted, converted, and warned
+     *  about, so a file written for it keeps its exact meaning. */
+    double robust_kernel_scale = 1.0;
 
     /** @} */
 
