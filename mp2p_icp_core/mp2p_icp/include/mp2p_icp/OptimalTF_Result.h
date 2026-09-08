@@ -64,6 +64,16 @@ struct OptimalTF_Result
      *  there as out of frame, behind the camera, or too dissimilar. */
     uint32_t visual_patches_used     = 0;
     uint32_t visual_patches_rejected = 0;
+
+    /** Weighted photometric chi-square per degree of freedom on the last
+     *  iteration; <0 when no such term was given.
+     *
+     *  This is the quantity that says whether `sigma_intensity` is honest: a
+     *  value far above 1 means the declared photometric noise does not cover
+     *  what the model actually fails to predict (warp linearization, gain
+     *  changes, the anchor's own 3D error), and the block is therefore
+     *  over-weighted no matter what sigma was chosen. */
+    double visual_chi2_per_dof = -1.0;
 };
 
 /** @} */

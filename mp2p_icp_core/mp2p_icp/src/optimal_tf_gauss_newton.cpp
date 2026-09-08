@@ -707,6 +707,14 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             result.visual_patches_used      = static_cast<uint32_t>(vs.used);
             result.visual_patches_rejected  = static_cast<uint32_t>(vs.rejected);
 
+            const double nPix = static_cast<double>(gnParams.visualPatches->half_size * 2 + 1);
+            const double dof  = std::max(1.0, vs.used * nPix * nPix - 6.0);
+            // Reported WITHOUT the term's global weight, so the number answers
+            // "is sigma_intensity honest?" rather than "how hard is the block
+            // being pushed?". A calibrated noise gives one.
+            const double wGlobal       = std::max(1e-12, gnParams.visualPatches->weight);
+            result.visual_chi2_per_dof = vs.chi2 / dof / wGlobal;
+
             H.noalias() += H_v;
             g.noalias() += g_v;
             errNormSqr += vs.chi2;
