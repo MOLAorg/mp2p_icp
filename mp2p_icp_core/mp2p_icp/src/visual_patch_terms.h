@@ -38,6 +38,8 @@ struct VisualPatchAccumStats
     std::size_t rejected = 0;
     /// Sum of weighted, normalized squared residuals (dimensionless).
     double chi2 = 0;
+    /// The frame-wide photometric gain that was solved for and applied.
+    double gain = 1.0;
 };
 
 /** Adds the photometric ("virtual patch") block of the normal equations,

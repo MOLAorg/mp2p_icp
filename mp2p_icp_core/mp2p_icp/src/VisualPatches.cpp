@@ -237,6 +237,21 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
     std::ostream*  residualOut   = residualStream();
     const bool     dumpResiduals = residualOut && (residualCall % kResidualDumpDecimation) == 0;
 
+    // Everything a patch needs for the second pass, which cannot run until the
+    // frame-wide gain is known.
+    struct PatchWork
+    {
+        const std::vector<float>*   ref = nullptr;
+        std::vector<double>         cur, gx, gy;
+        double                      meanCur = 0, meanGx = 0, meanGy = 0, meanRef = 0;
+        Eigen::Matrix<double, 2, 6> J_uv;
+    };
+    std::vector<PatchWork> works;
+    works.reserve(term.patches.size());
+
+    double gainNum = 0;
+    double gainDen = 0;
+
     // Working buffers, reused across patches.
     std::vector<double> cur(nPix);
     std::vector<double> gx(nPix);
@@ -394,28 +409,15 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
         meanGx *= invN;
         meanGy *= invN;
 
+        // 4) The per-patch work is now complete; the residual itself waits for
+        //    the frame-wide gain below, which cannot be known until every patch
+        //    has been sampled.
         double meanRef = 0;
         for (const float r : refPatch)
         {
             meanRef += r;
         }
         meanRef *= invN;
-
-        // 4) Mean-normalized residuals, and the per-patch robust weight.
-        double sumSqr = 0;
-        for (size_t i = 0; i < nPix; i++)
-        {
-            const double r = (cur[i] - meanCur) - (refPatch[i] - meanRef);
-            sumSqr += r * r;
-        }
-        const double rmsSigmas = std::sqrt(sumSqr * invN) * invSigma;
-        if (!std::isfinite(rmsSigmas) || rmsSigmas > term.max_rms_sigmas)
-        {
-            stats.rejected++;
-            continue;
-        }
-        const double robust =
-            rmsSigmas <= term.huber_delta ? 1.0 : term.huber_delta / std::max(1e-12, rmsSigmas);
 
         // 5) Pose Jacobian of the anchor's projection, shared by every pixel of
         //    the patch since the warp is held fixed within one iteration.
@@ -461,41 +463,93 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
             }
         }
 
+        PatchWork work;
+        work.ref     = &refPatch;
+        work.cur     = cur;
+        work.gx      = gx;
+        work.gy      = gy;
+        work.meanCur = meanCur;
+        work.meanGx  = meanGx;
+        work.meanGy  = meanGy;
+        work.meanRef = meanRef;
         // The projection Jacobian is in FULL-RESOLUTION pixels, while the image
-        // gradients below are per pixel OF THE LEVEL IN USE. Without this
-        // factor a coarse level takes steps 2^level too short.
-        const Eigen::Matrix<double, 2, 6> J_uv = levelScale * (dpx_dpc * dpc_deps);
+        // gradients are per pixel OF THE LEVEL IN USE. Without this factor a
+        // coarse level takes steps 2^level too short.
+        work.J_uv = levelScale * (dpx_dpc * dpc_deps);
 
-        // 6) Accumulate. The mean subtraction is part of the residual, so its
-        //    own derivative (the mean gradient) belongs in the Jacobian.
-        const double w = pixWeight * robust;
-        k              = 0;
-        for (int dy = -half; dy <= half; dy++)
+        // Sums for the frame-wide gain: the least-squares a minimizing
+        // sum (a*Icur~ - Iref~)^2 over every pixel of every patch.
+        for (size_t i = 0; i < nPix; i++)
         {
-            for (int dx = -half; dx <= half; dx++, k++)
+            const double c = cur[i] - meanCur;
+            const double r = refPatch[i] - meanRef;
+            gainNum += c * r;
+            gainDen += c * c;
+        }
+
+        works.push_back(std::move(work));
+    }
+
+    // ---- Frame-wide gain -------------------------------------------------
+    //
+    // Mean subtraction removes an exposure OFFSET but not a GAIN, and an
+    // uncorrected gain is a systematic residual proportional to the patch's own
+    // contrast: it inflates the chi-square without carrying any pose
+    // information. One scalar for the whole frame is the same quantity
+    // FAST-LIVO2 carries in its state as an inverse exposure time; solving it
+    // in closed form here avoids widening the SE(3) solve.
+    //
+    // Its derivative with respect to the pose is neglected, as is standard.
+    double gain = 1.0;
+    if (term.estimate_gain && gainDen > 1e-9)
+    {
+        gain = std::min(term.max_gain, std::max(1.0 / term.max_gain, gainNum / gainDen));
+    }
+    stats.gain = gain;
+
+    // ---- Second pass: residuals, robust weights and normal equations ------
+    for (const auto& work : works)
+    {
+        const auto& refPatch = *work.ref;
+
+        double sumSqr = 0;
+        for (size_t i = 0; i < nPix; i++)
+        {
+            const double r = gain * (work.cur[i] - work.meanCur) - (refPatch[i] - work.meanRef);
+            sumSqr += r * r;
+        }
+        const double invN      = 1.0 / static_cast<double>(nPix);
+        const double rmsSigmas = std::sqrt(sumSqr * invN) * invSigma;
+        if (!std::isfinite(rmsSigmas) || rmsSigmas > term.max_rms_sigmas)
+        {
+            stats.rejected++;
+            continue;
+        }
+        const double robust =
+            rmsSigmas <= term.huber_delta ? 1.0 : term.huber_delta / std::max(1e-12, rmsSigmas);
+
+        // The mean subtraction is part of the residual, so its own derivative
+        // (the mean gradient) belongs in the Jacobian, scaled by the gain.
+        const double w = pixWeight * robust;
+        for (size_t i = 0; i < nPix; i++)
+        {
+            const double r = gain * (work.cur[i] - work.meanCur) - (refPatch[i] - work.meanRef);
+
+            Eigen::Matrix<double, 1, 2> gradRow;
+            gradRow << gain * (work.gx[i] - work.meanGx), gain * (work.gy[i] - work.meanGy);
+
+            const Eigen::Matrix<double, 1, 6> Ji = gradRow * work.J_uv;
+
+            H.noalias() += w * Ji.transpose() * Ji;
+            g.noalias() += w * Ji.transpose() * r;
+            stats.chi2 += w * r * r;
+
+            if (dumpResiduals)
             {
-                const double r = (cur[k] - meanCur) - (refPatch[k] - meanRef);
-
-                Eigen::Matrix<double, 1, 2> gradRow;
-                gradRow << gx[k] - meanGx, gy[k] - meanGy;
-
-                const Eigen::Matrix<double, 1, 6> Ji = gradRow * J_uv;
-
-                H.noalias() += w * Ji.transpose() * Ji;
-                g.noalias() += w * Ji.transpose() * r;
-                stats.chi2 += w * r * r;
+                *residualOut << r << (i + 1 == nPix ? '\n' : '\t');
             }
         }
         stats.used++;
-
-        if (dumpResiduals)
-        {
-            for (size_t i = 0; i < nPix; i++)
-            {
-                *residualOut << ((cur[i] - meanCur) - (refPatch[i] - meanRef))
-                             << (i + 1 == nPix ? '\n' : '\t');
-            }
-        }
     }
 
     return stats;

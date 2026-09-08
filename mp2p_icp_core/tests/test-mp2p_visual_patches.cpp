@@ -376,6 +376,51 @@ void test_pyramid_widens_the_basin()
     ASSERT_GT_(errOneLevel, 4 * errThreeLevel);
 }
 
+/** An exposure change between the reference patches and the current image is a
+ *  pure gain. Mean normalization does not remove it, and it must not be paid
+ *  for out of the pose. */
+void test_gain_absorbs_an_exposure_change()
+{
+    const mrpt::poses::CPose3D truth(0.3, -0.2, 0.1, 0.02, -0.01, 0.015);
+    auto                       term = makeTerm(truth, mrpt::img::DistortionModel::none, 80);
+
+    // Darken the CURRENT image after the reference patches were cut from it, so
+    // the only difference is a gain of 0.8. Darkening, not brightening, so
+    // nothing clips at 255 and the change stays a pure gain.
+    constexpr double kGain = 0.8;
+    for (unsigned int y = 0; y < IMG_H; y++)
+    {
+        auto* row = term.image.ptrLine<uint8_t>(y);
+        for (unsigned int x = 0; x < IMG_W; x++)
+        {
+            row[x] = static_cast<uint8_t>(kGain * row[x]);
+        }
+    }
+    term.buildPyramid(term.pyramid_levels);
+
+    Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
+    Eigen::Matrix<double, 6, 1> g = Eigen::Matrix<double, 6, 1>::Zero();
+
+    term.estimate_gain = false;
+    const auto without = mp2p_icp::accumulate_visual_patches(term, truth, H, g);
+
+    H.setZero();
+    g.setZero();
+    term.estimate_gain = true;
+    const auto with    = mp2p_icp::accumulate_visual_patches(term, truth, H, g);
+
+    std::cout << "[gain] chi2 without=" << without.chi2 << " with=" << with.chi2
+              << " estimated gain=" << with.gain << " (truth " << 1.0 / kGain << ")\n";
+
+    ASSERT_GT_(with.gain, 0.95 / kGain);
+    ASSERT_LT_(with.gain, 1.05 / kGain);
+    // What is left after the correction is the quantization the darkening
+    // itself introduced: rounding 0.8*I back to 8 bits and then undoing the
+    // 0.8 leaves ~0.36 gray levels RMS, which is a floor this test cannot go
+    // below, not a failure of the gain estimate.
+    ASSERT_LT_(with.chi2, 0.25 * without.chi2);
+}
+
 /** A texture-free image carries no information, and must not fake any. */
 void test_flat_texture_is_inert()
 {
@@ -436,6 +481,7 @@ int main(int, char**)
         test_recovers_a_perturbed_pose(mrpt::img::DistortionModel::none, "pinhole");
         test_recovers_a_perturbed_pose(mrpt::img::DistortionModel::kannala_brandt, "fisheye");
         test_pyramid_widens_the_basin();
+        test_gain_absorbs_an_exposure_change();
         test_flat_texture_is_inert();
         test_rejects_invisible_patches();
         std::cout << "Test successful." << std::endl;

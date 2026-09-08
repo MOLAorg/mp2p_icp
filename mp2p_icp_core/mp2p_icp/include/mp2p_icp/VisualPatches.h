@@ -150,6 +150,30 @@ struct VisualPatchTerm
     /** Margin [px] from the image border required by the patch center. */
     double border_margin = 4.0;
 
+    /** Estimate one photometric GAIN for the whole frame, in closed form from
+     *  all patches, and apply it before the residual.
+     *
+     *  Mean normalization already removes an exposure OFFSET; it does not
+     *  remove a gain, and an uncorrected gain is a systematic residual
+     *  proportional to each patch's own contrast. It inflates the chi-square
+     *  without carrying any pose information, which under `auto_balance`
+     *  directly costs the term its weight. This is the same quantity
+     *  FAST-LIVO2 carries in its state as an inverse exposure time; solving it
+     *  in closed form keeps the SE(3) solve six-dimensional.
+     *
+     *  DEFAULT OFF, on measurement rather than on principle: it is what the
+     *  leader does and it is unit-tested to recover a synthetic exposure
+     *  change exactly, but on GrandTour it left the real chi-square untouched
+     *  and cost accuracy on both missions. A nuisance parameter estimated from
+     *  the same residuals it corrects can absorb pose signal as readily as
+     *  exposure, which is the standard hazard of a profile likelihood and the
+     *  leading suspect. */
+    bool estimate_gain = false;
+
+    /** Bound on that gain, applied both ways (g and 1/g). A frame needing more
+     *  than this is a scene change, not an exposure change. */
+    double max_gain = 3.0;
+
     /** Global multiplier on the whole term. With `auto_balance` on this is a
      *  nudge factor on top of the measured scale, not the scale itself. */
     double weight = 1.0;
