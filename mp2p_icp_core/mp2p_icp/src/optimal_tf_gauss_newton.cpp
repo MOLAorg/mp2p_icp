@@ -220,7 +220,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     result.optimalPose = gnParams.linearizationPoint.value();
 
     const robust_sqrt_weight_func_t robustSqrtWeightFunc =
-        mp2p_icp::create_robust_kernel(gnParams.kernel, gnParams.kernelParam);
+        mp2p_icp::create_robust_kernel(gnParams.kernel, gnParams.kernelScale);
 
     // Approach B: prior-referenced robust kernel.
     // When enabled, the residual that feeds the robust kernel is blended between
@@ -238,7 +238,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     // residual squared-norm at the current iterate and at the prior mean pose.
     //
     // Both arguments must be WHITENED, i.e. already divided by the factor's
-    // variance, so that `kernelParam` is compared against one common scale for
+    // variance, so that `kernelScale` is compared against one common scale for
     // every residual type. Cov-to-cov pairings pass a Mahalanobis norm and are
     // whitened by construction; the geometric ones are metric, so they scale
     // their norm by their PairWeights entry, which is an inverse variance.

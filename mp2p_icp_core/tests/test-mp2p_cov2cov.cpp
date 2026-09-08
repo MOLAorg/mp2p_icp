@@ -451,7 +451,7 @@ void test_cov2cov_robust_kernel()
     gnParams.linearizationPoint     = mrpt::poses::CPose3D::Identity();
     gnParams.maxInnerLoopIterations = 30;
     gnParams.kernel                 = mp2p_icp::RobustKernel::GemanMcClure;
-    gnParams.kernelParam            = 1.0;
+    gnParams.kernelScale            = 1.0;
 
     mp2p_icp::OptimalTF_Result result;
     ASSERT_(mp2p_icp::optimal_tf_gauss_newton(pairings, result, gnParams));

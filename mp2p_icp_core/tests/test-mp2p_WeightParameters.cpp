@@ -37,7 +37,7 @@ void test_default_construction()
     ASSERT_EQUAL_(wp.use_scale_outlier_detector, false);
     ASSERT_NEAR_(wp.scale_outlier_threshold, 1.20, 1e-6);
     ASSERT_(wp.robust_kernel == RobustKernel::None);
-    ASSERT_NEAR_(wp.robust_kernel_param, 1.0, 1e-6);
+    ASSERT_NEAR_(wp.robust_kernel_scale, 1.0, 1e-6);
     ASSERT_(!wp.currentEstimateForRobust.has_value());
 
     // Check default pair weights
@@ -52,7 +52,7 @@ void test_load_from_yaml()
     cfg["use_scale_outlier_detector"] = true;
     cfg["scale_outlier_threshold"]    = 1.5;
     cfg["robust_kernel"]              = "RobustKernel::Cauchy";
-    cfg["robust_kernel_param"]        = 2.0;
+    cfg["robust_kernel_scale"]        = 2.0;
 
     // Add pair weights
     cfg["pair_weights"]["pt2pt"] = 2.0;
@@ -67,7 +67,7 @@ void test_load_from_yaml()
     ASSERT_EQUAL_(wp.use_scale_outlier_detector, true);
     ASSERT_NEAR_(wp.scale_outlier_threshold, 1.5, 1e-6);
     ASSERT_(wp.robust_kernel == RobustKernel::Cauchy);
-    ASSERT_NEAR_(wp.robust_kernel_param, 2.0, 1e-6);
+    ASSERT_NEAR_(wp.robust_kernel_scale, 2.0, 1e-6);
 
     ASSERT_EQUAL_(wp.pair_weights.pt2pt, 2.0);
     ASSERT_EQUAL_(wp.pair_weights.pt2ln, 3.0);
@@ -82,7 +82,7 @@ void test_save_to_yaml()
     wp.use_scale_outlier_detector = true;
     wp.scale_outlier_threshold    = 1.8;
     wp.robust_kernel              = RobustKernel::GemanMcClure;
-    wp.robust_kernel_param        = 3.5;
+    wp.robust_kernel_scale        = 3.5;
 
     wp.pair_weights.pt2pt = 1.5;
     wp.pair_weights.pt2ln = 2.5;
@@ -94,7 +94,7 @@ void test_save_to_yaml()
     ASSERT_EQUAL_(cfg["use_scale_outlier_detector"].as<bool>(), true);
     ASSERT_NEAR_(cfg["scale_outlier_threshold"].as<double>(), 1.8, 1e-6);
     ASSERT_EQUAL_(cfg["robust_kernel"].as<std::string>(), "RobustKernel::GemanMcClure");
-    ASSERT_NEAR_(cfg["robust_kernel_param"].as<double>(), 3.5, 1e-6);
+    ASSERT_NEAR_(cfg["robust_kernel_scale"].as<double>(), 3.5, 1e-6);
 }
 
 void test_serialization()
@@ -103,7 +103,7 @@ void test_serialization()
     wp1.use_scale_outlier_detector = true;
     wp1.scale_outlier_threshold    = 1.3;
     wp1.robust_kernel              = RobustKernel::Cauchy;
-    wp1.robust_kernel_param        = 1.345;
+    wp1.robust_kernel_scale        = 1.345;
     wp1.pair_weights.pt2pt         = 2.0;
     wp1.pair_weights.pt2ln         = 3.0;
 
@@ -121,7 +121,7 @@ void test_serialization()
     ASSERT_EQUAL_(wp2.use_scale_outlier_detector, true);
     ASSERT_NEAR_(wp2.scale_outlier_threshold, 1.3, 1e-6);
     ASSERT_(wp2.robust_kernel == RobustKernel::Cauchy);
-    ASSERT_NEAR_(wp2.robust_kernel_param, 1.345, 1e-6);
+    ASSERT_NEAR_(wp2.robust_kernel_scale, 1.345, 1e-6);
     ASSERT_EQUAL_(wp2.pair_weights.pt2pt, 2.0);
     ASSERT_EQUAL_(wp2.pair_weights.pt2ln, 3.0);
 }
@@ -166,6 +166,37 @@ void test_current_estimate()
     ASSERT_NEAR_(storedPose.z(), 3.0, 1e-6);
 }
 
+/** A file written against the old parameter name means the square of what the
+ *  new one means, so it is converted on load instead of being read as if it
+ *  had been written for the new meaning.
+ */
+void test_deprecated_kernel_key_is_converted()
+{
+    mrpt::containers::yaml cfg;
+    cfg["robust_kernel"]       = "RobustKernel::GemanMcClure";
+    cfg["robust_kernel_param"] = 9.0;
+
+    WeightParameters wp;
+    wp.load_from(cfg);
+
+    ASSERT_NEAR_(wp.robust_kernel_scale, 3.0, 1e-6);
+
+    // Naming both is ambiguous, and silently picking one would be the very
+    // mistake this rename exists to prevent:
+    cfg["robust_kernel_scale"] = 3.0;
+    bool didThrow              = false;
+    try
+    {
+        WeightParameters wp2;
+        wp2.load_from(cfg);
+    }
+    catch (const std::exception&)
+    {
+        didThrow = true;
+    }
+    ASSERT_(didThrow);
+}
+
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -177,6 +208,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_load_from_yaml();
         std::cout << "test_load_from_yaml: Success ✅" << std::endl;
+
+        test_deprecated_kernel_key_is_converted();
+        std::cout << "test_deprecated_kernel_key_is_converted: Success ✅" << std::endl;
 
         test_save_to_yaml();
         std::cout << "test_save_to_yaml: Success ✅" << std::endl;
