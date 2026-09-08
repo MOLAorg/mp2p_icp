@@ -50,10 +50,11 @@ using robust_sqrt_weight_func_t = std::function<double(double /*errSqr*/)>;
  * multiply their per-factor information (not their residual) by it, hence the
  * weight itself and not its square root, despite the historical type name.
  *
- * All kernels here are normalized to w(0)=1, so `kernelParam` is the scale at
- * which down-weighting sets in, in the same units as the residual fed to the
- * functor, and the kernel does not rescale a block with respect to terms that
- * are not kernel-weighted (e.g. a pose prior).
+ * All kernels here are normalized to w(0)=1, so the kernel does not rescale a
+ * block with respect to terms that are not kernel-weighted (e.g. a pose
+ * prior), and `kernelParam` is the residual scale at which down-weighting sets
+ * in: it is given, and read here, in plain residual units, even though the
+ * functor takes the SQUARED residual as its argument.
  *
  * Implemented as `inline` to try to make the compiler to optimize.
  *
