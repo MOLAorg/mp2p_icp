@@ -65,6 +65,8 @@ struct Results
     double visual_chi2_per_dof = -1.0;
     /// Scale actually applied to the photometric block; see OptimalTF_Result.
     double visual_auto_scale = -1.0;
+    /// This solve's own calibration ratio; feed a running estimate with it.
+    double visual_auto_scale_instant = -1.0;
 
     void serializeTo(mrpt::serialization::CArchive& out) const;
     void serializeFrom(mrpt::serialization::CArchive& in);

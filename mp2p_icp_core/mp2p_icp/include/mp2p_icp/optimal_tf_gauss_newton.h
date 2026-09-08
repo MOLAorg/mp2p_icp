@@ -73,6 +73,12 @@ struct OptimalTF_GN_Parameters
      */
     std::shared_ptr<const VisualPatchTerm> visualPatches;
 
+    /** The OUTER (ICP) iteration index this solve belongs to, when the caller
+     *  knows it. The photometric term's coarse-to-fine schedule keys on this
+     *  and not on the inner loop, which in the shipped pipelines runs exactly
+     *  once per ICP iteration and would therefore pin the term to one level. */
+    std::optional<uint32_t> outerIteration;
+
     /** Minimum SE(3) change to stop iterating. */
     double minDelta = 1e-7;
 

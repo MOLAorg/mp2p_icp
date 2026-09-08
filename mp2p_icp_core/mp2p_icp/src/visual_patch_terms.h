@@ -49,6 +49,6 @@ struct VisualPatchAccumStats
  */
 VisualPatchAccumStats accumulate_visual_patches(
     const VisualPatchTerm& term, const mrpt::poses::CPose3D& pose, Eigen::Matrix<double, 6, 6>& H,
-    Eigen::Matrix<double, 6, 1>& g);
+    Eigen::Matrix<double, 6, 1>& g, unsigned int level = 0);
 
 }  // namespace mp2p_icp

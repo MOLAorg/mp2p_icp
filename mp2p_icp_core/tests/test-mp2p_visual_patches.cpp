@@ -36,18 +36,33 @@ namespace
 constexpr unsigned int IMG_W = 640;
 constexpr unsigned int IMG_H = 480;
 
-/** A smooth, band-limited texture with gradient in both directions everywhere,
- *  so the term is well conditioned without any interpolation artifacts. */
+/** A texture with gradient in both directions everywhere and, deliberately, a
+ *  roughly 1/f spectrum: five octaves from a 256 px period down to 16 px, with
+ *  amplitude falling as the frequency rises.
+ *
+ *  The spectrum is the point. A single-frequency pattern stays just as
+ *  ambiguous after downsampling as before, so it cannot show whether a
+ *  coarse-to-fine schedule helps; natural images have structure at every scale,
+ *  which is the property the pyramid actually exploits. */
 mrpt::img::CImage makeTexture()
 {
+    constexpr int    kOctaves      = 5;
+    constexpr double kBasePeriodPx = 256.0;
+
     mrpt::img::CImage im(IMG_W, IMG_H, mrpt::img::CH_GRAY);
     for (unsigned int y = 0; y < IMG_H; y++)
     {
         auto* row = im.ptrLine<uint8_t>(y);
         for (unsigned int x = 0; x < IMG_W; x++)
         {
-            const double v = 128.0 + 55.0 * std::sin(0.23 * x) * std::cos(0.19 * y) +
-                             45.0 * std::sin(0.071 * x + 0.043 * y);
+            double v = 128.0;
+            for (int k = 0; k < kOctaves; k++)
+            {
+                const double scale = static_cast<double>(1 << k);
+                const double w     = 2.0 * M_PI * scale / kBasePeriodPx;
+                const double amp   = 45.0 / scale;
+                v += amp * std::sin(w * x + 0.7 * k) * std::cos(0.9 * w * y + 1.3 * k);
+            }
             row[x] = static_cast<uint8_t>(std::min(255.0, std::max(0.0, v)));
         }
     }
@@ -96,7 +111,7 @@ double sampleBilinear(const mrpt::img::CImage& im, double u, double v)
  *  image the term will be scored against. */
 mp2p_icp::VisualPatchTerm makeTerm(
     const mrpt::poses::CPose3D& truePose, mrpt::img::DistortionModel model, unsigned int nPatches,
-    bool flatTexture = false)
+    bool flatTexture = false, uint32_t levels = 1)
 {
     mp2p_icp::VisualPatchTerm term;
     term.image  = makeTexture();
@@ -113,6 +128,9 @@ mp2p_icp::VisualPatchTerm makeTerm(
     {
         term.image.filledRectangle(0, 0, IMG_W - 1, IMG_H - 1, mrpt::img::TColor(100, 100, 100));
     }
+
+    term.pyramid_levels = levels;
+    term.buildPyramid(levels);
 
     const int half = static_cast<int>(term.half_size);
 
@@ -148,14 +166,22 @@ mp2p_icp::VisualPatchTerm makeTerm(
         mp2p_icp::visual_patch_t p;
         p.pt_global       = truePose.composePoint(pCam);
         p.ref_camera_pose = truePose;  // camera_pose_on_local is the identity
-        p.ref_patch.reserve(static_cast<size_t>(2 * half + 1) * (2 * half + 1));
-        for (int dy = -half; dy <= half; dy++)
+        // One reference patch per pyramid level, sampled on that level's grid.
+        for (size_t lv = 0; lv < term.image_pyramid.size(); lv++)
         {
-            for (int dx = -half; dx <= half; dx++)
+            const auto&        im = term.image_pyramid[lv];
+            const double       sc = 1.0 / static_cast<double>(1u << lv);
+            std::vector<float> lvPatch;
+            lvPatch.reserve(static_cast<size_t>(2 * half + 1) * (2 * half + 1));
+            for (int dy = -half; dy <= half; dy++)
             {
-                p.ref_patch.push_back(
-                    static_cast<float>(sampleBilinear(term.image, px->x + dx, px->y + dy)));
+                for (int dx = -half; dx <= half; dx++)
+                {
+                    lvPatch.push_back(
+                        static_cast<float>(sampleBilinear(im, px->x * sc + dx, px->y * sc + dy)));
+                }
             }
+            p.ref_patches.push_back(std::move(lvPatch));
         }
         term.patches.push_back(std::move(p));
     }
@@ -189,6 +215,7 @@ void test_zero_residual_at_truth()
     ASSERT_EQUAL_(st.used, term.patches.size());
     ASSERT_LT_(st.chi2, 1e-6);
     ASSERT_LT_(step.norm(), 1e-5);
+    ASSERT_(term.patches.front().ref_patches.size() == 1);
     // All 6 DOF are observed: a purely photometric H must be full rank.
     ASSERT_GT_(static_cast<int>(H.fullPivLu().rank()), 5);
 }
@@ -292,6 +319,63 @@ void test_recovers_a_perturbed_pose(mrpt::img::DistortionModel model, const char
     ASSERT_LT_(mrpt::RAD2DEG(rotErr), 0.05);
 }
 
+/** Gauss-Newton from a perturbation too large for one level, which a
+ *  coarse-to-fine schedule is supposed to recover and a single level is not.
+ *  This is the whole claim of the pyramid, so it is asserted both ways. */
+void test_pyramid_widens_the_basin()
+{
+    const mrpt::poses::CPose3D truth(0.3, -0.2, 0.1, 0.02, -0.01, 0.015);
+
+    // Far enough that a single-level linearization has no reason to point the
+    // right way: the texture below repeats every ~27 px and this is a
+    // comparable displacement at the patches' depths.
+    mrpt::math::CVectorFixedDouble<6> off;
+    off[0] = 0.30;
+    off[1] = -0.26;
+    off[2] = 0.10;
+    off[3] = 0.030;
+    off[4] = -0.026;
+    off[5] = 0.020;
+
+    const auto runFrom = [&](uint32_t levels)
+    {
+        const auto term =
+            makeTerm(truth, mrpt::img::DistortionModel::none, 150, /*flat*/ false, levels);
+        auto pose = mrpt::poses::CPose3D(truth + mrpt::poses::Lie::SE<3>::exp(off));
+
+        for (int it = 0; it < 40; it++)
+        {
+            const unsigned int level = levels > 1 ? static_cast<unsigned int>(std::max<int>(
+                                                        0, static_cast<int>(levels) - 1 - it / 8))
+                                                  : 0u;
+
+            Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
+            Eigen::Matrix<double, 6, 1> g = Eigen::Matrix<double, 6, 1>::Zero();
+            const auto st = mp2p_icp::accumulate_visual_patches(term, pose, H, g, level);
+            if (st.used < 30)
+            {
+                break;
+            }
+            H.diagonal() *= 1.02;
+            const Eigen::Matrix<double, 6, 1> delta = -H.ldlt().solve(g);
+            pose = pose + mrpt::poses::Lie::SE<3>::exp(mrpt::math::CVectorFixed<double, 6>(delta));
+        }
+        const auto d = pose - truth;
+        return std::sqrt(d.x() * d.x() + d.y() * d.y() + d.z() * d.z());
+    };
+
+    const double errOneLevel   = runFrom(1);
+    const double errThreeLevel = runFrom(3);
+
+    std::cout << "[pyramid] from a large start: 1 level -> " << errOneLevel << " m, 3 levels -> "
+              << errThreeLevel << " m\n";
+
+    // The point is not that three levels is slightly better: it is that one
+    // level does not get there at all.
+    ASSERT_LT_(errThreeLevel, 0.02);
+    ASSERT_GT_(errOneLevel, 4 * errThreeLevel);
+}
+
 /** A texture-free image carries no information, and must not fake any. */
 void test_flat_texture_is_inert()
 {
@@ -351,6 +435,7 @@ int main(int, char**)
         test_gradient_matches_numeric();
         test_recovers_a_perturbed_pose(mrpt::img::DistortionModel::none, "pinhole");
         test_recovers_a_perturbed_pose(mrpt::img::DistortionModel::kannala_brandt, "fisheye");
+        test_pyramid_widens_the_basin();
         test_flat_texture_is_inert();
         test_rejects_invisible_patches();
         std::cout << "Test successful." << std::endl;

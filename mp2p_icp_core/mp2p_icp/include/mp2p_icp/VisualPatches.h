@@ -28,6 +28,7 @@
 #include <mrpt/typemeta/TTypeName.h>
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -59,10 +60,14 @@ struct visual_patch_t
      *  reference camera. Need not be normalized. */
     mrpt::math::TVector3D normal_global{0, 0, 0};
 
-    /** Reference intensities in [0,255], row-major, exactly
-     *  (2*half_size+1)^2 entries, sampled on the reference image pixel grid
-     *  centered at the anchor's projection. */
-    std::vector<float> ref_patch;
+    /** Reference intensities in [0,255], row-major, (2*half_size+1)^2 entries
+     *  per pyramid level, sampled on the reference image's grid at that level,
+     *  centered at the anchor's projection. Index 0 is full resolution.
+     *
+     *  Levels are stored rather than the reference image itself: a patch costs
+     *  a few hundred bytes this way, where keeping every reference frame alive
+     *  for as long as its patches would cost hundreds of megabytes. */
+    std::vector<std::vector<float>> ref_patches;
 
     /** Camera pose, in the GLOBAL frame, when `ref_patch` was captured. */
     mrpt::poses::CPose3D ref_camera_pose;
@@ -90,8 +95,26 @@ struct VisualPatchTerm
 {
     VisualPatchTerm() = default;
 
-    /** The current image. Must be 8-bit grayscale. */
+    /** The current image at full resolution. Must be 8-bit grayscale. */
     mrpt::img::CImage image;
+
+    /** `image` and its successive half-resolution reductions, index 0 being
+     *  `image` itself. Fill with buildPyramid(); a single level reproduces the
+     *  behavior of no pyramid at all. */
+    std::vector<mrpt::img::CImage> image_pyramid;
+
+    /** Fills image_pyramid with `levels` entries from `image`. */
+    void buildPyramid(uint32_t levels);
+
+    /** Number of levels the solve walks, coarsest first. Bounded by what
+     *  `image_pyramid` and the patches actually carry.
+     *
+     *  A single level is one Gauss-Newton linearization of a raw image, whose
+     *  valid range is about the correlation length of its texture, a pixel or
+     *  two. Starting coarse both widens that basin and, because a reduced
+     *  image is smoother, lowers the linearization error that the photometric
+     *  noise would otherwise have to absorb. */
+    uint32_t pyramid_levels = 1;
 
     /** Intrinsics and distortion of `image`. Distortion is applied in the
      *  forward projection, so the image needs no rectification. */
@@ -174,6 +197,21 @@ struct VisualPatchTerm
      *  `sigma_intensity` and would reintroduce exactly the knob that
      *  `auto_balance` removes. */
     double max_information_share = 0.5;
+
+    /** A slowly-estimated value of the calibration ratio, supplied by the
+     *  caller. When positive it is used INSTEAD of this scan's own ratio.
+     *
+     *  Recomputing the ratio from one scan's residuals makes the weight react
+     *  to every frame, and on a confined mission that feedback was measured to
+     *  be actively harmful (arc-3 went from 0.135 m to 0.483 m). The quantity
+     *  being estimated is a property of the sensor pair and the residual
+     *  models, not of the frame, so it should be estimated slowly and then
+     *  held. This is how FAST-LIVO2's constant `img_point_cov` behaves, except
+     *  that here the constant is measured rather than configured.
+     *
+     *  Leave <=0 to fall back to this scan's own ratio, which is what bootstraps
+     *  the estimate. */
+    double scale_hint = -1.0;
 
     DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::VisualPatchTerm)
 };

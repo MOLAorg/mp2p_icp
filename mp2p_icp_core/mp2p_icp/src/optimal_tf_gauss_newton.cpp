@@ -696,8 +696,24 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             Eigen::Matrix<double, 6, 6> H_v = Eigen::Matrix<double, 6, 6>::Zero();
             Eigen::Matrix<double, 6, 1> g_v = Eigen::Matrix<double, 6, 1>::Zero();
 
-            const auto vs =
-                accumulate_visual_patches(*gnParams.visualPatches, result.optimalPose, H_v, g_v);
+            // Coarse to fine: the first inner iterations run on the reduced
+            // images, which both widens the basin of a photometric residual
+            // and lowers the linearization error that sigma has to absorb.
+            const unsigned int nLevels = std::max(
+                1u, std::min<unsigned int>(
+                        gnParams.visualPatches->pyramid_levels,
+                        static_cast<unsigned int>(gnParams.visualPatches->image_pyramid.size())));
+            // Step down one level per OUTER iteration: the inner loop runs
+            // once per ICP iteration in the shipped pipelines, so keying on it
+            // would leave the term permanently at the coarsest level.
+            const uint32_t sched = gnParams.outerIteration.value_or(static_cast<uint32_t>(iter));
+            const unsigned int level =
+                nLevels > 1 ? static_cast<unsigned int>(std::max<int>(
+                                  0, static_cast<int>(nLevels) - 1 - static_cast<int>(sched)))
+                            : 0u;
+
+            const auto vs = accumulate_visual_patches(
+                *gnParams.visualPatches, result.optimalPose, H_v, g_v, level);
 
             const auto& vp = *gnParams.visualPatches;
 
@@ -727,9 +743,21 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             double scale = wGlobal;
             if (vp.auto_balance && nCov2Cov >= 30 && chi2_cc > 0 && kV > 0)
             {
-                const double dofL = std::max(1.0, 3.0 * static_cast<double>(nCov2Cov) - 6.0);
-                const double kL   = chi2_cc / dofL;
-                scale             = (kL / kV) * wGlobal;
+                const double dofL    = std::max(1.0, 3.0 * static_cast<double>(nCov2Cov) - 6.0);
+                const double kL      = chi2_cc / dofL;
+                const double instant = (kL / kV) * wGlobal;
+
+                // Only the finest level is comparable across scans, so only it
+                // feeds the caller's running estimate.
+                if (level == 0)
+                {
+                    result.visual_auto_scale_instant = instant;
+                }
+
+                // Prefer the caller's slow estimate: the ratio is a property of
+                // the sensor pair, not of this frame, and reacting to each
+                // frame's own residuals was measured to be harmful.
+                scale = vp.scale_hint > 0 ? vp.scale_hint * wGlobal : instant;
 
                 // Rail, applied on the information share so that it does not
                 // depend on sigma_intensity (see max_information_share).

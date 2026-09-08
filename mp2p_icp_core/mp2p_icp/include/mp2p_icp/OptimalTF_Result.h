@@ -79,6 +79,11 @@ struct OptimalTF_Result
      *  iteration: either `VisualPatchTerm::weight`, or the automatic
      *  calibration ratio when `auto_balance` is on. <0 when no term. */
     double visual_auto_scale = -1.0;
+
+    /** The calibration ratio computed from THIS solve's own residuals, before
+     *  any slow estimate replaced it. This is what a caller should feed its
+     *  running estimate of the scale; `visual_auto_scale` is what was used. */
+    double visual_auto_scale_instant = -1.0;
 };
 
 /** @} */

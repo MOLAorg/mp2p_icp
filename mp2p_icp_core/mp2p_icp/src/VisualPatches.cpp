@@ -165,9 +165,28 @@ std::optional<mrpt::img::TPixelCoordf> mp2p_icp::projectToPixel(
     return px;
 }
 
+void mp2p_icp::VisualPatchTerm::buildPyramid(uint32_t levels)
+{
+    image_pyramid.clear();
+    if (levels == 0)
+    {
+        return;
+    }
+    image_pyramid.push_back(image);
+    for (uint32_t l = 1; l < levels; l++)
+    {
+        const auto& prev = image_pyramid.back();
+        if (prev.getWidth() < 32 || prev.getHeight() < 32)
+        {
+            break;
+        }
+        image_pyramid.push_back(prev.scaleHalf(mrpt::img::IMG_INTERP_LINEAR));
+    }
+}
+
 VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
     const VisualPatchTerm& term, const mrpt::poses::CPose3D& pose, Eigen::Matrix<double, 6, 6>& H,
-    Eigen::Matrix<double, 6, 1>& g)
+    Eigen::Matrix<double, 6, 1>& g, unsigned int level)
 {
     MRPT_START
 
@@ -181,8 +200,19 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
     ASSERTMSG_(term.image.getChannelCount() == 1, "VisualPatchTerm::image must be grayscale");
     ASSERTMSG_(term.sigma_intensity > 0, "VisualPatchTerm::sigma_intensity must be >0");
 
-    const int    W    = static_cast<int>(term.image.getWidth());
-    const int    Ht   = static_cast<int>(term.image.getHeight());
+    // The requested level, or the finest one actually available.
+    const mrpt::img::CImage& img =
+        (level < term.image_pyramid.size()) ? term.image_pyramid[level] : term.image;
+    if (level >= term.image_pyramid.size())
+    {
+        level = 0;
+    }
+    // Pixel coordinates at this level are the full-resolution ones scaled down;
+    // the affine warp is a similarity in pixel units and so is unchanged by it.
+    const double levelScale = 1.0 / static_cast<double>(1u << level);
+
+    const int    W    = static_cast<int>(img.getWidth());
+    const int    Ht   = static_cast<int>(img.getHeight());
     const int    half = static_cast<int>(term.half_size);
     const size_t nPix = static_cast<size_t>(2 * half + 1) * static_cast<size_t>(2 * half + 1);
 
@@ -190,7 +220,7 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
     std::vector<const uint8_t*> rows(static_cast<size_t>(Ht));
     for (int y = 0; y < Ht; y++)
     {
-        rows[static_cast<size_t>(y)] = term.image.ptrLine<uint8_t>(static_cast<unsigned int>(y));
+        rows[static_cast<size_t>(y)] = img.ptrLine<uint8_t>(static_cast<unsigned int>(y));
     }
     const uint8_t* const* rowPtr = rows.data();
 
@@ -214,11 +244,12 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
 
     for (const auto& patch : term.patches)
     {
-        if (patch.ref_patch.size() != nPix)
+        if (level >= patch.ref_patches.size() || patch.ref_patches[level].size() != nPix)
         {
             stats.rejected++;
             continue;
         }
+        const std::vector<float>& refPatch = patch.ref_patches[level];
 
         // 1) The anchor, in the current camera frame, and its projection.
         const auto p_c = T_gc.inverseComposePoint(patch.pt_global);
@@ -230,7 +261,10 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
         }
         // One extra pixel each way is read by the central-difference gradient.
         const double m = term.border_margin + half + 2;
-        if (px0->x < m || px0->y < m || px0->x > W - 1 - m || px0->y > Ht - 1 - m)
+        // Everything from here on is in the pixel units of the level in use.
+        const double u0 = px0->x * levelScale;
+        const double v0 = px0->y * levelScale;
+        if (u0 < m || v0 < m || u0 > W - 1 - m || v0 > Ht - 1 - m)
         {
             stats.rejected++;
             continue;
@@ -332,8 +366,11 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
         {
             for (int dx = -half; dx <= half; dx++, k++)
             {
-                const double u = px0->x + A(0, 0) * dx + A(0, 1) * dy;
-                const double v = px0->y + A(1, 0) * dx + A(1, 1) * dy;
+                // The warp is a similarity in pixel units, so it is the same
+                // matrix at every level: a level-l offset maps to a level-l
+                // offset unchanged.
+                const double u = u0 + A(0, 0) * dx + A(0, 1) * dy;
+                const double v = v0 + A(1, 0) * dx + A(1, 1) * dy;
                 if (u < 2 || v < 2 || u > W - 3 || v > Ht - 3)
                 {
                     inside = false;
@@ -358,7 +395,7 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
         meanGy *= invN;
 
         double meanRef = 0;
-        for (const float r : patch.ref_patch)
+        for (const float r : refPatch)
         {
             meanRef += r;
         }
@@ -368,7 +405,7 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
         double sumSqr = 0;
         for (size_t i = 0; i < nPix; i++)
         {
-            const double r = (cur[i] - meanCur) - (patch.ref_patch[i] - meanRef);
+            const double r = (cur[i] - meanCur) - (refPatch[i] - meanRef);
             sumSqr += r * r;
         }
         const double rmsSigmas = std::sqrt(sumSqr * invN) * invSigma;
@@ -424,7 +461,10 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
             }
         }
 
-        const Eigen::Matrix<double, 2, 6> J_uv = dpx_dpc * dpc_deps;
+        // The projection Jacobian is in FULL-RESOLUTION pixels, while the image
+        // gradients below are per pixel OF THE LEVEL IN USE. Without this
+        // factor a coarse level takes steps 2^level too short.
+        const Eigen::Matrix<double, 2, 6> J_uv = levelScale * (dpx_dpc * dpc_deps);
 
         // 6) Accumulate. The mean subtraction is part of the residual, so its
         //    own derivative (the mean gradient) belongs in the Jacobian.
@@ -434,7 +474,7 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
         {
             for (int dx = -half; dx <= half; dx++, k++)
             {
-                const double r = (cur[k] - meanCur) - (patch.ref_patch[k] - meanRef);
+                const double r = (cur[k] - meanCur) - (refPatch[k] - meanRef);
 
                 Eigen::Matrix<double, 1, 2> gradRow;
                 gradRow << gx[k] - meanGx, gy[k] - meanGy;
@@ -452,7 +492,7 @@ VisualPatchAccumStats mp2p_icp::accumulate_visual_patches(
         {
             for (size_t i = 0; i < nPix; i++)
             {
-                *residualOut << ((cur[i] - meanCur) - (patch.ref_patch[i] - meanRef))
+                *residualOut << ((cur[i] - meanCur) - (refPatch[i] - meanRef))
                              << (i + 1 == nPix ? '\n' : '\t');
             }
         }

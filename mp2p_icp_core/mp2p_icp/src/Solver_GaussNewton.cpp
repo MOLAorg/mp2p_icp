@@ -64,6 +64,7 @@ bool Solver_GaussNewton::impl_optimal_pose(
     gnParams.prior                           = sc.prior;
     gnParams.gravityPrior                    = sc.gravityPrior;
     gnParams.visualPatches                   = sc.visualPatches;
+    gnParams.outerIteration                  = sc.icpIteration;
 
     ASSERT_(sc.guessRelativePose.has_value());
     gnParams.linearizationPoint = mrpt::poses::CPose3D(sc.guessRelativePose.value());

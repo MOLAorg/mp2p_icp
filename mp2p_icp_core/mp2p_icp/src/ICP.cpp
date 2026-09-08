@@ -426,6 +426,7 @@ void ICP::align(
     result.visual_patches_rejected   = state.currentSolution.visual_patches_rejected;
     result.visual_chi2_per_dof       = state.currentSolution.visual_chi2_per_dof;
     result.visual_auto_scale         = state.currentSolution.visual_auto_scale;
+    result.visual_auto_scale_instant = state.currentSolution.visual_auto_scale_instant;
     result.optimalScale              = state.currentSolution.optimalScale;
     result.finalPairings             = std::move(state.currentPairings);
 
