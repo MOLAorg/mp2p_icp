@@ -279,6 +279,54 @@ disabled; the default pipeline is untouched. Note that swapping it in for
 Birge-ratio prior balancing consume, so it is a residual-model change as well as
 a protocol one. See `test-mp2p_matcher_knn_plane`.
 
+### Photometric map patches (`VisualPatchTerm`)
+
+`mp2p_icp/VisualPatches.h` adds an optional **photometric** block to the
+Gauss-Newton normal equations: small image patches anchored to points of the
+GLOBAL map, scored against one current image. It reaches the solver the same
+way the gravity term does, through `SolverContext` (and an extra optional
+argument of `ICP::align()`), and is held by `shared_ptr` because it owns an
+image and is reused across every ICP iteration of a scan.
+
+The distinction that motivates it: a visual landmark map estimates its own 3D
+structure and therefore carries its own drift, which is then averaged against
+the LiDAR's. A patch anchored to a map point does not. Its 3D position is the
+map's and is never optimized here, so the camera contributes measurement
+information ABOUT the map rather than a second trajectory. That is what
+`visual_information_share` in `OptimalTF_Result`/`Results` reports, and it is
+counted in `H_meas` for the H-spectrum diagnostic, not as a prior.
+
+Mechanics worth knowing before touching it:
+
+- **The projection carries the distortion** (`none`, `plumb_bob`,
+  `kannala_brandt`), so images need no rectification. Its 2x3 Jacobian is taken
+  by central differences: the models are closed-form but their analytic
+  derivatives are not, and six extra projections per patch is nothing next to
+  the sampling.
+- **The affine warp is built from forward projections only.** Two metric
+  tangent vectors are laid on the patch plane, sized to about `half_size`
+  pixels in the reference view, and both views project them; the warp is the
+  map between the two pixel offsets. This never inverts the distortion, and it
+  handles rotation, scale and plane tilt. With no normal stored, the patch is
+  taken fronto-parallel to its reference camera.
+- **The warp is frozen within an iteration.** The pose Jacobian is therefore
+  the anchor's alone, shared by every pixel of a patch. This is the standard
+  linearization for direct methods and it is exact in four DOF; along the
+  optical axis, where a central point's whole signal is a change of patch
+  scale, it recovers about 90 % of the gradient
+  (`test-mp2p_visual_patches` asserts both, and the tolerance is there for
+  this reason, not for numerical slack).
+- **Residuals are mean-normalized per patch**, which removes the constant part
+  of an exposure change; the mean's own derivative is in the Jacobian, so the
+  linearization stays consistent. A gain change is left to the robust weight.
+- **Robustness is per patch, not per pixel**: a Huber weight on the patch's RMS
+  residual, plus an outright reject above `max_rms_sigmas`. Choosing pixels
+  inside a patch would break the warp's meaning.
+- **`sigma_intensity` does not set the term's influence**, exactly as
+  `GravityPrior::sigma_rad` does not set the gravity term's. The balance
+  against the pairings is set by the patch count, the image gradient and the
+  lever arms; measure `visual_information_share` and set `weight` from it.
+
 ---
 
 ## Filter pipeline

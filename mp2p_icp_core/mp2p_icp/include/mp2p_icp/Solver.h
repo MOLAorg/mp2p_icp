@@ -23,6 +23,7 @@
 #include <mp2p_icp/OptimalTF_Result.h>
 #include <mp2p_icp/Pairings.h>
 #include <mp2p_icp/Parameterizable.h>
+#include <mp2p_icp/VisualPatches.h>
 #include <mp2p_icp/WeightParameters.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/poses/CPose3D.h>
@@ -31,6 +32,7 @@
 #include <mrpt/system/COutputLogger.h>
 
 #include <any>
+#include <memory>
 #include <optional>
 
 namespace mp2p_icp
@@ -61,6 +63,11 @@ struct SolverContext
      *  and all three translations exactly free. See mp2p_icp::GravityPrior.
      */
     std::optional<GravityPrior> gravityPrior;
+
+    /** Optional photometric ("virtual patch") observation of the global map,
+     *  scored against one current image. See mp2p_icp::VisualPatchTerm.
+     */
+    std::shared_ptr<const VisualPatchTerm> visualPatches;
 
     // room for optional solver-specific context:
     mutable std::map<const Solver*, std::map<std::string, std::any>> perSolverPersistentData;

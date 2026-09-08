@@ -38,7 +38,9 @@ set(LIB_SRCS
   src/Solver_Horn.cpp
   src/Solver_OLAE.cpp
   src/Solver.cpp
+  src/VisualPatches.cpp
   src/visit_correspondences.h
+  src/visual_patch_terms.h
   src/WeightParameters.cpp
   #
   src/register.cpp # This must be last
@@ -79,6 +81,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/Solver_Horn.h
   include/mp2p_icp/Solver_OLAE.h
   include/mp2p_icp/Solver.h
+  include/mp2p_icp/VisualPatches.h
   include/mp2p_icp/WeightParameters.h
 )
 

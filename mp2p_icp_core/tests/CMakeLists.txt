@@ -51,6 +51,11 @@ endif()
 mp2p_add_test(georef-yaml)
 mp2p_add_test(mp2p_cov2cov)
 mp2p_add_test(mp2p_gravity_prior)
+mp2p_add_test(mp2p_visual_patches)
+# The photometric block is an internal header (not public API), so this one
+# test needs the library's own source dir on its include path.
+target_include_directories(test-mp2p_visual_patches
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../mp2p_icp/src")
 mp2p_add_test(mp2p_error_terms_jacobians)
 mp2p_add_test(mp2p_estimate_points_eigen)
 mp2p_add_test(mp2p_georef_yaml)

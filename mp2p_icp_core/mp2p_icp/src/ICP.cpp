@@ -39,7 +39,8 @@ void ICP::align(
     const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p, Results& result,
     const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior,
     const mrpt::optional_ref<LogRecord>&                     outputDebugInfo,
-    const std::optional<GravityPrior>&                       gravityPrior)
+    const std::optional<GravityPrior>&                       gravityPrior,
+    const std::shared_ptr<const VisualPatchTerm>&            visualPatches)
 {
     using namespace std::string_literals;
 
@@ -167,8 +168,9 @@ void ICP::align(
     std::optional<mrpt::poses::CPose3D> prev2_solution;  // 2 steps ago
     std::optional<mrpt::poses::CPose3D> lastCorrection;
     SolverContext                       sc;
-    sc.prior        = prior;
-    sc.gravityPrior = gravityPrior;
+    sc.prior         = prior;
+    sc.gravityPrior  = gravityPrior;
+    sc.visualPatches = visualPatches;
 
     for (result.nIterations = 0; result.nIterations < p.maxIterations; result.nIterations++)
     {
@@ -419,6 +421,9 @@ void ICP::align(
     // Store output:
     result.optimal_tf.mean           = state.currentSolution.optimalPose;
     result.gravity_information_share = state.currentSolution.gravity_information_share;
+    result.visual_information_share  = state.currentSolution.visual_information_share;
+    result.visual_patches_used       = state.currentSolution.visual_patches_used;
+    result.visual_patches_rejected   = state.currentSolution.visual_patches_rejected;
     result.optimalScale              = state.currentSolution.optimalScale;
     result.finalPairings             = std::move(state.currentPairings);
 

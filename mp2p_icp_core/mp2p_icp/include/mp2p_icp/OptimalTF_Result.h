@@ -22,6 +22,8 @@
 #include <mp2p_icp/Pairings.h>
 #include <mrpt/poses/CPose3D.h>
 
+#include <cstdint>
+
 namespace mp2p_icp
 {
 /** \addtogroup  mp2p_icp_grp
@@ -47,6 +49,21 @@ struct OptimalTF_Result
      *  readable from `sigma_rad` alone. This reports what it actually was.
      */
     double gravity_information_share = -1.0;
+
+    /** Share of the final total information contributed by the photometric
+     *  patch term, in [0,1], on the last Gauss-Newton iteration; <0 when no
+     *  such term was given.
+     *
+     *  Read it the same way as gravity_information_share: the balance between
+     *  gray levels and metres is set by the patch count, the image gradient
+     *  and the lever arms, none of which are readable from sigma alone.
+     */
+    double visual_information_share = -1.0;
+
+    /** Patches that contributed to the last iteration, and those discarded
+     *  there as out of frame, behind the camera, or too dissimilar. */
+    uint32_t visual_patches_used     = 0;
+    uint32_t visual_patches_rejected = 0;
 };
 
 /** @} */

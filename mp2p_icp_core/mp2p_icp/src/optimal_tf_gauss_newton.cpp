@@ -33,6 +33,8 @@
 #include <limits>
 #include <memory>
 
+#include "visual_patch_terms.h"
+
 #if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_reduce.h>
@@ -683,6 +685,31 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             const Eigen::Matrix<double, 3, 6> Ji = J1.asEigen() * dDexpe_de.asEigen();
             g.noalias() += weight * Ji.transpose() * err_i;
             H.noalias() += weight * Ji.transpose() * Ji;
+        }
+
+        // Photometric ("virtual patch") term: patches anchored to map points,
+        // scored against the current image. It is an observation OF THE MAP,
+        // so it is accumulated with the pairings and counted as measurement
+        // information below, not as a prior.
+        if (gnParams.visualPatches && !gnParams.visualPatches->patches.empty())
+        {
+            Eigen::Matrix<double, 6, 6> H_v = Eigen::Matrix<double, 6, 6>::Zero();
+            Eigen::Matrix<double, 6, 1> g_v = Eigen::Matrix<double, 6, 1>::Zero();
+
+            const auto vs =
+                accumulate_visual_patches(*gnParams.visualPatches, result.optimalPose, H_v, g_v);
+
+            // What the camera actually supplied against everything the pairs
+            // did, in the one comparable unit: the share of the information.
+            const double trPairs            = H.trace();
+            const double trVis              = H_v.trace();
+            result.visual_information_share = trVis / std::max(1e-30, trPairs + trVis);
+            result.visual_patches_used      = static_cast<uint32_t>(vs.used);
+            result.visual_patches_rejected  = static_cast<uint32_t>(vs.rejected);
+
+            H.noalias() += H_v;
+            g.noalias() += g_v;
+            errNormSqr += vs.chi2;
         }
 
         // Kept for the optional H-spectrum diagnostic only: how much of the

@@ -55,6 +55,13 @@ struct Results
      *  sigma alone, and this is the only place it can be read off. */
     double gravity_information_share = -1.0;
 
+    /** Share of the final total information supplied by the photometric patch
+     *  term, in [0,1]; <0 when none was given, plus how many patches the last
+     *  iteration used and discarded. See OptimalTF_Result. */
+    double   visual_information_share = -1.0;
+    uint32_t visual_patches_used      = 0;
+    uint32_t visual_patches_rejected  = 0;
+
     void serializeTo(mrpt::serialization::CArchive& out) const;
     void serializeFrom(mrpt::serialization::CArchive& in);
 

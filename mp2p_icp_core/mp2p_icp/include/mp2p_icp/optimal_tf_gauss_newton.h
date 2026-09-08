@@ -24,6 +24,7 @@
 #include <mp2p_icp/OptimalTF_Result.h>
 #include <mp2p_icp/PairWeights.h>
 #include <mp2p_icp/Pairings.h>
+#include <mp2p_icp/VisualPatches.h>
 #include <mp2p_icp/robust_kernels.h>
 #include <mrpt/poses/CPose3DPDFGaussianInf.h>
 
@@ -60,6 +61,17 @@ struct OptimalTF_GN_Parameters
      *  at every Gauss-Newton iteration (unlike a fixed `prior` information).
      */
     std::optional<GravityPrior> gravityPrior;
+
+    /** Optional photometric ("virtual patch") observation: image patches
+     *  anchored to map points, scored against one current image. Held by
+     *  pointer because it owns an image, and the same term is reused across
+     *  every ICP iteration of a scan.
+     *
+     *  Like the gravity term, its linearization depends on the current
+     *  iterate and is therefore rebuilt at every Gauss-Newton iteration; but
+     *  unlike it, this is measurement information, not a prior.
+     */
+    std::shared_ptr<const VisualPatchTerm> visualPatches;
 
     /** Minimum SE(3) change to stop iterating. */
     double minDelta = 1e-7;

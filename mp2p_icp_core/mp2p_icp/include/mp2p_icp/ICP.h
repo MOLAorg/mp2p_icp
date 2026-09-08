@@ -66,6 +66,9 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      * preprocessed to extract features, etc.) and returns the relative pose of
      * pcLocal with respect to pcGlobal.
      *
+     * \param visualPatches Optional photometric observation of the global map:
+     *        image patches anchored to map points, scored against one current
+     *        image. See mp2p_icp::VisualPatchTerm.
      * \param gravityPrior Optional gravity ("verticality") observation. Unlike
      *        `prior`, it constrains only the two tilt DOFs and leaves rotation
      *        about gravity (yaw) and all translations free. See
@@ -76,7 +79,8 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
         const mrpt::math::TPose3D& initialGuessLocalWrtGlobal, const Parameters& p, Results& result,
         const std::optional<mrpt::poses::CPose3DPDFGaussianInf>& prior           = std::nullopt,
         const mrpt::optional_ref<LogRecord>&                     outputDebugInfo = std::nullopt,
-        const std::optional<GravityPrior>&                       gravityPrior    = std::nullopt);
+        const std::optional<GravityPrior>&                       gravityPrior    = std::nullopt,
+        const std::shared_ptr<const VisualPatchTerm>&            visualPatches   = {});
 
     /** @name Module: Solver instances
      * @{ */

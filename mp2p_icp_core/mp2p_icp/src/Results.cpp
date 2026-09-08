@@ -20,7 +20,8 @@
 using namespace mp2p_icp;
 
 // v1: added gravity_information_share
-static const uint8_t SERIALIZATION_VERSION = 1;
+// v2: added the photometric patch term's share and patch counts
+static const uint8_t SERIALIZATION_VERSION = 2;
 
 void Results::serializeTo(mrpt::serialization::CArchive& out) const
 {
@@ -30,6 +31,7 @@ void Results::serializeTo(mrpt::serialization::CArchive& out) const
     out << quality;
     finalPairings.serializeTo(out);
     out << gravity_information_share;  // v1
+    out << visual_information_share << visual_patches_used << visual_patches_rejected;  // v2
 }
 void Results::serializeFrom(mrpt::serialization::CArchive& in)
 {
@@ -48,6 +50,14 @@ void Results::serializeFrom(mrpt::serialization::CArchive& in)
     if (readVersion >= 1)
     {
         in >> gravity_information_share;
+    }
+
+    visual_information_share = -1.0;
+    visual_patches_used      = 0;
+    visual_patches_rejected  = 0;
+    if (readVersion >= 2)
+    {
+        in >> visual_information_share >> visual_patches_used >> visual_patches_rejected;
     }
 }
 
