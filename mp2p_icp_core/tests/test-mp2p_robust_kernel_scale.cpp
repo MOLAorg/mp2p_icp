@@ -20,6 +20,7 @@
  */
 
 #include <mp2p_icp/Solver_GaussNewton.h>
+#include <mp2p_icp/robust_kernels.h>
 #include <mrpt/poses/Lie/SE.h>
 
 #include <cmath>
@@ -156,12 +157,57 @@ void test_kernel_threshold_is_in_sigmas()
     // answer, so this is the assertion that actually fails on a regression.
     ASSERT_GT_(eLoose, 10.0 * std::max(eTight, 1e-3));
 }
+
+/** The kernel parameter is a scale in the same units as the residual it is
+ *  compared against, so the weight can only depend on the normalized residual
+ *  x/c, and must be 1 at x=0 so that the kernel does not rescale its block
+ *  against the terms that carry no kernel (the pose prior, the gravity one).
+ *
+ *  This is what a parameter entering the formula unsquared breaks: the weight
+ *  then depends on x/sqrt(c), i.e. the shipped 6.0 acts as a 2.45 one, and no
+ *  amount of retuning that number makes the shape scale-free again.
+ */
+void test_kernel_shape_is_a_function_of_the_normalized_residual()
+{
+    using mrpt::square;
+
+    for (const auto kernel : {mp2p_icp::RobustKernel::GemanMcClure, mp2p_icp::RobustKernel::Cauchy})
+    {
+        const auto w1 = mp2p_icp::create_robust_kernel(kernel, 1.0);
+        const auto w3 = mp2p_icp::create_robust_kernel(kernel, 3.0);
+
+        ASSERT_NEAR_(w1(0.0), 1.0, 1e-12);
+        ASSERT_NEAR_(w3(0.0), 1.0, 1e-12);
+
+        for (double r = 0.25; r <= 4.0; r += 0.25)
+        {
+            // Equal normalized residuals r=x/c must get equal weights:
+            ASSERT_NEAR_(w1(square(r)), w3(square(3.0 * r)), 1e-12);
+        }
+    }
+
+    // And the two shapes are one the square of the other, so a residual at
+    // exactly one "sigma" keeps half of its information under Cauchy and a
+    // quarter of it under Geman-McClure:
+    const double c  = 2.0;
+    const auto   gm = mp2p_icp::create_robust_kernel(mp2p_icp::RobustKernel::GemanMcClure, c);
+    const auto   ca = mp2p_icp::create_robust_kernel(mp2p_icp::RobustKernel::Cauchy, c);
+
+    ASSERT_NEAR_(ca(square(c)), 0.5, 1e-12);
+    ASSERT_NEAR_(gm(square(c)), 0.25, 1e-12);
+
+    for (double x = 0.0; x <= 10.0; x += 0.5)
+    {
+        ASSERT_NEAR_(gm(square(x)), square(ca(square(x))), 1e-12);
+    }
+}
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
     {
+        test_kernel_shape_is_a_function_of_the_normalized_residual();
         test_weight_alone_does_not_move_the_solution();
         test_kernel_threshold_is_in_sigmas();
     }
