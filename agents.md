@@ -155,6 +155,36 @@ Exports WGS-84 lon/lat/alt with EPSG:4979 WKT2 CRS embedded as VLR.
 
 ---
 
+## GUI apps: Dear ImGui port (in progress)
+
+`mm-viewer` and `icp-log-viewer` (`mp2p_icp_viz`) are being migrated from `mrpt::gui::CDisplayWindowGUI`
++ nanogui to Dear ImGui (docking branch). The phased plan/status is tracked outside this repository
+by the maintainer.
+
+- Dear ImGui is vendored **once** as a git submodule at `mp2p_icp_viz/3rdparty/imgui` (docking
+  branch), built as a private static lib (`mp2p_icp_viz/3rdparty/imgui_static/`, target
+  `imgui::imgui`) that is never installed/exported — an internal build detail only, baked
+  statically into the app binaries.
+- Both apps share `mp2p_icp_viz/apps/imgui_app_common/`: `ImGuiAppShell` (GLFW window/GL
+  context/docking main-loop boilerplate, with a `setupDefaultLayout` hook so each app defines its
+  own default panel arrangement) and `SimpleFileDialog` (self-contained ImGui file browser for
+  Open/Export, no native/system dialog dependency).
+- 3D rendering goes through `mrpt::imgui::CImGuiSceneView` (part of `mrpt_imgui`, available since
+  MRPT &ge; 2.15.11), which renders an `mrpt::opengl::Scene` into an ImGui panel with built-in
+  orbit/pan/zoom. `mm-viewer`/`icp-log-viewer` include it unconditionally, so this is a hard
+  minimum for `mp2p_icp_viz` (higher than the `mp2p_icp_core` minimum above).
+
+**Known limitation, kept in the code on purpose:** the small axis-corner gizmo mini-viewports
+(`FIRST_MINI_VIEW_NAME`/`SECOND_MINI_VIEW_NAME` in `mm-viewer/main.cpp`, `MINI_VIEW_NAME` in
+`icp-log-viewer/main.cpp`) are still created and kept in sync with the main camera every frame in
+both apps, but are **not currently visible**: under MRPT 2.x, `CImGuiSceneView::render()` only
+renders the scene's `"main"` viewport, not extra named ones. This project plans to move to MRPT
+3.x soon, which is expected to support rendering
+arbitrary named viewports through the same mechanism — at that point this code should start working
+again unmodified. Do not remove it as dead code in the meantime.
+
+---
+
 ## ICP pipeline
 
 ```
@@ -376,3 +406,11 @@ Tests use gtest. Each filter, matcher, solver, and serializer has its own test f
 
 - `mola_state_estimation/mola_georeferencing` — `mola-mm-add-geodetic` tool that adds per-point lat/lon/alt double fields to .mm layers (prerequisite for mm2las geodetic fast path)
 - `mola_lidar_odometry` — primary consumer of mp2p_icp for real-time SLAM
+
+---
+
+
+## MRPT3 to-do
+
+Once this package is ported to mrpt3, remove the dependency on glut / freeglut3-dev
+and remove this agents.md section entirely.

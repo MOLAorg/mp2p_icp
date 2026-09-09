@@ -2,6 +2,30 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.14.0 (2026-09-05)
+-------------------
+* Point matchers (Matcher_Points_DistanceThreshold, Matcher_Points_Blend):
+  fixed a nondeterministic pairing order caused by parallel reduction depending
+  on TBB thread scheduling; the correspondence list is now a function of the
+  input alone, regardless of thread count.
+* Solver_GaussNewton: the robust kernel now receives a whitened residual (using
+  the existing pair weight as the whitening factor) instead of a raw metric or
+  Mahalanobis norm, so `robustKernelParam` means the same number of sigmas for
+  every pair type. Bit-identical for pipelines using default weights.
+* GravityPrior: report the fraction of the final rotational information the
+  prior actually contributed, via new `gravity_information_share` field in
+  `OptimalTF_Result` and `Results` (negative when no prior was given); this
+  value is now also persisted across serialization (`Results` format v1) and
+  reset at the start of each solve.
+* New FilterPlanePatches: extracts large planar patches (equation, centroid,
+  area, point count) into `metric_map_t::planes`, complementing
+  FilterEdgesPlanes' per-point labeling. Deterministic greedy extraction seeded
+  by per-point normals. `metric_map_t` serialization goes to v6.
+* FilterVoxelReduction: made the downsampling order-independent (selection no
+  longer depends on input point order) and tightened bounds on `range_min` and
+  `normal_agreement_deg`.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.13.1 (2026-08-25)
 -------------------
 * Merge pull request `#94 <https://github.com/MOLAorg/mp2p_icp/issues/94>`_ from MOLAorg/feat/mm-filter-generators-create-layer

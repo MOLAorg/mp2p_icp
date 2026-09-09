@@ -72,8 +72,13 @@ struct OptimalTF_GN_Parameters
     /** Maximum number of iterations trying to solve for the optimal pose */
     uint32_t maxInnerLoopIterations = 6;
 
-    RobustKernel kernel      = RobustKernel::None;
-    double       kernelParam = 1.0;
+    RobustKernel kernel = RobustKernel::None;
+
+    /** Robust kernel scale: the residual size at which down-weighting sets in,
+     *  in the units of the (whitened) residual the kernel sees, i.e. in sigmas.
+     *  Renamed from the former `kernelParam`, which named the same quantity
+     *  squared. */
+    double kernelScale = 1.0;
 
     /** Reference used to evaluate the residual that feeds the robust kernel,
      *  blended between the current linearization point (β=0) and the residual

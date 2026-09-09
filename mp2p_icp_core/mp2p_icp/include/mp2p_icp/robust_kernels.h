@@ -45,8 +45,16 @@ enum class RobustKernel : uint8_t
 using robust_sqrt_weight_func_t = std::function<double(double /*errSqr*/)>;
 
 /**
- * Creates a functor with the sqrt of the weight function of a given
- * kernel, or an empty functor if non-robust kernel is selected.
+ * Creates a functor with the IRLS weight function w(x)=ρ'(x)/x of a given
+ * kernel, or an empty functor if non-robust kernel is selected. Callers
+ * multiply their per-factor information (not their residual) by it, hence the
+ * weight itself and not its square root, despite the historical type name.
+ *
+ * All kernels here are normalized to w(0)=1, so the kernel does not rescale a
+ * block with respect to terms that are not kernel-weighted (e.g. a pose
+ * prior), and `kernelParam` is the residual scale at which down-weighting sets
+ * in: it is given, and read here, in plain residual units, even though the
+ * functor takes the SQUARED residual as its argument.
  *
  * Implemented as `inline` to try to make the compiler to optimize.
  *
@@ -67,20 +75,22 @@ inline robust_sqrt_weight_func_t create_robust_kernel(
 
         case RobustKernel::GemanMcClure:
             /**
-             * We must return the sqrt of the weight function:
+             * We must return the weight function:
              *
-             *   sqrt(w(x))=( ∂ρ(x)/∂x )/x = c²/(e²+c)²
+             *   w(x)=( ∂ρ(x)/∂x )/x = ( c²/(c²+x²) )²
              *
-             * with the loss function ρ(x) = (x²/2)/(c²+x²)
+             * with the loss function ρ(x) = (c²/2)·x²/(c²+x²),
+             * i.e. the Cauchy weight squared, and w(0)=1 as for every other
+             * kernel here.
              */
-            return [kernelParamSqr, kernelParam](double errorSqr) -> double
-            { return (kernelParamSqr) / mrpt::square(errorSqr + kernelParam); };
+            return [kernelParamSqr](double errorSqr) -> double
+            { return mrpt::square(kernelParamSqr / (errorSqr + kernelParamSqr)); };
 
         case RobustKernel::Cauchy:
             /**
-             * We must return the sqrt of the weight function:
+             * We must return the weight function:
              *
-             *   sqrt(w(x))=( ∂ρ(x)/∂x )/x = c²/(e²+c²)
+             *   w(x)=( ∂ρ(x)/∂x )/x = c²/(x²+c²)
              *
              * with the loss function ρ(x) = 0.5 c² log(1+x²/c²)
              *

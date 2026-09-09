@@ -20,6 +20,7 @@
  */
 
 #include <mp2p_icp/Solver_GaussNewton.h>
+#include <mp2p_icp/robust_kernels.h>
 #include <mrpt/poses/Lie/SE.h>
 
 #include <cmath>
@@ -88,7 +89,7 @@ double solve_z_error(double pt2plWeight, size_t nOutliers)
     mrpt::containers::yaml params;
     params["maxIterations"]     = 25;
     params["robustKernel"]      = "RobustKernel::GemanMcClure";
-    params["robustKernelParam"] = 3.0;
+    params["robustKernelScale"] = 3.0;
 
     mrpt::containers::yaml w;
     w["pt2pt"]             = 1.0;
@@ -156,14 +157,107 @@ void test_kernel_threshold_is_in_sigmas()
     // answer, so this is the assertion that actually fails on a regression.
     ASSERT_GT_(eLoose, 10.0 * std::max(eTight, 1e-3));
 }
+
+/** The kernel parameter is a scale in the same units as the residual it is
+ *  compared against, so the weight can only depend on the normalized residual
+ *  x/c, and must be 1 at x=0 so that the kernel does not rescale its block
+ *  against the terms that carry no kernel (the pose prior, the gravity one).
+ *
+ *  This is what a parameter entering the formula unsquared breaks: the weight
+ *  then depends on x/sqrt(c), i.e. the shipped 6.0 acts as a 2.45 one, and no
+ *  amount of retuning that number makes the shape scale-free again.
+ */
+void test_kernel_shape_is_a_function_of_the_normalized_residual()
+{
+    using mrpt::square;
+
+    for (const auto kernel : {mp2p_icp::RobustKernel::GemanMcClure, mp2p_icp::RobustKernel::Cauchy})
+    {
+        const auto w1 = mp2p_icp::create_robust_kernel(kernel, 1.0);
+        const auto w3 = mp2p_icp::create_robust_kernel(kernel, 3.0);
+
+        ASSERT_NEAR_(w1(0.0), 1.0, 1e-12);
+        ASSERT_NEAR_(w3(0.0), 1.0, 1e-12);
+
+        for (double r = 0.25; r <= 4.0; r += 0.25)
+        {
+            // Equal normalized residuals r=x/c must get equal weights:
+            ASSERT_NEAR_(w1(square(r)), w3(square(3.0 * r)), 1e-12);
+        }
+    }
+
+    // And the two shapes are one the square of the other, so a residual at
+    // exactly one "sigma" keeps half of its information under Cauchy and a
+    // quarter of it under Geman-McClure:
+    const double c  = 2.0;
+    const auto   gm = mp2p_icp::create_robust_kernel(mp2p_icp::RobustKernel::GemanMcClure, c);
+    const auto   ca = mp2p_icp::create_robust_kernel(mp2p_icp::RobustKernel::Cauchy, c);
+
+    ASSERT_NEAR_(ca(square(c)), 0.5, 1e-12);
+    ASSERT_NEAR_(gm(square(c)), 0.25, 1e-12);
+
+    for (double x = 0.0; x <= 10.0; x += 0.5)
+    {
+        ASSERT_NEAR_(gm(square(x)), square(ca(square(x))), 1e-12);
+    }
+}
+/** A pipeline written against the old key must keep the kernel it had. The
+ *  conversion is checked on the loaded parameter and not on a solution: this
+ *  problem is deliberately outlier-dominated, and its solve does not repeat to
+ *  more than three digits.
+ */
+void test_deprecated_kernel_key_is_converted()
+{
+    const auto load = [](const char* key, double value)
+    {
+        mp2p_icp::Solver_GaussNewton solver;
+
+        mrpt::containers::yaml params;
+        params["maxIterations"] = 10;
+        params["robustKernel"]  = "RobustKernel::GemanMcClure";
+        params[key]             = value;
+        solver.initialize(params);
+        return solver.robustKernelScale;
+    };
+
+    // The old key named the square of the new one:
+    ASSERT_NEAR_(load("robustKernelParam", 9.0), 3.0, 1e-12);
+    ASSERT_NEAR_(load("robustKernelScale", 3.0), 3.0, 1e-12);
+
+    // A formula-valued legacy entry is converted as a formula, not as a value:
+    ASSERT_NEAR_(load("robustKernelParam", 0.25), 0.5, 1e-12);
+
+    // Naming both is ambiguous, and silently picking one would be the very
+    // mistake this rename exists to prevent:
+    bool didThrow = false;
+    try
+    {
+        mp2p_icp::Solver_GaussNewton solver;
+
+        mrpt::containers::yaml params;
+        params["maxIterations"]     = 10;
+        params["robustKernel"]      = "RobustKernel::GemanMcClure";
+        params["robustKernelParam"] = 9.0;
+        params["robustKernelScale"] = 3.0;
+        solver.initialize(params);
+    }
+    catch (const std::exception&)
+    {
+        didThrow = true;
+    }
+    ASSERT_(didThrow);
+}
+
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
     {
+        test_kernel_shape_is_a_function_of_the_normalized_residual();
         test_weight_alone_does_not_move_the_solution();
         test_kernel_threshold_is_in_sigmas();
+        test_deprecated_kernel_key_is_converted();
     }
     catch (std::exception& e)
     {

@@ -22,16 +22,19 @@
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/optional_serialization.h>
 
+#include <cmath>
+#include <iostream>
+
 IMPLEMENTS_MRPT_OBJECT(WeightParameters, mrpt::serialization::CSerializable, mp2p_icp)
 
 using namespace mp2p_icp;
 
 // Implementation of the CSerializable virtual interface:
-uint8_t WeightParameters::serializeGetVersion() const { return 1; }
+uint8_t WeightParameters::serializeGetVersion() const { return 2; }
 void    WeightParameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << use_scale_outlier_detector << scale_outlier_threshold << robust_kernel
-        << currentEstimateForRobust << robust_kernel_param;
+        << currentEstimateForRobust << robust_kernel_scale;
 
     pair_weights.serializeTo(out);
 }
@@ -41,6 +44,7 @@ void WeightParameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t 
     {
         case 0:
         case 1:
+        case 2:
         {
             in >> use_scale_outlier_detector >> scale_outlier_threshold;
 
@@ -54,7 +58,20 @@ void WeightParameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t 
                 in >> robust_kernel;
             }
 
-            in >> currentEstimateForRobust >> robust_kernel_param;
+            in >> currentEstimateForRobust;
+
+            if (version < 2)
+            {
+                // Stored before the kernel parameter entered the weight
+                // squared, so it means the square of today's scale:
+                double legacyKernelParam = 1.0;
+                in >> legacyKernelParam;
+                robust_kernel_scale = std::sqrt(legacyKernelParam);
+            }
+            else
+            {
+                in >> robust_kernel_scale;
+            }
 
             if (version < 1)
             {
@@ -75,7 +92,26 @@ void WeightParameters::load_from(const mrpt::containers::yaml& p)
     MCP_LOAD_OPT(p, scale_outlier_threshold);
 
     MCP_LOAD_REQ(p, robust_kernel);
-    MCP_LOAD_OPT(p, robust_kernel_param);
+
+    // See the note in WeightParameters.h: the former key names this same
+    // quantity squared, so a file written for either one is read with the
+    // meaning it was written for.
+    if (p.has("robust_kernel_param"))
+    {
+        ASSERTMSG_(
+            !p.has("robust_kernel_scale"),
+            "Give either `robust_kernel_scale` or the deprecated `robust_kernel_param`, not both");
+
+        std::cerr << "[mp2p_icp::WeightParameters] Warning: `robust_kernel_param` is deprecated: "
+                     "use `robust_kernel_scale`, whose value is the square root of the old one. "
+                     "Converting it for now.\n";
+
+        robust_kernel_scale = std::sqrt(p["robust_kernel_param"].as<double>());
+    }
+    else
+    {
+        MCP_LOAD_OPT(p, robust_kernel_scale);
+    }
 
     if (p.has("pair_weights"))
     {
@@ -87,7 +123,7 @@ void WeightParameters::save_to(mrpt::containers::yaml& p) const
     MCP_SAVE(p, use_scale_outlier_detector);
     MCP_SAVE(p, scale_outlier_threshold);
     MCP_SAVE(p, robust_kernel);
-    MCP_SAVE(p, robust_kernel_param);
+    MCP_SAVE(p, robust_kernel_scale);
 
     mrpt::containers::yaml a = mrpt::containers::yaml::Map();
     pair_weights.save_to(a);

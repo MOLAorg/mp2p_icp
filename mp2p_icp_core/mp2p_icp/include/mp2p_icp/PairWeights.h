@@ -41,7 +41,7 @@ namespace mp2p_icp
  *   type, and the ABSOLUTE scale matters, not just the ratios.
  *
  * The whitening is what puts every residual type on one scale before the robust
- * kernel compares it against `robustKernelParam`. Cov-to-cov pairings need no
+ * kernel compares it against `robustKernelScale`. Cov-to-cov pairings need no
  * weight for this: their residual is a Mahalanobis norm and is already whitened.
  *
  * This all becomes load-bearing when one ICP pipeline mixes pair types. A metric
