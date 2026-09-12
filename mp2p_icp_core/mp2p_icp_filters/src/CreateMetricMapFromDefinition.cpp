@@ -90,6 +90,6 @@ mrpt::maps::CMetricMap::Ptr mp2p_icp_filters::CreateMetricMapFromDefinition(
     mrpt::maps::CMultiMetricMap theMap;
     theMap.setListOfMaps(mapInits);
 
-    ASSERT_(theMap.maps.size() >= 1);
-    return theMap.maps.at(0);
+    ASSERT_(theMap.mapsList().size() >= 1);
+    return theMap.mapsList().at(0);
 }
