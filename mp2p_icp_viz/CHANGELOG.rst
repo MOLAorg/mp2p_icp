@@ -2,6 +2,11 @@
 Changelog for package mp2p_icp_viz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Port mm-viewer and icp-log-viewer from nanogui to Dear ImGui (`#79 <https://github.com/MOLAorg/mp2p_icp/issues/79>`_)
+* Contributors: Jose Luis Blanco-Claraco
+
 2.14.0 (2026-09-05)
 -------------------
 
