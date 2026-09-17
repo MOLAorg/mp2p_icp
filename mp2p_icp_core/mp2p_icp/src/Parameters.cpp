@@ -27,7 +27,7 @@ const bool MP2P_ICP_GENERATE_DEBUG_FILES =
     mrpt::get_env<bool>("MP2P_ICP_GENERATE_DEBUG_FILES", false);
 
 // Implementation of the CSerializable virtual interface:
-uint8_t Parameters::serializeGetVersion() const { return 3; }
+uint8_t Parameters::serializeGetVersion() const { return 4; }
 void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << maxIterations << minAbsStep_trans << minAbsStep_rot;
@@ -39,6 +39,7 @@ void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
     out << covMethod << covariance_params.defaultPointSigma << covariance_params.floor_sigma_xyz
         << covariance_params.floor_sigma_angles << covariance_params.finDif_xyz
         << covariance_params.finDif_angles;  // v3
+    out << freezePairingsAfterIteration;  // v4
 }
 void Parameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version)
 {
@@ -50,6 +51,7 @@ void Parameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t versio
         case 1:
         case 2:
         case 3:
+        case 4:
         {
             in >> maxIterations >> minAbsStep_trans >> minAbsStep_rot;
             in >> generateDebugFiles >> debugFileNameFormat;
@@ -69,6 +71,10 @@ void Parameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t versio
                     covariance_params.floor_sigma_xyz >> covariance_params.floor_sigma_angles >>
                     covariance_params.finDif_xyz >> covariance_params.finDif_angles;
                 covariance_params.method = static_cast<CovarianceParameters::Method>(covMethod);
+            }
+            if (version >= 4)
+            {
+                in >> freezePairingsAfterIteration;
             }
         }
         break;
