@@ -94,6 +94,22 @@ add_subdirectory(mp2p_icp)
 # Basic filters library:
 add_subdirectory(mp2p_icp_filters)
 
+# mola_common's mola_set_target_build_options() unconditionally appends
+# "-O3" to every target when CMAKE_BUILD_TYPE is not "Debug", including
+# "Coverage". Since that flag is added after CMAKE_CXX_FLAGS_COVERAGE's
+# "-O0" on the compiler command line, and gcc honors the last "-O" flag it
+# sees, coverage builds would otherwise silently compile at "-O3", which
+# makes gcov line counts unreliable (inlining, dead-code elimination and
+# identical-code-folding merge or drop basic blocks). Force "-O0" back on
+# our own libraries here, after mola_add_library() has already run.
+if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  foreach(_mp2p_icp_cov_target mp2p_icp_common mp2p_icp_map mp2p_icp mp2p_icp_filters)
+    if(TARGET ${_mp2p_icp_cov_target})
+      target_compile_options(${_mp2p_icp_cov_target} PRIVATE -O0)
+    endif()
+  endforeach()
+endif()
+
 # -----------------------
 # define tests:
 # -----------------------

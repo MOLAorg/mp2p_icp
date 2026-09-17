@@ -340,6 +340,15 @@ colcon build --packages-select mp2p_icp_viz
 
 SIMD-optimized translation units are compiled separately with `-mavx` / `-msse2`.
 
+### Coverage build (`-DCMAKE_BUILD_TYPE=Coverage`)
+
+`mola_common`'s `mola_set_target_build_options()` unconditionally appends `-O3` to every
+target when the build type isn't `Debug`, which would otherwise silently override the
+`-O0` from `CMAKE_CXX_FLAGS_COVERAGE` (gcc honors the last `-O` flag on the command
+line) and make gcov's line counts unreliable. `mp2p_icp_core/CMakeLists.txt` re-forces
+`-O0` on `mp2p_icp_common`/`mp2p_icp_map`/`mp2p_icp`/`mp2p_icp_filters` right after their
+`add_subdirectory()` calls to counter this.
+
 ---
 
 ## Dependencies
