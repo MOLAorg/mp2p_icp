@@ -18,10 +18,13 @@
  * @author Jose Luis Blanco Claraco
  */
 
+#include <mp2p_icp/GravityPrior.h>
 #include <mp2p_icp/optimal_tf_gauss_newton.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/io/CMemoryStream.h>
 #include <mrpt/math/wrap2pi.h>
 #include <mrpt/poses/CPose3D.h>
+#include <mrpt/serialization/CArchive.h>
 #include <mrpt/tfest/TMatchingPair.h>
 
 #include <algorithm>
@@ -202,6 +205,60 @@ static void test_non_level_map_frame()
     ASSERT_LT_(angErr, 0.2);
 }
 
+/** Round trip a GravityPrior through a CArchive, as done when a
+ *  `.icplog` file records the verticality observation actually handed to the
+ *  solver (see mrpt::serialization::operator<</>> in GravityPrior.cpp). */
+static void test_serialization_round_trip()
+{
+    mp2p_icp::GravityPrior original;
+    original.up_body   = {0.01, -0.02, 0.999};
+    original.up_map    = {0.0, 0.0, 1.0};
+    original.sigma_rad = 0.0234;
+
+    mrpt::io::CMemoryStream buf;
+    auto                    archOut = mrpt::serialization::archiveFrom(buf);
+    archOut << original;
+
+    buf.Seek(0);
+    auto                   archIn = mrpt::serialization::archiveFrom(buf);
+    mp2p_icp::GravityPrior restored;
+    archIn >> restored;
+
+    ASSERT_NEAR_(restored.up_body.x, original.up_body.x, 1e-9);
+    ASSERT_NEAR_(restored.up_body.y, original.up_body.y, 1e-9);
+    ASSERT_NEAR_(restored.up_body.z, original.up_body.z, 1e-9);
+    ASSERT_NEAR_(restored.up_map.x, original.up_map.x, 1e-9);
+    ASSERT_NEAR_(restored.up_map.y, original.up_map.y, 1e-9);
+    ASSERT_NEAR_(restored.up_map.z, original.up_map.z, 1e-9);
+    ASSERT_NEAR_(restored.sigma_rad, original.sigma_rad, 1e-9);
+}
+
+/** An unknown serialization version must be rejected, not silently
+ *  misread. */
+static void test_serialization_rejects_unknown_version()
+{
+    mrpt::io::CMemoryStream buf;
+    auto                    archOut = mrpt::serialization::archiveFrom(buf);
+    // Write a bogus version byte (the real format only defines version 0):
+    const uint8_t bogusVersion = 200;
+    archOut.WriteAs<uint8_t>(bogusVersion);
+
+    buf.Seek(0);
+    auto                   archIn = mrpt::serialization::archiveFrom(buf);
+    mp2p_icp::GravityPrior restored;
+
+    bool didThrow = false;
+    try
+    {
+        archIn >> restored;
+    }
+    catch (const std::exception&)
+    {
+        didThrow = true;
+    }
+    ASSERT_(didThrow);
+}
+
 int main(int, char**)
 {
     try
@@ -210,6 +267,8 @@ int main(int, char**)
         test_gravity_levels_the_solution();
         test_consistent_prior_is_inert();
         test_non_level_map_frame();
+        test_serialization_round_trip();
+        test_serialization_rejects_unknown_version();
         std::cout << "Test successful." << std::endl;
         return 0;
     }
