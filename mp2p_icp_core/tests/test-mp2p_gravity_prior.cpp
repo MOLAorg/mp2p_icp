@@ -211,8 +211,10 @@ static void test_non_level_map_frame()
 static void test_serialization_round_trip()
 {
     mp2p_icp::GravityPrior original;
-    original.up_body   = {0.01, -0.02, 0.999};
-    original.up_map    = {0.0, 0.0, 1.0};
+    original.up_body = {0.01, -0.02, 0.999};
+    // Deliberately different from GravityPrior's default {0,0,1}, so this
+    // test cannot pass merely because deserialization left up_map untouched:
+    original.up_map    = {0.3, -0.4, 0.5};
     original.sigma_rad = 0.0234;
 
     mrpt::io::CMemoryStream buf;
@@ -242,6 +244,13 @@ static void test_serialization_rejects_unknown_version()
     // Write a bogus version byte (the real format only defines version 0):
     const uint8_t bogusVersion = 200;
     archOut.WriteAs<uint8_t>(bogusVersion);
+    // ...followed by a complete, valid version-0 payload: if the version
+    // check were missing entirely (i.e. it fell through and mis-parsed
+    // bogusVersion as if it were version 0), the read below would still
+    // succeed instead of throwing, so this makes the test actually exercise
+    // the version check rather than merely hitting end-of-stream:
+    const mp2p_icp::GravityPrior payload;
+    archOut << payload.up_body << payload.up_map << payload.sigma_rad;
 
     buf.Seek(0);
     auto                   archIn = mrpt::serialization::archiveFrom(buf);
