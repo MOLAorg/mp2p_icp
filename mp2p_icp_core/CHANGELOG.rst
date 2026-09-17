@@ -2,6 +2,12 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.14.1 (2026-09-15)
+-------------------
+* Geman-McClure: square the kernel parameter, as its own derivation says (`#102 <https://github.com/MOLAorg/mp2p_icp/issues/102>`_)
+* Two optional, env-gated solver diagnostics: H spectrum and the Birge ratio (`#93 <https://github.com/MOLAorg/mp2p_icp/issues/93>`_)
+* Contributors: Jose Luis Blanco-Claraco
+
 2.14.0 (2026-09-05)
 -------------------
 * Point matchers (Matcher_Points_DistanceThreshold, Matcher_Points_Blend):
