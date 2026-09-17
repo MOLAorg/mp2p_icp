@@ -25,6 +25,8 @@
 #include <mrpt/math/CHistogram.h>  // CHistogram
 #include <mrpt/math/distributions.h>  // confidenceIntervalsFromHistogram()
 
+#include <limits>
+
 IMPLEMENTS_MRPT_OBJECT(Matcher_Adaptive, Matcher, mp2p_icp)
 
 using namespace mp2p_icp;
@@ -214,9 +216,11 @@ void Matcher_Adaptive::implMatchOneLayer(
     if (histMax <= histMin)
     {
         // A single distinct distance value (e.g. just one local point, or
-        // several tied at the same distance): CHistogram requires max>min,
-        // so widen the range by an amount irrelevant to the statistics.
-        histMax = histMin + 1e-9;
+        // several tied at the same distance): CHistogram requires max>min.
+        // A fixed epsilon would vanish under rounding for a large enough
+        // histMin (e.g. a large absoluteMaxSearchDistance), so step to the
+        // next representable double instead:
+        histMax = std::nextafter(histMin, std::numeric_limits<double>::infinity());
     }
     mrpt::math::CHistogram hist(histMin, histMax, 50);
 
