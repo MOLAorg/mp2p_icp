@@ -27,7 +27,7 @@ const bool MP2P_ICP_GENERATE_DEBUG_FILES =
     mrpt::get_env<bool>("MP2P_ICP_GENERATE_DEBUG_FILES", false);
 
 // Implementation of the CSerializable virtual interface:
-uint8_t Parameters::serializeGetVersion() const { return 3; }
+uint8_t Parameters::serializeGetVersion() const { return 4; }
 void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out << maxIterations << minAbsStep_trans << minAbsStep_rot;
@@ -39,6 +39,7 @@ void    Parameters::serializeTo(mrpt::serialization::CArchive& out) const
     out << covMethod << covariance_params.defaultPointSigma << covariance_params.floor_sigma_xyz
         << covariance_params.floor_sigma_angles << covariance_params.finDif_xyz
         << covariance_params.finDif_angles;  // v3
+    out << freezePairingsAfterIteration;  // v4
 }
 void Parameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t version)
 {
@@ -50,6 +51,7 @@ void Parameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t versio
         case 1:
         case 2:
         case 3:
+        case 4:
         {
             in >> maxIterations >> minAbsStep_trans >> minAbsStep_rot;
             in >> generateDebugFiles >> debugFileNameFormat;
@@ -70,6 +72,10 @@ void Parameters::serializeFrom(mrpt::serialization::CArchive& in, uint8_t versio
                     covariance_params.finDif_xyz >> covariance_params.finDif_angles;
                 covariance_params.method = static_cast<CovarianceParameters::Method>(covMethod);
             }
+            if (version >= 4)
+            {
+                in >> freezePairingsAfterIteration;
+            }
         }
         break;
         default:
@@ -84,6 +90,7 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
     MCP_LOAD_REQ(p, maxIterations);
     MCP_LOAD_OPT(p, minAbsStep_trans);
     MCP_LOAD_OPT(p, minAbsStep_rot);
+    MCP_LOAD_OPT(p, freezePairingsAfterIteration);
     MCP_LOAD_OPT(p, generateDebugFiles);
     MCP_LOAD_OPT(p, debugFileNameFormat);
     MCP_LOAD_OPT(p, debugPrintIterationProgress);
@@ -125,6 +132,7 @@ void Parameters::save_to(mrpt::containers::yaml& p) const
     MCP_SAVE(p, maxIterations);
     MCP_SAVE(p, minAbsStep_trans);
     MCP_SAVE(p, minAbsStep_rot);
+    MCP_SAVE(p, freezePairingsAfterIteration);
     MCP_SAVE(p, generateDebugFiles);
     MCP_SAVE(p, debugFileNameFormat);
     MCP_SAVE(p, debugPrintIterationProgress);

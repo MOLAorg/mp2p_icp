@@ -53,10 +53,11 @@ void test_LogRecord_IO()
         LogRecord log;
 
         // Populate standard fields
-        log.icpResult.nIterations       = 42;
-        log.icpResult.quality           = 0.95;
-        log.icpParameters.maxIterations = 100;
-        log.initialGuessLocalWrtGlobal  = mrpt::math::TPose3D(1, 2, 3, 0.1, 0.2, 0.3);
+        log.icpResult.nIterations                      = 42;
+        log.icpResult.quality                          = 0.95;
+        log.icpParameters.maxIterations                = 100;
+        log.icpParameters.freezePairingsAfterIteration = 3;
+        log.initialGuessLocalWrtGlobal = mrpt::math::TPose3D(1, 2, 3, 0.1, 0.2, 0.3);
 
         // Populate maps
         log.pcGlobal = create_dummy_map();
@@ -97,6 +98,7 @@ void test_LogRecord_IO()
         ASSERT_EQUAL_(log.icpResult.nIterations, 42ULL);
         ASSERT_NEAR_(log.icpResult.quality, 0.95, 1e-6);
         ASSERT_EQUAL_(log.icpParameters.maxIterations, 100U);
+        ASSERT_EQUAL_(log.icpParameters.freezePairingsAfterIteration, 3U);
         ASSERT_NEAR_(log.initialGuessLocalWrtGlobal.x, 1.0, 1e-6);
 
         // Verify Maps
