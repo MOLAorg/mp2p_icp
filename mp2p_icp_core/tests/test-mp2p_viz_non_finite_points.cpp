@@ -21,8 +21,9 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
-#include <mrpt/opengl/CPointCloud.h>
-#include <mrpt/opengl/CPointCloudColoured.h>
+#include <mrpt/viz/CPointCloud.h>
+#include <mrpt/viz/CPointCloudColoured.h>
+#include <mrpt/viz/CSetOfObjects.h>
 
 #include <cmath>
 #include <limits>
@@ -58,13 +59,13 @@ mrpt::maps::CSimplePointsMap::Ptr mapWithBlankSlots()
     return pts;
 }
 
-void checkAllPointsFinite(const mrpt::opengl::CSetOfObjects& o, size_t expectedCount)
+void checkAllPointsFinite(const mrpt::viz::CSetOfObjects& o, size_t expectedCount)
 {
     size_t totalPoints = 0;
 
     for (size_t ith = 0;; ith++)
     {
-        auto glPts = o.getByClass<mrpt::opengl::CPointCloudColoured>(ith);
+        auto glPts = o.getByClass<mrpt::viz::CPointCloudColoured>(ith);
         if (!glPts) break;
 
         for (size_t i = 0; i < glPts->size(); i++)
@@ -79,7 +80,7 @@ void checkAllPointsFinite(const mrpt::opengl::CSetOfObjects& o, size_t expectedC
 
     for (size_t ith = 0;; ith++)
     {
-        auto glPts = o.getByClass<mrpt::opengl::CPointCloud>(ith);
+        auto glPts = o.getByClass<mrpt::viz::CPointCloud>(ith);
         if (!glPts) break;
 
         for (size_t i = 0; i < glPts->size(); i++)
@@ -177,7 +178,7 @@ void test_keep_original_cloud_color_preserves_colors()
     size_t checked = 0;
     for (size_t ith = 0;; ith++)
     {
-        auto glPts = glObj->getByClass<mrpt::opengl::CPointCloud>(ith);
+        auto glPts = glObj->getByClass<mrpt::viz::CPointCloud>(ith);
         if (!glPts) break;
 
         for (size_t i = 0; i < glPts->size(); i++)
@@ -192,7 +193,7 @@ void test_keep_original_cloud_color_preserves_colors()
     }
     for (size_t ith = 0;; ith++)
     {
-        auto glPts = glObj->getByClass<mrpt::opengl::CPointCloudColoured>(ith);
+        auto glPts = glObj->getByClass<mrpt::viz::CPointCloudColoured>(ith);
         if (!glPts) break;
 
         for (size_t i = 0; i < glPts->size(); i++)

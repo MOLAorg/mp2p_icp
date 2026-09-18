@@ -19,12 +19,12 @@
  */
 
 #include <mp2p_icp/Pairings.h>
-#include <mrpt/opengl/CEllipsoid3D.h>
-#include <mrpt/opengl/CSetOfLines.h>
-#include <mrpt/opengl/CSetOfObjects.h>
-#include <mrpt/opengl/CTexturedPlane.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/serialization/stl_serialization.h>
+#include <mrpt/viz/CEllipsoid3D.h>
+#include <mrpt/viz/CSetOfLines.h>
+#include <mrpt/viz/CSetOfObjects.h>
+#include <mrpt/viz/CTexturedPlane.h>
 
 #include <iterator>  // std::make_move_iterator
 
@@ -206,10 +206,10 @@ std::string Pairings::contents_summary() const
 
 auto Pairings::get_visualization(
     const mrpt::poses::CPose3D& localWrtGlobal, const pairings_render_params_t& p) const
-    -> std::shared_ptr<mrpt::opengl::CSetOfObjects>
+    -> std::shared_ptr<mrpt::viz::CSetOfObjects>
 {
     MRPT_START
-    auto o = mrpt::opengl::CSetOfObjects::Create();
+    auto o = mrpt::viz::CSetOfObjects::Create();
 
     get_visualization_pt2pt(*o, localWrtGlobal, p.pt2pt);
     get_visualization_pt2pl(*o, localWrtGlobal, p.pt2pl);
@@ -221,7 +221,7 @@ auto Pairings::get_visualization(
 }
 
 void Pairings::get_visualization_pt2pt(
-    mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
+    mrpt::viz::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
     const render_params_pairings_pt2pt_t& p) const
 {
     if (!p.visible)
@@ -229,7 +229,7 @@ void Pairings::get_visualization_pt2pt(
         return;
     }
 
-    auto lns = mrpt::opengl::CSetOfLines::Create();
+    auto lns = mrpt::viz::CSetOfLines::Create();
     lns->setColor_u8(p.color);
 
     // this: global, other: local
@@ -243,7 +243,7 @@ void Pairings::get_visualization_pt2pt(
 }
 
 void Pairings::get_visualization_pt2pl(
-    mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
+    mrpt::viz::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
     const render_params_pairings_pt2pl_t& p) const
 {
     if (!p.visible)
@@ -251,7 +251,7 @@ void Pairings::get_visualization_pt2pl(
         return;
     }
 
-    auto lns = mrpt::opengl::CSetOfLines::Create();
+    auto lns = mrpt::viz::CSetOfLines::Create();
     lns->setColor_u8(p.segmentColor);
 
     const float L = 0.5f * static_cast<float>(p.planePatchSize);
@@ -268,7 +268,7 @@ void Pairings::get_visualization_pt2pl(
         lns->appendLine(ptLocalTf, globalPlanePose.translation());
 
         // plane patch:
-        auto glPlane = mrpt::opengl::CTexturedPlane::Create();
+        auto glPlane = mrpt::viz::CTexturedPlane::Create();
         glPlane->setPlaneCorners(-L, L, -L, L);
         glPlane->setColor_u8(p.planePatchColor);
 
@@ -281,7 +281,7 @@ void Pairings::get_visualization_pt2pl(
 }
 
 void Pairings::get_visualization_cov2cov(
-    mrpt::opengl::CSetOfObjects& o, [[]] const mrpt::poses::CPose3D& localWrtGlobal,
+    mrpt::viz::CSetOfObjects& o, [[]] const mrpt::poses::CPose3D& localWrtGlobal,
     const render_params_pairings_cov2cov_t& p) const
 {
     if (!p.visible)
@@ -289,7 +289,7 @@ void Pairings::get_visualization_cov2cov(
         return;
     }
 
-    auto lns = mrpt::opengl::CSetOfLines::Create();
+    auto lns = mrpt::viz::CSetOfLines::Create();
     lns->setColor_u8(p.segmentColor);
 
     std::size_t decimationCounter = 0;
@@ -311,7 +311,7 @@ void Pairings::get_visualization_cov2cov(
         // covariance:
         try
         {
-            auto glEllipse = mrpt::opengl::CEllipsoid3D::Create();
+            auto glEllipse = mrpt::viz::CEllipsoid3D::Create();
             glEllipse->setLocation(pair.global.x, pair.global.y, pair.global.z);
             auto cov = pair.cov_inv.inverse().cast_double();
             cov *= p.covScale;
@@ -332,7 +332,7 @@ void Pairings::get_visualization_cov2cov(
 }
 
 void Pairings::get_visualization_pt2ln(
-    mrpt::opengl::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
+    mrpt::viz::CSetOfObjects& o, const mrpt::poses::CPose3D& localWrtGlobal,
     const render_params_pairings_pt2ln_t& p) const
 {
     if (!p.visible)
@@ -340,10 +340,10 @@ void Pairings::get_visualization_pt2ln(
         return;
     }
 
-    auto pairingLines = mrpt::opengl::CSetOfLines::Create();
+    auto pairingLines = mrpt::viz::CSetOfLines::Create();
     pairingLines->setColor_u8(p.segmentColor);
 
-    auto globalLines = mrpt::opengl::CSetOfLines::Create();
+    auto globalLines = mrpt::viz::CSetOfLines::Create();
     globalLines->setColor_u8(p.lineColor);
 
     const double L = 0.5 * p.lineLength;

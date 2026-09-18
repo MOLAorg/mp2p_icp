@@ -184,7 +184,7 @@ void run_mm2grid()
         // verticalFlip=false  → row 0 == bottom of map (correct for ROS)
         // forceRGB=false      → grayscale, smaller file
         // tricolor=false      → full gray-scale gradient, not just 3 levels
-        grid.getAsImage(img, /*verticalFlip=*/false, /*forceRGB=*/false, /*tricolor=*/false);
+        grid.getAsImage(img, mrpt::maps::COccupancyGridMap2D::TGetAsImageParams{});
 
         std::cout << "[mm2grid] Saving PNG image to '" << pngFile << "'...\n";
         if (!img.saveToFile(pngFile))

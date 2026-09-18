@@ -9,5 +9,5 @@ mola_add_executable(
   LINK_LIBRARIES
     mp2p_icp_map
     CLI11::CLI11
-    mrpt::maps
+    mrpt::mrpt_maps
 )

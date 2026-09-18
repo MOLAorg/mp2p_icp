@@ -43,15 +43,16 @@ add_subdirectory(3rdparty)
 
 # find dependencies:
 # NOTE: "gui" is intentionally NOT requested here so this package (and
-# everything that depends on it) has no GUI/display dependency. mrpt::opengl,
-# mrpt::system and mrpt::expr remain available transitively via maps->obs
-# and tfest->poses->bayes->config.
-find_package(MRPT 2.15.4 REQUIRED COMPONENTS
-  containers
-  tfest
-  maps
-  topography
-)
+# everything that depends on it) has no GUI/display dependency. mrpt::mrpt_viz,
+# mrpt::mrpt_system and mrpt::mrpt_expr remain available transitively via
+# maps->obs and tfest->poses->bayes->config.
+find_package(mrpt_containers REQUIRED)
+find_package(mrpt_tfest REQUIRED)
+find_package(mrpt_maps REQUIRED)
+find_package(mrpt_topography REQUIRED)
+# MRPT 3.x no longer re-exports Eigen transitively from mrpt_math/mrpt_poses;
+# code including <Eigen/...> directly needs this itself.
+find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(Threads REQUIRED)
 find_package(TBB) # optional
 

@@ -88,15 +88,17 @@ mola_add_library(
   PUBLIC_LINK_LIBRARIES
     mola::mp2p_icp_map
     mola::mp2p_icp_common
-    mrpt::containers
-    mrpt::tfest
-    mrpt::maps
+    mrpt::mrpt_containers
+    mrpt::mrpt_tfest
+    mrpt::mrpt_maps
+    Eigen3::Eigen
   CMAKE_DEPENDENCIES
     mp2p_icp_map
     mp2p_icp_common
-    mrpt-containers
-    mrpt-maps
-    mrpt-tfest
+    mrpt_containers
+    mrpt_maps
+    mrpt_tfest
+    Eigen3
 )
 
 if (TBB_FOUND AND MP2PICP_USE_TBB)

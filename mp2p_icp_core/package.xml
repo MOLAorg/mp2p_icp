@@ -23,10 +23,16 @@
   <!-- Deps required by user code (they are in public headers or built as ROS (vs system) packages -->
   <depend>mola_common</depend>
 
-  <depend>mrpt_libbase</depend>
-  <depend>mrpt_libobs</depend>
-  <depend>mrpt_libposes</depend>
-  <depend>mrpt_libmaps</depend>
+  <depend>mrpt_containers</depend>
+  <depend>mrpt_rtti</depend>
+  <depend>mrpt_serialization</depend>
+  <depend>mrpt_system</depend>
+  <depend>mrpt_obs</depend>
+  <depend>mrpt_poses</depend>
+  <depend>mrpt_maps</depend>
+  <depend>mrpt_tfest</depend>
+  <depend>mrpt_topography</depend>
+  <depend>eigen</depend>
   <depend>cli11</depend>
 
   <depend>tbb</depend>  <!-- Required to exploit parallelization in many ICP algorithms -->

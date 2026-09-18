@@ -174,12 +174,12 @@ static mp2p_icp::metric_map_t::Ptr pc_from_rawlog(const mrpt::obs::CRawlog& r, c
     auto o = r.getAsGeneric(index);
     ASSERT_(o);
 
-    if (auto sf = std::dynamic_pointer_cast<mrpt::obs::CSensoryFrame>(o); sf)
+    if (auto sf = std::dynamic_pointer_cast<const mrpt::obs::CSensoryFrame>(o); sf)
     {
         // Sensory-frame format:
         mp2p_icp_filters::apply_generators(generators, *sf, *pc);
     }
-    else if (auto obs = std::dynamic_pointer_cast<mrpt::obs::CObservation>(o); obs)
+    else if (auto obs = std::dynamic_pointer_cast<const mrpt::obs::CObservation>(o); obs)
     {
         mp2p_icp_filters::apply_generators(generators, *obs, *pc);
     }

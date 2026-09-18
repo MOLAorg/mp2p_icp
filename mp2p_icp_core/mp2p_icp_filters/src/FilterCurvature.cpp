@@ -27,8 +27,8 @@
 
 #ifdef DEBUG_GL
 #include <mrpt/img/color_maps.h>
-#include <mrpt/opengl/CPointCloudColoured.h>
-#include <mrpt/opengl/Scene.h>
+#include <mrpt/viz/CPointCloudColoured.h>
+#include <mrpt/viz/Scene.h>
 #endif
 
 IMPLEMENTS_MRPT_OBJECT(FilterCurvature, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
@@ -164,9 +164,9 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     for (auto& r : idxPerRing) r.reserve(estimPtsPerRing);
 
 #ifdef DEBUG_GL
-    auto glPts = mrpt::opengl::CPointCloudColoured::Create();
+    auto glPts = mrpt::viz::CPointCloudColoured::Create();
     glPts->setPointSize(4.0f);
-    auto glRawPts = mrpt::opengl::CPointCloudColoured::Create();
+    auto glRawPts = mrpt::viz::CPointCloudColoured::Create();
     glRawPts->setPointSize(1.0f);
 #endif
 
@@ -204,8 +204,8 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
 
 #ifdef DEBUG_GL
     {
-        static int          iter = 0;
-        mrpt::opengl::Scene scene;
+        static int       iter = 0;
+        mrpt::viz::Scene scene;
         scene.insert(glRawPts);
         scene.insert(glPts);
         scene.saveToFile(mrpt::format("debug_curvature_%04i.3Dscene", iter++));

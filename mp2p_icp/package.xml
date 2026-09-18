@@ -6,7 +6,7 @@
      before this repo was split into mp2p_icp_core (headless libs + CLI
      apps) and mp2p_icp_viz (GUI apps). New consumers that only need the
      headless C++ libraries should depend on mp2p_icp_core directly to
-     avoid pulling in mrpt_libgui.
+     avoid pulling in mrpt_gui.
 -->
 <package format="3">
   <name>mp2p_icp</name>

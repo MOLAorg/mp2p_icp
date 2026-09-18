@@ -117,7 +117,7 @@ void Matcher_Cov2Cov::initialize(const mrpt::containers::yaml& params)
 
     if (params.has("layerMatches"))
     {
-        auto& p = params["layerMatches"];
+        const auto& p = params["layerMatches"];
 
         layer_matches.clear();
         ASSERT_(p.isSequence());
@@ -129,13 +129,13 @@ void Matcher_Cov2Cov::initialize(const mrpt::containers::yaml& params)
         for (const auto& entry : p.asSequence())
         {
             ASSERT_(entry.isMap());
-            const auto& em = entry.asMap();
+            const mrpt::containers::yaml em(entry);
 
-            ASSERT_(em.count("global"));
-            ASSERT_(em.count("local"));
+            ASSERT_(em.has("global"));
+            ASSERT_(em.has("local"));
 
-            const std::string globalLayer = em.at("global").as<std::string>();
-            const std::string localLayer  = em.at("local").as<std::string>();
+            const std::string globalLayer = em["global"].as<std::string>();
+            const std::string localLayer  = em["local"].as<std::string>();
 
             layer_matches.emplace_back(globalLayer, localLayer);
         }
