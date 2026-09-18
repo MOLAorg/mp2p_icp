@@ -16,6 +16,13 @@ endif()
 
 project(mp2p_icp_viz LANGUAGES CXX)
 
+# This package builds as a plain "cmake" build_type under colcon (not
+# ament_cmake or catkin), but colcon still passes these catkin-only
+# variables when invoked with --symlink-install. Consume them here to
+# silence the "Manually-specified variables were not used" CMake warning.
+set(_mp2p_icp_ignored_vars "${CATKIN_INSTALL_INTO_PREFIX_ROOT}" "${CATKIN_SYMLINK_INSTALL}")
+unset(_mp2p_icp_ignored_vars)
+
 find_package(mola_common REQUIRED)
 
 # The mp2p_icp (ICP algorithms) library, built by the sibling mp2p_icp_core

@@ -32,6 +32,13 @@ set(CMAKE_SHARED_LINKER_FLAGS_COVERAGE "--coverage" CACHE STRING "Linker flags f
 # Tell CMake we'll use C++ for use in its tests/flags
 project(mp2p_icp_core LANGUAGES CXX)
 
+# This package builds as a plain "cmake" build_type under colcon (not
+# ament_cmake or catkin), but colcon still passes these catkin-only
+# variables when invoked with --symlink-install. Consume them here to
+# silence the "Manually-specified variables were not used" CMake warning.
+set(_mp2p_icp_ignored_vars "${CATKIN_INSTALL_INTO_PREFIX_ROOT}" "${CATKIN_SYMLINK_INSTALL}")
+unset(_mp2p_icp_ignored_vars)
+
 # MOLA CMake scripts: "mola_xxx()"
 # NOTE: standalone (non-colcon) builds are not supported; mola_common is
 # expected to be provided by the ROS/colcon workspace, same as every other
