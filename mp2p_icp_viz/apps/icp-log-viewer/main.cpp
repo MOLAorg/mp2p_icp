@@ -266,7 +266,7 @@ void main_show_gui()
         std::cout << "Quality filter: kept " << filteredFiles.size() << " / " << files.size()
                   << " files." << std::endl;
 
-        if (files.empty())
+        if (filteredFiles.empty())
         {
             THROW_EXCEPTION_FMT(
                 "No log files passed --min-quality=%.03f. Lower the threshold or check input logs.",
@@ -630,7 +630,7 @@ void main_show_gui()
         pn->add<nanogui::Label>("Decimation:");
         slPairingsCov2CovDecimation = pn->add<nanogui::Slider>();
         slPairingsCov2CovDecimation->setRange({0.0f, 3.0f});
-        slPairingsCov2CovDecimation->setValue(500.0f);
+        slPairingsCov2CovDecimation->setValue(1.0f);
         slPairingsCov2CovDecimation->setCallback([&](float) { rebuild_3d_view_fast(); });
     }
 
