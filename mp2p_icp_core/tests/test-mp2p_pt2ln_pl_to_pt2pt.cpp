@@ -97,15 +97,20 @@ void test_relative_pose_is_applied()
     p.pt_local           = {0.0f, 0.0f, 0.0f};  // at the local origin
 
     SolverContext sc;
-    // Shift the local frame up by 10m in Z:
-    sc.guessRelativePose = mrpt::poses::CPose3D(0, 0, 10, 0, 0, 0);
+    // Shift the local frame by 10m along the plane (X), not perpendicular to
+    // it: a Z-only shift would leave global.z at 0 regardless of whether the
+    // pose was actually applied, since the local point already starts at the
+    // origin, so it wouldn't observe pose composition at all.
+    sc.guessRelativePose = mrpt::poses::CPose3D(10, 0, 0, 0, 0, 0);
 
     const Pairings out = pt2ln_pl_to_pt2pt(in, sc);
 
     ASSERT_EQUAL_(out.paired_pt2pt.size(), 1U);
     const auto& pr = out.paired_pt2pt.at(0);
 
-    // projected onto z=0 regardless of the 10m shift:
+    // The projected point must retain the tangential translation, proving
+    // guessRelativePose was actually applied before projecting onto z=0:
+    ASSERT_NEAR_(pr.global.x, 10.0, 1e-5);
     ASSERT_NEAR_(pr.global.z, 0.0, 1e-5);
 }
 
