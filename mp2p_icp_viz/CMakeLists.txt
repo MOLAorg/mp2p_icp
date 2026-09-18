@@ -24,6 +24,13 @@ find_package(mp2p_icp REQUIRED)
 
 find_package(Threads REQUIRED)
 
+# -- Dear ImGui, from the MRPT vendor package --------------------------------
+#
+# mrpt_imgui_vendor ships a single vendored copy of Dear ImGui (docking branch)
+# plus ImPlot and portable-file-dialogs, and exports it as a static target
+# aliased to the upstream-style name imgui::imgui. Shared by both apps.
+find_package(mrpt_imgui_vendor REQUIRED)
+
 #----
 # Extract version from package.xml
 file(READ package.xml contentPackageXML)

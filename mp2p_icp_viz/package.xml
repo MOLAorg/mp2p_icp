@@ -21,7 +21,10 @@
   <depend>mola_common</depend>
   <depend>mp2p_icp_core</depend>
   <depend>mrpt_gui</depend>
+  <depend>mrpt_imgui</depend>
+  <depend>mrpt_imgui_vendor</depend>
   <depend>cli11</depend>
+  <depend>libglfw3-dev</depend>
 
   <test_depend condition="$ROS_VERSION == 1">catkin</test_depend>
 
