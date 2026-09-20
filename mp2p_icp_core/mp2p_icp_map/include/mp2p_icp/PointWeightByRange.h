@@ -58,14 +58,23 @@ namespace mp2p_icp
  * thin the far field and the near field ends up over-represented in the
  * correspondence set relative to its information content.
  *
- * \warning With a negative `alpha`, `maxWeight` is load-bearing, not a
- * nuisance clamp. Measured: `alpha = -1` with `maxWeight = 5` improves ATE by
- * up to 17 %, while `alpha = -2` with the ceiling effectively removed takes
- * one sequence from 0.011 m to 0.712 m. Without a ceiling a return at ten
- * times `refRange` outweighs one at `refRange` by a hundred to one, so the
- * solution is decided by a handful of the most distant and least certain
- * points. Keep the ceiling small (single digits) and verify on a sequence
- * whose scene is much larger than `refRange`.
+ * \warning With a negative `alpha`, `minWeight` is what keeps this safe. A
+ * steep exponent drives the NEAR field to zero — at `alpha = -2` a return at
+ * a tenth of `refRange` is weighted 0.01 — and a scene that needs its near
+ * returns then loses them. Measured on one 127 m scene, holding the exponent
+ * at -2 and changing only the floor:
+ *
+ *   - `minWeight = 0`: ATE 0.011 m -> 0.383 m (and 0.712 m with the ceiling
+ *     also removed), i.e. divergence.
+ *   - `minWeight = 1`: ATE 0.011 m -> 0.011 m, entirely benign.
+ *
+ * So either keep `|alpha|` at 1.5 or below, or set `minWeight = 1` so no
+ * point can count for less than it does today and the weighting can only add
+ * emphasis to the far field. The latter is also the conservative choice for a
+ * scene smaller than `refRange`, where it reduces to the identity.
+ *
+ * `maxWeight` bounds the opposite end and matters much less: at a fixed
+ * `alpha = -1`, ceilings of 2, 5 and 20 span about 0.6 mm.
  *
  * \note The consumer multiplies a correspondence's information matrix by this
  *  weight, so it acts as an inverse variance. Only the SHAPE of the curve
