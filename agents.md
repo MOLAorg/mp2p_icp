@@ -206,6 +206,18 @@ logistic range-adaptive distance (`thresholdFar`/`thresholdKneeRange`/
 `MCP_LOAD_OPT`, so they accept dynamic formulas such as `"3.0*ADAPTIVE_THRESHOLD_SIGMA"`;
 a static load would silently truncate the string at the first non-numeric character.
 
+That profile decides which pairings are *accepted*. What they *weigh* once
+accepted is `mp2p_icp::PointWeightByRange`
+(`mp2p_icp_map/include/mp2p_icp/PointWeightByRange.h`), applied by
+`Matcher_Cov2Cov` through the `pointWeightAlpha` / `pointWeightRefRange` /
+`pointWeightMin` / `pointWeightMax` parameters. It scales each pairing's
+`cov_inv`, which is an inverse variance, so the solver picks it up in the
+gradient, the Hessian and the robust-kernel argument alike. `alpha = 0` is the
+default and disables it, reproducing every earlier release exactly. Note a
+solver that rescales the whole cov2cov block (`Solver_GaussNewton`'s
+Birge-ratio balancing) absorbs a constant factor, so only the shape of the
+curve is meaningful.
+
 `Matcher_NDT_Blend` is `Matcher_Point2Plane` with the `argmin` over candidate
 planes replaced by a likelihood-weighted blend, so that the residual varies
 continuously with the pose instead of jumping when the winning candidate
