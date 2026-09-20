@@ -59,8 +59,8 @@ namespace mp2p_icp
  * correspondence set relative to its information content.
  *
  * \warning With a negative `alpha`, `minWeight` is what keeps this safe. A
- * steep exponent drives the NEAR field to zero — at `alpha = -2` a return at
- * a tenth of `refRange` is weighted 0.01 — and a scene that needs its near
+ * steep exponent drives the NEAR field to zero (at `alpha = -2` a return at
+ * a tenth of `refRange` is weighted 0.01) and a scene that needs its near
  * returns then loses them. Measured on one 127 m scene, holding the exponent
  * at -2 and changing only the floor:
  *
