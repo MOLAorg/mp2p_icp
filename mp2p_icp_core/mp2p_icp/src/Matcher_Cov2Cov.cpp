@@ -22,9 +22,46 @@
 #include <mp2p_icp/NearestPointWithCovCapable.h>
 #include <mrpt/core/bits_math.h>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace mp2p_icp;
+
+namespace
+{
+/** |cos| of the angle between the beam and the surface normal.
+ *
+ * The pairing's information matrix is the inverse of a sum of two point
+ * covariances. On a locally planar neighborhood that inverse is largest along
+ * the surface normal and small in the two tangential directions, so its
+ * dominant eigenvector IS the normal and the normalized quadratic form along
+ * the beam direction approximates cos^2 of the incidence angle, without
+ * needing an eigendecomposition per correspondence.
+ *
+ * An isotropic neighborhood, which has no meaningful normal, yields 1/3 for
+ * every direction, so it lands mid-scale and is left essentially unweighted
+ * rather than being assigned a spurious orientation.
+ */
+[[nodiscard]] double incidenceCosine(
+    const mrpt::math::CMatrixFloat33& covInv, const mrpt::math::TPoint3Df& localPt, double range)
+{
+    const double trace = covInv(0, 0) + covInv(1, 1) + covInv(2, 2);
+    if (trace <= 0 || range < 1e-3)
+    {
+        return 1.0;  // no information: do not reweight
+    }
+
+    const double ux = localPt.x / range;
+    const double uy = localPt.y / range;
+    const double uz = localPt.z / range;
+
+    const double quad = ux * (covInv(0, 0) * ux + covInv(0, 1) * uy + covInv(0, 2) * uz) +
+                        uy * (covInv(1, 0) * ux + covInv(1, 1) * uy + covInv(1, 2) * uz) +
+                        uz * (covInv(2, 0) * ux + covInv(2, 1) * uy + covInv(2, 2) * uz);
+
+    return std::sqrt(std::clamp(quad / trace, 0.0, 1.0));
+}
+}  // namespace
 
 IMPLEMENTS_MRPT_OBJECT(Matcher_Cov2Cov, Matcher, mp2p_icp)
 
@@ -96,7 +133,10 @@ bool Matcher_Cov2Cov::impl_match(
         // The range is taken in the local point's own untransformed frame,
         // i.e. from the sensor, matching how the range-adaptive matching
         // distance above defines it.
-        if (const auto w = pointWeightByRange(); w.enabled())
+        const auto wRange     = pointWeightByRange();
+        const auto wIncidence = pointWeightByIncidence();
+
+        if (wRange.enabled() || wIncidence.enabled())
         {
             for (size_t i = firstNewPairing; i < out.paired_cov2cov.size(); i++)
             {
@@ -105,7 +145,19 @@ bool Matcher_Cov2Cov::impl_match(
                 const double range   = std::sqrt(
                     mrpt::square(lp.x) + mrpt::square(lp.y) + mrpt::square(lp.z));
 
-                const float wf = static_cast<float>(w(range));
+                double weight = 1.0;
+
+                if (wRange.enabled())
+                {
+                    weight *= wRange(range);
+                }
+
+                if (wIncidence.enabled())
+                {
+                    weight *= wIncidence(incidenceCosine(pairing.cov_inv, lp, range));
+                }
+
+                const float wf = static_cast<float>(weight);
                 for (int r = 0; r < 3; r++)
                 {
                     for (int c = 0; c < 3; c++)
@@ -134,6 +186,16 @@ MatchingDistanceProfile Matcher_Cov2Cov::matchingDistanceProfile() const
     return p;
 }
 
+PointWeightByIncidence Matcher_Cov2Cov::pointWeightByIncidence() const
+{
+    PointWeightByIncidence w;
+    w.alpha     = incidenceWeightAlpha;
+    w.refCos    = incidenceWeightRefCos;
+    w.minWeight = incidenceWeightMin;
+    w.maxWeight = incidenceWeightMax;
+    return w;
+}
+
 PointWeightByRange Matcher_Cov2Cov::pointWeightByRange() const
 {
     PointWeightByRange w;
@@ -156,6 +218,10 @@ void Matcher_Cov2Cov::initialize(const mrpt::containers::yaml& params)
     DECLARE_PARAMETER_OPT(params, thresholdFar);
     DECLARE_PARAMETER_OPT(params, thresholdKneeRange);
     DECLARE_PARAMETER_OPT(params, thresholdTransitionWidth);
+    DECLARE_PARAMETER_OPT(params, incidenceWeightAlpha);
+    DECLARE_PARAMETER_OPT(params, incidenceWeightRefCos);
+    DECLARE_PARAMETER_OPT(params, incidenceWeightMin);
+    DECLARE_PARAMETER_OPT(params, incidenceWeightMax);
     DECLARE_PARAMETER_OPT(params, pointWeightAlpha);
     DECLARE_PARAMETER_OPT(params, pointWeightRefRange);
     DECLARE_PARAMETER_OPT(params, pointWeightMin);

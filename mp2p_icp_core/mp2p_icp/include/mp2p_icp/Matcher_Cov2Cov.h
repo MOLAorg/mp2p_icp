@@ -21,6 +21,7 @@
 
 #include <mp2p_icp/Matcher.h>
 #include <mp2p_icp/MatchingDistanceProfile.h>
+#include <mp2p_icp/PointWeightByIncidence.h>
 #include <mp2p_icp/PointWeightByRange.h>
 #include <mrpt/math/TPoint3D.h>
 
@@ -103,6 +104,30 @@ class Matcher_Cov2Cov : public Matcher
     /** Ceiling of the point weight. Keep at 1 for a plain knee. */
     float pointWeightMax = 1.0f;
 
+    /** Optional: how much a correspondence counts as a function of how
+     * obliquely its beam struck the surface. Disabled by default
+     * (`incidenceWeightAlpha = 0`), which weighs every point the same.
+     *
+     * Independent of the range weighting above, and composable with it: that
+     * one asks how far the point is, this one how squarely it was seen. See
+     * mp2p_icp::PointWeightByIncidence.
+     *
+     * The surface normal is taken as the dominant eigenvector of the pairing's
+     * own information matrix, which for a locally planar neighborhood points
+     * along the normal, so nothing extra has to be stored or recomputed.
+     */
+    float incidenceWeightAlpha = 0.0f;
+
+    /** |cos| of the incidence angle at which the weight starts to fall. Only
+     * used when `incidenceWeightAlpha` is nonzero. */
+    float incidenceWeightRefCos = 0.5f;
+
+    /** Floor, so a grazing point is never dropped outright. */
+    float incidenceWeightMin = 0.05f;
+
+    /** Ceiling. Keep at 1 for a plain knee. */
+    float incidenceWeightMax = 1.0f;
+
     /** Common parameters to all derived classes:
      *
      * - `threshold`: Inliers distance threshold [meters][mandatory]
@@ -119,6 +144,10 @@ class Matcher_Cov2Cov : public Matcher
      *   `pointWeightMax`: Optional per-point weighting by range, see the field
      *   docs above. Also accept dynamic formulas.
      *
+     * - `incidenceWeightAlpha`, `incidenceWeightRefCos`, `incidenceWeightMin`,
+     *   `incidenceWeightMax`: Optional per-point weighting by incidence angle,
+     *   see the field docs above. Also accept dynamic formulas.
+     *
      * - `bounding_box_intersection_check_epsilon`: Optional (Default=0.20). The
      * additional "margin" in all axes (x,y,z) that bounding box is enlarged for
      * checking the feasibility of pairings to exist.
@@ -132,6 +161,10 @@ class Matcher_Cov2Cov : public Matcher
     /** The effective per-point range weighting built from the
      * `pointWeight*` fields. */
     [[nodiscard]] PointWeightByRange pointWeightByRange() const;
+
+    /** The effective per-point incidence weighting built from the
+     * `incidenceWeight*` fields. */
+    [[nodiscard]] PointWeightByIncidence pointWeightByIncidence() const;
 
    protected:
     bool impl_match(
