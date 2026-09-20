@@ -53,8 +53,19 @@ namespace mp2p_icp
  * - `alpha = 2`: additionally, a surface is sampled at a density falling as
  *   \f$1/r^2\f$, so a far point also stands for more surface than a near one.
  *
- * A negative `alpha` up-weights the far field instead, which is only useful
- * for measuring the effect in the opposite direction.
+ * A negative `alpha` up-weights the far field instead. That direction is the
+ * useful one on a spinning LiDAR, where a fixed-size decimation voxel cannot
+ * thin the far field and the near field ends up over-represented in the
+ * correspondence set relative to its information content.
+ *
+ * \warning With a negative `alpha`, `maxWeight` is load-bearing, not a
+ * nuisance clamp. Measured: `alpha = -1` with `maxWeight = 5` improves ATE by
+ * up to 17 %, while `alpha = -2` with the ceiling effectively removed takes
+ * one sequence from 0.011 m to 0.712 m. Without a ceiling a return at ten
+ * times `refRange` outweighs one at `refRange` by a hundred to one, so the
+ * solution is decided by a handful of the most distant and least certain
+ * points. Keep the ceiling small (single digits) and verify on a sequence
+ * whose scene is much larger than `refRange`.
  *
  * \note The consumer multiplies a correspondence's information matrix by this
  *  weight, so it acts as an inverse variance. Only the SHAPE of the curve
