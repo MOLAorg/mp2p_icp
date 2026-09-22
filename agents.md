@@ -201,7 +201,7 @@ serializer has its own file in `tests/`.
 
 | Dependency | Notes |
 |-----------|-------|
-| MRPT ≥ 2.15.4 | containers, tfest, maps, topography; `gui` only for mp2p_icp_viz |
+| MRPT ≥ 2.15.4 (`mp2p_icp_core`); ≥ 2.15.11 (`mp2p_icp_viz`) | containers, tfest, maps, topography; `gui` only for mp2p_icp_viz |
 | CLI11 | CLI parsing for all apps (rosdep key `cli11`) |
 | TBB | Optional; parallel ICP iterations |
 | mola_common | CMake scripts, from the colcon workspace (not vendored) |
