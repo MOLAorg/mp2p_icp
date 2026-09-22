@@ -23,6 +23,9 @@
 #include <mrpt/core/exceptions.h>
 
 #include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <iomanip>
 #include <iostream>
 #include <optional>
 #include <random>
@@ -118,13 +121,25 @@ mp2p_icp::OptimalTF_Result solve(const mp2p_icp::Pairings& p)
     return result;
 }
 
+/** The object representation of a double, so that the comparison below is on
+ *  the bits and not on the numeric value: `==` would call +0.0 and -0.0 equal,
+ *  and they are two different results of two different summation orders, which
+ *  is exactly what this test exists to catch.
+ */
+uint64_t bits_of(double v)
+{
+    uint64_t u = 0;
+    std::memcpy(&u, &v, sizeof(u));
+    return u;
+}
+
 void expect_bit_identical(
     const mp2p_icp::OptimalTF_Result& a, const mp2p_icp::OptimalTF_Result& b,
     const std::string& context)
 {
     for (int i = 0; i < 6; i++)
     {
-        if (a.optimalPose[i] == b.optimalPose[i])
+        if (bits_of(a.optimalPose[i]) == bits_of(b.optimalPose[i]))
         {
             continue;
         }
@@ -133,7 +148,9 @@ void expect_bit_identical(
                   << " reference pose: " << a.optimalPose << "\n"
                   << " obtained pose : " << b.optimalPose << "\n"
                   << " first differing component: " << i << " ("
-                  << (a.optimalPose[i] - b.optimalPose[i]) << " apart)\n";
+                  << (a.optimalPose[i] - b.optimalPose[i]) << " apart, bits " << std::hex
+                  << bits_of(a.optimalPose[i]) << " vs " << bits_of(b.optimalPose[i]) << std::dec
+                  << ")\n";
 
         THROW_EXCEPTION("The solver result depends on the thread scheduling.");
     }
