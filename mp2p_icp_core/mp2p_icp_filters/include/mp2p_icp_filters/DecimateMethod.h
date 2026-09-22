@@ -35,6 +35,13 @@ enum class DecimateMethod : uint8_t
 {
     /** Pick the first point that was put int the voxel */
     FirstPoint = 0,
+    /** Pick the k-th point of a voxel, with k rotating from one voxel to the
+     *  next, so that whatever the sensor's scan order does to the choice is
+     *  spread over the voxels instead of displacing all of them alike.
+     *  k comes from the voxel's own integer coordinates, so the result does
+     *  not depend on traversal order, on the number of threads, or on the
+     *  underlying map type. */
+    RotatingIndex,
     /** Closest to the average of all voxel points */
     ClosestToAverage,
     /** Average of all voxel points */
@@ -47,6 +54,7 @@ enum class DecimateMethod : uint8_t
 
 MRPT_ENUM_TYPE_BEGIN_NAMESPACE(mp2p_icp_filters, mp2p_icp_filters::DecimateMethod)
 MRPT_FILL_ENUM(DecimateMethod::FirstPoint);
+MRPT_FILL_ENUM(DecimateMethod::RotatingIndex);
 MRPT_FILL_ENUM(DecimateMethod::ClosestToAverage);
 MRPT_FILL_ENUM(DecimateMethod::VoxelAverage);
 MRPT_FILL_ENUM(DecimateMethod::RandomPoint);

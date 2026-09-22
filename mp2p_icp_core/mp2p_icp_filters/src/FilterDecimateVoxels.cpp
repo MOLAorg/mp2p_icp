@@ -376,13 +376,23 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     case DecimateMethod::RandomPoint:
                     {
                         // Insert a randomly-picked point:
-                        const auto idxInVoxel =
-                            (params.decimate_method == DecimateMethod::RandomPoint)
-                                ? (rng.drawUniform64bit() % vxl.size())
-                                : 0UL;
+                        const auto idxInVoxel = rng.drawUniform64bit() % vxl.size();
 
-                        const auto pt_idx = vxl[idxInVoxel];
-                        insertPtIdx       = pt_idx;
+                        insertPtIdx = vxl[idxInVoxel];
+                    }
+                    break;
+
+                    case DecimateMethod::RotatingIndex:
+                    {
+                        // Rotate which point is taken from one voxel to the
+                        // next, so scan order displaces the voxels differently
+                        // instead of displacing all of them alike:
+                        const int64_t k = static_cast<int64_t>(idx.cx_) +
+                                          static_cast<int64_t>(idx.cy_) +
+                                          static_cast<int64_t>(idx.cz_);
+                        const int64_t n = static_cast<int64_t>(vxl.size());
+
+                        insertPtIdx = vxl[static_cast<size_t>(((k % n) + n) % n)];
                     }
                     break;
                 }  // end switch decimation method
