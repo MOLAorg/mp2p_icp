@@ -197,6 +197,17 @@ metric_map_t (local) + metric_map_t (global) + CPose3D (initial guess)
 
 All components are `Parameterizable` — configured via YAML at runtime, loaded with `mp2p_icp::Parameters`.
 
+Every parallel accumulation in the pipeline is **deterministic by construction**, and must
+stay that way: offline runs of one configuration are expected to be byte-reproducible, so
+any per-run spread of the estimator would be charged to whatever change is being measured.
+Floating-point addition is not associative, so a TBB reduction whose tree is shaped by
+whichever workers happen to be free makes the result a function of the thread count.
+`tbb::parallel_reduce` is therefore not used anywhere: the matchers that concatenate
+pairings and `optimal_tf_gauss_newton()`'s H/g/cost accumulation both use
+`tbb::parallel_deterministic_reduce` with an explicit grain size (the grain size is not
+optional, it is what fixes the partition). See `test-mp2p_solver_determinism`, which
+solves the same problem under 1, 2, 3, 4 and 8 workers and demands bit-identical poses.
+
 `Matcher_Cov2Cov`'s acceptance criteria live in `mp2p_icp::MatchingDistanceProfile`
 (`mp2p_icp_map/include/mp2p_icp/MatchingDistanceProfile.h`), passed to
 `NearestPointWithCovCapable::nn_search_cov2cov()`. It is implicitly constructible from a
