@@ -354,8 +354,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                      minPointsToFilter += 200)
                 {
                     for (const auto method : std::vector<DecimateMethod>{
-                             DecimateMethod::FirstPoint, DecimateMethod::VoxelAverage,
-                             DecimateMethod::ClosestToAverage, DecimateMethod::RandomPoint})
+                             DecimateMethod::FirstPoint, DecimateMethod::RotatingIndex,
+                             DecimateMethod::VoxelAverage, DecimateMethod::ClosestToAverage,
+                             DecimateMethod::RandomPoint})
                     {
                         try
                         {

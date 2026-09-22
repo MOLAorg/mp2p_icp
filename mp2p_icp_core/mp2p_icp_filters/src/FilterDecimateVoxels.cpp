@@ -398,11 +398,40 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
                 nonEmptyVoxels++;
 
-                // Only RandomPoint reaches this grid: the other methods are
-                // served by the two specialized grids above.
-                ASSERT_(params.decimate_method == DecimateMethod::RandomPoint);
+                // Only the methods that need the voxel's point list reach
+                // this grid: the rest are served by the two specialized grids
+                // above, which keep a summary instead.
+                size_t insertPtIdx = 0;
+                switch (params.decimate_method)
+                {
+                    case DecimateMethod::RandomPoint:
+                    {
+                        insertPtIdx = vxl[rng.drawUniform64bit() % vxl.size()];
+                    }
+                    break;
 
-                const auto insertPtIdx = vxl[rng.drawUniform64bit() % vxl.size()];
+                    case DecimateMethod::RotatingIndex:
+                    {
+                        // Rotate which point is taken from one voxel to the
+                        // next, so that whatever the scan order does to the
+                        // choice is spread over the voxels instead of
+                        // displacing all of them alike. The index comes from
+                        // the voxel's own coordinates, so it does not depend
+                        // on traversal order or on the number of threads.
+                        const int64_t k = static_cast<int64_t>(idx.cx_) +
+                                          static_cast<int64_t>(idx.cy_) +
+                                          static_cast<int64_t>(idx.cz_);
+                        const int64_t n = static_cast<int64_t>(vxl.size());
+
+                        insertPtIdx = vxl[static_cast<size_t>(((k % n) + n) % n)];
+                    }
+                    break;
+
+                    default:
+                    {
+                        THROW_EXCEPTION("Should not reach here!");
+                    }
+                }
 
                 // insert it, if passed the flatten filter:
                 if (params.flatten_to.has_value())

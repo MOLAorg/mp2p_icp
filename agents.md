@@ -161,7 +161,7 @@ output layers are sampled from ONE voxelization pass, each with its own stride.
 what each method needs from a voxel differs: `PointCloudToVoxelGridSingle` (one point,
 for `FirstPoint`), `PointCloudToVoxelGridAverage` (sums plus the closest point, for
 `ClosestToAverage`/`VoxelAverage`), and `PointCloudToVoxelGrid` (the full index list, for
-`RandomPoint`, and for the other filters that walk a voxel's points). Only the last one
+`RandomPoint` and `RotatingIndex`, and for the other filters that walk a voxel's points). Only the last one
 pays for a second hashed pass and an index-array relayout, so a method must not be moved
 onto it without reason. Two things keep the grids interchangeable: voxel keys come from
 `coord2idx`, which **divides** by the resolution (multiplying by a precomputed reciprocal
@@ -170,6 +170,10 @@ and per-voxel sums are accumulated in ascending point order, so the average is b
 whichever grid produced it.
 
 Both decimation filters share `DecimateMethod` (`mp2p_icp_filters/DecimateMethod.h`).
+`RotatingIndex` picks the k-th point of a voxel with k taken from the voxel's own
+integer coordinates, so scan order displaces the voxels differently instead of
+displacing all of them alike, and the result does not depend on traversal order or
+thread count.
 Because `FilterDecimateAdaptive` revisits voxels in several rounds,
 `FirstPoint`/`RandomPoint` take successive points out of each voxel, while
 `ClosestToAverage`/`VoxelAverage` summarize the voxel and emit at most one point per
