@@ -31,13 +31,6 @@
 #include <mrpt/io/CCompressedInputStream.h>
 #include <mrpt/math/TObject3D.h>
 #include <mrpt/math/geometry.h>
-#include <mrpt/viz/CArrow.h>
-#include <mrpt/viz/CGridPlaneXY.h>
-#include <mrpt/viz/Scene.h>
-#include <mrpt/viz/CPointCloudColoured.h>
-#include <mrpt/viz/CSetOfLines.h>
-#include <mrpt/viz/CText.h>
-#include <mrpt/viz/stock_objects.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>
@@ -45,6 +38,13 @@
 #include <mrpt/system/string_utils.h>  // unitsFormat()
 #include <mrpt/topography/conversions.h>
 #include <mrpt/version.h>
+#include <mrpt/viz/CArrow.h>
+#include <mrpt/viz/CGridPlaneXY.h>
+#include <mrpt/viz/CPointCloudColoured.h>
+#include <mrpt/viz/CSetOfLines.h>
+#include <mrpt/viz/CText.h>
+#include <mrpt/viz/Scene.h>
+#include <mrpt/viz/stock_objects.h>
 
 #include <CLI/CLI.hpp>
 #include <algorithm>
@@ -87,9 +87,9 @@ std::string              arg_georefPolygon;
 /** Extra viz layer loaded from a *.3dscene file, or from --georef-polygon. */
 struct ExtraVizLayer
 {
-    std::string                      fileName;
+    std::string                   fileName;
     mrpt::viz::CSetOfObjects::Ptr glObjects;
-    bool                             visible = true;
+    bool                          visible = true;
 };
 
 /** Result of loadMapFileWorker(), running on a background thread: a self-contained value (no
@@ -112,7 +112,7 @@ struct AppState
 {
     mp2p_icp_viz::ImGuiAppShell  shell;
     mrpt::imgui::CImGuiSceneView sceneView;
-    mrpt::viz::Scene::Ptr     scene = mrpt::viz::Scene::Create();
+    mrpt::viz::Scene::Ptr        scene = mrpt::viz::Scene::Create();
 
     mrpt::viz::CSetOfObjects::Ptr glVizMap = mrpt::viz::CSetOfObjects::Create();
     mrpt::viz::CGridPlaneXY::Ptr  glGrid   = mrpt::viz::CGridPlaneXY::Create();
@@ -191,8 +191,8 @@ struct AppState
     // Async point-cloud visualization building (see rebuild_3d_view()): same rationale, for
     // theMap.get_visualization(), which can also take a long time on large maps.
     mp2p_icp_viz::AsyncTask<mrpt::viz::CSetOfObjects::Ptr> vizBuildTask;
-    bool                                                      isBuildingViz          = false;
-    int                                                       vizBuildTaskGeneration = -1;
+    bool                                                   isBuildingViz          = false;
+    int                                                    vizBuildTaskGeneration = -1;
 };
 
 AppState app;
@@ -579,7 +579,8 @@ std::string transformAndFormatSelectedPoint(const mrpt::math::TPoint3D& pt)
 void updateCameraLookCoordinates()
 {
     const auto&                cam = app.sceneView.cameraController;
-    const mrpt::math::TPoint3D pt(cam.getCameraPointingX(), cam.getCameraPointingY(), cam.getCameraPointingZ());
+    const mrpt::math::TPoint3D pt(
+        cam.getCameraPointingX(), cam.getCameraPointingY(), cam.getCameraPointingZ());
     app.cameraLookText = "Camera looking at: " + transformAndFormatSelectedPoint(pt);
 }
 

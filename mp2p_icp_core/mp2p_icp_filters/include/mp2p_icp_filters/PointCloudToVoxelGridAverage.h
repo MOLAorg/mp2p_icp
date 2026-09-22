@@ -12,10 +12,10 @@
  SPDX-License-Identifier: BSD-3-Clause
 */
 /**
- * @file   PointCloudToVoxelGridSingle.h
- * @brief  Makes an index of a point cloud using a voxel grid.
+ * @file   PointCloudToVoxelGridAverage.h
+ * @brief  Voxel grid that summarizes each voxel without keeping its points.
  * @author Jose Luis Blanco Claraco
- * @date   Dec 17, 2018
+ * @date   Sep 22, 2026
  */
 
 #pragma once
@@ -24,54 +24,60 @@
 #include <mrpt/maps/CPointsMap.h>
 
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 /** \ingroup mp2p_icp_filters_grp */
 namespace mp2p_icp_filters
 {
-/** Like PointCloudToVoxelGrid, but hardcoded to only store one single point per
- * voxel.
+/** Like PointCloudToVoxelGrid, but for the decimation methods that only need a
+ *  summary of each voxel: its point count, the average of its points, and
+ *  optionally the point closest to that average.
+ *
+ *  PointCloudToVoxelGrid has to keep the index list of every voxel, which costs
+ *  a second hashed pass over the cloud, a relayout of the whole index array,
+ *  and a random-access gather of x/y/z when those lists are walked. None of
+ *  that is needed here: one hashed pass accumulates the sums, and a second
+ *  linear pass (hash-free, since the first pass records the voxel of each
+ *  point) finds the closest point to the resulting average. Both passes read
+ *  the coordinate buffers sequentially.
+ *
+ *  Results are identical to summarizing PointCloudToVoxelGrid's index lists,
+ *  including floating-point rounding: the per-voxel sum is accumulated in the
+ *  same ascending point order.
  *
  * \ingroup mp2p_icp_filters_grp
  */
-class PointCloudToVoxelGridSingle
+class PointCloudToVoxelGridAverage
 {
    public:
-    PointCloudToVoxelGridSingle();
+    PointCloudToVoxelGridAverage();
 
     /** Changes the voxel settings, clearing past contents */
     void setConfiguration(const float voxel_size, bool use_tsl_robin_map = true);
 
-    void processPointCloud(
-        const mrpt::maps::CPointsMap& p, const std::size_t first_pt_idx = 0,
-        const std::size_t points_to_process = 0);
-
-    /** Remove all points and internal data.
+    /** Bins one cloud and summarizes each voxel.
+     *
+     *  \param findClosestToAverage If false, voxel_t::closestToAverageIdx is
+     *         left undefined and the second pass is skipped altogether.
      */
+    void processPointCloud(const mrpt::maps::CPointsMap& p, bool findClosestToAverage);
+
+    /** Remove all points and internal data. */
     void clear();
 
-    /** The single point kept for a voxel.
-     *
-     *  The fields are stored bare, rather than wrapped in std::optional, since
-     *  this struct is the value type of the hash map and is therefore touched
-     *  once per input point: the optionals made it 56 bytes, which is what the
-     *  per-point cost of this grid is dominated by. `pointCount == 0` marks an
-     *  empty voxel, so no separate "has value" flag is needed.
-     */
+    /** The summary of one voxel. */
     struct voxel_t
     {
-        mrpt::math::TPoint3Df point = {0, 0, 0};
+        /** Average of all the points that fell into this voxel. */
+        mrpt::math::TPoint3Df average = {0, 0, 0};
 
-        /** Index of `point` within the source cloud. */
-        uint32_t pointIdx = 0;
+        /** Index, within the processed cloud, of the point closest to
+         *  `average`. Only valid if processPointCloud() was asked for it. */
+        uint32_t closestToAverageIdx = 0;
 
-        /** Even if we keep the first point only, count them all.
-         *  Zero means the voxel holds no point yet. */
+        /** How many points fell into this voxel. */
         uint32_t pointCount = 0;
-
-        /** Which of the clouds passed to processPointCloud() `pointIdx`
-         *  refers to; resolve it with sourceCloud(). */
-        uint16_t sourceIdx = 0;
     };
 
     struct indices_t
@@ -131,19 +137,11 @@ class PointCloudToVoxelGridSingle
     /// Returns the number of occupied voxels.
     size_t size() const;
 
-    /** Resolves voxel_t::sourceIdx into the cloud it refers to. */
-    const mrpt::maps::CPointsMap* sourceCloud(uint16_t sourceIdx) const;
-
    private:
     /** Voxel size (meters) or resolution. */
     float resolution_ = 0.20f;
 
     bool use_tsl_robin_map_ = true;
-
-    /** The clouds seen by processPointCloud() since the last clear(), in call
-     *  order. Voxels store an index into this list instead of a pointer, which
-     *  keeps voxel_t small. */
-    std::vector<const mrpt::maps::CPointsMap*> sources_;
 
     /** The actual hash map. Hidden inside a PIMP to prevent problems with
      * duplicated TSL library copies in the user space */

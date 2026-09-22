@@ -77,6 +77,15 @@ mp2p_add_test(mp2p_optimize_pt2pl)
 mp2p_add_test(mp2p_optimize_with_prior)
 mp2p_add_test(mp2p_optimize_prior_referenced_kernel)
 mp2p_add_test(mp2p_robust_kernel_scale)
+
+# The solver must give the same bits regardless of how TBB partitions the
+# pairing ranges, so this one drives the worker count itself and therefore
+# links TBB directly (the library links it privately).
+mp2p_add_test(mp2p_solver_determinism)
+if (TBB_FOUND AND MP2PICP_USE_TBB)
+  target_compile_definitions(test-mp2p_solver_determinism PRIVATE MP2P_HAS_TBB)
+  target_link_libraries(test-mp2p_solver_determinism TBB::tbb)
+endif()
 mp2p_add_test(mp2p_Pairings)
 mp2p_add_test(mp2p_PairWeights)
 mp2p_add_test(mp2p_quality_reproject_ranges)

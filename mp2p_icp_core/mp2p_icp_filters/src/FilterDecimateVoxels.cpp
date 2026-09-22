@@ -87,14 +87,21 @@ void FilterDecimateVoxels::initialize_filter(const mrpt::containers::yaml& c)
     MRPT_LOG_DEBUG_STREAM("Loading these params:\n" << c);
     params.load_from_yaml(c, *this);
 
+    // Create only the grid flavor this decimation method needs:
+    filter_grid_.reset();
+    filter_grid_single_.reset();
+    filter_grid_average_.reset();
+
     if (useSingleGrid())
-    {  // Create:
-        filter_grid_.reset();
+    {
         filter_grid_single_.emplace();
     }
+    else if (useAverageGrid())
+    {
+        filter_grid_average_.emplace();
+    }
     else
-    {  // Create:
-        filter_grid_single_.reset();
+    {
         filter_grid_.emplace();
     }
 
@@ -227,7 +234,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             [&](const PointCloudToVoxelGridSingle::indices_t& idx,
                 const PointCloudToVoxelGridSingle::voxel_t&   vxl)
             {
-                if (!vxl.pointIdx.has_value())
+                if (vxl.pointCount == 0)
                 {
                     return;
                 }
@@ -247,7 +254,7 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     // First time we see this (x,y) cell:
                     flattenUsedBins.insert(flattenIdx);
 
-                    const auto* pc = vxl.source.value();
+                    const auto* pc = grid.sourceCloud(vxl.sourceIdx);
 
                     auto& ctx = ctxs[pc];
                     if (!ctx.xs_src)
@@ -255,14 +262,14 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                         outPc->registerPointFieldsFrom(*pc);
                         ctx = outPc->prepareForInsertPointsFrom(*pc);
                     }
-                    outPc->insertPointFrom(*vxl.pointIdx, ctx);
+                    outPc->insertPointFrom(vxl.pointIdx, ctx);
                     // Actual flatten in "z":
                     outPc->getPointsBufferRef_float_field("z")->back() =
                         static_cast<float>(*params.flatten_to);
                 }
                 else
                 {
-                    const auto* pc = vxl.source.value();
+                    const auto* pc = grid.sourceCloud(vxl.sourceIdx);
 
                     auto& ctx = ctxs[pc];
                     if (!ctx.xs_src)
@@ -270,7 +277,81 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                         outPc->registerPointFieldsFrom(*pc);
                         ctx = outPc->prepareForInsertPointsFrom(*pc);
                     }
-                    outPc->insertPointFrom(*vxl.pointIdx, ctx);
+                    outPc->insertPointFrom(vxl.pointIdx, ctx);
+                }
+            });
+    }
+    else if (useAverageGrid() && !pcPtrs.empty())
+    {
+        ASSERTMSG_(
+            pcPtrs.size() == 1, mrpt::format(
+                                    "Only one input layer allowed when requiring the non-single "
+                                    "decimating grid, found %zu",
+                                    pcPtrs.size()));
+
+        const auto& pc = *pcPtrs.at(0);
+
+        ASSERTMSG_(
+            filter_grid_average_.has_value(),
+            "Has you called initialize() after updating/loading parameters?");
+
+        const bool keepClosestPoint = params.decimate_method == DecimateMethod::ClosestToAverage;
+
+        auto& grid = filter_grid_average_.value();
+        grid.setConfiguration(params.voxel_filter_resolution, params.use_tsl_robin_map);
+        grid.clear();
+
+        grid.processPointCloud(pc, keepClosestPoint);
+
+        std::set<PointCloudToVoxelGridAverage::indices_t, PointCloudToVoxelGridAverage::IndicesHash>
+            flattenUsedBins;
+
+        outPc->registerPointFieldsFrom(pc);
+        auto ctx = outPc->prepareForInsertPointsFrom(pc);
+
+        grid.visit_voxels(
+            [&](const PointCloudToVoxelGridAverage::indices_t& idx,
+                const PointCloudToVoxelGridAverage::voxel_t&   vxl)
+            {
+                if (vxl.pointCount < params.minimum_points_per_voxel)
+                {
+                    return;
+                }
+
+                nonEmptyVoxels++;
+
+                if (params.flatten_to.has_value())
+                {
+                    const PointCloudToVoxelGridAverage::indices_t flattenIdx = {
+                        idx.cx_, idx.cy_, 0};
+
+                    // first time?
+                    if (flattenUsedBins.count(flattenIdx) != 0)
+                    {
+                        return;  // nope. Skip this point.
+                    }
+
+                    // First time we see this (x,y) cell:
+                    flattenUsedBins.insert(flattenIdx);
+
+                    const auto pt = keepClosestPoint
+                                        ? mrpt::math::TPoint3Df(
+                                              pc.getPointsBufferRef_x()[vxl.closestToAverageIdx],
+                                              pc.getPointsBufferRef_y()[vxl.closestToAverageIdx],
+                                              pc.getPointsBufferRef_z()[vxl.closestToAverageIdx])
+                                        : vxl.average;
+
+                    outPc->insertPointFast(pt.x, pt.y, static_cast<float>(*params.flatten_to));
+                }
+                else if (keepClosestPoint)
+                {
+                    outPc->insertPointFrom(vxl.closestToAverageIdx, ctx);
+                }
+                else
+                {
+                    // VoxelAverage synthesizes a new point, so no per-point
+                    // fields can be carried over:
+                    outPc->insertPointFast(vxl.average.x, vxl.average.y, vxl.average.z);
                 }
             });
     }
@@ -296,7 +377,6 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
         const auto& xs = pc.getPointsBufferRef_x();
         const auto& ys = pc.getPointsBufferRef_y();
-        const auto& zs = pc.getPointsBufferRef_z();
 
         auto rng = mrpt::random::CRandomGenerator();
         // TODO?: rng.randomize(seed);
@@ -318,75 +398,26 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
 
                 nonEmptyVoxels++;
 
-                std::optional<mrpt::math::TPoint3Df> insertPt;
-                size_t insertPtIdx;  // valid only if insertPt is empty
-
+                // Only the methods that need the voxel's point list reach
+                // this grid: the rest are served by the two specialized grids
+                // above, which keep a summary instead.
+                size_t insertPtIdx = 0;
                 switch (params.decimate_method)
                 {
-                    case DecimateMethod::FirstPoint:
-                    default:
-                    {
-                        THROW_EXCEPTION("Should not reach here!");
-                    }
-
-                    case DecimateMethod::VoxelAverage:
-                    case DecimateMethod::ClosestToAverage:
-                    {
-                        // Analyze the voxel contents:
-                        auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
-                        const float inv_n = (1.0f / static_cast<float>(vxl.size()));
-                        for (size_t i = 0; i < vxl.size(); i++)
-                        {
-                            const auto pt_idx = vxl[i];
-                            mean.x += xs[pt_idx];
-                            mean.y += ys[pt_idx];
-                            mean.z += zs[pt_idx];
-                        }
-                        mean *= inv_n;
-
-                        if (params.decimate_method == DecimateMethod::ClosestToAverage)
-                        {
-                            std::optional<float>  minSqrErr;
-                            std::optional<size_t> bestIdx;
-
-                            for (size_t i = 0; i < vxl.size(); i++)
-                            {
-                                const auto  pt_idx = vxl[i];
-                                const float sqrErr = mrpt::square(xs[pt_idx] - mean.x) +
-                                                     mrpt::square(ys[pt_idx] - mean.y) +
-                                                     mrpt::square(zs[pt_idx] - mean.z);
-
-                                if (!minSqrErr.has_value() || sqrErr < *minSqrErr)
-                                {
-                                    minSqrErr = sqrErr;
-                                    bestIdx   = pt_idx;
-                                }
-                            }
-                            // Insert the closest to the mean:
-                            insertPtIdx = *bestIdx;
-                        }
-                        else
-                        {
-                            // Insert the mean:
-                            insertPt = {mean.x, mean.y, mean.z};
-                        }
-                    }
-                    break;
-
                     case DecimateMethod::RandomPoint:
                     {
-                        // Insert a randomly-picked point:
-                        const auto idxInVoxel = rng.drawUniform64bit() % vxl.size();
-
-                        insertPtIdx = vxl[idxInVoxel];
+                        insertPtIdx = vxl[rng.drawUniform64bit() % vxl.size()];
                     }
                     break;
 
                     case DecimateMethod::RotatingIndex:
                     {
                         // Rotate which point is taken from one voxel to the
-                        // next, so scan order displaces the voxels differently
-                        // instead of displacing all of them alike:
+                        // next, so that whatever the scan order does to the
+                        // choice is spread over the voxels instead of
+                        // displacing all of them alike. The index comes from
+                        // the voxel's own coordinates, so it does not depend
+                        // on traversal order or on the number of threads.
                         const int64_t k = static_cast<int64_t>(idx.cx_) +
                                           static_cast<int64_t>(idx.cy_) +
                                           static_cast<int64_t>(idx.cz_);
@@ -395,7 +426,12 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                         insertPtIdx = vxl[static_cast<size_t>(((k % n) + n) % n)];
                     }
                     break;
-                }  // end switch decimation method
+
+                    default:
+                    {
+                        THROW_EXCEPTION("Should not reach here!");
+                    }
+                }
 
                 // insert it, if passed the flatten filter:
                 if (params.flatten_to.has_value())
@@ -411,23 +447,12 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     // First time we see this (x,y) cell:
                     flattenUsedBins.insert(flattenIdx);
 
-                    if (!insertPt)
-                    {
-                        insertPt.emplace(xs[insertPtIdx], ys[insertPtIdx], zs[insertPtIdx]);
-                    }
                     outPc->insertPointFast(
-                        insertPt->x, insertPt->y, static_cast<float>(*params.flatten_to));
+                        xs[insertPtIdx], ys[insertPtIdx], static_cast<float>(*params.flatten_to));
                 }
                 else
                 {
-                    if (insertPt)
-                    {
-                        outPc->insertPointFast(insertPt->x, insertPt->y, insertPt->z);
-                    }
-                    else
-                    {
-                        outPc->insertPointFrom(insertPtIdx, ctx);
-                    }
+                    outPc->insertPointFrom(insertPtIdx, ctx);
                 }
             });
 
