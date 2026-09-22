@@ -79,8 +79,8 @@ QualityEvaluator::Result QualityEvaluator_RangeImageSimilarity::evaluate(
         I12.saveToTextFile(mrpt::format("I12_%05i.txt", i));
         I21.saveToTextFile(mrpt::format("I21_%05i.txt", i));
 
-        mrpt::io::vectorToTextFile(s1, mrpt::format("I1_scores_%05i.txt", i));
-        mrpt::io::vectorToTextFile(s2, mrpt::format("I2_scores_%05i.txt", i));
+        (void)mrpt::io::vectorToTextFile(s1, mrpt::format("I1_scores_%05i.txt", i));
+        (void)mrpt::io::vectorToTextFile(s2, mrpt::format("I2_scores_%05i.txt", i));
     }
 
     Result r;

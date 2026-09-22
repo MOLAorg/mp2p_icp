@@ -142,7 +142,10 @@ void run_sm_to_mm(CLI_& cli)
     std::cout << "[sm2mm] Reading simplemap from: '" << filSM << "'..." << std::endl;
     const double sm_t0 = mrpt::Clock::nowDouble();
 
-    sm.loadFromFile(filSM);
+    if (!sm.loadFromFile(filSM))
+    {
+        THROW_EXCEPTION_FMT("Error loading simplemap from '%s'", filSM.c_str());
+    }
 
     const double sm_t1 = mrpt::Clock::nowDouble();
     std::cout << "[sm2mm] Done read simplemap with " << sm.size() << " keyframes in "

@@ -416,7 +416,10 @@ void run_mm2txt()
             else
             {
                 printSelectedFieldsWarning();
-                pts->save3D_to_text_file(filName);
+                if (!pts->save3D_to_text_file(filName))
+                {
+                    THROW_EXCEPTION_FMT("Error saving to text file '%s'", filName.c_str());
+                }
             }
 #pragma GCC diagnostic pop
         }
@@ -424,7 +427,10 @@ void run_mm2txt()
         else
         {
             printSelectedFieldsWarning();
-            pts->save3D_to_text_file(filName);
+            if (!pts->save3D_to_text_file(filName))
+            {
+                THROW_EXCEPTION_FMT("Error saving to text file '%s'", filName.c_str());
+            }
         }
 #endif
     }
