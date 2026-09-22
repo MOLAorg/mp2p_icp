@@ -19,9 +19,12 @@
  */
 
 #include <mp2p_icp_filters/PointCloudToVoxelGridSingle.h>
+#include <mrpt/core/exceptions.h>
 // Used in the PIMP:
 #include <tsl/robin_map.h>
 
+#include <algorithm>
+#include <limits>
 #include <map>
 
 using namespace mp2p_icp_filters;
@@ -59,6 +62,22 @@ void PointCloudToVoxelGridSingle::processPointCloud(
 
     const auto last_pt_idx = points_to_process ? (first_pt_idx + points_to_process) : xs.size();
 
+    // Point indices are stored as 32 bit to keep voxel_t small:
+    ASSERT_LT_(last_pt_idx, static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()));
+
+    // Register this cloud, so voxels can refer to it by a small index:
+    uint16_t sourceIdx = 0;
+    if (auto it = std::find(sources_.begin(), sources_.end(), &p); it != sources_.end())
+    {
+        sourceIdx = static_cast<uint16_t>(std::distance(sources_.begin(), it));
+    }
+    else
+    {
+        ASSERT_LT_(sources_.size(), static_cast<std::size_t>(UINT16_MAX));
+        sourceIdx = static_cast<uint16_t>(sources_.size());
+        sources_.push_back(&p);
+    }
+
     const auto lambda_process = [&](auto& pts_voxels)
     {
         for (std::size_t i = first_pt_idx; i < last_pt_idx; i++)
@@ -70,21 +89,13 @@ void PointCloudToVoxelGridSingle::processPointCloud(
             const indices_t vxl_idx = {coord2idx(x), coord2idx(y), coord2idx(z)};
 
             // try_emplace: single hash lookup for both insert and existing-key cases
-            auto [it, inserted] =
-                pts_voxels.try_emplace(vxl_idx, mrpt::math::TPoint3Df(x, y, z), i, &p, 1);
+            auto [it, inserted] = pts_voxels.try_emplace(
+                vxl_idx,
+                voxel_t{mrpt::math::TPoint3Df(x, y, z), static_cast<uint32_t>(i), 1, sourceIdx});
 
             if (!inserted)
             {
-                auto& vx = const_cast<voxel_t&>(it->second);
-
-                if (vx.pointCount == 0)
-                {
-                    vx = {mrpt::math::TPoint3Df(x, y, z), i, &p, 1};
-                }
-                else
-                {
-                    vx.pointCount++;
-                }
+                const_cast<voxel_t&>(it->second).pointCount++;
             }
         }
     };
@@ -107,8 +118,16 @@ void PointCloudToVoxelGridSingle::processPointCloud(
     }
 }
 
+const mrpt::maps::CPointsMap* PointCloudToVoxelGridSingle::sourceCloud(uint16_t sourceIdx) const
+{
+    ASSERT_LT_(static_cast<std::size_t>(sourceIdx), sources_.size());
+    return sources_[sourceIdx];
+}
+
 void PointCloudToVoxelGridSingle::clear()
 {
+    sources_.clear();
+
     if (use_tsl_robin_map_)
     {
         impl_->pts_voxels.min_load_factor(0.01f);

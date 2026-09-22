@@ -55,6 +55,7 @@ set(LIB_SRCS
   src/GetOrCreatePointLayer.cpp
   src/PointCloudRobustRange.cpp
   src/PointCloudToVoxelGrid.cpp
+  src/PointCloudToVoxelGridAverage.cpp
   src/PointCloudToVoxelGridSingle.cpp
   src/sm2mm.cpp
   #
@@ -100,6 +101,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/GetOrCreatePointLayer.h
   include/mp2p_icp_filters/PointCloudRobustRange.h
   include/mp2p_icp_filters/PointCloudToVoxelGrid.h
+  include/mp2p_icp_filters/PointCloudToVoxelGridAverage.h
   include/mp2p_icp_filters/PointCloudToVoxelGridSingle.h
   include/mp2p_icp_filters/sm2mm.h
 )

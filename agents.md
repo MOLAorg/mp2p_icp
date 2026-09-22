@@ -156,6 +156,18 @@ range/ring/intensity gating, deskew, edge/plane extraction, layer management.
 (`output_pointcloud_layer` + `desired_output_point_count`) or an `outputs` sequence; all
 output layers are sampled from ONE voxelization pass, each with its own stride.
 
+`FilterDecimateVoxels` picks one of three voxel grids per `decimate_method`, because
+what each method needs from a voxel differs: `PointCloudToVoxelGridSingle` (one point,
+for `FirstPoint`), `PointCloudToVoxelGridAverage` (sums plus the closest point, for
+`ClosestToAverage`/`VoxelAverage`), and `PointCloudToVoxelGrid` (the full index list, for
+`RandomPoint`, and for the other filters that walk a voxel's points). Only the last one
+pays for a second hashed pass and an index-array relayout, so a method must not be moved
+onto it without reason. Two things keep the grids interchangeable: voxel keys come from
+`coord2idx`, which **divides** by the resolution (multiplying by a precomputed reciprocal
+assigns boundary points to different voxels at resolutions that are not powers of two),
+and per-voxel sums are accumulated in ascending point order, so the average is bit-identical
+whichever grid produced it.
+
 Both decimation filters share `DecimateMethod` (`mp2p_icp_filters/DecimateMethod.h`).
 Because `FilterDecimateAdaptive` revisits voxels in several rounds,
 `FirstPoint`/`RandomPoint` take successive points out of each voxel, while

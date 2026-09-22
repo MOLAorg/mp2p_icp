@@ -20,10 +20,13 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
+#include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
 #include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/math/ops_containers.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/version.h>
+
+#include <cmath>
 
 using namespace mp2p_icp_filters;
 using namespace mp2p_icp;
@@ -198,6 +201,139 @@ void test_decimate_method(
     std::cout << " Success ✅." << std::endl;
 }
 
+/** The average-based methods are served by PointCloudToVoxelGridAverage, which
+ *  summarizes each voxel instead of keeping its point list. This checks that
+ *  doing so yields exactly the same output, rounding included, as summarizing
+ *  the point lists of PointCloudToVoxelGrid would.
+ */
+void test_average_methods_match_point_lists(
+    mp2p_icp_filters::DecimateMethod method, float resolution, uint32_t minPointsPerVoxel)
+{
+    const bool keepClosest = method == DecimateMethod::ClosestToAverage;
+
+    printf(
+        "Running exactness check for method=%-38s res=%.2f minPtsPerVoxel=%u...",
+        mrpt::typemeta::enum2str(method).c_str(), resolution, minPointsPerVoxel);
+
+    // A cloud with several points per voxel, and coordinates that are not
+    // exactly representable, so that any change in the summation order shows up:
+    auto pc = mrpt::maps::CGenericPointsMap::Create();
+    for (int i = 0; i < 60; i++)
+    {
+        for (int j = 0; j < 60; j++)
+        {
+            for (int k = 0; k < 6; k++)
+            {
+                pc->insertPointFast(
+                    static_cast<float>(i) * 0.037f, static_cast<float>(j) * 0.041f,
+                    static_cast<float>(k) * 0.023f);
+            }
+        }
+    }
+
+    // Plus points sitting exactly on voxel boundaries, and one ULP to either
+    // side of them, at the ranges a real lidar reaches. These are what tells
+    // apart the division in coord2idx from a multiplication by a precomputed
+    // reciprocal: the two disagree by one voxel here, at resolutions that are
+    // not a power of two.
+    for (int k = -2000; k <= 2000; k += 7)
+    {
+        const float base = static_cast<float>(k) * resolution;
+        for (const float x : {std::nextafterf(base, -1e30f), base, std::nextafterf(base, 1e30f)})
+        {
+            pc->insertPointFast(x, x, x);
+        }
+    }
+    pc->mark_as_modified();
+
+    // Reference: summarize the point list of every voxel.
+    PointCloudToVoxelGrid grid;
+    grid.setConfiguration(resolution, true);
+    grid.processPointCloud(*pc);
+
+    const auto& xs = pc->getPointsBufferRef_x();
+    const auto& ys = pc->getPointsBufferRef_y();
+    const auto& zs = pc->getPointsBufferRef_z();
+
+    std::vector<mrpt::math::TPoint3Df> expected;
+    grid.visit_voxels(
+        [&](const PointCloudToVoxelGrid::indices_t&, const PointCloudToVoxelGrid::voxel_t& vxl)
+        {
+            if (vxl.size() < minPointsPerVoxel)
+            {
+                return;
+            }
+
+            auto        mean  = mrpt::math::TPoint3Df(0, 0, 0);
+            const float inv_n = 1.0f / static_cast<float>(vxl.size());
+            for (size_t i = 0; i < vxl.size(); i++)
+            {
+                const auto ptIdx = vxl[i];
+                mean.x += xs[ptIdx];
+                mean.y += ys[ptIdx];
+                mean.z += zs[ptIdx];
+            }
+            mean *= inv_n;
+
+            if (!keepClosest)
+            {
+                expected.push_back(mean);
+                return;
+            }
+
+            std::optional<float> minSqrErr;
+            std::size_t          bestIdx = 0;
+            for (size_t i = 0; i < vxl.size(); i++)
+            {
+                const auto  ptIdx  = vxl[i];
+                const float sqrErr = mrpt::square(xs[ptIdx] - mean.x) +
+                                     mrpt::square(ys[ptIdx] - mean.y) +
+                                     mrpt::square(zs[ptIdx] - mean.z);
+                if (!minSqrErr.has_value() || sqrErr < *minSqrErr)
+                {
+                    minSqrErr = sqrErr;
+                    bestIdx   = ptIdx;
+                }
+            }
+            expected.push_back({xs[bestIdx], ys[bestIdx], zs[bestIdx]});
+        });
+
+    // Actual: through the filter.
+    mrpt::containers::yaml p      = mrpt::containers::yaml::Map();
+    p["input_pointcloud_layer"]   = "raw";
+    p["output_pointcloud_layer"]  = "decimated";
+    p["voxel_filter_resolution"]  = static_cast<double>(resolution);
+    p["decimate_method"]          = mrpt::typemeta::enum2str(method);
+    p["minimum_points_per_voxel"] = minPointsPerVoxel;
+
+    FilterDecimateVoxels filter;
+    filter.initialize(p);
+
+    metric_map_t mm;
+    mm.layers["raw"] = pc;
+    filter.filter(mm);
+
+    auto outPc = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(mm.layers.at("decimated"));
+    ASSERT_(outPc);
+
+    ASSERT_EQUAL_(outPc->size(), expected.size());
+    ASSERT_(!expected.empty());
+
+    const auto& oxs = outPc->getPointsBufferRef_x();
+    const auto& oys = outPc->getPointsBufferRef_y();
+    const auto& ozs = outPc->getPointsBufferRef_z();
+
+    for (size_t i = 0; i < expected.size(); i++)
+    {
+        // Bit-exact, not approximate: this is the property being locked down.
+        ASSERT_EQUAL_(oxs[i], expected[i].x);
+        ASSERT_EQUAL_(oys[i], expected[i].y);
+        ASSERT_EQUAL_(ozs[i], expected[i].z);
+    }
+
+    std::cout << " Success (" << expected.size() << " voxels) ✅." << std::endl;
+}
+
 // Global initialization for the test suite
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
@@ -231,6 +367,27 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                             std::cerr << "Error: ❌\n" << e.what() << std::endl;
                             failures++;
                         }
+                    }
+                }
+            }
+        }
+
+        for (const float resolution : {0.1f, 0.25f, 0.5f})
+        {
+            for (const uint32_t minPointsPerVoxel : {0U, 3U})
+            {
+                for (const auto method :
+                     {DecimateMethod::ClosestToAverage, DecimateMethod::VoxelAverage})
+                {
+                    try
+                    {
+                        test_average_methods_match_point_lists(
+                            method, resolution, minPointsPerVoxel);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        std::cerr << "Error: ❌\n" << e.what() << std::endl;
+                        failures++;
                     }
                 }
             }

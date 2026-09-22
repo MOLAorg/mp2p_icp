@@ -2,6 +2,17 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* FilterDecimateVoxels: faster DecimateMethod::ClosestToAverage and
+  DecimateMethod::VoxelAverage via a new PointCloudToVoxelGridAverage, which
+  summarizes each voxel instead of keeping its point list. Measured on KITTI-00
+  and Oxford Spires scans: 16-25% less time per scan, output bit-identical.
+* PointCloudToVoxelGridSingle: voxel_t shrunk from 56 to 24 bytes, which is
+  8-29% less time per scan for DecimateMethod::FirstPoint. Its `pointIdx` and
+  `source` members are no longer std::optional; use `pointCount != 0` to test
+  for an occupied voxel and `sourceCloud(sourceIdx)` to resolve the cloud.
+
 2.14.1 (2026-09-15)
 -------------------
 * Geman-McClure: square the kernel parameter, as its own derivation says (`#102 <https://github.com/MOLAorg/mp2p_icp/issues/102>`_)
