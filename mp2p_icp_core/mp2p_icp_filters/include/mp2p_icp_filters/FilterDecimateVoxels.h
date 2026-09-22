@@ -24,6 +24,7 @@
 #include <mp2p_icp_filters/DecimateMethod.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
+#include <mp2p_icp_filters/PointCloudToVoxelGridAverage.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGridSingle.h>
 #include <mrpt/maps/CPointsMap.h>
 
@@ -114,10 +115,19 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
     void initialize_filter(const mrpt::containers::yaml& c) override;
 
    private:
-    mutable std::optional<PointCloudToVoxelGrid>       filter_grid_;
-    mutable std::optional<PointCloudToVoxelGridSingle> filter_grid_single_;
+    mutable std::optional<PointCloudToVoxelGrid>        filter_grid_;
+    mutable std::optional<PointCloudToVoxelGridSingle>  filter_grid_single_;
+    mutable std::optional<PointCloudToVoxelGridAverage> filter_grid_average_;
 
+    /** FirstPoint needs nothing but one point per voxel. */
     bool useSingleGrid() const { return params.decimate_method == DecimateMethod::FirstPoint; }
+
+    /** These two only need a summary of each voxel, not its point list. */
+    bool useAverageGrid() const
+    {
+        return params.decimate_method == DecimateMethod::ClosestToAverage ||
+               params.decimate_method == DecimateMethod::VoxelAverage;
+    }
 };
 
 /** @} */
