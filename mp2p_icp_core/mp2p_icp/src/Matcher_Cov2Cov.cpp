@@ -142,8 +142,8 @@ bool Matcher_Cov2Cov::impl_match(
             {
                 auto&        pairing = out.paired_cov2cov[i];
                 const auto&  lp      = pairing.local;
-                const double range   = std::sqrt(
-                    mrpt::square(lp.x) + mrpt::square(lp.y) + mrpt::square(lp.z));
+                const double range =
+                    std::sqrt(mrpt::square(lp.x) + mrpt::square(lp.y) + mrpt::square(lp.z));
 
                 double weight = 1.0;
 

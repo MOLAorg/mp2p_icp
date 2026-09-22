@@ -37,11 +37,6 @@
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/core/round.h>
-#include <mrpt/viz/CEllipsoid3D.h>
-#include <mrpt/viz/CGridPlaneXY.h>
-#include <mrpt/viz/Scene.h>
-#include <mrpt/viz/CText.h>
-#include <mrpt/viz/stock_objects.h>
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/poses/Lie/SO.h>
 #include <mrpt/system/CDirectoryExplorer.h>
@@ -49,6 +44,11 @@
 #include <mrpt/system/os.h>
 #include <mrpt/system/progress.h>
 #include <mrpt/system/string_utils.h>  // unitsFormat()
+#include <mrpt/viz/CEllipsoid3D.h>
+#include <mrpt/viz/CGridPlaneXY.h>
+#include <mrpt/viz/CText.h>
+#include <mrpt/viz/Scene.h>
+#include <mrpt/viz/stock_objects.h>
 
 #include <CLI/CLI.hpp>
 #include <iostream>
@@ -112,8 +112,8 @@ class DelayedLoadLog
  *  immediate-mode-GUI rationale). */
 struct AppState
 {
-    mp2p_icp_viz::ImGuiAppShell      shell;
-    mrpt::imgui::CImGuiSceneView     sceneView;
+    mp2p_icp_viz::ImGuiAppShell   shell;
+    mrpt::imgui::CImGuiSceneView  sceneView;
     mrpt::viz::Scene::Ptr         scene    = mrpt::viz::Scene::Create();
     mrpt::viz::CSetOfObjects::Ptr glVizICP = mrpt::viz::CSetOfObjects::Create();
 
@@ -551,7 +551,7 @@ try
     rpGlobal.points.allLayers.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0xff);
 
     static std::optional<mp2p_icp::render_params_t> prevRpGlobal;
-    static mrpt::viz::CSetOfObjects::Ptr         lastGlobalPts;
+    static mrpt::viz::CSetOfObjects::Ptr            lastGlobalPts;
 
     if (indexChanged || !prevRpGlobal.has_value() || *prevRpGlobal != rpGlobal)
     {
@@ -589,7 +589,7 @@ try
     }
 
     static std::optional<mp2p_icp::render_params_t> prevRpLocal;
-    static mrpt::viz::CSetOfObjects::Ptr         lastLocalPts;
+    static mrpt::viz::CSetOfObjects::Ptr            lastLocalPts;
 
     if (indexChanged || !prevRpLocal.has_value() || *prevRpLocal != rpLocal)
     {
