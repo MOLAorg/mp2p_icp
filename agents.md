@@ -83,10 +83,11 @@ on the fly through `T_enu_to_map`.
 
 ## GUI apps (mp2p_icp_viz): Dear ImGui port
 
-Migrating from `mrpt::gui::CDisplayWindowGUI`+nanogui to Dear ImGui (docking branch),
-vendored as a submodule at `mp2p_icp_viz/3rdparty/imgui`, built as a private static lib
-(`imgui::imgui`, never installed). Both apps share `apps/imgui_app_common/`
-(`ImGuiAppShell`, `SimpleFileDialog`). 3D views use `mrpt::imgui::CImGuiSceneView`.
+Migrating from `mrpt::gui::CDisplayWindowGUI`+nanogui to Dear ImGui. ImGui comes from the
+`mrpt_imgui_vendor` ROS package (docking branch, plus ImPlot and portable-file-dialogs),
+exported as a static `imgui::imgui`; it is no longer vendored in this repo. Both apps share
+`apps/imgui_app_common/` (`ImGuiAppShell`, `SimpleFileDialog`). 3D views use
+`mrpt::imgui::CImGuiSceneView`.
 
 **Do not delete as dead code:** the axis-corner mini-viewports
 (`FIRST_MINI_VIEW_NAME`/`SECOND_MINI_VIEW_NAME`, `MINI_VIEW_NAME`) are kept in sync but
