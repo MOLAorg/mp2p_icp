@@ -45,6 +45,7 @@ struct SimulationParams
 
     mp2p_icp_filters::MotionCompensationMethod deskew_method =
         mp2p_icp_filters::MotionCompensationMethod::None;
+    bool ignore_accelerometer = false;
 
     std::string outputMapClass = "mrpt::maps::CGenericPointsMap";
 };
@@ -329,6 +330,7 @@ mrpt::maps::CSimplePointsMap simulate_gt_local_points(
     deskew.input_pointcloud_layer        = "raw";
     deskew.output_pointcloud_layer       = "deskewed";
     deskew.method                        = p.deskew_method;
+    deskew.ignore_accelerometer          = p.ignore_accelerometer;
     deskew.output_layer_class            = p.outputMapClass;
 
     deskew.attachToParameterSource(ps);
@@ -585,6 +587,7 @@ filters:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "deskewed"
       method: %s
+      ignore_accelerometer: %s
       silently_ignore_no_timestamps: false
 
       output_layer_class: "%s" # Keep intensity & ring channels
@@ -598,7 +601,8 @@ filters:
       # one or more layers to remove
       pointcloud_layer_to_remove: ["raw"]
     )yaml",
-        mrpt::typemeta::enum2str(p.deskew_method).c_str(), p.outputMapClass.c_str()));
+        mrpt::typemeta::enum2str(p.deskew_method).c_str(),
+        p.ignore_accelerometer ? "true" : "false", p.outputMapClass.c_str()));
 
     mp2p_icp::metric_map_t            mm;
     mp2p_icp_filters::sm2mm_options_t sm2mm_opts;
@@ -657,6 +661,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         methods.push_back(mp2p_icp_filters::MotionCompensationMethod::IMUh);
 #endif
 
+        // (method, ignore_accelerometer) pairs to test:
+        std::vector<std::pair<mp2p_icp_filters::MotionCompensationMethod, bool>> cases;
+        for (const auto method : methods)
+        {
+            cases.emplace_back(method, false);
+        }
+#if MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION
+        cases.emplace_back(mp2p_icp_filters::MotionCompensationMethod::IMU, true);
+#endif
+
         const std::vector<std::string> outputMapClasses = {"mrpt::maps::CGenericPointsMap"};
 
         const std::vector<std::pair<float, float>> test_velocities = {
@@ -682,9 +696,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 p.angular_vel  = ang;
                 std::cout << "\n=== Test velocities: lin=" << lin << " ang=" << ang << "\n";
 
-                for (const auto method : methods)
+                for (const auto& [method, ignoreAcc] : cases)
                 {
-                    p.deskew_method = method;
+                    p.deskew_method        = method;
+                    p.ignore_accelerometer = ignoreAcc;
 
                     for (const auto& className : outputMapClasses)
                     {
@@ -694,10 +709,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                         const auto eval =
                             use_sm2mm ? run_deskew_in_sm2mm_test(p) : run_deskew_test(p);
 
+                        const std::string label =
+                            mrpt::typemeta::enum2str(method) + (ignoreAcc ? " (no accel)" : "");
                         printf(
-                            " %-32s | %-30s | rmse: %10.6f | errs: ",
-                            mrpt::typemeta::enum2str(method).c_str(), p.outputMapClass.c_str(),
-                            eval.rmse);
+                            " %-32s | %-30s | rmse: %10.6f | errs: ", label.c_str(),
+                            p.outputMapClass.c_str(), eval.rmse);
 
                         for (std::size_t i = 0;
                              i < std::min<std::size_t>(eval.individual_frame_rmse.size(), 6U); i++)
@@ -707,10 +723,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                         printf("... [mm] ");
 
                         // Check:
+                        // Ignoring the accelerometer reduces IMU to a constant-velocity
+                        // model, so it gets the same tolerance as Linear:
                         const float threshold =
                             (method == mp2p_icp_filters::MotionCompensationMethod::None
                                  ? 0.20f
-                                 : (method == mp2p_icp_filters::MotionCompensationMethod::Linear
+                                 : (method == mp2p_icp_filters::MotionCompensationMethod::Linear ||
+                                            ignoreAcc
                                         ? 0.005f
                                         : 0.001f));
                         if (eval.rmse > threshold)

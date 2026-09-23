@@ -4,6 +4,11 @@ Changelog for package mp2p_icp_core
 
 Forthcoming
 -----------
+* FilterDeskew: fix `ignore_accelerometer=true` integrating a phantom free
+  fall. Only the specific force was zeroed, so the coordinate acceleration
+  stayed at gravity and every de-skewed cloud was displaced by up to g*T^2/2
+  (~5 cm for a 0.1 s sweep). Gravity is now zeroed too, giving the intended
+  gyro + constant-velocity model. New regression cases in test-mp2p_deskew.
 * FilterDecimateVoxels: faster DecimateMethod::ClosestToAverage and
   DecimateMethod::VoxelAverage via a new PointCloudToVoxelGridAverage, which
   summarizes each voxel instead of keeping its point list. Measured on KITTI-00
