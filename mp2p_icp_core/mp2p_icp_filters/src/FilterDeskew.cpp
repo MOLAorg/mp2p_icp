@@ -547,6 +547,20 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
             if (!sample_history.by_time.empty())
             {
+                // A defined `twist` provides the velocity at t=0, replacing whatever
+                // velocity samples the buffer holds:
+                if (twist.has_value())
+                {
+                    const mrpt::math::TVector3D v0(twist->vx, twist->vy, twist->vz);
+                    sample_history.by_type.v_b.clear();
+                    sample_history.by_type.v_b[0.0] = v0;
+                    for (auto& [stamp, sample] : sample_history.by_time)
+                    {
+                        sample.v_b.reset();
+                    }
+                    sample_history.by_time[0.0].v_b = v0;
+                }
+
                 // Optionally suppress accelerometer contribution entirely,
                 // reducing position integration to gyro + constant velocity.
                 // This avoids lever-arm noise from corrupting the deskew path when the

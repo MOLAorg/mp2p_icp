@@ -127,8 +127,11 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
     /** The velocity (linear and angular) of the vehicle in the local
      * vehicle frame. See FilterDeskew::initialize for an example of how
      * to define it via dynamic variables.
-     * This will be used only for `method=MotionCompensationMethod::Linear`; otherwise, it can be
-     * left as an empty `std::optional`.
+     * Required for `method=MotionCompensationMethod::Linear`. For the IMU-based methods it is
+     * optional: if defined, its linear part is the vehicle velocity at the scan reference time
+     * (t=0), from which the IMU readings are integrated, instead of the most recent velocity
+     * sample in the LocalVelocityBuffer. Its angular part is not used by those methods (the
+     * gyroscope is).
      */
     std::optional<mrpt::math::TTwist3D> twist;
 
