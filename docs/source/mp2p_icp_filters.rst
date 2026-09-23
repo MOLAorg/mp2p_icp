@@ -14,7 +14,7 @@ or :cpp:class:`mp2p_icp_filters::filter_pipeline_from_yaml_file()`.
 
 * **name** (:cpp:type:`std::string`, optional): A custom name for the filter, used in log output and profiler entries.
 
-* **enabled** (:cpp:type:`bool`, default: ``true``): When ``false``, the filter is silently skipped in
+* **enabled** (``bool``, default: ``true``): When ``false``, the filter is silently skipped in
   :cpp:func:`mp2p_icp_filters::apply_filter_pipeline`. Accepts ``true``/``false`` YAML booleans and
   string values ``"1"``/``"0"`` (so that ``mola_yaml`` ``${ENV_VAR|1}`` expressions work transparently
   for environment-based toggling):
@@ -92,10 +92,10 @@ Filter: `FilterAdjustTimestamps`
 
 * **pointcloud\_layer** (:cpp:type:`std::string`): The name of the point cloud layer to process.
 
-* **silently\_ignore\_no\_timestamps** (:cpp:type:`bool`, default: `false`): If `true`, no exception is thrown if the input layer does not contain timestamps;
+* **silently\_ignore\_no\_timestamps** (``bool``, default: `false`): If `true`, no exception is thrown if the input layer does not contain timestamps;
   an empty output is produced instead.
 
-* **time\_offset** (:cpp:type:`double`, default: `0.0`): An optional time offset to be added on top of the adjustment.
+* **time\_offset** (``double``, default: `0.0`): An optional time offset to be added on top of the adjustment.
   Useful for synchronizing multiple sensors.
 
 * **method** (:cpp:enum:`TimestampAdjustMethod`, default: `MiddleIsZero`): The criterion for adjusting timestamps:
@@ -131,10 +131,10 @@ Filter: `FilterBoundingBox`
 
 * **outside\_pointcloud\_layer** (:cpp:type:`std::string`, optional): The output layer name for points **OUTSIDE** the bounding box. If empty, these points are discarded.
 
-* **bounding\_box\_min** (:cpp:type:`float[3]`): The :math:`(x, y, z)` coordinates of the minimum corner of the bounding box (e.g., `[-10, -10, -5]`).
+* **bounding\_box\_min** (``float[3]``): The :math:`(x, y, z)` coordinates of the minimum corner of the bounding box (e.g., `[-10, -10, -5]`).
   Can use robocentric variables (e.g., `robot_x`).
 
-* **bounding\_box\_max** (:cpp:type:`float[3]`): The :math:`(x, y, z)` coordinates of the maximum corner of the bounding box (e.g., `[10, 10, 5]`).
+* **bounding\_box\_max** (``float[3]``): The :math:`(x, y, z)` coordinates of the maximum corner of the bounding box (e.g., `[10, 10, 5]`).
   Can use robocentric variables.
 
 .. code-block:: yaml
@@ -172,9 +172,9 @@ Filter: `FilterByIntensity`
 
 * **output\_layer\_mid\_intensity** (:cpp:type:`std::string`, optional): Output layer for points with :math:`\text{intensity} \in [\text{low\_threshold}, \text{high\_threshold}]`.
 
-* **low\_threshold** (:cpp:type:`float`, default: `0.10`): The minimum intensity value for the 'mid' range.
+* **low\_threshold** (``float``, default: `0.10`): The minimum intensity value for the 'mid' range.
 
-* **high\_threshold** (:cpp:type:`float`, default: `0.90`): The maximum intensity value for the 'mid' range.
+* **high\_threshold** (``float``, default: `0.90`): The maximum intensity value for the 'mid' range.
 
 .. code-block:: yaml
 
@@ -209,14 +209,14 @@ Filter: `FilterByRange`
 
 * **output\_layer\_outside** (:cpp:type:`std::string`, optional): Output layer for points **outside** the :math:`[\text{range\_min}, \text{range\_max}]` distance range.
 
-* **range\_min** (:cpp:type:`float`, default: `3.0`): The minimum distance threshold.
+* **range\_min** (``float``, default: `3.0`): The minimum distance threshold.
 
-* **range\_max** (:cpp:type:`float`, default: `90.0`): The maximum distance threshold.
+* **range\_max** (``float``, default: `90.0`): The maximum distance threshold.
 
-* **center** (:cpp:type:`float[3]`, default: `[0, 0, 0]`): The center point from which ranges are measured.
+* **center** (``float[3]``, default: `[0, 0, 0]`): The center point from which ranges are measured.
   Can use robot pose variables (e.g., `robot_x`).
 
-* **metric\_l\_infinity** (:cpp:type:`bool`, default: `false`): If `true`, the L-infinity norm (maximum component) is used for distance calculation, which is more efficient than the default L2 Euclidean norm.
+* **metric\_l\_infinity** (``bool``, default: `false`): If `true`, the L-infinity norm (maximum component) is used for distance calculation, which is more efficient than the default L2 Euclidean norm.
 
 .. code-block:: yaml
 
@@ -251,7 +251,7 @@ Filter: `FilterByRing`
 
 * **output\_layer\_non\_selected** (:cpp:type:`std::string`, optional): Output layer for points whose ring ID is **NOT** in :cpp:member:`selected_ring_ids`.
 
-* **selected\_ring\_ids** (:cpp:type:`std::set<int>`): A list of ring IDs to keep/select (e.g., `[0, 1, 5, 6]`).
+* **selected\_ring\_ids** (``std::set<int>``): A list of ring IDs to keep/select (e.g., `[0, 1, 5, 6]`).
 
 .. code-block:: yaml
 
@@ -317,11 +317,11 @@ Useful for edge extraction (LOAM-style).
 
 * **output\_layer\_other** (:cpp:type:`std::string`, optional): Output layer for points that do not fall into the above two categories.
 
-* **max\_cosine** (:cpp:type:`float`, default: `0.5f`): A threshold related to the angle of the local neighborhood for classifying high curvature.
+* **max\_cosine** (``float``, default: `0.5f`): A threshold related to the angle of the local neighborhood for classifying high curvature.
 
-* **min\_clearance** (:cpp:type:`float`, default: `0.02f`): The minimum distance a neighbor must be to be considered in the curvature calculation (m).
+* **min\_clearance** (``float``, default: `0.02f`): The minimum distance a neighbor must be to be considered in the curvature calculation (m).
 
-* **max\_gap** (:cpp:type:`float`, default: `1.00f`): The maximum gap distance between a point and its neighbor (m).
+* **max\_gap** (``float``, default: `1.00f`): The maximum gap distance between a point and its neighbor (m).
 
 The three numeric parameters above accept dynamic formulas, e.g. `"0.02*ESTIMATED_OBSERVATION_RADIUS"`.
 
@@ -413,13 +413,13 @@ More than one output layer can be requested, each one with its own target point 
 
 * **output\_pointcloud\_layer** (:cpp:type:`std::string`): The output layer name for the adaptively decimated cloud.
 
-* **desired\_output\_point\_count** (:cpp:type:`unsigned int`, default: `1000`): The target number of points in the output cloud.
+* **desired\_output\_point\_count** (``unsigned int``, default: `1000`): The target number of points in the output cloud.
 
 * **outputs** (sequence, optional): A list of output layers, each entry holding its own `output_pointcloud_layer` and `desired_output_point_count`. Mutually exclusive with the two single-output parameters above.
 
-* **minimum\_input\_points\_per\_voxel** (:cpp:type:`unsigned int`, default: `1`): Voxels with fewer points than this threshold will not generate any output point.
+* **minimum\_input\_points\_per\_voxel** (``unsigned int``, default: `1`): Voxels with fewer points than this threshold will not generate any output point.
 
-* **voxel\_size** (:cpp:type:`float`, default: `0.10`): The size of the voxel grid used for downsampling (m).
+* **voxel\_size** (``float``, default: `0.10`): The size of the voxel grid used for downsampling (m).
 
 * **decimate\_method** (:cpp:enum:`mp2p_icp_filters::DecimateMethod`, default: `DecimateMethod::FirstPoint`): Which point represents each voxel, as in `FilterDecimateVoxels`_. Since this filter walks the voxels in as many rounds as needed to reach the desired point count, note that `DecimateMethod::FirstPoint` (the fastest) and `DecimateMethod::RandomPoint` take successive points out of each voxel, in insertion order or starting at a random offset, respectively; whereas `DecimateMethod::ClosestToAverage` and `DecimateMethod::VoxelAverage` summarize the whole voxel and hence yield **one point per voxel only**, so the output cannot be larger than the number of valid voxels. `DecimateMethod::VoxelAverage` generates new points, so per-point fields (intensity, ring, timestamp, ...) are not propagated to the output.
 
@@ -489,22 +489,22 @@ single YAML config work across heterogeneous LiDAR sensors without retuning.
 
 * **output\_pointcloud\_layer** (:cpp:type:`std::string`): Output layer for the decimated cloud.
 
-* **vertical\_fov\_rad** (:cpp:type:`double`, default: `0`): LiDAR vertical field-of-view in
+* **vertical\_fov\_rad** (``double``, default: `0`): LiDAR vertical field-of-view in
   radians. If 0, auto-derived from the elevation spread of points carrying a ``ring`` channel.
 
-* **num\_scan\_lines** (:cpp:type:`unsigned int`, default: `0`): Number of scan lines (rings).
+* **num\_scan\_lines** (``unsigned int``, default: `0`): Number of scan lines (rings).
   If 0, auto-derived as ``max(ring_id) + 1`` from the cloud's ring channel.
 
-* **bin\_width** (:cpp:type:`double`, default: `1.0`): Radial bin width in meters.
+* **bin\_width** (``double``, default: `1.0`): Radial bin width in meters.
 
-* **max\_range** (:cpp:type:`double`, default: `0`): Maximum range (m). 0 means use the farthest
+* **max\_range** (``double``, default: `0`): Maximum range (m). 0 means use the farthest
   point in the cloud.
 
-* **min\_voxel\_size** (:cpp:type:`double`, default: `0.05`): Minimum voxel size clamp (m).
+* **min\_voxel\_size** (``double``, default: `0.05`): Minimum voxel size clamp (m).
 
-* **max\_voxel\_size** (:cpp:type:`double`, default: `2.0`): Maximum voxel size clamp (m).
+* **max\_voxel\_size** (``double``, default: `2.0`): Maximum voxel size clamp (m).
 
-* **min\_input\_points\_per\_voxel** (:cpp:type:`unsigned int`, default: `1`): Minimum number of
+* **min\_input\_points\_per\_voxel** (``unsigned int``, default: `1`): Minimum number of
   points a voxel must contain to produce an output point.
 
 * **parallelization\_grain\_size** (:cpp:type:`size\_t`, default: `16384`): TBB grain size.
@@ -538,19 +538,19 @@ Filter: `FilterDecimateVoxels`
 
 * **input\_pointcloud\_layer** (:cpp:type:`std::vector<std::string>`, default: `[raw]`): One or more input layers to read and merge points from.
 
-* **error\_on\_missing\_input\_layer** (:cpp:type:`bool`, default: `true`): If `true`, an exception is thrown if an input layer is missing.
+* **error\_on\_missing\_input\_layer** (``bool``, default: `true`): If `true`, an exception is thrown if an input layer is missing.
   Otherwise, it's silently ignored.
 
 * **output\_pointcloud\_layer** (:cpp:type:`std::string`): The output point cloud layer name.
   New points are appended if the layer already exists.
 
-* **voxel\_filter\_resolution** (:cpp:type:`float`, default: `1.0f`): Size of each voxel edge (m).
+* **voxel\_filter\_resolution** (``float``, default: `1.0f`): Size of each voxel edge (m).
 
-* **use\_tsl\_robin\_map** (:cpp:type:`bool`, default: `true`): Whether to use `tsl::robin_map` (faster for smaller clouds) or `std::map` (faster for large clouds) as the container implementation.
+* **use\_tsl\_robin\_map** (``bool``, default: `true`): Whether to use `tsl::robin_map` (faster for smaller clouds) or `std::map` (faster for large clouds) as the container implementation.
 
 * **minimum\_input\_points\_to\_filter** (:cpp:type:`uint32\_t`, default: `0`): If the total number of input points is less than this, all points are passed through without decimation.
 
-* **flatten\_to** (:cpp:type:`std::optional<double>`): If defined, the 3D points are "flattened" into a 2D planar cloud at a constant height :math:`z`.
+* **flatten\_to** (``std::optional<double>``): If defined, the 3D points are "flattened" into a 2D planar cloud at a constant height :math:`z`.
   Additional point fields (ring, intensity, timestamp) are **NOT** copied in this mode.
 
 * **decimate\_method** (:cpp:enum:`DecimateMethod`, default: `FirstPoint`): The method to pick the representative point for each voxel:
@@ -592,7 +592,7 @@ Filter: `FilterDeleteLayer`
 
 * **pointcloud\_layer\_to\_remove** (:cpp:type:`std::vector<std::string>`): One or more layers to remove.
 
-* **error\_on\_missing\_input\_layer** (:cpp:type:`bool`, default: `true`): If `true`, an exception is thrown if a layer to be removed does not exist.
+* **error\_on\_missing\_input\_layer** (``bool``, default: `true`): If `true`, an exception is thrown if a layer to be removed does not exist.
   Otherwise, it's silently ignored.
 
 .. code-block:: yaml
@@ -626,13 +626,13 @@ Filter: `FilterDeskew`
 * **output\_pointcloud\_layer** (:cpp:type:`std::string`, optional):
   The output layer name. Required unless `in_place` is `true`.
 
-* **in\_place** (:cpp:type:`bool`, default: `false`):
+* **in\_place** (``bool``, default: `false`):
   If `true`, the deskewed points replace the input layer (most efficient).
 
 * **output\_layer\_class** (:cpp:type:`std::string`, default: `mrpt::maps::CPointsMapXYZI`):
   The class name for the output layer if it needs to be created.
 
-* **silently\_ignore\_no\_timestamps** (:cpp:type:`bool`, default: `false`):
+* **silently\_ignore\_no\_timestamps** (``bool``, default: `false`):
   If `true`, no exception is thrown if the input layer lacks timestamps.
 
 * **method** (:cpp:enum:`MotionCompensationMethod`, default: `Linear`):
@@ -649,7 +649,7 @@ Filter: `FilterDeskew`
   Only used when `method=Linear`.
   May be dynamically bound via the `mp2p_icp::Parameterizable` API.
 
-* **points\_already\_global** (:cpp:type:`bool`, default: `false`):
+* **points\_already\_global** (``bool``, default: `false`):
   If `true`, the input points are already expressed in global coordinates (e.g. in sm2mm pipelines).
   When enabled, `robot_pose` must be provided to reference the global transformation.
 
@@ -723,7 +723,7 @@ Filter: `FilterFartherPointSampling`
 
 * **output\_pointcloud\_layer** (:cpp:type:`std::string`): The output layer name for the sampled cloud.
 
-* **desired\_output\_point\_count** (:cpp:type:`unsigned int`, default: `1000`): The target number of points in the output cloud.
+* **desired\_output\_point\_count** (``unsigned int``, default: `1000`): The target number of points in the output cloud.
 
 .. code-block:: yaml
 
@@ -758,7 +758,7 @@ This uses the target layer's standard `insertObservation()` method.
 
 * **target\_layer** (:cpp:type:`std::string`): The destination layer into which the points will be merged.
 
-* **input\_layer\_in\_local\_coordinates** (:cpp:type:`bool`, default: `false`): If `true`, the `input\_pointcloud\_layer` is assumed to be in the vehicle frame and is transformed by `robot\_pose` before insertion.
+* **input\_layer\_in\_local\_coordinates** (``bool``, default: `false`): If `true`, the `input\_pointcloud\_layer` is assumed to be in the vehicle frame and is transformed by `robot\_pose` before insertion.
 
 * **robot\_pose** (:cpp:type:`mrpt::math::TPose3D`): The pose of the robot/vehicle. Required if `input\_layer\_in\_local\_coordinates` is `true`.
 
@@ -796,11 +796,11 @@ The computed normals are stored as new per-point fields in the output map: ``nor
 
 * **distinct\_cloud\_layer** (:cpp:type:`std::string`, optional): Required if :cpp:member:`upsampling_method` is set to ``DISTINCT_CLOUD``. Points from this layer are projected onto the surface computed from :cpp:member:`input_pointcloud\_layer`.
 
-* **search\_radius** (:cpp:type:`double`, default: `0.05`): The search radius (in meters) for finding neighbors to fit the MLS surface.
+* **search\_radius** (``double``, default: `0.05`): The search radius (in meters) for finding neighbors to fit the MLS surface.
 
-* **polynomial\_order** (:cpp:type:`int`, default: `2`): The order of the polynomial to fit (e.g., ``1`` for planar, ``2`` for quadratic).
+* **polynomial\_order** (``int``, default: `2`): The order of the polynomial to fit (e.g., ``1`` for planar, ``2`` for quadratic).
 
-* **min\_neighbors\_for\_fit** (:cpp:type:`int`, default: `3`): The minimum number of neighbors required within the search radius to successfully compute the MLS fit.
+* **min\_neighbors\_for\_fit** (``int``, default: `3`): The minimum number of neighbors required within the search radius to successfully compute the MLS fit.
 
 * **projection\_method** (:cpp:enum:`ProjectionMethod`, default: `SIMPLE`): The method used for projecting points onto the fitted surface:
 
@@ -892,11 +892,11 @@ The data is updated **in-place** in the input/output layer.
 
 * **pointcloud\_layer** (:cpp:type:`std::string`): The point cloud layer to process.
 
-* **remember\_intensity\_range** (:cpp:type:`bool`, default: `false`): If `true`, the filter keeps an internal record of the minimum and maximum intensities observed in past clouds to maintain a consistent normalization.
+* **remember\_intensity\_range** (``bool``, default: `false`): If `true`, the filter keeps an internal record of the minimum and maximum intensities observed in past clouds to maintain a consistent normalization.
 
-* **fixed\_maximum\_intensity** (:cpp:type:`double`, default: `0.0`): If non-zero, this value is used as the fixed maximum intensity for normalization.
+* **fixed\_maximum\_intensity** (``double``, default: `0.0`): If non-zero, this value is used as the fixed maximum intensity for normalization.
 
-* **fixed\_minimum\_intensity** (:cpp:type:`double`, default: `0.0`): If `fixed\_maximum\_intensity` is non-zero, this value is used as the fixed minimum intensity for normalization.
+* **fixed\_minimum\_intensity** (``double``, default: `0.0`): If `fixed\_maximum\_intensity` is non-zero, this value is used as the fixed minimum intensity for normalization.
 
 .. code-block:: yaml
 
@@ -943,19 +943,19 @@ thread count.
 
 * **input\_pointcloud\_layer** (:cpp:type:`std::string`, default: `raw`): The input point cloud layer name.
 
-* **clear\_previous** (:cpp:type:`bool`, default: `true`): Empty `planes` before appending. Leave on for a per-scan observation map.
+* **clear\_previous** (``bool``, default: `true`): Empty `planes` before appending. Leave on for a per-scan observation map.
 
-* **voxel\_size** (:cpp:type:`double`, default: `0.10`): Downsampling applied before anything else (m). Also sets the resolution of the area count.
+* **voxel\_size** (``double``, default: `0.10`): Downsampling applied before anything else (m). Also sets the resolution of the area count.
 
-* **distance\_threshold** (:cpp:type:`double`, default: `0.06`): Maximum point-to-plane distance for an inlier (m).
+* **distance\_threshold** (``double``, default: `0.06`): Maximum point-to-plane distance for an inlier (m).
 
-* **normal\_agreement\_deg** (:cpp:type:`double`, default: `12.0`): Maximum angle between a point's own normal and the candidate plane's (deg).
+* **normal\_agreement\_deg** (``double``, default: `12.0`): Maximum angle between a point's own normal and the candidate plane's (deg).
 
 * **min\_points** (:cpp:type:`uint32\_t`, default: `300`): Minimum inlier count for a patch. At the default voxel size, 300 points is 3 m2.
 
-* **min\_span** (:cpp:type:`double`, default: `1.5`): Minimum extent along the *shorter* in-plane axis (m).
+* **min\_span** (``double``, default: `1.5`): Minimum extent along the *shorter* in-plane axis (m).
 
-* **range\_min** / **range\_max** (:cpp:type:`double`, defaults: `1.0` / `60.0`): Points outside this range from the layer origin are ignored (m).
+* **range\_min** / **range\_max** (``double``, defaults: `1.0` / `60.0`): Points outside this range from the layer origin are ignored (m).
 
 * **max\_patches** (:cpp:type:`uint32\_t`, default: `12`): Stop after this many patches.
 
@@ -999,11 +999,11 @@ This is done by analyzing the min/max Z-span in 2D grid cells.
 
 * **output\_layer\_no\_poles** (:cpp:type:`std::string`, optional): Output layer name for points that **are not** poles.
 
-* **grid\_size** (:cpp:type:`float`, default: `2.0f`): Size of the 2D grid cell used for analysis (m).
+* **grid\_size** (``float``, default: `2.0f`): Size of the 2D grid cell used for analysis (m).
 
-* **minimum\_relative\_height** (:cpp:type:`float`, default: `2.5f`): Minimum required height span in a cell to be considered a pole candidate.
+* **minimum\_relative\_height** (``float``, default: `2.5f`): Minimum required height span in a cell to be considered a pole candidate.
 
-* **maximum\_relative\_height** (:cpp:type:`float`, default: `25.0f`): Maximum allowed height span in a cell.
+* **maximum\_relative\_height** (``float``, default: `25.0f`): Maximum allowed height span in a cell.
 
 * **minimum\_points\_per\_cell** (:cpp:type:`uint32\_t`, default: `50`): Minimum number of points required in a cell for analysis.
 
@@ -1040,11 +1040,11 @@ Filter: `FilterPolygon2D`
 
 * **outside\_pointcloud\_layer** (:cpp:type:`std::string`, optional): The output layer name for points **OUTSIDE** the polygon. If empty, these points are discarded.
 
-* **polygon** (:cpp:type:`float[][2]`): The list of polygon vertices in the XY plane, as a sequence of :math:`[x, y]` pairs. At least 3 vertices are required.
+* **polygon** (``float[][2]``): The list of polygon vertices in the XY plane, as a sequence of :math:`[x, y]` pairs. At least 3 vertices are required.
 
-* **z\_min** (:cpp:type:`double`, default: :math:`-\infty`): Minimum :math:`z` (inclusive) kept for points inside the polygon footprint.
+* **z\_min** (``double``, default: :math:`-\infty`): Minimum :math:`z` (inclusive) kept for points inside the polygon footprint.
 
-* **z\_max** (:cpp:type:`double`, default: :math:`+\infty`): Maximum :math:`z` (inclusive) kept for points inside the polygon footprint.
+* **z\_max** (``double``, default: :math:`+\infty`): Maximum :math:`z` (inclusive) kept for points inside the polygon footprint.
 
 .. code-block:: yaml
 
@@ -1079,7 +1079,7 @@ This is typically used to separate **static** (high occupancy) and **dynamic** (
 
 * **output\_layer\_dynamic\_objects** (:cpp:type:`std::string`, optional): Output layer for points within low-occupancy voxels ("dynamic objects").
 
-* **occupancy\_threshold** (:cpp:type:`float`, default: `0.6f`): The occupancy probability threshold. Voxels above this are considered "static".
+* **occupancy\_threshold** (``float``, default: `0.6f`): The occupancy probability threshold. Voxels above this are considered "static".
 
 .. code-block:: yaml
 
@@ -1119,7 +1119,7 @@ Unlike clearing data, this operation removes the field definitions themselves, a
 
 * **field_names** (:cpp:type:`std::string` or :cpp:type:`std::vector<std::string>`, required): One or more custom field names to remove (e.g., ``intensity``, ``ring``, ``timestamp_abs``, or any user-defined field names). Can be specified as a single string or as a list/sequence.
 
-* **throw_on_missing_field** (:cpp:type:`bool`, default: `true`): Whether to throw an exception if any of the specified fields does not exist. If ``false``, missing fields are silently ignored.
+* **throw_on_missing_field** (``bool``, default: `true`): Whether to throw an exception if any of the specified fields does not exist. If ``false``, missing fields are silently ignored.
 
 .. code-block:: yaml
 
@@ -1156,7 +1156,7 @@ in the map to a new name. If a layer with the output name already exists, it is 
 
 * **output_layer** (:cpp:type:`std::string`): The new name for the layer.
 
-* **fail_if_input_layer_does_not_exist** (:cpp:type:`bool`, default: `true`): Can be set to `false` to silently ignore missing input layers.
+* **fail_if_input_layer_does_not_exist** (``bool``, default: `true`): Can be set to `false` to silently ignore missing input layers.
 
 .. code-block:: yaml
 
@@ -1192,10 +1192,10 @@ the overall structure of the point cloud.
 * **output_layer_outliers** (:cpp:type:`std::string`, optional): The name of the output layer for points classified as outliers.
   If empty, outliers are not stored in a separate layer.
 
-* **mean_k** (:cpp:type:`unsigned int`, default: `20`): Number of nearest neighbors to analyze for each point when computing the average distance.
+* **mean_k** (``unsigned int``, default: `20`): Number of nearest neighbors to analyze for each point when computing the average distance.
   Higher values provide more robust statistics but increase computation time.
 
-* **std_dev_mul** (:cpp:type:`double`, default: `1.0`): Standard deviation multiplier threshold.
+* **std_dev_mul** (``double``, default: `1.0`): Standard deviation multiplier threshold.
   Points with average distances greater than ``(mean + std_dev_mul × std_dev)`` are classified as outliers.
   Lower values make the filter more aggressive (removes more points), while higher values are more conservative.
 
@@ -1243,7 +1243,7 @@ Typical use case: some odometry systems voxelize incoming scans *after* transfor
 
 * **pose** (:cpp:type:`mrpt::math::TPose3D`): The pose :math:`T` to apply.
 
-* **invert_pose** (:cpp:type:`bool`, default: `false`): If `true`, apply :math:`T^{-1}` instead of :math:`T`.
+* **invert_pose** (``bool``, default: `false`): If `true`, apply :math:`T^{-1}` instead of :math:`T`.
 
 .. code-block:: yaml
 
@@ -1271,9 +1271,9 @@ Filter: `FilterVoxelSlice`
 
 * **output\_gridmap\_layer** (:cpp:type:`std::string`): The output 2D occupancy grid map layer.
 
-* **z\_min** (:cpp:type:`double`): The minimum Z-coordinate for the slice.
+* **z\_min** (``double``): The minimum Z-coordinate for the slice.
 
-* **z\_max** (:cpp:type:`double`): The maximum Z-coordinate for the slice.
+* **z\_max** (``double``): The maximum Z-coordinate for the slice.
 
 .. code-block:: yaml
 
