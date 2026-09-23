@@ -4,6 +4,12 @@ Changelog for package mp2p_icp_core
 
 Forthcoming
 -----------
+* FilterDeskew: for the IMU-based methods, a defined `twist` now provides the
+  vehicle velocity at the scan reference time, from which the IMU readings are
+  integrated, instead of the most recent velocity sample in the
+  LocalVelocityBuffer. This lets the caller seed de-skew from a velocity source
+  other than its own state estimate (e.g. leg or wheel odometry). No change for
+  pipelines that write the same estimator twist to both places.
 * FilterDeskew: fix `ignore_accelerometer=true` integrating a phantom free
   fall. Only the specific force was zeroed, so the coordinate acceleration
   stayed at gravity and every de-skewed cloud was displaced by up to g*T^2/2
