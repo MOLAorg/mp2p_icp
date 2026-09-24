@@ -1063,6 +1063,52 @@ Filter: `FilterPolygon2D`
 
 ---
 
+Filter: `FilterRangeBiasCorrection`
+-----------------------------------
+
+**Description**: Corrects, in place, a systematic surface offset of LiDAR returns that depends on range and incidence angle.
+Some sensors measure surfaces slightly too near or too far, by an amount that grows with range and with the obliquity of the surface.
+The offset, measured along the surface normal, is modeled as :math:`d = a + b \, r + c \, \sin^2 \theta`, with :math:`r` the range
+from ``sensor_origin`` and :math:`\theta` the angle between the viewing ray and the local normal. Each point is moved by :math:`-d`
+along the normal oriented away from the sensor.
+
+Normals come from the :math:`k` nearest neighbors in the same cloud; points whose neighborhood is not a well-defined plane are left
+untouched. Planar points are classified as ground, slanted or wall by the vertical component of their normal, each class with its
+own :math:`(a, b, c)`. The coefficients are sensor-specific and must be calibrated (e.g. against a survey map); with all of them
+zero (the default) the filter does nothing.
+
+**Parameters**:
+
+* **pointcloud\_layer** (:cpp:type:`std::string`): The point cloud layer to correct, in place.
+
+* **sensor\_origin** (``float[3]``, default: `[0, 0, 0]`): Sensor position in the cloud frame. Can use robot pose variables.
+
+* **ground**, **slanted**, **wall** (``double[3]``, default: `[0, 0, 0]`): Coefficients :math:`[a, b, c]` in meters, meters per meter and meters.
+
+* **ground\_min\_nz** (``double``, default: `0.9`), **wall\_max\_nz** (``double``, default: `0.3`): :math:`|n_z|` thresholds for the ground and wall classes.
+
+* **k\_neighbors** (``unsigned int``, default: `16`), **min\_neighbors** (``unsigned int``, default: `6`), **max\_neighbor\_distance** (``double``, default: `1.0`): Neighborhood used for each normal.
+
+* **max\_planarity\_ratio** (``double``, default: `0.1`), **min\_line\_ratio** (``double``, default: `0.05`): A neighborhood is a plane if its smallest eigenvalue is below ``max_planarity_ratio`` times the middle one, and the middle one is above ``min_line_ratio`` times the largest.
+
+* **max\_correction** (``double``, default: `0.05`): Corrections are clamped to this magnitude [m].
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterRangeBiasCorrection
+        params:
+          pointcloud_layer: 'deskewed'
+          sensor_origin: [0, 0, 0.124]
+          ground: [0.0116, -0.00123, -0.0085]
+          slanted: [0.0007, -0.00058, -0.0110]
+          wall: [0.0044, -0.00052, -0.0172]
+
+|
+
+---
+
 Filter: `FilterRemoveByVoxelOccupancy`
 --------------------------------------
 
