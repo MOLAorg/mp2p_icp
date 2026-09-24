@@ -74,6 +74,8 @@ void FilterRangeBiasCorrection::Parameters::load_from_yaml(
 
     ASSERT_GE_(k_neighbors, 3U);
     ASSERT_GE_(min_neighbors, 3U);
+    ASSERT_LE_(min_neighbors, k_neighbors);
+    ASSERT_GT_(parallelization_grain_size, 0UL);
 
     if (c.has("sensor_origin"))
     {
@@ -115,6 +117,14 @@ void FilterRangeBiasCorrection::filter(mp2p_icp::metric_map_t& inOut) const
     auto&        pc = *pcPtr;
     const size_t N  = pc.size();
     if (N == 0)
+    {
+        return;
+    }
+
+    // Nothing to correct: skip the (costly) normal estimation.
+    const auto isZero = [](const std::array<double, 3>& k)
+    { return k[0] == 0 && k[1] == 0 && k[2] == 0; };
+    if (isZero(params.ground) && isZero(params.slanted) && isZero(params.wall))
     {
         return;
     }
