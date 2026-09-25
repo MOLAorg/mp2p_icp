@@ -44,7 +44,10 @@ namespace mp2p_icp_filters
  * "summarize" the 3D points into a 2D planar (constant height `z`) cloud.
  *
  * Additional input point fields (ring, intensity, timestamp) will be copied
- * into the output target cloud, except when using the `flatten_to` option.
+ * into the output target cloud. When the output point is synthesized (the
+ * average for DecimateMethod::VoxelAverage, or a flattened point), they are
+ * taken from the input point it stands for (for VoxelAverage, the one
+ * closest to the average).
  *
  * If `minimum_input_points_to_filter` is defined, input clouds smaller than
  * that size will not be decimated at all.

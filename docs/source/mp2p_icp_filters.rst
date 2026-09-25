@@ -421,7 +421,7 @@ More than one output layer can be requested, each one with its own target point 
 
 * **voxel\_size** (``float``, default: `0.10`): The size of the voxel grid used for downsampling (m).
 
-* **decimate\_method** (:cpp:enum:`mp2p_icp_filters::DecimateMethod`, default: `DecimateMethod::FirstPoint`): Which point represents each voxel, as in `FilterDecimateVoxels`_. Since this filter walks the voxels in as many rounds as needed to reach the desired point count, note that `DecimateMethod::FirstPoint` (the fastest) and `DecimateMethod::RandomPoint` take successive points out of each voxel, in insertion order or starting at a random offset, respectively; whereas `DecimateMethod::ClosestToAverage` and `DecimateMethod::VoxelAverage` summarize the whole voxel and hence yield **one point per voxel only**, so the output cannot be larger than the number of valid voxels. `DecimateMethod::VoxelAverage` generates new points, so per-point fields (intensity, ring, timestamp, ...) are not propagated to the output.
+* **decimate\_method** (:cpp:enum:`mp2p_icp_filters::DecimateMethod`, default: `DecimateMethod::FirstPoint`): Which point represents each voxel, as in `FilterDecimateVoxels`_. Since this filter walks the voxels in as many rounds as needed to reach the desired point count, note that `DecimateMethod::FirstPoint` (the fastest) and `DecimateMethod::RandomPoint` take successive points out of each voxel, in insertion order or starting at a random offset, respectively; whereas `DecimateMethod::ClosestToAverage` and `DecimateMethod::VoxelAverage` summarize the whole voxel and hence yield **one point per voxel only**, so the output cannot be larger than the number of valid voxels. `DecimateMethod::VoxelAverage` outputs the average position, with the per-point fields (intensity, ring, timestamp, ...) of the input point closest to it.
 
 * **parallelization\_grain\_size** (:cpp:type:`size\_t`, default: `16384`): Grain size for parallel processing of input clouds (used when TBB is enabled).
 
@@ -551,13 +551,13 @@ Filter: `FilterDecimateVoxels`
 * **minimum\_input\_points\_to\_filter** (:cpp:type:`uint32\_t`, default: `0`): If the total number of input points is less than this, all points are passed through without decimation.
 
 * **flatten\_to** (``std::optional<double>``): If defined, the 3D points are "flattened" into a 2D planar cloud at a constant height :math:`z`.
-  Additional point fields (ring, intensity, timestamp) are **NOT** copied in this mode.
+  Additional point fields (ring, intensity, timestamp) are copied from the input point each output point stands for.
 
 * **decimate\_method** (:cpp:enum:`DecimateMethod`, default: `FirstPoint`): The method to pick the representative point for each voxel:
 
   * **DecimateMethod::FirstPoint**: Picks the first point inserted into the voxel (the fastest method).
   * **DecimateMethod::ClosestToAverage**: Picks the point closest to the average position of all voxel points.
-  * **DecimateMethod::VoxelAverage**: Calculates and uses the average position of all voxel points (a new point).
+  * **DecimateMethod::VoxelAverage**: Calculates and uses the average position of all voxel points (a new point), with the other per-point fields of the point closest to it.
   * **DecimateMethod::RandomPoint**: Picks one of the voxel points at random.
 
 * **minimum_points_per_voxel** (:cpp:enum:`uint32_t`, default: `0`): Minimum number of points in each voxel to use that voxel output.

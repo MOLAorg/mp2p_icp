@@ -23,6 +23,7 @@
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterDecimateAdaptive.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 
 #include <cmath>
@@ -340,6 +341,80 @@ int main()
 
                 std::cout << "[Test Passed] decimate_method=" << method << " (" << out->size()
                           << " points)\n";
+            }
+        }
+
+        // ---------------------------------------------------------
+        // Test: per-point fields stay in sync with x/y/z for every method,
+        // including VoxelAverage, which synthesizes its output points. The
+        // fields must come from an input point of the same voxel.
+        // ---------------------------------------------------------
+        {
+            const auto      withFields = mrpt::maps::CGenericPointsMap::Create();
+            constexpr int   kClusters  = 50;
+            constexpr float kSpread    = 0.1f;
+            withFields->registerField_float(mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
+            withFields->registerField_uint8(mrpt::maps::CPointsMap::POINT_FIELD_COLOR_Ru8);
+
+            for (int i = 0; i < kClusters; ++i)
+            {
+                for (int k = 0; k < 4; ++k)
+                {
+                    const float dx = (k % 2 == 0 ? -kSpread : kSpread);
+                    withFields->insertPointFast(static_cast<float>(i) + 0.25f + dx, 0.25f, 0.25f);
+                    // The cluster index, recoverable from either field:
+                    withFields->insertPointField_float(
+                        mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY, static_cast<float>(i));
+                    withFields->insertPointField_uint8(
+                        mrpt::maps::CPointsMap::POINT_FIELD_COLOR_Ru8, static_cast<uint8_t>(i));
+                }
+            }
+
+            for (const auto& method :
+                 {"DecimateMethod::FirstPoint", "DecimateMethod::ClosestToAverage",
+                  "DecimateMethod::VoxelAverage", "DecimateMethod::RandomPoint"})
+            {
+                mp2p_icp::metric_map_t m;
+                m.layers["raw"] = withFields;
+
+                FilterDecimateAdaptive filter;
+                mrpt::containers::yaml p;
+                p["input_pointcloud_layer"]         = "raw";
+                p["output_pointcloud_layer"]        = "out";
+                p["desired_output_point_count"]     = kClusters;
+                p["voxel_size"]                     = 0.5f;
+                p["minimum_input_points_per_voxel"] = 1;
+                p["decimate_method"]                = method;
+
+                filter.initialize(p);
+                filter.filter(m);
+
+                auto out = m.layer<mrpt::maps::CPointsMap>("out");
+                ASSERT_(out);
+                ASSERT_EQUAL_(out->size(), static_cast<size_t>(kClusters));
+
+                const auto* intensity = out->getPointsBufferRef_float_field(
+                    mrpt::maps::CPointsMap::POINT_FIELD_INTENSITY);
+                const auto* red = out->getPointsBufferRef_uint8_field(
+                    mrpt::maps::CPointsMap::POINT_FIELD_COLOR_Ru8);
+                ASSERT_(intensity != nullptr);
+                ASSERT_(red != nullptr);
+                ASSERT_EQUAL_(intensity->size(), out->size());
+                ASSERT_EQUAL_(red->size(), out->size());
+
+                for (size_t i = 0; i < out->size(); i++)
+                {
+                    float x = 0;
+                    float y = 0;
+                    float z = 0;
+                    out->getPointFast(i, x, y, z);
+
+                    const auto cluster = static_cast<int>(std::round(x - 0.25f));
+                    ASSERT_EQUAL_(static_cast<int>((*intensity)[i]), cluster);
+                    ASSERT_EQUAL_(static_cast<int>((*red)[i]), cluster);
+                }
+
+                std::cout << "[Test Passed] fields in sync, decimate_method=" << method << "\n";
             }
         }
 

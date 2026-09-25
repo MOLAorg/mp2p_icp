@@ -177,8 +177,10 @@ thread count.
 Because `FilterDecimateAdaptive` revisits voxels in several rounds,
 `FirstPoint`/`RandomPoint` take successive points out of each voxel, while
 `ClosestToAverage`/`VoxelAverage` summarize the voxel and emit at most one point per
-voxel (output capped at the voxel count). `VoxelAverage` synthesizes points, so per-point
-fields are not propagated.
+voxel (output capped at the voxel count). Points synthesized by `VoxelAverage` or
+`flatten_to` are still inserted with `insertPointFrom()` (the point closest to the
+average, or the chosen one) and then get their XYZ overwritten: never `insertPointFast()`
+into a layer with registered fields, or the field vectors fall out of sync with x/y/z.
 
 ### Standalone utilities (not `Filter` subclasses)
 
