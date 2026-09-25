@@ -182,8 +182,8 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
 
         /// Representative of the whole voxel, precomputed once since it does
         /// not depend on the output target. Only for the two average-based
-        /// decimation methods: an index into the input cloud for
-        /// ClosestToAverage, the average point itself for VoxelAverage.
+        /// decimation methods: the input point closest to `average`. For
+        /// VoxelAverage, only its per-point fields are used.
         uint32_t              representativeIdx = 0;
         mrpt::math::TPoint3Df average           = {0, 0, 0};
     };
@@ -324,11 +324,8 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
             mean *= inv_n;
             v.average = mean;
 
-            if (_.decimate_method != DecimateMethod::ClosestToAverage)
-            {
-                continue;
-            }
-
+            // Also needed for VoxelAverage: the per-point fields (intensity,
+            // color, ...) of this point are the ones carried over.
             std::optional<float> minSqrErr;
             for (size_t i = 0; i < v.voxel.size(); i++)
             {
@@ -446,13 +443,11 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
                 {
                     // These two methods summarize the whole voxel, so each one
                     // can only ever emit one point:
+                    outPc->insertPointFrom(ith.representativeIdx, ctx);
                     if (_.decimate_method == DecimateMethod::VoxelAverage)
                     {
-                        outPc->insertPointFast(ith.average.x, ith.average.y, ith.average.z);
-                    }
-                    else
-                    {
-                        outPc->insertPointFrom(ith.representativeIdx, ctx);
+                        outPc->setPointFast(
+                            outPc->size() - 1, ith.average.x, ith.average.y, ith.average.z);
                     }
                     ith.exhausted = true;
                 }

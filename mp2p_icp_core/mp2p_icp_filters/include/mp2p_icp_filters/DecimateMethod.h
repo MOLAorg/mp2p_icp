@@ -44,7 +44,8 @@ enum class DecimateMethod : uint8_t
     RotatingIndex,
     /** Closest to the average of all voxel points */
     ClosestToAverage,
-    /** Average of all voxel points */
+    /** Average of all voxel points. Other per-point fields are taken from the
+     * point closest to the average. */
     VoxelAverage,
     /** Pick one of the voxel points at random */
     RandomPoint

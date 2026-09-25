@@ -196,8 +196,12 @@ void test_decimate_method(
         ASSERT_NEAR_(bb.min.z, 0.0f, 0.2f);
     }
 
-    // The output should also have intensity.
+    // The output should also have intensity, one value per point, whatever the
+    // method (including those that synthesize points: average, flatten):
     ASSERT_(output_pc->hasPointField(POINT_FIELD_INTENSITY));
+    ASSERT_EQUAL_(
+        output_pc->getPointsBufferRef_float_field(POINT_FIELD_INTENSITY)->size(),
+        output_pc->size());
     std::cout << " Success ✅." << std::endl;
 }
 

@@ -30,6 +30,20 @@ IMPLEMENTS_MRPT_OBJECT(FilterDecimateVoxels, mp2p_icp_filters::FilterBase, mp2p_
 
 using namespace mp2p_icp_filters;
 
+namespace
+{
+// Inserts point `srcIdx` with all its fields, then overrides its coordinates.
+// Synthesized points (averages, flattened) must still go through
+// insertPointFrom(), or the registered per-point fields fall out of sync with x/y/z.
+void insertPointWithXYZ(
+    mrpt::maps::CPointsMap& out, size_t srcIdx, const mrpt::maps::CPointsMap::InsertCtx& ctx,
+    float x, float y, float z)
+{
+    out.insertPointFrom(srcIdx, ctx);
+    out.setPointFast(out.size() - 1, x, y, z);
+}
+}  // namespace
+
 void FilterDecimateVoxels::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c, FilterDecimateVoxels& parent)
 {
@@ -185,7 +199,8 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
             {
                 if (params.flatten_to.has_value())
                 {
-                    outPc->insertPointFast(xs[i], ys[i], static_cast<float>(*params.flatten_to));
+                    insertPointWithXYZ(
+                        *outPc, i, ctxOut, xs[i], ys[i], static_cast<float>(*params.flatten_to));
                 }
                 else
                 {
@@ -301,7 +316,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
         grid.setConfiguration(params.voxel_filter_resolution, params.use_tsl_robin_map);
         grid.clear();
 
-        grid.processPointCloud(pc, keepClosestPoint);
+        // The point closest to the average is also needed for VoxelAverage:
+        // its per-point fields (intensity, color, ...) are the ones carried over.
+        grid.processPointCloud(pc, /*findClosestToAverage=*/true);
 
         std::set<PointCloudToVoxelGridAverage::indices_t, PointCloudToVoxelGridAverage::IndicesHash>
             flattenUsedBins;
@@ -341,7 +358,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                                               pc.getPointsBufferRef_z()[vxl.closestToAverageIdx])
                                         : vxl.average;
 
-                    outPc->insertPointFast(pt.x, pt.y, static_cast<float>(*params.flatten_to));
+                    insertPointWithXYZ(
+                        *outPc, vxl.closestToAverageIdx, ctx, pt.x, pt.y,
+                        static_cast<float>(*params.flatten_to));
                 }
                 else if (keepClosestPoint)
                 {
@@ -349,9 +368,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                 }
                 else
                 {
-                    // VoxelAverage synthesizes a new point, so no per-point
-                    // fields can be carried over:
-                    outPc->insertPointFast(vxl.average.x, vxl.average.y, vxl.average.z);
+                    insertPointWithXYZ(
+                        *outPc, vxl.closestToAverageIdx, ctx, vxl.average.x, vxl.average.y,
+                        vxl.average.z);
                 }
             });
     }
@@ -447,8 +466,9 @@ void FilterDecimateVoxels::filter(mp2p_icp::metric_map_t& inOut) const
                     // First time we see this (x,y) cell:
                     flattenUsedBins.insert(flattenIdx);
 
-                    outPc->insertPointFast(
-                        xs[insertPtIdx], ys[insertPtIdx], static_cast<float>(*params.flatten_to));
+                    insertPointWithXYZ(
+                        *outPc, insertPtIdx, ctx, xs[insertPtIdx], ys[insertPtIdx],
+                        static_cast<float>(*params.flatten_to));
                 }
                 else
                 {

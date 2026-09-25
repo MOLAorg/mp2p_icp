@@ -51,8 +51,9 @@ namespace mp2p_icp_filters
  *   point per voxel only, so the output cannot be larger than the number of
  *   valid voxels no matter the desired point count. They are also more
  *   expensive, since all voxel points must be traversed to get the average.
- *   DecimateMethod::VoxelAverage generates new points, so per-point fields
- *   (intensity, ring, timestamp, ...) are not propagated to the output.
+ *   DecimateMethod::VoxelAverage outputs the average position, with the
+ *   per-point fields (intensity, ring, timestamp, ...) of the input point
+ *   closest to it.
  *
  * The voxel walk uses a stride of `nVoxels/desired_output_point_count` and
  * stops as soon as the requested count is reached, so a stride above 1 means
