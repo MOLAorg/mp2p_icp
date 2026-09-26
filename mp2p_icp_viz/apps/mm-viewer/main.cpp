@@ -1218,7 +1218,10 @@ void renderMapViewerPanel()
     }
     else if (app.isBuildingViz)
     {
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Building 3D visualization...");
+        // Blink (smooth alpha pulse) to draw attention while the background build runs:
+        const float alpha =
+            0.25f + 0.75f * 0.5f * (1.0f + std::sin(static_cast<float>(ImGui::GetTime()) * 6.0f));
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, alpha), "Building 3D visualization...");
     }
 
     ImGui::Separator();
