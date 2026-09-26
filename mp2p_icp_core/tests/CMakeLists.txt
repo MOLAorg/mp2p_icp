@@ -123,6 +123,7 @@ mp2p_add_test(mp2p_generator EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_PointCloudRobustRange EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_generator_view_vector EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(sm2mm_georef EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(sm2mm_imu_obs EXTRA_LIBS mp2p_icp_filters)
 
 
 if (mola_test_datasets_FOUND)

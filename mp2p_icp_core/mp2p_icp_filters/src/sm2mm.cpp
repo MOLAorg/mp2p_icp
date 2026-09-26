@@ -24,6 +24,7 @@
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/obs/CObservationComment.h>
+#include <mrpt/obs/CObservationIMU.h>
 #include <mrpt/system/progress.h>
 
 #if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
@@ -287,7 +288,9 @@ void mp2p_icp_filters::simplemap_to_metricmap(
                 bool handled = mp2p_icp_filters::apply_generators(
                     generators, *obs, mm, effectiveRobotPose, options.profiler);
 
-                if (!handled)
+                // IMU readings are consumed by the generators only to feed the velocity buffer:
+                // they add no map content, so the per-frame filters must not run for them.
+                if (!handled || IS_CLASS(*obs, mrpt::obs::CObservationIMU))
                 {
                     obs->unload();
                     continue;

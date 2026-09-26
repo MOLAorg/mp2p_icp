@@ -77,6 +77,11 @@ as an empty map of that class (via `Generator::createTargetLayerIfNeeded()` /
 `CreateMetricMapFromDefinition()`), so `FilterMerge` can insert into an arbitrary
 `CMetricMap` subclass. See `demos/mm-filter_create_keyframe_map_layer.yaml`.
 
+`sm2mm` runs the per-frame `filters:` once per observation the generators handle, except
+`CObservationIMU`: the generators take IMU samples only to feed the velocity buffer, so an
+IMU reading adds no layer and running the filters on it would find `raw` missing.
+Simplemaps from mola_lidar_odometry store one IMU reading per keyframe.
+
 `mm2las --frame geodetic` writes lon/lat/ellipsoidal-height with an EPSG:4979 WKT2 VLR;
 it uses per-point `latitude`/`longitude`/`altitude` fields when present, else converts
 on the fly through `T_enu_to_map`.
