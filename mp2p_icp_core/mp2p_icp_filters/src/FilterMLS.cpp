@@ -40,6 +40,7 @@
 #include <tbb/concurrent_vector.h>
 #include <tbb/enumerable_thread_specific.h>
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_sort.h>
 #endif
 
 IMPLEMENTS_MRPT_OBJECT(FilterMLS, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
@@ -319,21 +320,21 @@ struct FilterMLS::Impl
 {
     Impl() = default;
 
-#if defined(MP2P_HAS_TBB)
-    // Thread-safe vectors for collecting results
-    using TThreadSafePointVec  = tbb::concurrent_vector<mrpt::math::TPoint3Df>;
-    using TThreadSafeNormalVec = tbb::concurrent_vector<mrpt::math::TPoint3Df>;
-    using TThreadSafeIndexVec  = tbb::concurrent_vector<std::size_t>;
-#else
-    // Use standard vectors if TBB is not available
-    using TThreadSafePointVec  = std::vector<mrpt::math::TPoint3Df>;
-    using TThreadSafeNormalVec = std::vector<mrpt::math::TPoint3Df>;
-    using TThreadSafeIndexVec  = std::vector<std::size_t>;
-#endif
+    // One entry per successfully projected query point. Kept as a single
+    // struct so that concurrent insertions cannot misalign point, source index
+    // and normal.
+    struct NewPoint
+    {
+        mrpt::math::TPoint3Df pt;
+        mrpt::math::TPoint3Df normal;
+        std::size_t           source_index = 0;
+    };
 
-    TThreadSafePointVec  new_points;
-    TThreadSafeIndexVec  new_points_source_index;
-    TThreadSafeNormalVec new_normals;
+#if defined(MP2P_HAS_TBB)
+    tbb::concurrent_vector<NewPoint> new_points;
+#else
+    std::vector<NewPoint> new_points;
+#endif
 
     mrpt::containers::NonCopiableData<std::mutex> progress_mutex;
 
@@ -372,7 +373,7 @@ struct FilterMLS::Impl
 #if defined(MP2P_HAS_TBB)
     tbb::enumerable_thread_specific<ThreadWorkspace> thread_workspaces;
 #else
-    ThreadWorkspace workspace;
+    ThreadWorkspace       workspace;
 #endif
 
     // Main processing function, to be called in parallel
@@ -425,14 +426,16 @@ struct FilterMLS::Impl
             projected_normal_eig, ws.u_pow_cache, ws.v_pow_cache);
 
         // 4. Store results
-        new_points.push_back(
+        NewPoint np;
+        np.pt =
             mrpt::math::TPoint3D(projected_pt_eig.x(), projected_pt_eig.y(), projected_pt_eig.z())
-                .cast<float>());
-        new_points_source_index.push_back(index);
-        new_normals.push_back(
+                .cast<float>();
+        np.normal =
             mrpt::math::TPoint3D(
                 projected_normal_eig.x(), projected_normal_eig.y(), projected_normal_eig.z())
-                .cast<float>());
+                .cast<float>();
+        np.source_index = index;
+        new_points.push_back(np);
     }
 };
 
@@ -523,13 +526,9 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
 
     // Clear pimpl state from previous runs
     impl_->new_points.clear();
-    impl_->new_points_source_index.clear();
-    impl_->new_normals.clear();
 #if !defined(MP2P_HAS_TBB)
     // Reserve memory if not using concurrent_vector
     impl_->new_points.reserve(nQueryPoints);
-    impl_->new_points_source_index.reserve(nQueryPoints);
-    impl_->new_normals.reserve(nQueryPoints);
 #endif
 
     // Prepare stats for printing progress:
@@ -608,6 +607,14 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     }
 #endif
 
+#if defined(MP2P_HAS_TBB)
+    // Restore query order, so the output does not depend on thread scheduling:
+    tbb::parallel_sort(
+        impl_->new_points.begin(), impl_->new_points.end(),
+        [](const Impl::NewPoint& a, const Impl::NewPoint& b)
+        { return a.source_index < b.source_index; });
+#endif
+
     // 6. Copy results to output map
     const size_t nNewPoints = impl_->new_points.size();
     if (nNewPoints == 0)
@@ -657,42 +664,41 @@ void FilterMLS::filter(mp2p_icp::metric_map_t& inOut) const
     const bool has_view_vector = (view_x != nullptr) && (view_y != nullptr) && (view_z != nullptr);
     MRPT_LOG_DEBUG_STREAM("Have view-direction vectors: " << has_view_vector);
 
-    for (size_t i = 0; i < nNewPoints; ++i)
+    for (const auto& np : impl_->new_points)
     {
         // add point: this copies all existing fields:
-        outPc->insertPointFrom(impl_->new_points_source_index[i], ctx);
+        outPc->insertPointFrom(np.source_index, ctx);
 
         // Overwrite XYZ with new projected version:
-        xs.back() = impl_->new_points[i].x;
-        ys.back() = impl_->new_points[i].y;
-        zs.back() = impl_->new_points[i].z;
+        xs.back() = np.pt.x;
+        ys.back() = np.pt.y;
+        zs.back() = np.pt.z;
 
         // Set normals, taking into account the view-direction so they point towards the outside of
         // solid bodies:
         if (!has_view_vector)
         {
-            normals_x->push_back(impl_->new_normals[i].x);
-            normals_y->push_back(impl_->new_normals[i].y);
-            normals_z->push_back(impl_->new_normals[i].z);
+            normals_x->push_back(np.normal.x);
+            normals_y->push_back(np.normal.y);
+            normals_z->push_back(np.normal.z);
         }
         else
         {
             const float dotValue = mrpt::math::dotProduct<3, float>(
-                mrpt::math::TPoint3Df(
-                    impl_->new_normals[i].x, impl_->new_normals[i].y, impl_->new_normals[i].z),
+                mrpt::math::TPoint3Df(np.normal.x, np.normal.y, np.normal.z),
                 mrpt::math::TPoint3Df(view_x->back(), view_y->back(), view_z->back()));
             if (dotValue >= 0)
             {
-                normals_x->push_back(impl_->new_normals[i].x);
-                normals_y->push_back(impl_->new_normals[i].y);
-                normals_z->push_back(impl_->new_normals[i].z);
+                normals_x->push_back(np.normal.x);
+                normals_y->push_back(np.normal.y);
+                normals_z->push_back(np.normal.z);
             }
             else
             {
                 // Reverse normal:
-                normals_x->push_back(-impl_->new_normals[i].x);
-                normals_y->push_back(-impl_->new_normals[i].y);
-                normals_z->push_back(-impl_->new_normals[i].z);
+                normals_x->push_back(-np.normal.x);
+                normals_y->push_back(-np.normal.y);
+                normals_z->push_back(-np.normal.z);
             }
         }
     }
