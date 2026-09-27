@@ -53,3 +53,24 @@ Usage
         Load this metric map file (``*.mm``) or binary point cloud (``*.bin``)
 
 
+
+Camera fly-by videos
+--------------------
+
+The **Travelling** panel defines a camera path from keyframes:
+
+1. Move the camera to a desired view, set the keyframe time (seconds) and press
+   **Add current view**. Repeat for each keyframe. Keyframes in the list can be
+   selected and then moved to (**Go to**, or double-click), replaced by the current
+   view (**Update**), or deleted. **Save path...** / **Load path...** store the path
+   as a text file with one ``t x y z azimuth_deg elevation_deg zoom`` line per keyframe.
+2. **Play** previews the path in real time. ``Linear`` interpolation moves at constant
+   speed between keyframes, while ``Spline`` (Catmull-Rom) passes through all of them
+   with smooth velocity. The time slider moves the camera to any point of the path.
+3. **Record** renders every frame off-screen at the given size and FPS, and saves them as
+   ``frame_000000.png``, ``frame_000001.png``, ... in the chosen folder. Encode them into a
+   video with, for example:
+
+   .. code-block:: bash
+
+       ffmpeg -framerate 30 -i mm-viewer-frames/frame_%06d.png -c:v libx264 -pix_fmt yuv420p video.mp4

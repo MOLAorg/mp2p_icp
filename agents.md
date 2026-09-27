@@ -94,6 +94,11 @@ exported as a static `imgui::imgui`; it is no longer vendored in this repo. Both
 `apps/imgui_app_common/` (`ImGuiAppShell`, `SimpleFileDialog`). 3D views use
 `mrpt::imgui::CImGuiSceneView`.
 
+mm-viewer "Travelling" panel: keyframes and interpolation live in
+`apps/mm-viewer/CameraTravelling.{h,cpp}`; PNG recording uses a `CFBORender` sharing the GUI
+GL context. Its compiled scene can share textures with the on-screen view, so it is kept
+alive between recordings and only released at exit.
+
 **Do not delete as dead code:** the axis-corner mini-viewports
 (`FIRST_MINI_VIEW_NAME`/`SECOND_MINI_VIEW_NAME`, `MINI_VIEW_NAME`) are kept in sync but
 invisible, because MRPT 2.x only renders the `"main"` viewport. Expected to work again
