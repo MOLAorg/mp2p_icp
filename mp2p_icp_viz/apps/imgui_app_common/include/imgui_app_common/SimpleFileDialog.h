@@ -48,8 +48,9 @@ class SimpleFileDialog
     bool isOpen() const { return open_; }
 
    private:
-    bool                          open_ = false;
-    Mode                          mode_ = Mode::Open;
+    bool                          open_        = false;
+    bool                          pendingOpen_ = false;  //!< OpenPopup() due in next render()
+    Mode                          mode_        = Mode::Open;
     std::string                   title_;
     std::vector<FileDialogFilter> filters_;
     int                           selectedFilterIdx_ = 0;
