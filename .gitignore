@@ -6,7 +6,7 @@ Testing
 build
 log
 install
-build-*
+build-*/
 CTestTestfile.cmake
 install_manifest.txt
 
