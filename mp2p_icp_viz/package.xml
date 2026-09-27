@@ -23,6 +23,7 @@
   <depend>mrpt_gui</depend>
   <depend>mrpt_imgui</depend>
   <depend>mrpt_imgui_vendor</depend>
+  <depend>mrpt_opengl</depend>
   <depend>cli11</depend>
   <depend>libglfw3-dev</depend>
 

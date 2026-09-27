@@ -31,6 +31,7 @@
 #include <mrpt/io/CCompressedInputStream.h>
 #include <mrpt/math/TObject3D.h>
 #include <mrpt/math/geometry.h>
+#include <mrpt/opengl/CFBORender.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>
@@ -52,15 +53,15 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <sstream>
 
 #include "../libcfgpath/cfgpath.h"
+#include "CameraTravelling.h"
 
 namespace
 {
 constexpr const char* APP_NAME = "mm-viewer";
-
-constexpr float TRAVELING_ZOOM2ROLL = 1e-4f;
 
 // Small axis-corner gizmo viewports ("Map frame" / "ENU frame"), kept for parity with the old
 // nanogui app. NOTE: with MRPT 2.x, `mrpt::imgui::CImGuiSceneView::render()` only renders the
@@ -133,13 +134,26 @@ struct AppState
     mrpt::poses::CPose3DInterpolator trajectory;
 
     // Camera travelling:
-    mrpt::poses::CPose3DInterpolator camTravelling;
-    std::optional<double>            camTravellingCurrentTime;
-    std::vector<std::string>         camTravellingLabels;
-    float                            animFPS             = 30.0f;
-    float                            animProgress        = 0.0f;
-    int                              travellingInterpIdx = 0;  // 0=Linear, 1=Spline
-    float                            newKeyframeTime     = 0.0f;
+    mm_viewer::CameraPath camPath;
+    int                   selectedKeyframeIdx = -1;
+    double                newKeyframeTime     = 0.0;
+    int                   travellingInterpIdx = 1;  // TravellingInterpolation: Linear, Spline
+    double                travellingTime      = 0.0;  // playback position [s]
+    bool                  isPlaying           = false;
+    std::string           travellingStatus;
+
+    // Frame-by-frame PNG export of the travelling animation:
+    bool        isRecording    = false;
+    float       videoFPS       = 30.0f;
+    int         videoSize[2]   = {1920, 1080};
+    std::string framesDir      = "mm-viewer-frames";
+    size_t      recordedFrames = 0;
+    // Kept alive between recordings: its compiled scene may share GPU textures with the
+    // on-screen view, so destroying it could release textures still in use there.
+    std::unique_ptr<mrpt::opengl::CFBORender> frameRenderer;
+    std::pair<int, int>                       frameRendererSize = {0, 0};
+    mp2p_icp_viz::SimpleFileDialog            pathSaveDialog;
+    mp2p_icp_viz::SimpleFileDialog            pathLoadDialog;
 
     // View options (mirrors the old nanogui side panel):
     bool  applyGeoRef                = false;
@@ -296,20 +310,6 @@ mrpt::viz::CSetOfObjects::Ptr buildGeorefPolygonLayer(
 }
 
 void updateGuiAfterLoadingNewMap();
-
-void rebuildCamTravellingLabels()
-{
-    app.camTravellingLabels.clear();
-    for (size_t i = 0; i < app.camTravelling.size(); i++)
-    {
-        auto it = app.camTravelling.begin();
-        std::advance(it, static_cast<std::ptrdiff_t>(i));
-
-        app.camTravellingLabels.push_back(mrpt::format(
-            "[%02u] t=%.02fs pose=%s", static_cast<unsigned int>(i),
-            mrpt::Clock::toDouble(it->first), it->second.asString().c_str()));
-    }
-}
 
 /** Does the actual (potentially slow: disk I/O, decompression, sanity checks) map loading work.
  *  Deliberately self-contained -- reads/writes only its local `res`, never `app.*` -- so it is
@@ -784,7 +784,96 @@ void updateGuiAfterLoadingNewMap()
     }
 }
 
-void camTravellingStop() { app.camTravellingCurrentTime.reset(); }
+mm_viewer::CameraKeyframe currentCameraKeyframe()
+{
+    const auto&               cam = app.sceneView.cameraController;
+    mm_viewer::CameraKeyframe k;
+    k.x            = cam.getCameraPointingX();
+    k.y            = cam.getCameraPointingY();
+    k.z            = cam.getCameraPointingZ();
+    k.azimuthDeg   = cam.getAzimuthDegrees();
+    k.elevationDeg = cam.getElevationDegrees();
+    k.zoom         = cam.getZoomDistance();
+    return k;
+}
+
+void applyCameraKeyframe(const mm_viewer::CameraKeyframe& k)
+{
+    auto& cam = app.sceneView.cameraController;
+    cam.setCameraPointing(
+        static_cast<float>(k.x), static_cast<float>(k.y), static_cast<float>(k.z));
+    cam.setAzimuthDegrees(static_cast<float>(k.azimuthDeg));
+    cam.setElevationDegrees(static_cast<float>(k.elevationDeg));
+    cam.setZoomDistance(static_cast<float>(k.zoom));
+}
+
+void applyCameraPathAt(double t)
+{
+    if (app.camPath.empty())
+    {
+        return;
+    }
+    applyCameraKeyframe(mm_viewer::interpolateCameraPath(
+        app.camPath, t, static_cast<mm_viewer::TravellingInterpolation>(app.travellingInterpIdx)));
+}
+
+void camTravellingStop()
+{
+    app.isPlaying = false;
+
+    if (app.isRecording)
+    {
+        app.isRecording      = false;
+        app.travellingStatus = mrpt::format(
+            "Wrote %zu frames to '%s'. To make a video:\n"
+            "ffmpeg -framerate %g -i %s/frame_%%06d.png -c:v libx264 -pix_fmt yuv420p video.mp4",
+            app.recordedFrames, app.framesDir.c_str(), static_cast<double>(app.videoFPS),
+            app.framesDir.c_str());
+        std::cout << app.travellingStatus << std::endl;
+    }
+}
+
+/** Starts playing the camera path from its first keyframe. If `record`, playback advances
+ * exactly 1/FPS per frame and each frame is saved as a PNG file; otherwise, it follows the
+ * wall clock. */
+void camTravellingStart(bool record)
+{
+    if (app.camPath.empty())
+    {
+        return;
+    }
+    app.travellingStatus.clear();
+
+    if (record)
+    {
+        try
+        {
+            std::filesystem::create_directories(app.framesDir);
+
+            const std::pair<int, int> size = {app.videoSize[0], app.videoSize[1]};
+            if (!app.frameRenderer || app.frameRendererSize != size)
+            {
+                mrpt::opengl::CFBORender::Parameters params(
+                    static_cast<unsigned int>(size.first), static_cast<unsigned int>(size.second));
+                // Rendering happens on the GUI thread, so reuse its OpenGL context:
+                params.create_EGL_context = false;
+                app.frameRenderer         = std::make_unique<mrpt::opengl::CFBORender>(params);
+                app.frameRendererSize     = size;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            app.travellingStatus = std::string("Cannot start recording: ") + e.what();
+            std::cerr << app.travellingStatus << std::endl;
+            return;
+        }
+        app.isRecording    = true;
+        app.recordedFrames = 0;
+    }
+
+    app.isPlaying      = true;
+    app.travellingTime = app.camPath.begin()->first;
+}
 
 /** Recomputed every frame so it stays in sync as the user zooms/pans (the "linear" mode needs
  * the current camera pose). */
@@ -830,52 +919,116 @@ void updateCameraClipDistances()
     app.scene->getViewport("main")->setViewportClipDistances(clipNear, clipFar);
 }
 
+/** Sets the camera for the current playback time. Runs before the scene is rendered. */
 void processCameraTravelling()
 {
-    if (!app.camTravellingCurrentTime.has_value())
+    if (!app.isPlaying)
     {
         return;
     }
-    double& t = app.camTravellingCurrentTime.value();
-
-    const double t0  = mrpt::Clock::toDouble(app.camTravelling.begin()->first);
-    const double t1  = mrpt::Clock::toDouble(app.camTravelling.rbegin()->first);
-    app.animProgress = (t1 > t0) ? static_cast<float>((t - t0) / (t1 - t0)) : 0.0f;
-
-    if (t >= t1)
+    if (app.camPath.empty())
     {
         camTravellingStop();
         return;
     }
+    app.travellingTime = std::min(app.travellingTime, app.camPath.rbegin()->first);
+    applyCameraPathAt(app.travellingTime);
+}
 
-    const auto interpMethod = app.travellingInterpIdx == 0
-                                  ? mrpt::poses::TInterpolatorMethod::imLinear2Neig
-                                  : mrpt::poses::TInterpolatorMethod::imSSLSLL;
-    app.camTravelling.setInterpolationMethod(interpMethod);
-
-    mrpt::math::TPose3D p;
-    bool                valid = false;
-    app.camTravelling.interpolate(mrpt::Clock::fromDouble(t), p, valid);
-    if (valid)
+/** Saves the current frame if recording, then moves the playback time forward. Runs once the
+ * camera and clip distances for this frame are set. */
+void advanceCameraTravelling()
+{
+    if (!app.isPlaying || app.camPath.empty())
     {
-        auto& cam = app.sceneView.cameraController;
-        cam.setCameraPointing(
-            static_cast<float>(p.x), static_cast<float>(p.y), static_cast<float>(p.z));
-        cam.setAzimuthDegrees(static_cast<float>(mrpt::RAD2DEG(p.yaw)));
-        cam.setElevationDegrees(static_cast<float>(mrpt::RAD2DEG(p.pitch)));
-        cam.setZoomDistance(static_cast<float>(p.roll / TRAVELING_ZOOM2ROLL));
+        return;
+    }
+    const double t0 = app.camPath.begin()->first;
+    const double t1 = app.camPath.rbegin()->first;
+
+    if (!app.isRecording)
+    {
+        if (app.travellingTime >= t1)
+        {
+            camTravellingStop();
+            return;
+        }
+        app.travellingTime += static_cast<double>(ImGui::GetIO().DeltaTime);
+        return;
     }
 
-    const double dt = app.animFPS > 0 ? 1.0 / app.animFPS : 1.0 / 30.0;
-    t += dt;
+    // Wait for the map visualization, so no frame misses it:
+    if (app.isBuildingViz)
+    {
+        return;
+    }
+
+    // Only the main view goes into the frames, not the axis-corner gizmo views:
+    std::vector<std::string> hiddenViews;
+    for (const auto& vp : app.scene->viewports())
+    {
+        if (vp->getName() != "main" && vp->getViewportVisibility())
+        {
+            vp->setViewportVisibility(false);
+            hiddenViews.push_back(vp->getName());
+        }
+    }
+
+    mrpt::img::CImage img;
+    std::string       renderError;
+    try
+    {
+        mrpt::viz::CCamera cam;
+        app.sceneView.cameraController.applyTo(cam);
+        app.frameRenderer->setCamera(cam);
+        app.frameRenderer->render_RGB(*app.scene, img);
+    }
+    catch (const std::exception& e)
+    {
+        renderError = e.what();
+    }
+
+    for (const auto& name : hiddenViews)
+    {
+        app.scene->getViewport(name)->setViewportVisibility(true);
+    }
+
+    if (!renderError.empty())
+    {
+        camTravellingStop();
+        app.travellingStatus = "Error rendering frame: " + renderError;
+        std::cerr << app.travellingStatus << std::endl;
+        return;
+    }
+
+    const auto file =
+        (std::filesystem::path(app.framesDir) / mrpt::format("frame_%06zu.png", app.recordedFrames))
+            .string();
+    if (!img.saveToFile(file))
+    {
+        camTravellingStop();
+        app.travellingStatus = "Error saving frame: " + file;
+        std::cerr << app.travellingStatus << std::endl;
+        return;
+    }
+    app.recordedFrames++;
+
+    if (app.travellingTime >= t1)
+    {
+        camTravellingStop();
+        return;
+    }
+    // From the frame count, so the time step does not accumulate rounding errors:
+    app.travellingTime =
+        t0 + static_cast<double>(app.recordedFrames) / static_cast<double>(app.videoFPS);
 }
 
 void handleKeyboard()
 {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantTextInput)
+    if (io.WantTextInput || app.isPlaying)
     {
-        return;
+        return;  // (the camera path drives the camera while playing)
     }
 
     constexpr float SLIDE_VELOCITY     = 0.01f;
@@ -1174,7 +1327,7 @@ void rebuild_3d_view()
 
     app.sceneView.cameraController.setProjectiveModel(!app.viewOrtho && !app.view2D);
 
-    if (app.view2D)
+    if (app.view2D && !app.isPlaying)
     {
         app.sceneView.cameraController.setAzimuthDegrees(-90.0f);
         app.sceneView.cameraController.setElevationDegrees(90.0f);
@@ -1433,67 +1586,239 @@ void renderMapsPanel()
     ImGui::End();
 }
 
-/** "Travelling" window: camera keyframe animation controls. */
+double nextKeyframeTime() { return app.camPath.empty() ? 0.0 : app.camPath.rbegin()->first + 1.0; }
+
+/** "Travelling" window: camera keyframes for fly-by animations, and their playback/recording. */
 void renderTravellingPanel()
 {
     ImGui::Begin("Travelling");
 
-    ImGui::TextUnformatted("Define camera travelling paths");
+    ImGui::TextWrapped(
+        "Camera fly-by: add keyframes from the current view, then play them back or record them "
+        "as PNG frames.");
 
-    // Plain read-only list (not a combo): keyframes cannot currently be selected, jumped to,
-    // or deleted individually, so an interactive-looking widget would be misleading.
-    ImGui::TextUnformatted("Keyframes:");
-    if (ImGui::BeginChild("##travellingKeys", ImVec2(0, 100), true))
+    // --- Keyframe list ---
+    ImGui::Text("Keyframes: %zu", app.camPath.size());
+    if (app.selectedKeyframeIdx >= static_cast<int>(app.camPath.size()))
     {
-        for (const auto& label : app.camTravellingLabels)
+        app.selectedKeyframeIdx = -1;
+    }
+    const auto selectedIt = []()
+    {
+        auto it = app.camPath.begin();
+        std::advance(it, app.selectedKeyframeIdx);
+        return it;
+    };
+
+    bool goToSelected = false;
+    if (ImGui::BeginChild("##travellingKeys", ImVec2(0, 120), true))
+    {
+        int idx = 0;
+        for (const auto& [t, k] : app.camPath)
         {
-            ImGui::TextUnformatted(label.c_str());
+            const std::string label = mrpt::format(
+                "[%02d] t=%.2fs  az=%.0f el=%.0f d=%.1f##kf%d", idx, t, k.azimuthDeg,
+                k.elevationDeg, k.zoom, idx);
+            if (ImGui::Selectable(
+                    label.c_str(), idx == app.selectedKeyframeIdx,
+                    ImGuiSelectableFlags_AllowDoubleClick))
+            {
+                app.selectedKeyframeIdx = idx;
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                {
+                    goToSelected = true;
+                }
+            }
+            ImGui::SetItemTooltip(
+                "t=%.3f s\nLooking at: (%.3f, %.3f, %.3f)\nAzimuth: %.2f deg\nElevation: %.2f "
+                "deg\nDistance: %.3f m\nDouble-click to move the camera here",
+                t, k.x, k.y, k.z, k.azimuthDeg, k.elevationDeg, k.zoom);
+            idx++;
         }
     }
     ImGui::EndChild();
 
-    ImGui::InputFloat("New keyframe time [s]", &app.newKeyframeTime);
-    ImGui::SameLine();
-    if (ImGui::Button("Add"))
-    {
-        auto&      cam = app.sceneView.cameraController;
-        const auto p   = mrpt::math::TPose3D(
-              cam.getCameraPointingX(), cam.getCameraPointingY(), cam.getCameraPointingZ(),
-              mrpt::DEG2RAD(cam.getAzimuthDegrees()), mrpt::DEG2RAD(cam.getElevationDegrees()),
-              cam.getZoomDistance() * TRAVELING_ZOOM2ROLL);
-        app.camTravelling.insert(
-            mrpt::Clock::fromDouble(static_cast<double>(app.newKeyframeTime)), p);
-        rebuildCamTravellingLabels();
-        app.newKeyframeTime += 1.0f;
-    }
+    ImGui::BeginDisabled(app.isPlaying);
 
-    const bool isPlaying = app.camTravellingCurrentTime.has_value();
-    ImGui::BeginDisabled(isPlaying || app.camTravelling.empty());
-    if (ImGui::Button("Play"))
+    const bool hasSelection = app.selectedKeyframeIdx >= 0;
+    ImGui::BeginDisabled(!hasSelection);
+    if (ImGui::Button("Go to"))
     {
-        app.camTravellingCurrentTime.emplace(
-            mrpt::Clock::toDouble(app.camTravelling.begin()->first));
+        goToSelected = true;
+    }
+    ImGui::SetItemTooltip("Move the camera to the selected keyframe (or double-click it)");
+    ImGui::SameLine();
+    if (ImGui::Button("Update"))
+    {
+        selectedIt()->second = currentCameraKeyframe();
+    }
+    ImGui::SetItemTooltip("Replace the selected keyframe with the current view");
+    ImGui::SameLine();
+    if (ImGui::Button("Delete"))
+    {
+        app.camPath.erase(selectedIt());
+        app.selectedKeyframeIdx =
+            std::min(app.selectedKeyframeIdx, static_cast<int>(app.camPath.size()) - 1);
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::BeginDisabled(!isPlaying);
+    ImGui::BeginDisabled(app.camPath.empty());
+    if (ImGui::Button("Clear all"))
+    {
+        app.camPath.clear();
+        app.selectedKeyframeIdx = -1;
+        app.newKeyframeTime     = 0.0;
+    }
+    ImGui::EndDisabled();
+
+    if (goToSelected && hasSelection)
+    {
+        const auto it      = selectedIt();
+        app.travellingTime = it->first;
+        applyCameraKeyframe(it->second);
+    }
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Time [s]");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(70);
+    ImGui::InputDouble("##newKeyframeTime", &app.newKeyframeTime, 0.0, 0.0, "%.2f");
+    ImGui::SameLine();
+    // The input box accepts "nan" or "inf", which must never become a keyframe time:
+    const bool validTime        = std::isfinite(app.newKeyframeTime);
+    const bool replacesKeyframe = validTime && app.camPath.count(app.newKeyframeTime) != 0;
+    ImGui::BeginDisabled(!validTime);
+    if (ImGui::Button(replacesKeyframe ? "Replace with current view" : "Add current view"))
+    {
+        const double t = app.newKeyframeTime;
+        app.camPath[t] = currentCameraKeyframe();
+        app.selectedKeyframeIdx =
+            static_cast<int>(std::distance(app.camPath.begin(), app.camPath.find(t)));
+        app.newKeyframeTime = nextKeyframeTime();
+    }
+    ImGui::EndDisabled();
+    ImGui::SetItemTooltip("Store the current camera view as a keyframe at the given time");
+
+    if (ImGui::Button("Load path..."))
+    {
+        app.pathLoadDialog.open(
+            mp2p_icp_viz::SimpleFileDialog::Mode::Open, {{"txt", "Camera paths (*.txt)"}},
+            "Load camera path");
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(app.camPath.empty());
+    if (ImGui::Button("Save path..."))
+    {
+        app.pathSaveDialog.open(
+            mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"txt", "Camera paths (*.txt)"}},
+            "Save camera path");
+    }
+    ImGui::EndDisabled();
+
+    ImGui::EndDisabled();  // isPlaying
+
+    // --- Playback ---
+    ImGui::SeparatorText("Playback");
+
+    ImGui::BeginDisabled(app.isPlaying || app.camPath.size() < 2);
+    if (ImGui::Button("Play"))
+    {
+        camTravellingStart(false);
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!app.isPlaying);
     if (ImGui::Button("Stop"))
     {
         camTravellingStop();
     }
     ImGui::EndDisabled();
-
-    if (ImGui::InputFloat("Animation FPS", &app.animFPS))
-    {
-        app.animFPS = std::clamp(app.animFPS, 1.0f, 240.0f);
-    }
-
+    ImGui::SameLine();
     const char* interpItems[] = {"Linear", "Spline"};
+    ImGui::SetNextItemWidth(90);
     ImGui::Combo("Interpolation", &app.travellingInterpIdx, interpItems, 2);
 
-    ImGui::BeginDisabled(true);
-    ImGui::SliderFloat("Progress", &app.animProgress, 0.0f, 1.0f);
+    if (app.camPath.size() >= 2)
+    {
+        const double t0 = app.camPath.begin()->first;
+        const double t1 = app.camPath.rbegin()->first;
+
+        // Doubles as a progress bar while playing, and as a scrubber to preview the path:
+        auto tSlider = static_cast<float>(std::clamp(app.travellingTime, t0, t1));
+        ImGui::BeginDisabled(app.isPlaying);
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        if (ImGui::SliderFloat(
+                "##travellingTime", &tSlider, static_cast<float>(t0), static_cast<float>(t1),
+                "t = %.2f s"))
+        {
+            app.travellingTime = tSlider;
+            applyCameraPathAt(app.travellingTime);
+        }
+        ImGui::EndDisabled();
+    }
+
+    // --- Recording ---
+    ImGui::SeparatorText("Export video frames (PNG)");
+
+    ImGui::BeginDisabled(app.isPlaying);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Folder");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    ImGui::InputText("##framesDir", &app.framesDir);
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Size");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(120);
+    if (ImGui::InputInt2("##videoSize", app.videoSize))
+    {
+        app.videoSize[0] = std::clamp(app.videoSize[0], 16, 8192);
+        app.videoSize[1] = std::clamp(app.videoSize[1], 16, 8192);
+    }
+    ImGui::SameLine();
+    ImGui::TextUnformatted("FPS");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(50);
+    if (ImGui::InputFloat("##videoFPS", &app.videoFPS, 0.0f, 0.0f, "%.0f"))
+    {
+        app.videoFPS = std::clamp(app.videoFPS, 1.0f, 240.0f);
+    }
     ImGui::EndDisabled();
+
+    ImGui::BeginDisabled(
+        app.isPlaying || app.isLoadingMap || app.camPath.size() < 2 || app.framesDir.empty());
+    if (ImGui::Button("Record"))
+    {
+        camTravellingStart(true);
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (app.camPath.size() >= 2)
+    {
+        const double duration = app.camPath.rbegin()->first - app.camPath.begin()->first;
+        const auto   totalFrames =
+            static_cast<size_t>(std::ceil(duration * static_cast<double>(app.videoFPS) - 1e-6) + 1);
+        if (app.isRecording)
+        {
+            ImGui::TextColored(
+                ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Recording frame %zu / %zu", app.recordedFrames,
+                totalFrames);
+        }
+        else
+        {
+            ImGui::TextDisabled("%zu frames", totalFrames);
+        }
+    }
+
+    if (!app.travellingStatus.empty())
+    {
+        ImGui::TextWrapped("%s", app.travellingStatus.c_str());
+        if (ImGui::SmallButton("Copy message"))
+        {
+            glfwSetClipboardString(app.shell.windowHandle(), app.travellingStatus.c_str());
+        }
+    }
 
     ImGui::End();
 }
@@ -1511,6 +1836,28 @@ void renderFileDialogs()
     if (auto path = app.exportDialog.render(); path.has_value())
     {
         onSaveLayers(*path);
+    }
+    if (auto path = app.pathSaveDialog.render(); path.has_value())
+    {
+        std::string errMsg;
+        app.travellingStatus = mm_viewer::saveCameraPath(app.camPath, *path, errMsg)
+                                   ? "Saved camera path to: " + *path
+                                   : errMsg;
+    }
+    if (auto path = app.pathLoadDialog.render(); path.has_value())
+    {
+        std::string errMsg;
+        if (mm_viewer::loadCameraPath(app.camPath, *path, errMsg))
+        {
+            app.selectedKeyframeIdx = -1;
+            app.newKeyframeTime     = nextKeyframeTime();
+            app.travellingStatus =
+                mrpt::format("Loaded %zu keyframes from: %s", app.camPath.size(), path->c_str());
+        }
+        else
+        {
+            app.travellingStatus = errMsg;
+        }
     }
 }
 
@@ -1530,6 +1877,7 @@ void renderFrame()
     rebuild_3d_view();
     updateCameraClipDistances();
     updateMiniCornerView();
+    advanceCameraTravelling();
 
     renderMapViewerPanel();
     renderViewPanel();
@@ -1638,7 +1986,6 @@ int mainShowGui()
     app.sceneView.cameraController.setZoomDistance(50.0f);
 
     updateGuiAfterLoadingNewMap();
-    rebuildCamTravellingLabels();
 
     // Load/save persistent UI+camera state across sessions (separate from imgui.ini, which
     // only remembers panel docking):
@@ -1682,6 +2029,8 @@ int mainShowGui()
     cam.setZoomDistance(appCfg.read_float("", "cam_d", cam.getZoomDistance()));
 
     app.shell.run(&renderFrame);
+
+    app.frameRenderer.reset();  // while its OpenGL context still exists
 
     appCfg.write("", "applyGeoRef", app.applyGeoRef);
     appCfg.write("", "viewOrtho", app.viewOrtho);
