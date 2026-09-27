@@ -95,7 +95,9 @@ exported as a static `imgui::imgui`; it is no longer vendored in this repo. Both
 `mrpt::imgui::CImGuiSceneView`.
 
 mm-viewer "Travelling" panel: keyframes and interpolation live in
-`apps/mm-viewer/CameraTravelling.{h,cpp}`; PNG recording uses a `CFBORender` sharing the GUI
+`apps/mm-viewer/CameraTravelling.{h,cpp}`. Keyframes are orbit parameters, but each segment
+interpolates whichever of eye or point looked at moves less (interpolating the looked-at point
+across eye-fixed rotations swings the eye by a fraction of the zoom distance). PNG recording uses a `CFBORender` sharing the GUI
 GL context. Its compiled scene can share textures with the on-screen view, so it is kept
 alive between recordings and only released at exit.
 

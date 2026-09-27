@@ -25,6 +25,63 @@ using Vec                       = std::array<double, NUM_COMPONENTS>;
 // Minimum zoom distance, to keep the log() well defined.
 constexpr double MIN_ZOOM = 1e-6;
 
+// Degrees to radians (M_PI is not standard C++):
+constexpr double DEG2RAD = 3.14159265358979323846 / 180.0;
+
+/** Offset from the point looked at to the camera eye, i.e. eye = (x,y,z) + offset. */
+std::array<double, 3> eyeOffset(const Vec& v)
+{
+    const double az   = v[3] * DEG2RAD;
+    const double el   = v[4] * DEG2RAD;
+    const double dist = std::exp(v[5]);
+    return {
+        dist * std::cos(az) * std::cos(el), dist * std::sin(az) * std::cos(el),
+        dist * std::sin(el)};
+}
+
+/** Replaces the point looked at in v[0:2] by the point at fraction `beta` of the way from it
+ *  to the eye. */
+Vec toPivot(Vec v, double beta)
+{
+    const auto off = eyeOffset(v);
+    for (size_t c = 0; c < 3; c++)
+    {
+        v[c] += beta * off[c];
+    }
+    return v;
+}
+
+/** Inverse of toPivot(). */
+Vec fromPivot(Vec v, double beta)
+{
+    const auto off = eyeOffset(v);
+    for (size_t c = 0; c < 3; c++)
+    {
+        v[c] -= beta * off[c];
+    }
+    return v;
+}
+
+/** Pivot fraction (0: point looked at, 1: eye) to interpolate between keyframes a and b: whichever
+ *  of both points moves the least. This keeps fixed whatever point the user kept fixed while moving
+ *  the camera between both keyframes: the point looked at while orbiting or zooming, the eye while
+ *  looking around. */
+double pivotFraction(const Vec& a, const Vec& b)
+{
+    const auto offA      = eyeOffset(a);
+    const auto offB      = eyeOffset(b);
+    double     targetSqr = 0;
+    double     eyeSqr    = 0;
+    for (size_t c = 0; c < 3; c++)
+    {
+        const double dTarget = b[c] - a[c];
+        const double dEye    = dTarget + offB[c] - offA[c];
+        targetSqr += dTarget * dTarget;
+        eyeSqr += dEye * dEye;
+    }
+    return eyeSqr < targetSqr ? 1.0 : 0.0;
+}
+
 Vec toVec(const CameraKeyframe& k)
 {
     return {k.x, k.y, k.z, k.azimuthDeg, k.elevationDeg, std::log(std::max(k.zoom, MIN_ZOOM))};
@@ -81,6 +138,14 @@ CameraKeyframe interpolateCameraPath(
     const double dt = times[k + 1] - times[k];
     const double s  = (t - times[k]) / dt;
 
+    // Interpolate the point (eye or looked at) that moves the least along this segment, then
+    // recover the point looked at from it and the interpolated view direction:
+    const double beta = pivotFraction(values[k], values[k + 1]);
+    for (size_t i = (k == 0 ? 0 : k - 1); i <= std::min(k + 2, n - 1); i++)
+    {
+        values[i] = toPivot(values[i], beta);
+    }
+
     Vec out{};
     if (method == TravellingInterpolation::Linear)
     {
@@ -88,10 +153,11 @@ CameraKeyframe interpolateCameraPath(
         {
             out[c] = (1.0 - s) * values[k][c] + s * values[k + 1][c];
         }
-        return fromVec(out);
+        return fromVec(fromPivot(out, beta));
     }
 
-    // Catmull-Rom tangents (for non-uniform keyframe times), one-sided at both path ends:
+    // Catmull-Rom tangents (for non-uniform keyframe times), one-sided at both path ends.
+    // Only the pivot values of keyframes k-1..k+2 are valid here, which is all they read:
     const auto tangent = [&](size_t i, size_t c)
     {
         const size_t i0 = (i == 0) ? 0 : i - 1;
@@ -112,7 +178,7 @@ CameraKeyframe interpolateCameraPath(
         out[c] = h00 * values[k][c] + h10 * dt * tangent(k, c) + h01 * values[k + 1][c] +
                  h11 * dt * tangent(k + 1, c);
     }
-    return fromVec(out);
+    return fromVec(fromPivot(out, beta));
 }
 
 bool saveCameraPath(const CameraPath& path, const std::string& file, std::string& errorMsg)
