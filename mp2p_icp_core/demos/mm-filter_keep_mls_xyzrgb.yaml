@@ -1,0 +1,22 @@
+# Example mm-filter pipeline: takes a map build with "mls" and "filtered" layers, and 
+# leave just the minimal XYZ + RGB + intensity fields for visualization.
+
+filters:
+  - class_name: mp2p_icp_filters::FilterDeleteLayer
+    params:
+      pointcloud_layer_to_remove: ["filtered"]
+      error_on_missing_input_layer: true
+
+  - class_name: mp2p_icp_filters::FilterRemovePointCloudField
+    params:
+      pointcloud_layer: "mls"
+      field_names:
+        - "normal_x"
+        - "normal_y"
+        - "normal_z"
+        - "reflectivity"
+        - "t"
+        - "view_x"
+        - "view_y"
+        - "view_z"
+      throw_on_missing_field: false
