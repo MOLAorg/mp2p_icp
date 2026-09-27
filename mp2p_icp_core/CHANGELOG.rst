@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.0.0 (2026-09-28)
+------------------
 * FilterMLS: fix per-point fields (color, intensity, normal) getting misaligned with their points under TBB
 * sm2mm: do not run per-frame filters on IMU-only observations
 * Keep per-point fields in sync for VoxelAverage and flatten_to decimation (fixes out-of-bounds read)

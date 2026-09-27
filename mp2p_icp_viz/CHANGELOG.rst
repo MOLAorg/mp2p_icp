@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_viz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.0.0 (2026-09-28)
+------------------
 * mm-viewer: cache one OpenGL object per layer so show/hide is instantaneous
 * mm-viewer: fix camera travelling replay/spline interpolation of look-around keyframes
 * mm-viewer: fix camera travelling panel layout and add PNG frame export
