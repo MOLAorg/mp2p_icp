@@ -56,8 +56,8 @@ void SimpleFileDialog::open(
         overwritePopupId_      = "Overwrite file?##overwrite" + instanceTag;
     }
 
-    open_ = true;
-    ImGui::OpenPopup(popupId_.c_str());
+    open_        = true;
+    pendingOpen_ = true;
 }
 
 std::optional<std::string> SimpleFileDialog::render()
@@ -65,6 +65,14 @@ std::optional<std::string> SimpleFileDialog::render()
     if (!open_)
     {
         return std::nullopt;
+    }
+
+    // Popup IDs are scoped by the current ImGui window, so the popup is opened here, next to
+    // BeginPopupModal(), instead of in open(), which may run inside another window:
+    if (pendingOpen_)
+    {
+        pendingOpen_ = false;
+        ImGui::OpenPopup(popupId_.c_str());
     }
 
     std::optional<std::string> result;
