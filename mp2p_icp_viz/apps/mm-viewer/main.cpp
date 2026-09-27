@@ -106,6 +106,19 @@ struct MapLoadResult
     std::vector<std::string> knownPointFields;
 };
 
+/** Output of a background visualization build (see rebuild_3d_view()). */
+struct VizBuildResult
+{
+    /// One object per point layer, so layers can be shown/hidden without rebuilding.
+    std::map<std::string, mrpt::viz::CSetOfObjects::Ptr> layers;
+
+    /// Planes and lines. nullptr if not rebuilt by this task.
+    mrpt::viz::CSetOfObjects::Ptr geometry;
+
+    /// If true, `layers` replaces the whole cache; otherwise it is merged into it.
+    bool replacesAll = false;
+};
+
 /** All mutable application state, replacing the individual nanogui widget
  *  pointers of the previous implementation with plain value types (this is
  *  an immediate-mode GUI: widgets read/write these each frame). */
@@ -121,6 +134,12 @@ struct AppState
     mrpt::viz::CSetOfObjects::Ptr glMapCorner;
     mrpt::viz::CSetOfObjects::Ptr glTrajectory = mrpt::viz::CSetOfObjects::Create();
     mrpt::viz::CSetOfObjects::Ptr glVizObjects = mrpt::viz::CSetOfObjects::Create();
+
+    // Cached OpenGL representation of each point layer (built lazily, only when first shown),
+    // so toggling a layer only flips its visibility. Invalidated when the rendering style changes.
+    std::map<std::string, mrpt::viz::CSetOfObjects::Ptr> glLayers;
+    mrpt::viz::CSetOfObjects::Ptr                        glGeometry;  // planes and lines
+    std::optional<mp2p_icp::render_params_point_layer_t> glLayersStyle;
 
     mp2p_icp::metric_map_t theMap;
     std::string            theMapFileName = "unnamed.mm";
@@ -179,10 +198,9 @@ struct AppState
 
     bool doFitView = false;
 
-    // Forces regeneration of the cached point-cloud OpenGL representation on the next
-    // rebuild_3d_view() call, even if render_params_t happens to compare equal to the last
-    // build (e.g. after loading a different map whose layers coincidentally share names,
-    // visibility, and render options with the previous one).
+    // Forces regeneration of the cached OpenGL representation of all layers on the next
+    // rebuild_3d_view() call, even if the rendering style is unchanged (e.g. after loading a
+    // different map whose layers coincidentally share names with the previous one).
     bool forceRebuildViz = true;
 
     std::string mouseCoordText = "Mouse pointing to: -";
@@ -204,9 +222,9 @@ struct AppState
 
     // Async point-cloud visualization building (see rebuild_3d_view()): same rationale, for
     // theMap.get_visualization(), which can also take a long time on large maps.
-    mp2p_icp_viz::AsyncTask<mrpt::viz::CSetOfObjects::Ptr> vizBuildTask;
-    bool                                                   isBuildingViz          = false;
-    int                                                    vizBuildTaskGeneration = -1;
+    mp2p_icp_viz::AsyncTask<VizBuildResult> vizBuildTask;
+    bool                                    isBuildingViz          = false;
+    int                                     vizBuildTaskGeneration = -1;
 };
 
 AppState app;
@@ -1161,8 +1179,11 @@ void rebuild_3d_view()
 {
     std::optional<mrpt::math::TBoundingBoxf> mapBbox;
 
-    mp2p_icp::render_params_t rpMap;
-    rpMap.points.visible = false;
+    const auto isLayerVisible = [](const std::string& lyName)
+    {
+        const auto itV = app.layerVisible.find(lyName);
+        return (itV == app.layerVisible.end()) ? true : itV->second;
+    };
 
     for (const auto& lyName : app.layerNames)
     {
@@ -1174,82 +1195,124 @@ void rebuild_3d_view()
                 mapBbox       = mapBbox.has_value() ? mapBbox->unionWith(bb) : bb;
             }
         }
-
-        const auto itV       = app.layerVisible.find(lyName);
-        const bool isVisible = (itV == app.layerVisible.end()) ? true : itV->second;
-        if (!isVisible)
-        {
-            continue;  // hidden
-        }
-        rpMap.points.visible = true;
-
-        auto& rpL                       = rpMap.points.perLayer[lyName];
-        rpL.pointSize                   = app.pointSize;
-        rpL.render_voxelmaps_as_points  = app.viewVoxelsAsPoints;
-        rpL.render_voxelmaps_free_space = app.viewVoxelsFreeSpace;
-
-        if (app.colorizeMap)
-        {
-            auto& cm    = rpL.colorMode.emplace();
-            cm.colorMap = mrpt::typemeta::str2enum<mrpt::img::TColormap>(
-                kColorIntensityNames[app.colorIntensityIdx]);
-
-            if (!app.knownPointFields.empty())
-            {
-                cm.recolorizeByField =
-                    app.knownPointFields.at(static_cast<size_t>(app.recolorizeByFieldIdx));
-            }
-
-            if (app.autoBBoxOutliers)
-            {
-                cm.autoBoundingBoxOutliersPercentile = app.autoBBoxOutliersPercentile;
-            }
-        }
-        if (app.keepNativeCloudColors)
-        {
-            auto& cm                     = rpL.colorMode.emplace();
-            cm.keep_original_cloud_color = true;
-            rpL.force_alpha_channel      = true;
-        }
     }
 
-    for (auto& [layer, rp] : rpMap.points.perLayer)
+    // Rendering style, common to all point layers:
+    mp2p_icp::render_params_point_layer_t rpL;
+    rpL.pointSize                   = app.pointSize;
+    rpL.color                       = mrpt::img::TColor(0xff, 0x00, 0x00, 0x80);
+    rpL.render_voxelmaps_as_points  = app.viewVoxelsAsPoints;
+    rpL.render_voxelmaps_free_space = app.viewVoxelsFreeSpace;
+
+    if (app.colorizeMap)
     {
-        rp.color = mrpt::img::TColor(0xff, 0x00, 0x00, 0x80);
+        auto& cm    = rpL.colorMode.emplace();
+        cm.colorMap = mrpt::typemeta::str2enum<mrpt::img::TColormap>(
+            kColorIntensityNames[app.colorIntensityIdx]);
+
+        if (!app.knownPointFields.empty())
+        {
+            cm.recolorizeByField =
+                app.knownPointFields.at(static_cast<size_t>(app.recolorizeByFieldIdx));
+        }
+
+        if (app.autoBBoxOutliers)
+        {
+            cm.autoBoundingBoxOutliersPercentile = app.autoBBoxOutliersPercentile;
+        }
     }
-
-    // Regenerate points opengl representation only if some parameter changed (or a new map
-    // was just loaded, regardless of whether rpMap happens to compare equal to the last one).
-    // Built on a background thread (theMap.get_visualization() can take a long time on large
-    // maps) so the main/GL thread keeps pumping events instead of appearing "not responding".
-    static std::optional<mp2p_icp::render_params_t> prevRenderParams;
-
-    const bool needsRebuild =
-        !prevRenderParams.has_value() || prevRenderParams.value() != rpMap || app.forceRebuildViz;
-
-    if (needsRebuild && !app.isBuildingViz)
+    if (app.keepNativeCloudColors)
     {
-        app.forceRebuildViz = false;
-        prevRenderParams    = rpMap;
-
-        app.isBuildingViz          = true;
-        app.vizBuildTaskGeneration = app.mapGeneration;
-
-        // Shallow copy: shares the underlying (immutable, once loaded) layer CMetricMap::Ptr
-        // objects, so this is cheap regardless of map size, and safe to read from the
-        // background thread even if the main thread replaces app.theMap in the meantime.
-        const mp2p_icp::metric_map_t mapCopy = app.theMap;
-        app.vizBuildTask.start([mapCopy, rpMap]() { return mapCopy.get_visualization(rpMap); });
+        auto& cm                     = rpL.colorMode.emplace();
+        cm.keep_original_cloud_color = true;
+        rpL.force_alpha_channel      = true;
     }
 
-    if (auto glPts = app.vizBuildTask.poll())
+    // Layer OpenGL objects are cached: showing/hiding a layer only changes its visibility.
+    // A layer is built the first time it is shown, and all of them are discarded when the
+    // rendering style changes (or a new map is loaded). Built on a background thread (it can
+    // take a long time on large maps) so the main/GL thread keeps pumping events instead of
+    // appearing "not responding".
+    if (!app.isBuildingViz)
+    {
+        const bool rebuildAll =
+            app.forceRebuildViz || !app.glLayersStyle.has_value() || *app.glLayersStyle != rpL;
+
+        std::vector<std::string> layersToBuild;
+        for (const auto& lyName : app.layerNames)
+        {
+            if (isLayerVisible(lyName) && app.theMap.layers.count(lyName) != 0 &&
+                (rebuildAll || app.glLayers.count(lyName) == 0))
+            {
+                layersToBuild.push_back(lyName);
+            }
+        }
+
+        if (rebuildAll || !layersToBuild.empty())
+        {
+            app.forceRebuildViz = false;
+            app.glLayersStyle   = rpL;
+
+            app.isBuildingViz          = true;
+            app.vizBuildTaskGeneration = app.mapGeneration;
+
+            // Shallow copy: shares the underlying (immutable, once loaded) layer CMetricMap::Ptr
+            // objects, so this is cheap regardless of map size, and safe to read from the
+            // background thread even if the main thread replaces app.theMap in the meantime.
+            const mp2p_icp::metric_map_t mapCopy = app.theMap;
+            app.vizBuildTask.start(
+                [mapCopy, rpL, layersToBuild, rebuildAll]()
+                {
+                    VizBuildResult r;
+                    r.replacesAll = rebuildAll;
+                    if (rebuildAll)
+                    {
+                        r.geometry = mrpt::viz::CSetOfObjects::Create();
+                        mapCopy.get_visualization_planes(
+                            *r.geometry, mp2p_icp::render_params_planes_t());
+                        mapCopy.get_visualization_lines(
+                            *r.geometry, mp2p_icp::render_params_lines_t());
+                    }
+                    for (const auto& lyName : layersToBuild)
+                    {
+                        auto glLayer = mrpt::viz::CSetOfObjects::Create();
+                        mp2p_icp::metric_map_t::get_visualization_map_layer(
+                            *glLayer, rpL, mapCopy.layers.at(lyName));
+                        r.layers[lyName] = glLayer;
+                    }
+                    return r;
+                });
+        }
+    }
+
+    if (auto res = app.vizBuildTask.poll())
     {
         app.isBuildingViz = false;
 
         if (app.vizBuildTaskGeneration == app.mapGeneration)
         {
+            if (res->replacesAll)
+            {
+                app.glLayers = std::move(res->layers);
+            }
+            else
+            {
+                app.glLayers.merge(res->layers);
+            }
+            if (res->geometry)
+            {
+                app.glGeometry = res->geometry;
+            }
+
             app.glVizMap->clear();
-            app.glVizMap->insert(*glPts);
+            if (app.glGeometry)
+            {
+                app.glVizMap->insert(app.glGeometry);
+            }
+            for (const auto& [lyName, glLayer] : app.glLayers)
+            {
+                app.glVizMap->insert(glLayer);
+            }
             app.glVizMap->insert(app.glMapCorner);
             app.glVizMap->insert(app.glTrajectory);
             app.glVizMap->insert(app.glVizObjects);
@@ -1260,6 +1323,11 @@ void rebuild_3d_view()
             // rebuild for the current map on the next frame.
             app.forceRebuildViz = true;
         }
+    }
+
+    for (const auto& [lyName, glLayer] : app.glLayers)
+    {
+        glLayer->setVisibility(isLayerVisible(lyName));
     }
 
     if (app.applyGeoRef && app.theMap.georeferencing.has_value())
