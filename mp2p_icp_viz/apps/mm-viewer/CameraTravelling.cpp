@@ -11,6 +11,7 @@
 #include <cmath>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <vector>
 
@@ -123,7 +124,7 @@ bool saveCameraPath(const CameraPath& path, const std::string& file, std::string
         return false;
     }
     f << "# mm-viewer camera path\n# t[s] x y z azimuth[deg] elevation[deg] zoom[m]\n";
-    f << std::setprecision(12);
+    f << std::setprecision(std::numeric_limits<double>::max_digits10);
     for (const auto& [t, k] : path)
     {
         f << t << " " << k.x << " " << k.y << " " << k.z << " " << k.azimuthDeg << " "
@@ -164,6 +165,12 @@ bool loadCameraPath(CameraPath& path, const std::string& file, std::string& erro
         if (!(iss >> t >> k.x >> k.y >> k.z >> k.azimuthDeg >> k.elevationDeg >> k.zoom))
         {
             errorMsg = "Malformed line " + std::to_string(lineNum) + " in file: " + file;
+            return false;
+        }
+        if (k.zoom <= 0)
+        {
+            errorMsg =
+                "Zoom must be positive, in line " + std::to_string(lineNum) + " in file: " + file;
             return false;
         }
         loaded[t] = k;

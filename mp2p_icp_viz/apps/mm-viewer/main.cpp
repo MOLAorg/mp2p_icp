@@ -1684,7 +1684,10 @@ void renderTravellingPanel()
     ImGui::SetNextItemWidth(70);
     ImGui::InputDouble("##newKeyframeTime", &app.newKeyframeTime, 0.0, 0.0, "%.2f");
     ImGui::SameLine();
-    const bool replacesKeyframe = app.camPath.count(app.newKeyframeTime) != 0;
+    // The input box accepts "nan" or "inf", which must never become a keyframe time:
+    const bool validTime        = std::isfinite(app.newKeyframeTime);
+    const bool replacesKeyframe = validTime && app.camPath.count(app.newKeyframeTime) != 0;
+    ImGui::BeginDisabled(!validTime);
     if (ImGui::Button(replacesKeyframe ? "Replace with current view" : "Add current view"))
     {
         const double t = app.newKeyframeTime;
@@ -1693,6 +1696,7 @@ void renderTravellingPanel()
             static_cast<int>(std::distance(app.camPath.begin(), app.camPath.find(t)));
         app.newKeyframeTime = nextKeyframeTime();
     }
+    ImGui::EndDisabled();
     ImGui::SetItemTooltip("Store the current camera view as a keyframe at the given time");
 
     if (ImGui::Button("Load path..."))
