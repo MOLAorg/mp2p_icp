@@ -79,7 +79,8 @@ double pivotFraction(const Vec& a, const Vec& b)
         targetSqr += dTarget * dTarget;
         eyeSqr += dEye * dEye;
     }
-    return eyeSqr < targetSqr ? 1.0 : 0.0;
+    // Ties (pure translations) go to the eye, so walking and looking around share one pivot:
+    return eyeSqr <= targetSqr ? 1.0 : 0.0;
 }
 
 Vec toVec(const CameraKeyframe& k)
@@ -138,32 +139,70 @@ CameraKeyframe interpolateCameraPath(
     const double dt = times[k + 1] - times[k];
     const double s  = (t - times[k]) / dt;
 
-    // Interpolate the point (eye or looked at) that moves the least along this segment, then
+    // Interpolate the point (eye or looked at) that moves the least along each segment, then
     // recover the point looked at from it and the interpolated view direction:
-    const double beta = pivotFraction(values[k], values[k + 1]);
-    for (size_t i = (k == 0 ? 0 : k - 1); i <= std::min(k + 2, n - 1); i++)
+    std::vector<double> segBeta(n - 1);
+    for (size_t i = 0; i + 1 < n; i++)
     {
-        values[i] = toPivot(values[i], beta);
+        segBeta[i] = pivotFraction(values[i], values[i + 1]);
     }
+    const double beta = segBeta[k];
 
     Vec out{};
     if (method == TravellingInterpolation::Linear)
     {
+        const Vec a = toPivot(values[k], beta);
+        const Vec b = toPivot(values[k + 1], beta);
         for (size_t c = 0; c < NUM_COMPONENTS; c++)
         {
-            out[c] = (1.0 - s) * values[k][c] + s * values[k + 1][c];
+            out[c] = (1.0 - s) * a[c] + s * b[c];
         }
         return fromVec(fromPivot(out, beta));
     }
 
-    // Catmull-Rom tangents (for non-uniform keyframe times), one-sided at both path ends.
-    // Only the pivot values of keyframes k-1..k+2 are valid here, which is all they read:
-    const auto tangent = [&](size_t i, size_t c)
+    // Tangent of keyframe i, in the pivot frame of the segments at both sides:
+    // - Zero where both segments use different pivots, so the camera velocity (zero) is the
+    //   same seen from both of them.
+    // - Otherwise, per component, Catmull-Rom (for non-uniform keyframe times) limited as in
+    //   Fritsch-Carlson, so a component that does not change along a segment (e.g. the eye
+    //   while looking around) stays constant, and none overshoots. One-sided at both path ends.
+    const auto tangents = [&](size_t i)
     {
+        Vec m{};
+        if (i > 0 && i + 1 < n && segBeta[i - 1] != segBeta[i])
+        {
+            return m;
+        }
+        const double b  = (i > 0) ? segBeta[i - 1] : segBeta[i];
         const size_t i0 = (i == 0) ? 0 : i - 1;
         const size_t i1 = (i == n - 1) ? n - 1 : i + 1;
-        return (values[i1][c] - values[i0][c]) / (times[i1] - times[i0]);
+        const Vec    v0 = toPivot(values[i0], b);
+        const Vec    v  = toPivot(values[i], b);
+        const Vec    v1 = toPivot(values[i1], b);
+        for (size_t c = 0; c < NUM_COMPONENTS; c++)
+        {
+            m[c] = (v1[c] - v0[c]) / (times[i1] - times[i0]);
+            if (i0 == i || i1 == i)
+            {
+                continue;
+            }
+            const double dL = (v[c] - v0[c]) / (times[i] - times[i0]);
+            const double dR = (v1[c] - v[c]) / (times[i1] - times[i]);
+            if (dL * dR <= 0)
+            {
+                m[c] = 0;
+                continue;
+            }
+            const double maxAbs = 3 * std::min(std::abs(dL), std::abs(dR));
+            m[c]                = std::clamp(m[c], -maxAbs, maxAbs);
+        }
+        return m;
     };
+
+    const Vec a  = toPivot(values[k], beta);
+    const Vec b  = toPivot(values[k + 1], beta);
+    const Vec ma = tangents(k);
+    const Vec mb = tangents(k + 1);
 
     // Cubic Hermite basis:
     const double s2  = s * s;
@@ -175,8 +214,7 @@ CameraKeyframe interpolateCameraPath(
 
     for (size_t c = 0; c < NUM_COMPONENTS; c++)
     {
-        out[c] = h00 * values[k][c] + h10 * dt * tangent(k, c) + h01 * values[k + 1][c] +
-                 h11 * dt * tangent(k + 1, c);
+        out[c] = h00 * a[c] + h10 * dt * ma[c] + h01 * b[c] + h11 * dt * mb[c];
     }
     return fromVec(fromPivot(out, beta));
 }

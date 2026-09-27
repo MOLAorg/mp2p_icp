@@ -40,6 +40,8 @@ using CameraPath = std::map<double, CameraKeyframe>;
  *  Azimuth takes the shortest way around, and zoom is interpolated in log scale so its relative
  *  rate of change stays uniform. On each segment, whichever of the eye or the point looked at moves
  *  the least is the one interpolated, so both looking around and orbiting are reproduced.
+ *  Spline tangents never overshoot, keep constant whatever does not change along a segment, and
+ *  vanish where the interpolated point switches between eye and point looked at.
  *  The path must not be empty. */
 CameraKeyframe interpolateCameraPath(
     const CameraPath& path, double t, TravellingInterpolation method);
