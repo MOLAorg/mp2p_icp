@@ -2,6 +2,18 @@
 Changelog for package mp2p_icp_viz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mm-viewer: cache one OpenGL object per layer so show/hide is instantaneous
+* mm-viewer: fix camera travelling replay/spline interpolation of look-around keyframes
+* mm-viewer: fix camera travelling panel layout and add PNG frame export
+* mm-viewer: blink the 'Building 3D visualization' label while building
+* Fix pre-existing clang-format-14 violations
+* mp2p_icp_viz: restore the ImGui viewers, on MRPT 3.x and the MRPT vendored ImGui
+* icp-log-viewer: fix quality-filter empty check and out-of-range decimation slider default
+* Port to MRPT 3.x (mrpt::opengl -> mrpt::viz, per-component find_package, yaml API changes, camera controller, etc.)
+* Contributors: Jose Luis Blanco-Claraco
+
 2.14.1 (2026-09-15)
 -------------------
 * Port mm-viewer and icp-log-viewer from nanogui to Dear ImGui (`#79 <https://github.com/MOLAorg/mp2p_icp/issues/79>`_)

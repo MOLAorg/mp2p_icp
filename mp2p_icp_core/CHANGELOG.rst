@@ -4,25 +4,22 @@ Changelog for package mp2p_icp_core
 
 Forthcoming
 -----------
-* FilterDeskew: for the IMU-based methods, a defined `twist` now provides the
-  vehicle velocity at the scan reference time, from which the IMU readings are
-  integrated, instead of the most recent velocity sample in the
-  LocalVelocityBuffer. This lets the caller seed de-skew from a velocity source
-  other than its own state estimate (e.g. leg or wheel odometry). No change for
-  pipelines that write the same estimator twist to both places.
-* FilterDeskew: fix `ignore_accelerometer=true` integrating a phantom free
-  fall. Only the specific force was zeroed, so the coordinate acceleration
-  stayed at gravity and every de-skewed cloud was displaced by up to g*T^2/2
-  (~5 cm for a 0.1 s sweep). Gravity is now zeroed too, giving the intended
-  gyro + constant-velocity model. New regression cases in test-mp2p_deskew.
-* FilterDecimateVoxels: faster DecimateMethod::ClosestToAverage and
-  DecimateMethod::VoxelAverage via a new PointCloudToVoxelGridAverage, which
-  summarizes each voxel instead of keeping its point list. Measured on KITTI-00
-  and Oxford Spires scans: 16-25% less time per scan, output bit-identical.
-* PointCloudToVoxelGridSingle: voxel_t shrunk from 56 to 24 bytes, which is
-  8-29% less time per scan for DecimateMethod::FirstPoint. Its `pointIdx` and
-  `source` members are no longer std::optional; use `pointCount != 0` to test
-  for an occupied voxel and `sourceCloud(sourceIdx)` to resolve the cloud.
+* FilterMLS: fix per-point fields (color, intensity, normal) getting misaligned with their points under TBB
+* sm2mm: do not run per-frame filters on IMU-only observations
+* Keep per-point fields in sync for VoxelAverage and flatten_to decimation (fixes out-of-bounds read)
+* Add FilterRangeBiasCorrection: per-class range and incidence surface-bias model
+* FilterDeskew: IMU methods take their initial velocity from 'twist' when defined
+* FilterDeskew: fix ignore_accelerometer=true integrating a phantom free fall
+* Add DecimateMethod::RotatingIndex, removing the shared per-scan displacement of FirstPoint decimation
+* Matcher_Cov2Cov: optional per-point weighting of pairings by range and by beam incidence angle
+* Solver_GaussNewton: make the parallel accumulation of H and g deterministic across thread counts
+* FilterDecimateVoxels: faster ClosestToAverage/VoxelAverage via PointCloudToVoxelGridAverage; smaller voxel_t for FirstPoint
+* Fix pre-existing clang-format-14 violations
+* Add unit tests for previously untested code, fix a Matcher_Adaptive crash
+* ICP: optional freezePairingsAfterIteration parameter
+* Port to MRPT's CMultiMetricMap::mapsList()
+* Port to MRPT 3.x (mrpt::opengl -> mrpt::viz, per-component find_package, yaml API changes, camera controller, etc.)
+* Contributors: Jose Luis Blanco-Claraco
 
 2.14.1 (2026-09-15)
 -------------------
