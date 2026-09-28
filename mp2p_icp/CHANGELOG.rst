@@ -2,6 +2,9 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 3.0.0 (2026-09-28)
 ------------------
 * Port to MRPT 3.x (mrpt::opengl -> mrpt::viz, per-component find_package, yaml API changes, camera controller, etc.)

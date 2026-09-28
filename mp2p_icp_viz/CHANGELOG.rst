@@ -2,6 +2,9 @@
 Changelog for package mp2p_icp_viz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 3.0.0 (2026-09-28)
 ------------------
 * mm-viewer: cache one OpenGL object per layer so show/hide is instantaneous
