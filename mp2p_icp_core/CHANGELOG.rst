@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.0.1 (2026-09-28)
+------------------
 * Disable LTO for GCC < 12, which miscompiled devirtualized calls into MRPT classes (hanging/aborting unit tests on ROS 2 Humble)
 * Contributors: Jose Luis Blanco-Claraco
 
