@@ -86,6 +86,8 @@ colcon build --packages-select mp2p_icp        # everything (metapackage)
 colcon test  --packages-select mp2p_icp_core   # gtest, one file per component in tests/
 ```
 
+LTO is disabled for GCC < 12 (it miscompiles devirtualized calls into MRPT classes).
+
 ## Dependencies
 
 MRPT (≥ 2.15.4 core, ≥ 2.15.11 viz), CLI11, TBB (optional), `mola_common` (colcon

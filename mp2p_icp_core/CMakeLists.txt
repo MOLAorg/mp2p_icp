@@ -32,6 +32,14 @@ set(CMAKE_SHARED_LINKER_FLAGS_COVERAGE "--coverage" CACHE STRING "Linker flags f
 # Tell CMake we'll use C++ for use in its tests/flags
 project(mp2p_icp_core LANGUAGES CXX)
 
+# GCC < 12 with LTO (enabled by default in Debian/Ubuntu package builds) may
+# wrongly devirtualize calls on MRPT classes whose virtual methods live in
+# the MRPT shared libraries into __builtin_unreachable(), silently removing
+# code. Disable LTO for such compilers.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12)
+  add_compile_options(-fno-lto)
+endif()
+
 # This package builds as a plain "cmake" build_type under colcon (not
 # ament_cmake or catkin), but colcon still passes these catkin-only
 # variables when invoked with --symlink-install. Consume them here to
