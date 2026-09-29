@@ -76,8 +76,9 @@ struct index2d_hash
         static_assert(offsetof(index2d_t<cell_coord_t>, cx) == 0 * sizeof(uint32_t));
         static_assert(offsetof(index2d_t<cell_coord_t>, cy) == 1 * sizeof(uint32_t));
 
+        // Keep all 32 bits, so large grids do not collide into 2^20 buckets:
         const uint32_t* vec = reinterpret_cast<const uint32_t*>(&k);
-        return ((1 << 20) - 1) & (vec[0] * 73856093 ^ vec[1] * 19349663);
+        return vec[0] * 73856093 ^ vec[1] * 19349663;
     }
 
     /// k1 < k2? for std::map containers

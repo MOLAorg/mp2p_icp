@@ -88,7 +88,8 @@ class FilterDecimateVoxels : public mp2p_icp_filters::FilterBase
 
         /** Whether to use as container implementation
          * tsl::robin_map (true, default), or a std::map (false).
-         * For large clouds (>10^6), std::map seems to be faster.
+         * tsl::robin_map is faster at any cloud size; std::map needs somewhat
+         * less peak memory.
          */
         bool use_tsl_robin_map = true;
 

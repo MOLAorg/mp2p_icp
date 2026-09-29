@@ -75,6 +75,8 @@ Filters are chained and applied in-place to `metric_map_t`, configured via YAML
 
 - Voxel keys come from `coord2idx`, which divides by the resolution (never multiply by a
   precomputed reciprocal).
+- Voxel hash functors return the full 32-bit hash, never masked to fewer bits: a bounded
+  hash makes `tsl::robin_map` grow without limit once it holds that many keys.
 - Never `insertPointFast()` into a layer with registered per-point fields: use
   `insertPointFrom()`, or field vectors fall out of sync with x/y/z.
 

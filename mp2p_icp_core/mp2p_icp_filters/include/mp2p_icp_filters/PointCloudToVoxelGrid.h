@@ -128,8 +128,11 @@ class PointCloudToVoxelGrid
             static_assert(offsetof(indices_t, cy_) == 1 * sizeof(uint32_t));
             static_assert(offsetof(indices_t, cz_) == 2 * sizeof(uint32_t));
 
+            // Keep all 32 bits: masking to fewer bits bounds the number of
+            // distinct buckets, which makes open-addressing maps grow without
+            // limit once they hold that many keys.
             const uint32_t* vec = reinterpret_cast<const uint32_t*>(&k);
-            return ((1 << 20) - 1) & (vec[0] * 73856093 ^ vec[1] * 19349663 ^ vec[2] * 83492791);
+            return vec[0] * 73856093 ^ vec[1] * 19349663 ^ vec[2] * 83492791;
         }
 
         // k1 < k2?
