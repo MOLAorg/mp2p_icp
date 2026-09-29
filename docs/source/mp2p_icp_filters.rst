@@ -546,7 +546,7 @@ Filter: `FilterDecimateVoxels`
 
 * **voxel\_filter\_resolution** (``float``, default: `1.0f`): Size of each voxel edge (m).
 
-* **use\_tsl\_robin\_map** (``bool``, default: `true`): Whether to use `tsl::robin_map` (faster for smaller clouds) or `std::map` (faster for large clouds) as the container implementation.
+* **use\_tsl\_robin\_map** (``bool``, default: `true`): Whether to use `tsl::robin_map` (faster at any cloud size) or `std::map` (slower, but with somewhat lower peak memory usage) as the container implementation.
 
 * **minimum\_input\_points\_to\_filter** (:cpp:type:`uint32\_t`, default: `0`): If the total number of input points is less than this, all points are passed through without decimation.
 

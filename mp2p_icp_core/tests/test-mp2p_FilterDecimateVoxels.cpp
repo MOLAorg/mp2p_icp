@@ -21,7 +21,10 @@
 #include <mp2p_icp/metricmap.h>
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
 #include <mp2p_icp_filters/PointCloudToVoxelGrid.h>
+#include <mp2p_icp_filters/PointCloudToVoxelGridAverage.h>
+#include <mp2p_icp_filters/PointCloudToVoxelGridSingle.h>
 #include <mrpt/maps/CGenericPointsMap.h>
+#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/ops_containers.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/version.h>
@@ -338,6 +341,55 @@ void test_average_methods_match_point_lists(
     std::cout << " Success (" << expected.size() << " voxels) ✅." << std::endl;
 }
 
+/** Voxel grids must handle more distinct voxels than any fixed bound on the
+ *  hash range: a bounded hash makes tsl::robin_map grow until memory runs out.
+ */
+void test_many_voxels()
+{
+    printf("Running many-voxels check...");
+
+    // One point per voxel, at the voxel centers: 130^3 > 2^21 voxels.
+    const int N  = 130;
+    auto      pc = mrpt::maps::CSimplePointsMap::Create();
+    pc->reserve(N * N * N);
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < N; j++)
+        {
+            for (int k = 0; k < N; k++)
+            {
+                pc->insertPointFast(
+                    static_cast<float>(i) + 0.5f, static_cast<float>(j) + 0.5f,
+                    static_cast<float>(k) + 0.5f);
+            }
+        }
+    }
+    pc->mark_as_modified();
+
+    const std::size_t expected = static_cast<std::size_t>(N) * N * N;
+    ASSERT_GT_(expected, std::size_t(1) << 21);
+
+    for (const bool useTsl : {true, false})
+    {
+        PointCloudToVoxelGridSingle single;
+        single.setConfiguration(1.0f, useTsl);
+        single.processPointCloud(*pc);
+        ASSERT_EQUAL_(single.size(), expected);
+
+        PointCloudToVoxelGridAverage average;
+        average.setConfiguration(1.0f, useTsl);
+        average.processPointCloud(*pc, false);
+        ASSERT_EQUAL_(average.size(), expected);
+
+        PointCloudToVoxelGrid grid;
+        grid.setConfiguration(1.0f, useTsl);
+        grid.processPointCloud(*pc);
+        ASSERT_EQUAL_(grid.size(), expected);
+    }
+
+    std::cout << " Success ✅." << std::endl;
+}
+
 // Global initialization for the test suite
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
@@ -396,6 +448,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                     }
                 }
             }
+        }
+
+        try
+        {
+            test_many_voxels();
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error: ❌\n" << e.what() << std::endl;
+            failures++;
         }
 
         return failures == 0 ? 0 : 1;
