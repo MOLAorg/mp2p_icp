@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.0.2 (2026-10-06)
+------------------
 * Fix voxel grid hash masked to 20 bits, which blew up tsl::robin_map memory (`#127 <https://github.com/MOLAorg/mp2p_icp/issues/127>`_)
 * Contributors: Jose Luis Blanco-Claraco
 
