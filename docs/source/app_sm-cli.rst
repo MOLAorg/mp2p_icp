@@ -15,7 +15,8 @@ Available commands:
     sm-cli export-rawlog      Export KFs as rawlog for inspection.
     sm-cli info               Analyze a .simplemap file.
     sm-cli join               Join two or more .simplemap files into one.
-    sm-cli level              Makes a .simplemap file level (horizontal).
+    sm-cli level              Levels a .simplemap from its keyframe heights.
+    sm-cli level-walls        Levels a .simplemap from its wall/floor normals.
     sm-cli tf                 Applies a SE(3) transform by the left to a map.
     sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli --version          Shows program version.
@@ -89,6 +90,48 @@ saving the result in another simple-map file. This can be used when a map has an
 .. code-block:: bash
 
     sm-cli level <input.simplemap> <output.simplemap>
+
+This assumes a vehicle moving on flat ground. For handheld or aerial maps of buildings, whose trajectory
+changes height on purpose, use ``sm-cli level-walls`` instead.
+
+|
+
+sm-cli level-walls
+----------------------
+Corrects a global pitch/roll error of a simple-map by rotating it about the map origin, so that walls become
+as vertical, and floors and ceilings as horizontal, as possible. A typical source of such error is the initial
+attitude of a LiDAR-inertial run, estimated from a short accelerometer average.
+
+.. code-block:: bash
+
+    sm-cli level-walls <input.simplemap> <output.simplemap>
+        [--pipeline <sm2mm-pipeline.yaml>]  # keyframes to points (default: built-in)
+        [--voxel 0.05]                      # analysis cloud voxel size [m]
+        [--normal-radius 0.4]               # neighborhood for local normals [m]
+        [--wall-nz 0.25] [--flat-nz 0.95]   # |n.up| thresholds for walls / floors
+        [--max-correction-deg 5]            # refuse larger corrections
+        [--estimate-only]                   # print the rotation, do not write output
+        [--windows N]                       # also estimate on N equal time windows
+
+How it works:
+
+- Keyframes are converted into a voxel-decimated point cloud with an sm2mm pipeline (by default, the default
+  generator plus a per-keyframe voxel filter). With ``--pipeline``, all point layers it outputs are merged.
+- A normal is estimated for each point with a planar neighborhood.
+- Starting from :math:`u=+Z`, normals are classified as walls (:math:`|n \cdot u|` < ``wall-nz``) or floors and
+  ceilings (:math:`|n \cdot u|` > ``flat-nz``), and :math:`u` is updated to the eigenvector of the smallest
+  eigenvalue of :math:`M = \frac{1}{|W|}\sum_W n n^T + \frac{1}{|F|}\sum_F (I - n n^T)`, a few times.
+- The map is rotated by the minimal rotation that takes :math:`u` to :math:`+Z` (so the heading is kept).
+  Only keyframe poses change, exactly as with ``sm-cli tf``, whose equivalent command is printed.
+
+The command aborts if :math:`u` is not observable (e.g. one wall direction and no floors), or if the correction
+exceeds ``--max-correction-deg``. ``--windows N`` repeats the estimate on N time windows: similar values mean a
+fixed gauge error that a single rotation removes, while differing values mean drift, which it can not fix.
+
+.. note::
+
+   It assumes a mostly rectilinear structure with vertical walls and level floors (indoors, buildings).
+   Do not use it on outdoor or sloped scenes.
 
 |
 

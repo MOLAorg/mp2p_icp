@@ -38,6 +38,16 @@ struct cli_flags
     bool        argHelp    = false;
     bool        argVersion = false;
 
+    // level-walls:
+    std::string arg_pipeline;
+    double      arg_voxel              = 0.05;
+    double      arg_normal_radius      = 0.4;
+    double      arg_wall_nz            = 0.25;
+    double      arg_flat_nz            = 0.95;
+    double      arg_max_correction_deg = 5.0;
+    bool        arg_estimate_only      = false;
+    size_t      arg_windows            = 0;
+
     // Option handles, kept to reproduce TCLAP's isSet() semantics exactly
     // (distinguishing "not passed" from "passed with the default value").
     CLI::Option* opt_from         = nullptr;
@@ -76,6 +86,27 @@ struct cli_flags
             "contain one row per frame, with these fields: "
             "'time vx vy vz wx wy wz'");
 
+        cmd.add_option(
+            "--pipeline", arg_pipeline,
+            "level-walls: sm2mm-like YAML pipeline to convert keyframes into points "
+            "(default: built-in voxel decimation)");
+        cmd.add_option("--voxel", arg_voxel, "level-walls: voxel size of the analysis cloud [m]");
+        cmd.add_option(
+            "--normal-radius", arg_normal_radius,
+            "level-walls: neighborhood radius for local normals [m]");
+        cmd.add_option("--wall-nz", arg_wall_nz, "level-walls: |n.up| below this is a wall");
+        cmd.add_option(
+            "--flat-nz", arg_flat_nz, "level-walls: |n.up| above this is a floor or ceiling");
+        cmd.add_option(
+            "--max-correction-deg", arg_max_correction_deg,
+            "level-walls: refuse corrections larger than this [deg]");
+        cmd.add_flag(
+            "--estimate-only", arg_estimate_only,
+            "level-walls: only print the estimated rotation, do not write the output");
+        cmd.add_option(
+            "--windows", arg_windows,
+            "level-walls: also report the estimate on N equal time windows");
+
         cmd.add_flag("-h,--help", argHelp, "Shows more detailed help for command");
         cmd.add_flag("--version", argVersion, "Shows program version and exits");
     }
@@ -90,6 +121,7 @@ void printVersion();  // "--version"
 int  commandCut();  // "cut"
 int  commandInfo();  // "info"
 int  commandLevel();  // "level"
+int  commandLevelWalls();  // "level-walls"
 int  commandTrim();  // "trim"
 int  commandJoin();  // "join"
 int  commandTf();  // "tf"

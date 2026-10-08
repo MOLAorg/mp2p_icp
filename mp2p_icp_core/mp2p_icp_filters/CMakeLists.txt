@@ -58,6 +58,7 @@ set(LIB_SRCS
   src/PointCloudToVoxelGrid.cpp
   src/PointCloudToVoxelGridAverage.cpp
   src/PointCloudToVoxelGridSingle.cpp
+  src/estimate_up_from_normals.cpp
   src/sm2mm.cpp
   #
   src/register.cpp # This must be last
@@ -105,6 +106,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/PointCloudToVoxelGrid.h
   include/mp2p_icp_filters/PointCloudToVoxelGridAverage.h
   include/mp2p_icp_filters/PointCloudToVoxelGridSingle.h
+  include/mp2p_icp_filters/estimate_up_from_normals.h
   include/mp2p_icp_filters/sm2mm.h
 )
 
