@@ -29,6 +29,7 @@
 #include <mrpt/obs/CObservationComment.h>
 #include <mrpt/system/filesystem.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <optional>
@@ -161,7 +162,9 @@ std::vector<std::pair<size_t, size_t>> timeWindows(const mrpt::maps::CSimpleMap&
     }
 
     std::vector<size_t> windowOfKF(nKFs);
-    if (times.size() == nKFs && times.back() > times.front())
+    // Windows must be contiguous keyframe ranges, so times must be sorted:
+    if (times.size() == nKFs && std::is_sorted(times.begin(), times.end()) &&
+        times.back() > times.front())
     {
         const double t0 = times.front();
         const double dt = (times.back() - t0) / static_cast<double>(N);
@@ -172,7 +175,8 @@ std::vector<std::pair<size_t, size_t>> timeWindows(const mrpt::maps::CSimpleMap&
     }
     else
     {
-        std::cout << "Some keyframes have no timestamp: using windows of equal keyframe count.\n";
+        std::cout << "Keyframe timestamps are missing or unsorted: using windows of equal keyframe "
+                     "count.\n";
         for (size_t i = 0; i < nKFs; i++)
         {
             windowOfKF[i] = (i * N) / nKFs;

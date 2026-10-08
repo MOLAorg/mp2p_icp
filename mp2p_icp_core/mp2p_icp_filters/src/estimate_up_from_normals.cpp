@@ -139,7 +139,12 @@ EstimateUpResult estimate_up_from_normals(
     MRPT_START
 
     ASSERT_GT_(params.iterations, 0UL);
-    ASSERT_LT_(params.wall_nz, params.flat_nz);
+    // Written so that NaN values also fail:
+    ASSERTMSG_(
+        params.wall_nz > 0 && params.wall_nz < params.flat_nz && params.flat_nz < 1,
+        mrpt::format(
+            "Thresholds must satisfy 0 < wall_nz < flat_nz < 1 (got wall_nz=%g flat_nz=%g)",
+            params.wall_nz, params.flat_nz));
 
     EstimateUpResult r;
 
