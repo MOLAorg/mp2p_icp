@@ -93,6 +93,7 @@ mp2p_add_test(mp2p_viz_non_finite_points)
 mp2p_add_test(mp2p_WeightParameters)
 
 mp2p_add_test(mp2p_class_factory EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_estimate_up_from_normals EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterAbsoluteTimestamp EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterByExpression EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterByIntensity EXTRA_LIBS mp2p_icp_filters)

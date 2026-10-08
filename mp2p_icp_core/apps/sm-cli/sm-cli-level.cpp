@@ -125,6 +125,10 @@ int printCommandsLevel(bool showErrorMsg)
 
     sm-cli level <input.simplemap> <output.simplemap>
 
+Rotates the map so the keyframe heights vary as little as possible, which
+assumes a vehicle moving on flat ground. For handheld or aerial maps of
+buildings, use `sm-cli level-walls` instead, which levels from the geometry.
+
 )XXX");
 
     return showErrorMsg ? 1 : 0;
