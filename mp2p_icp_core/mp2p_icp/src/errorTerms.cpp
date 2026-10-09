@@ -179,9 +179,8 @@ mrpt::math::CVectorFixedDouble<4> mp2p_icp::error_line2line(
     ln_aux.pBase = mrpt::math::TPoint3D(g);
 
     // Homogeneous matrix calculation
-    mrpt::math::CMatrixDouble44 aux;
-    relativePose.getHomogeneousMatrix(aux);
-    const Eigen::Matrix<double, 4, 4> T = aux.asEigen();
+    const mrpt::math::CMatrixDouble44 aux = relativePose.getHomogeneousMatrix();
+    const Eigen::Matrix<double, 4, 4> T   = aux.asEigen();
 
     // Projection of the director vector for the new pose
     const Eigen::Matrix<double, 1, 4> U =

@@ -50,7 +50,8 @@ int commandCut()
     std::cout << "Writing cut simplemap with " << outSM.size() << " keyframes to '" << outFil << "'"
               << std::endl;
 
-    outSM.saveToFile(outFil);
+    const bool saveOk = outSM.saveToFile(outFil);
+    ASSERTMSG_(saveOk, "Error writing output file");
 
     return 0;
 }

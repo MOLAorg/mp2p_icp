@@ -99,7 +99,8 @@ int commandExportRawlog()
     std::cout << "Saving rawlog with " << rawlog.size() << " entries to: '" << outFil << "'"
               << std::endl;
 
-    rawlog.saveToRawLogFile(outFil);
+    const bool saveOk = rawlog.saveToRawLogFile(outFil);
+    ASSERTMSG_(saveOk, "Error writing output file");
 
     return 0;
 }
