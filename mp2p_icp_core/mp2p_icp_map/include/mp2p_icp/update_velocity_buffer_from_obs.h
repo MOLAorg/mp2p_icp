@@ -58,8 +58,9 @@ namespace mp2p_icp
  * @param localVelocityBuffer Reference to a `mola::LocalVelocityBuffer` instance that will
  *        be updated if valid velocity buffer data is found in the observation.
  * @param obs Shared pointer to the MRPT observation to be inspected.
+ * @return true if `localVelocityBuffer` was loaded from this observation.
  */
-void update_velocity_buffer_from_obs(
+bool update_velocity_buffer_from_obs(
     mola::imu::LocalVelocityBuffer& localVelocityBuffer, const mrpt::obs::CObservation::Ptr& obs);
 
 }  // namespace mp2p_icp

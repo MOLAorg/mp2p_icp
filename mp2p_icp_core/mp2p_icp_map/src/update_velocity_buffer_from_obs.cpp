@@ -30,13 +30,13 @@
 
 #if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
 
-void mp2p_icp::update_velocity_buffer_from_obs(
+bool mp2p_icp::update_velocity_buffer_from_obs(
     mola::imu::LocalVelocityBuffer& localVelocityBuffer, const mrpt::obs::CObservation::Ptr& obs)
 {
     auto obsComment = std::dynamic_pointer_cast<mrpt::obs::CObservationComment>(obs);
     if (!obsComment)
     {
-        return;
+        return false;
     }
 
     const auto commentYaml = [&]()
@@ -54,14 +54,14 @@ void mp2p_icp::update_velocity_buffer_from_obs(
 
     if (!commentYaml.isMap() || !commentYaml.has("local_velocity_buffer"))
     {
-        return;
+        return false;
     }
 
     const auto lvb = commentYaml["local_velocity_buffer"];
     if (!lvb.isMap())
     {
         std::cerr << "Error: 'local_velocity_buffer' field is not a map!" << std::endl;
-        return;
+        return false;
     }
 
     try
@@ -71,8 +71,9 @@ void mp2p_icp::update_velocity_buffer_from_obs(
     catch (const std::exception& e)
     {
         std::cerr << "Error parsing 'local_velocity_buffer': " << e.what() << std::endl;
-        return;
+        return false;
     }
+    return true;
 }
 
 #endif
