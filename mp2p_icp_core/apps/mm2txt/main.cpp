@@ -46,6 +46,7 @@ std::string              argMapFile;
 std::vector<std::string> argLayers;
 std::string              argExportFields;
 bool                     argIgnoreMissingFields = false;
+bool                     argNoHeader            = false;
 std::string              argFrame               = "map";
 std::string              arg_plugins;
 
@@ -394,7 +395,7 @@ void run_mm2txt()
                 validFields = selectedFields;
             }
 
-            bool printHeader = true;
+            const bool printHeader = !argNoHeader;
             saveToTxt(*genxyz, filName, printHeader, validFields, T_enu_to_map);
         }
 #if MRPT_VERSION < 0x030000  // <3.0.0
@@ -453,6 +454,10 @@ int main(int argc, char** argv)
         "If defined, the lack of any of the --export-fields in the map will be considered a "
         "warning "
         "instead of an error; missing fields are skipped.");
+    cmd.add_flag(
+        "--no-header", argNoHeader,
+        "Do not write the first line with the field names, so the output is a plain numeric "
+        "matrix (e.g. for numpy.loadtxt()).");
     cmd.add_option(
         "--frame", argFrame,
         "Coordinate frame for exported points: 'map' (default) uses the map local frame; "
