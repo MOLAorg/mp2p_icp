@@ -54,6 +54,15 @@ Usage
 
 
 
+Measuring distances
+-------------------
+
+Press **Measure** in the **Map viewer** panel, then click two points in the 3D view.
+Points are picked on the horizontal plane at the height given in the ``Z`` box (default: 0).
+The distance (in map units, i.e. meters) is drawn as a double-headed arrow with its length,
+and also shown in the panel together with its ``dx``, ``dy`` components. Press ``Esc`` or
+the clear button to remove it.
+
 Camera fly-by videos
 --------------------
 

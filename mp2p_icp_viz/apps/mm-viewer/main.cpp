@@ -18,6 +18,7 @@
 
 // other deps:
 #include <GLFW/glfw3.h>
+#include <IconsMaterialSymbols.h>
 #include <imgui.h>
 #include <imgui_app_common/AsyncTask.h>
 #include <imgui_app_common/ImGuiAppShell.h>
@@ -71,6 +72,13 @@ constexpr const char* APP_NAME = "mm-viewer";
 // start working again, unmodified, once this project moves to MRPT 3.x.
 constexpr const char* FIRST_MINI_VIEW_NAME  = "small-view-1";
 constexpr const char* SECOND_MINI_VIEW_NAME = "small-view-2";
+
+// Window titles, with a stable "###" ID so docking layouts survive title changes:
+constexpr const char* WIN_MAP_VIEWER = ICON_MS_MAP " Map viewer###Map viewer";
+constexpr const char* WIN_VIEW       = ICON_MS_TUNE " View###View";
+constexpr const char* WIN_MAPS       = ICON_MS_LAYERS " Maps###Maps";
+constexpr const char* WIN_TRAVELLING = ICON_MS_ROUTE " Travelling###Travelling";
+constexpr const char* WIN_3D_VIEW    = ICON_MS_3D_ROTATION " 3D View###3D View";
 
 const char* const kColorIntensityNames[]  = {"cmNONE", "cmHOT", "cmJET", "cmGRAYSCALE"};
 const char* const kColorIntensityLabels[] = {"None", "Hot", "Jet", "Grayscale"};
@@ -197,6 +205,14 @@ struct AppState
     int mouseUnitsIdx        = 0;  // map / enu / lat-lon
 
     bool doFitView = false;
+
+    // Distance measuring tool. Points are in scene coordinates, on the plane z=measureZ:
+    bool                                measuring = false;  // waiting for clicks
+    std::vector<mrpt::math::TPoint3D>   measurePts;  // 0, 1 or 2 points
+    std::optional<mrpt::math::TPoint3D> measureHoverPt;  // live end point while measuring
+    float                               measureZ  = 0.0f;
+    mrpt::viz::CSetOfObjects::Ptr       glMeasure = mrpt::viz::CSetOfObjects::Create();
+    std::optional<std::pair<mrpt::math::TPoint3D, mrpt::math::TPoint3D>> glMeasureDrawn;
 
     // Forces regeneration of the cached OpenGL representation of all layers on the next
     // rebuild_3d_view() call, even if the rendering style is unchanged (e.g. after loading a
@@ -602,6 +618,119 @@ void updateCameraLookCoordinates()
     app.cameraLookText = "Camera looking at: " + transformAndFormatSelectedPoint(pt);
 }
 
+/** Intersects the mouse ray at the given 3D view pixel with the measuring plane (z=measureZ). */
+std::optional<mrpt::math::TPoint3D> pickMeasurePoint(double localX, double localY)
+{
+    const auto mouseRay = app.scene->getViewport("main")->get3DRayForPixelCoord(
+        mrpt::img::TPixelCoord(localX, localY));
+    if (!mouseRay)
+    {
+        return {};
+    }
+    using mrpt::math::TPoint3D;
+    const double             z = app.measureZ;
+    const mrpt::math::TPlane plane(TPoint3D(0, 0, z), TPoint3D(1, 0, z), TPoint3D(0, 1, z));
+    mrpt::math::TObject3D    inters;
+    mrpt::math::intersect(*mouseRay, plane, inters);
+    TPoint3D pt;
+    if (!inters.getPoint(pt))
+    {
+        return {};
+    }
+    return pt;
+}
+
+/** Wired as `sceneView.onLeftClick`: each click while measuring sets the next end point. */
+void onSceneLeftClick(float localX, float localY)
+{
+    if (!app.measuring)
+    {
+        return;
+    }
+    const auto pt = pickMeasurePoint(localX, localY);
+    if (!pt)
+    {
+        return;
+    }
+    app.measurePts.push_back(*pt);
+    if (app.measurePts.size() >= 2)
+    {
+        app.measuring = false;
+        app.measureHoverPt.reset();
+    }
+}
+
+void startMeasuring()
+{
+    app.measuring = true;
+    app.measurePts.clear();
+    app.measureHoverPt.reset();
+}
+
+void clearMeasurement()
+{
+    app.measuring = false;
+    app.measurePts.clear();
+    app.measureHoverPt.reset();
+}
+
+/** The segment to draw: the final measurement, or the live one while placing the second point. */
+std::optional<std::pair<mrpt::math::TPoint3D, mrpt::math::TPoint3D>> currentMeasureSegment()
+{
+    if (app.measurePts.size() >= 2)
+    {
+        return std::make_pair(app.measurePts[0], app.measurePts[1]);
+    }
+    if (app.measurePts.size() == 1 && app.measureHoverPt)
+    {
+        return std::make_pair(app.measurePts[0], *app.measureHoverPt);
+    }
+    return {};
+}
+
+/** Rebuilds the measurement drawing (a double-headed arrow plus its length), if it changed. */
+void updateMeasureViz()
+{
+    const auto seg = currentMeasureSegment();
+    if (seg == app.glMeasureDrawn)
+    {
+        return;
+    }
+    app.glMeasureDrawn = seg;
+    app.glMeasure->clear();
+    if (!seg)
+    {
+        return;
+    }
+
+    const auto& [a, b] = *seg;
+    const double len   = (b - a).norm();
+    if (len < 1e-6)
+    {
+        return;
+    }
+    const auto mid = (a + b) * 0.5;
+
+    // Sizes proportional to the length, so the arrow looks the same at any scale:
+    const auto shaftRadius = static_cast<float>(0.004 * len);
+    const auto headLength  = 0.06 * len;
+    for (const auto& end : {a, b})
+    {
+        auto glArrow = mrpt::viz::CArrow::Create();
+        glArrow->setArrowEnds(mid, end);
+        glArrow->setHeadRatio(static_cast<float>(headLength / (0.5 * len)));
+        glArrow->setSmallRadius(shaftRadius);
+        glArrow->setLargeRadius(3.0f * shaftRadius);
+        glArrow->setColor_u8(0xff, 0xd0, 0x00, 0xff);
+        app.glMeasure->insert(glArrow);
+    }
+
+    auto glLabel = mrpt::viz::CText::Create(mrpt::format("%.3f", len));
+    glLabel->setLocation(mid.x, mid.y, mid.z + 4.0 * shaftRadius);
+    glLabel->setColor_u8(0xff, 0xff, 0xff, 0xff);
+    app.glMeasure->insert(glLabel);
+}
+
 /** Wired as `sceneView.onOverlayGui`: runs right after the 3-D canvas is drawn, while it is
  * still the last ImGui item, so `ImGui::IsItemHovered()`/`GetItemRect*()` refer to it. */
 void renderSceneOverlay()
@@ -627,9 +756,25 @@ void renderSceneOverlay()
         return;
     }
 
+    if (app.measuring)
+    {
+        // ImGui has no crosshair cursor: hide the OS one and draw it here instead.
+        ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+        constexpr float R     = 12.0f;
+        const ImU32     color = IM_COL32(0xff, 0xd0, 0x00, 0xff);
+        ImDrawList*     dl    = ImGui::GetWindowDrawList();
+        dl->AddLine(ImVec2(mouse.x - R, mouse.y), ImVec2(mouse.x + R, mouse.y), color, 1.5f);
+        dl->AddLine(ImVec2(mouse.x, mouse.y - R), ImVec2(mouse.x, mouse.y + R), color, 1.5f);
+
+        app.measureHoverPt = pickMeasurePoint(localX, localY);
+    }
+
     const auto mouseRayOpt = app.scene->getViewport("main")->get3DRayForPixelCoord(
         mrpt::img::TPixelCoord(localX, localY));
-    if (!mouseRayOpt) return;  // viewport not rendered yet
+    if (!mouseRayOpt)
+    {
+        return;  // viewport not rendered yet
+    }
     const mrpt::math::TLine3D mouseRay = *mouseRayOpt;
 
     using mrpt::math::TPoint3D;
@@ -1049,6 +1194,11 @@ void handleKeyboard()
         return;  // (the camera path drives the camera while playing)
     }
 
+    if (app.measuring && ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+    {
+        clearMeasurement();
+    }
+
     constexpr float SLIDE_VELOCITY     = 0.01f;
     constexpr float SENSIBILITY_ROTATE = 1.0f;
     auto&           cam                = app.sceneView.cameraController;
@@ -1407,17 +1557,79 @@ void rebuild_3d_view()
     // since the "linear" clip mode needs the up-to-date camera pose.
 }
 
+/** Distance measuring tool controls, part of the "Map viewer" panel. */
+void renderMeasureControls()
+{
+    const bool wasMeasuring = app.measuring;
+    if (wasMeasuring)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+    }
+    if (ImGui::Button(ICON_MS_STRAIGHTEN " Measure"))
+    {
+        if (app.measuring)
+        {
+            clearMeasurement();
+        }
+        else
+        {
+            startMeasuring();
+        }
+    }
+    if (wasMeasuring)
+    {
+        ImGui::PopStyleColor();
+    }
+    ImGui::SetItemTooltip("Measure the distance between two clicked points (Esc to cancel)");
+
+    ImGui::SameLine();
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Z");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(70);
+    if (ImGui::InputFloat("##measureZ", &app.measureZ, 0.0f, 0.0f, "%.2f") &&
+        !std::isfinite(app.measureZ))
+    {
+        app.measureZ = 0.0f;
+    }
+    ImGui::SetItemTooltip("Height of the plane where measured points are picked");
+
+    ImGui::SameLine();
+    ImGui::BeginDisabled(app.measurePts.empty() && !app.measuring);
+    if (ImGui::Button(ICON_MS_CLOSE "##clearMeasure"))
+    {
+        clearMeasurement();
+    }
+    ImGui::SetItemTooltip("Clear measurement");
+    ImGui::EndDisabled();
+
+    std::string status;
+    if (const auto seg = currentMeasureSegment(); seg)
+    {
+        const auto d = seg->second - seg->first;
+        status       = mrpt::format("Distance: %.3f  (dx=%.3f dy=%.3f)", d.norm(), d.x, d.y);
+    }
+    else if (app.measuring)
+    {
+        status = app.measurePts.empty() ? "Click the first point" : "Click the second point";
+    }
+    if (!status.empty())
+    {
+        ImGui::TextUnformatted(status.c_str());
+    }
+}
+
 /** "Map viewer" window: file header + Open/Export + mouse/camera coordinate footer.
  *  Kept separate from the View/Maps/Travelling panels below so it can dock as a thin strip. */
 void renderMapViewerPanel()
 {
-    ImGui::Begin("Map viewer");
+    ImGui::Begin(WIN_MAP_VIEWER);
 
     const std::string headerLine = app.theMapFileName + "  |  " + app.theMap.contents_summary();
     ImGui::TextWrapped("%s", headerLine.c_str());
 
     ImGui::BeginDisabled(app.isLoadingMap);
-    if (ImGui::Button("Open..."))
+    if (ImGui::Button(ICON_MS_FOLDER_OPEN " Open..."))
     {
         app.openDialog.open(
             mp2p_icp_viz::SimpleFileDialog::Mode::Open,
@@ -1425,7 +1637,7 @@ void renderMapViewerPanel()
             "Open metric map");
     }
     ImGui::SameLine();
-    if (ImGui::Button("Export marked layers..."))
+    if (ImGui::Button(ICON_MS_SAVE_AS " Export marked layers..."))
     {
         app.exportDialog.open(
             mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"txt", "(*.txt)"}}, "Export layers");
@@ -1469,11 +1681,13 @@ void renderMapViewerPanel()
         ImGui::EndDisabled();
     }
     ImGui::SameLine();
-    if (ImGui::Button("Copy coords"))
+    if (ImGui::Button(ICON_MS_CONTENT_COPY " Copy coords"))
     {
         const std::string text = app.mouseCoordText + "\n" + app.cameraLookText;
         glfwSetClipboardString(app.shell.windowHandle(), text.c_str());
     }
+
+    renderMeasureControls();
 
     ImGui::End();
 }
@@ -1481,7 +1695,7 @@ void renderMapViewerPanel()
 /** "View" window: camera/rendering options (mirrors the old nanogui "View" tab). */
 void renderViewPanel()
 {
-    ImGui::Begin("View");
+    ImGui::Begin(WIN_VIEW);
 
     ImGui::SliderFloat(
         "Trajectory thickness", &app.trajectoryThicknessLog, std::log(0.005f), std::log(2.0f));
@@ -1523,7 +1737,7 @@ void renderViewPanel()
 
     ImGui::Checkbox("Show ground grid", &app.showGroundGrid);
     ImGui::SameLine();
-    if (ImGui::Button("Fit view to map"))
+    if (ImGui::Button(ICON_MS_FIT_SCREEN " Fit view to map"))
     {
         app.doFitView = true;
     }
@@ -1549,6 +1763,10 @@ void renderViewPanel()
 
     ImGui::BeginDisabled(!app.theMap.georeferencing.has_value());
     ImGui::Checkbox("Apply georeferenced pose (if available)", &app.applyGeoRef);
+    if (ImGui::IsItemEdited())
+    {
+        clearMeasurement();  // it was taken in the previous frame of reference
+    }
     ImGui::EndDisabled();
 
     ImGui::End();
@@ -1557,7 +1775,7 @@ void renderViewPanel()
 /** "Maps" window: layer list, visibility, and colorization options. */
 void renderMapsPanel()
 {
-    ImGui::Begin("Maps");
+    ImGui::Begin(WIN_MAPS);
 
     ImGui::SliderFloat("Point size", &app.pointSize, 1.0f, 10.0f);
     ImGui::Checkbox("Render voxel maps as point clouds", &app.viewVoxelsAsPoints);
@@ -1600,7 +1818,7 @@ void renderMapsPanel()
     ImGui::Separator();
     ImGui::TextUnformatted("Visible layers:");
     ImGui::SameLine();
-    if (ImGui::SmallButton("All"))
+    if (ImGui::SmallButton(ICON_MS_VISIBILITY " All"))
     {
         for (auto& [name, vis] : app.layerVisible)
         {
@@ -1612,7 +1830,7 @@ void renderMapsPanel()
         }
     }
     ImGui::SameLine();
-    if (ImGui::SmallButton("None"))
+    if (ImGui::SmallButton(ICON_MS_VISIBILITY_OFF " None"))
     {
         for (auto& [name, vis] : app.layerVisible)
         {
@@ -1659,7 +1877,7 @@ double nextKeyframeTime() { return app.camPath.empty() ? 0.0 : app.camPath.rbegi
 /** "Travelling" window: camera keyframes for fly-by animations, and their playback/recording. */
 void renderTravellingPanel()
 {
-    ImGui::Begin("Travelling");
+    ImGui::Begin(WIN_TRAVELLING);
 
     ImGui::TextWrapped(
         "Camera fly-by: add keyframes from the current view, then play them back or record them "
@@ -1710,19 +1928,19 @@ void renderTravellingPanel()
 
     const bool hasSelection = app.selectedKeyframeIdx >= 0;
     ImGui::BeginDisabled(!hasSelection);
-    if (ImGui::Button("Go to"))
+    if (ImGui::Button(ICON_MS_MY_LOCATION " Go to"))
     {
         goToSelected = true;
     }
     ImGui::SetItemTooltip("Move the camera to the selected keyframe (or double-click it)");
     ImGui::SameLine();
-    if (ImGui::Button("Update"))
+    if (ImGui::Button(ICON_MS_REFRESH " Update"))
     {
         selectedIt()->second = currentCameraKeyframe();
     }
     ImGui::SetItemTooltip("Replace the selected keyframe with the current view");
     ImGui::SameLine();
-    if (ImGui::Button("Delete"))
+    if (ImGui::Button(ICON_MS_DELETE " Delete"))
     {
         app.camPath.erase(selectedIt());
         app.selectedKeyframeIdx =
@@ -1731,7 +1949,7 @@ void renderTravellingPanel()
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::BeginDisabled(app.camPath.empty());
-    if (ImGui::Button("Clear all"))
+    if (ImGui::Button(ICON_MS_CLEAR " Clear all"))
     {
         app.camPath.clear();
         app.selectedKeyframeIdx = -1;
@@ -1756,7 +1974,9 @@ void renderTravellingPanel()
     const bool validTime        = std::isfinite(app.newKeyframeTime);
     const bool replacesKeyframe = validTime && app.camPath.count(app.newKeyframeTime) != 0;
     ImGui::BeginDisabled(!validTime);
-    if (ImGui::Button(replacesKeyframe ? "Replace with current view" : "Add current view"))
+    if (ImGui::Button(
+            replacesKeyframe ? ICON_MS_REFRESH " Replace with current view"
+                             : ICON_MS_ADD " Add current view"))
     {
         const double t = app.newKeyframeTime;
         app.camPath[t] = currentCameraKeyframe();
@@ -1767,7 +1987,7 @@ void renderTravellingPanel()
     ImGui::EndDisabled();
     ImGui::SetItemTooltip("Store the current camera view as a keyframe at the given time");
 
-    if (ImGui::Button("Load path..."))
+    if (ImGui::Button(ICON_MS_FOLDER_OPEN " Load path..."))
     {
         app.pathLoadDialog.open(
             mp2p_icp_viz::SimpleFileDialog::Mode::Open, {{"txt", "Camera paths (*.txt)"}},
@@ -1775,7 +1995,7 @@ void renderTravellingPanel()
     }
     ImGui::SameLine();
     ImGui::BeginDisabled(app.camPath.empty());
-    if (ImGui::Button("Save path..."))
+    if (ImGui::Button(ICON_MS_SAVE " Save path..."))
     {
         app.pathSaveDialog.open(
             mp2p_icp_viz::SimpleFileDialog::Mode::Save, {{"txt", "Camera paths (*.txt)"}},
@@ -1789,14 +2009,14 @@ void renderTravellingPanel()
     ImGui::SeparatorText("Playback");
 
     ImGui::BeginDisabled(app.isPlaying || app.camPath.size() < 2);
-    if (ImGui::Button("Play"))
+    if (ImGui::Button(ICON_MS_PLAY_ARROW " Play"))
     {
         camTravellingStart(false);
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::BeginDisabled(!app.isPlaying);
-    if (ImGui::Button("Stop"))
+    if (ImGui::Button(ICON_MS_STOP " Stop"))
     {
         camTravellingStop();
     }
@@ -1856,7 +2076,7 @@ void renderTravellingPanel()
 
     ImGui::BeginDisabled(
         app.isPlaying || app.isLoadingMap || app.camPath.size() < 2 || app.framesDir.empty());
-    if (ImGui::Button("Record"))
+    if (ImGui::Button(ICON_MS_VIDEOCAM " Record"))
     {
         camTravellingStart(true);
     }
@@ -1882,7 +2102,7 @@ void renderTravellingPanel()
     if (!app.travellingStatus.empty())
     {
         ImGui::TextWrapped("%s", app.travellingStatus.c_str());
-        if (ImGui::SmallButton("Copy message"))
+        if (ImGui::SmallButton(ICON_MS_CONTENT_COPY " Copy message"))
         {
             glfwSetClipboardString(app.shell.windowHandle(), app.travellingStatus.c_str());
         }
@@ -1932,7 +2152,7 @@ void renderFileDialogs()
 /** "3D View" window: fills the remaining (background) dockspace area. */
 void renderSceneWindow()
 {
-    ImGui::Begin("3D View");
+    ImGui::Begin(WIN_3D_VIEW);
     app.sceneView.render();
     ImGui::End();
 }
@@ -1946,6 +2166,7 @@ void renderFrame()
     updateCameraClipDistances();
     updateMiniCornerView();
     advanceCameraTravelling();
+    updateMeasureViz();
 
     renderMapViewerPanel();
     renderViewPanel();
@@ -2023,11 +2244,11 @@ int mainShowGui()
         ImGuiID leftMapsId =
             ImGui::DockBuilderSplitNode(leftBottomId, ImGuiDir_Down, 0.45f, nullptr, &leftBottomId);
 
-        ImGui::DockBuilderDockWindow("Map viewer", leftTopId);
-        ImGui::DockBuilderDockWindow("View", leftBottomId);
-        ImGui::DockBuilderDockWindow("Travelling", leftBottomId);
-        ImGui::DockBuilderDockWindow("Maps", leftMapsId);
-        ImGui::DockBuilderDockWindow("3D View", rightId);
+        ImGui::DockBuilderDockWindow(WIN_MAP_VIEWER, leftTopId);
+        ImGui::DockBuilderDockWindow(WIN_VIEW, leftBottomId);
+        ImGui::DockBuilderDockWindow(WIN_TRAVELLING, leftBottomId);
+        ImGui::DockBuilderDockWindow(WIN_MAPS, leftMapsId);
+        ImGui::DockBuilderDockWindow(WIN_3D_VIEW, rightId);
     };
 
     // Background scene:
@@ -2044,9 +2265,11 @@ int mainShowGui()
     app.scene->insert(app.glENUCorner);
 
     app.scene->insert(app.glVizMap);
+    app.scene->insert(app.glMeasure);
 
     app.sceneView.setScene(app.scene);
     app.sceneView.onOverlayGui = &renderSceneOverlay;
+    app.sceneView.onLeftClick  = &onSceneLeftClick;
 
     app.sceneView.cameraController.setCameraPointing(8.0f, 0.0f, 0.0f);
     app.sceneView.cameraController.setAzimuthDegrees(110.0f);
