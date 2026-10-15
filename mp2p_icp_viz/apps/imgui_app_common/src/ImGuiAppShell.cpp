@@ -1,9 +1,11 @@
 #include <GLFW/glfw3.h>
+#include <IconsMaterialSymbols.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <imgui.h>
 #include <imgui_app_common/ImGuiAppShell.h>
 #include <imgui_internal.h>  // DockBuilder* API (default layout on first run)
+#include <mrpt/imgui_vendor/icon_font.h>
 
 #include <cstdio>
 
@@ -13,6 +15,9 @@ namespace mp2p_icp_viz
 {
 namespace
 {
+// Must outlive the font atlas, which keeps a pointer to it:
+const ImWchar kIconRanges[] = {ICON_MIN_MS, ICON_MAX_16_MS, 0};
+
 void glfwErrorCallback(int error, const char* description)
 {
     std::fprintf(stderr, "[ImGuiAppShell] GLFW error %d: %s\n", error, description);
@@ -59,6 +64,18 @@ bool ImGuiAppShell::init(const std::string& windowTitle, int width, int height)
     io.IniFilename = iniPath_.c_str();
 
     ImGui::StyleColorsDark();
+
+    // Default text font, plus the embedded Material Symbols icons (ICON_MS_*) merged into it:
+    io.Fonts->AddFontDefault();
+    {
+        ImFontConfig cfg;
+        cfg.MergeMode            = true;
+        cfg.FontDataOwnedByAtlas = false;  // static array, must not be freed by ImGui
+        cfg.GlyphOffset.y        = 3.0f;  // align icons with the text baseline
+        io.Fonts->AddFontFromMemoryTTF(
+            const_cast<void*>(mrpt::imgui_vendor::iconFontData()),
+            static_cast<int>(mrpt::imgui_vendor::iconFontDataSize()), 0.0f, &cfg, kIconRanges);
+    }
 
     ImGui_ImplGlfw_InitForOpenGL(window_, true);
     ImGui_ImplOpenGL3_Init("#version 330");

@@ -51,6 +51,9 @@ Argument parsing uses CLI11. Core: `mm2las`, `mm2ply`, `mm2txt`, `mm2grid`, `mm-
 
 Dear ImGui (from the `mrpt_imgui_vendor` ROS package, target `imgui::imgui`). Shared code
 in `apps/imgui_app_common/`; 3D views use `mrpt::imgui::CImGuiSceneView`.
+`ImGuiAppShell` merges the vendor's Material Symbols font into the default one, so
+`ICON_MS_*` macros work in labels; only a curated subset of icons is embedded (see the
+vendor's `scripts/regenerate_icon_font.py`), others render as missing glyphs.
 
 **Do not delete as dead code:** the axis-corner mini-viewports in mm-viewer are kept in
 sync but invisible, because MRPT 2.x only renders the `"main"` viewport.
