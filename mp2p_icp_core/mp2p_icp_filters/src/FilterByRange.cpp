@@ -107,50 +107,66 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     const float sqrMin = mrpt::square(params.range_min);
     const float sqrMax = mrpt::square(params.range_max);
 
-    std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxBetween;
-    std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxOutside;
-    if (outBetween)
+    const auto isInside = [&](size_t i)
     {
-        outBetween->registerPointFieldsFrom(pc);
-        // After registering the fields, so their storage is reserved too.
-        // Worst case: every input point lands in this layer.
-        outBetween->reserve(outBetween->size() + pc.size());
-        ctxBetween = outBetween->prepareForInsertPointsFrom(pc);
-        mp2p_icp::warn_on_field_padding_mismatch(pc, *outBetween, *this);
-    }
-    if (outOutside)
-    {
-        outOutside->registerPointFieldsFrom(pc);
-        outOutside->reserve(outOutside->size() + pc.size());
-        ctxOutside = outOutside->prepareForInsertPointsFrom(pc);
-        mp2p_icp::warn_on_field_padding_mismatch(pc, *outOutside, *this);
-    }
-
-    for (size_t i = 0; i < xs.size(); i++)
-    {
-        bool isInside;
-
         if (params.metric_l_infinity)
         {
             const float lInfNorm = mrpt::max3(
                 std::abs(xs[i] - params.center.x), std::abs(ys[i] - params.center.y),
                 std::abs(zs[i] - params.center.z));
 
-            isInside = lInfNorm >= params.range_min && lInfNorm <= params.range_max;
+            return lInfNorm >= params.range_min && lInfNorm <= params.range_max;
         }
-        else
+        const float sqrNorm =
+            (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params.center).sqrNorm();
+
+        return sqrNorm >= sqrMin && sqrNorm <= sqrMax;
+    };
+
+    // Number of new points per output layer, to reserve their storage once.
+    // With a single output, its worst case (every point) is close enough; with
+    // both, count them so that neither layer over-reserves.
+    size_t countBetween = xs.size();
+    size_t countOutside = xs.size();
+    if (outBetween && outOutside)
+    {
+        countBetween = 0;
+        for (size_t i = 0; i < xs.size(); i++)
         {
-            const float sqrNorm =
-                (mrpt::math::TPoint3Df(xs[i], ys[i], zs[i]) - params.center).sqrNorm();
-
-            isInside = sqrNorm >= sqrMin && sqrNorm <= sqrMax;
+            if (isInside(i))
+            {
+                countBetween++;
+            }
         }
+        countOutside = xs.size() - countBetween;
+    }
 
-        auto* targetPc = isInside ? outBetween.get() : outOutside.get();
+    // Fields are registered first, so that reserve() covers their storage too:
+    std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxBetween;
+    std::optional<mrpt::maps::CPointsMap::InsertCtx> ctxOutside;
+    if (outBetween)
+    {
+        outBetween->registerPointFieldsFrom(pc);
+        outBetween->reserve(outBetween->size() + countBetween);
+        ctxBetween = outBetween->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *outBetween, *this);
+    }
+    if (outOutside)
+    {
+        outOutside->registerPointFieldsFrom(pc);
+        outOutside->reserve(outOutside->size() + countOutside);
+        ctxOutside = outOutside->prepareForInsertPointsFrom(pc);
+        mp2p_icp::warn_on_field_padding_mismatch(pc, *outOutside, *this);
+    }
+
+    for (size_t i = 0; i < xs.size(); i++)
+    {
+        const bool inside   = isInside(i);
+        auto*      targetPc = inside ? outBetween.get() : outOutside.get();
 
         if (targetPc)
         {
-            const auto& ctx = isInside ? ctxBetween : ctxOutside;
+            const auto& ctx = inside ? ctxBetween : ctxOutside;
             targetPc->insertPointFrom(i, ctx.value());
         }
     }
