@@ -94,21 +94,11 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
 
-    if (outBetween)
-    {
-        outBetween->reserve(outBetween->size() + pc.size() / 10);
-    }
-
     // Optional output layer for deleted points:
     mrpt::maps::CPointsMap::Ptr outOutside = GetOrCreatePointLayer(
         inOut, params.output_layer_outside, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
         pcPtr->GetRuntimeClass()->className);
-
-    if (outOutside)
-    {
-        outOutside->reserve(outOutside->size() + pc.size() / 10);
-    }
 
     const auto& xs = pc.getPointsBufferRef_x();
     const auto& ys = pc.getPointsBufferRef_y();
@@ -122,12 +112,16 @@ void FilterByRange::filter(mp2p_icp::metric_map_t& inOut) const
     if (outBetween)
     {
         outBetween->registerPointFieldsFrom(pc);
+        // After registering the fields, so their storage is reserved too.
+        // Worst case: every input point lands in this layer.
+        outBetween->reserve(outBetween->size() + pc.size());
         ctxBetween = outBetween->prepareForInsertPointsFrom(pc);
         mp2p_icp::warn_on_field_padding_mismatch(pc, *outBetween, *this);
     }
     if (outOutside)
     {
         outOutside->registerPointFieldsFrom(pc);
+        outOutside->reserve(outOutside->size() + pc.size());
         ctxOutside = outOutside->prepareForInsertPointsFrom(pc);
         mp2p_icp::warn_on_field_padding_mismatch(pc, *outOutside, *this);
     }
