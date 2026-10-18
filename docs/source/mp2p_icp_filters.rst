@@ -629,11 +629,15 @@ Filter: `FilterDeskew`
 * **in\_place** (``bool``, default: `false`):
   If `true`, the deskewed points replace the input layer (most efficient).
 
-* **output\_layer\_class** (:cpp:type:`std::string`, default: `mrpt::maps::CPointsMapXYZI`):
+* **output\_layer\_class** (:cpp:type:`std::string`, default: `mrpt::maps::CGenericPointsMap`):
   The class name for the output layer if it needs to be created.
 
 * **silently\_ignore\_no\_timestamps** (``bool``, default: `false`):
   If `true`, no exception is thrown if the input layer lacks timestamps.
+
+Whenever points are forwarded without correction (no timestamps, `method=None`, or no motion
+information), if the output layer does not exist yet and `output_layer_class` is the class of the
+input layer, the output layer will be the same object than the input layer (shared, not copied).
 
 * **method** (:cpp:enum:`MotionCompensationMethod`, default: `Linear`):
   The motion compensation method used to interpolate or integrate point positions:

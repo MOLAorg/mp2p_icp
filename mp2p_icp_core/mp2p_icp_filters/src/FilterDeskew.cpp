@@ -388,58 +388,78 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
 
     checkAllParametersAreRealized();
 
-    // Create if new: Append to existing layer, if already existed.
-    mrpt::maps::CPointsMap::Ptr outPc;
-    if (!in_place)
-    {
-        outPc = GetOrCreatePointLayer(
-            inOut, output_pointcloud_layer, false /*dont allow empty names*/, output_layer_class);
-    }
-
     // In:
     ASSERT_(!input_pointcloud_layer.empty());
 
-    mrpt::maps::CPointsMap* inPc = nullptr;
-
-    if (auto itLy = inOut.layers.find(input_pointcloud_layer); itLy != inOut.layers.end())
-    {
-        inPc = mp2p_icp::MapToPointsMap(*itLy->second);
-        if (!inPc)
-        {
-            THROW_EXCEPTION_FMT(
-                "Layer '%s' must be of point cloud type.", input_pointcloud_layer.c_str());
-        }
-
-        // Reserve memory in output layer:
-        if (!in_place)
-        {
-            outPc->reserve(outPc->size() + inPc->size());
-        }
-    }
-    else
+    auto itInLy = inOut.layers.find(input_pointcloud_layer);
+    if (itInLy == inOut.layers.end())
     {
         // Input layer doesn't exist:
         THROW_EXCEPTION_FMT(
             "Input layer '%s' not found on input map.", input_pointcloud_layer.c_str());
     }
+    const mrpt::maps::CMetricMap::Ptr inLayer = itInLy->second;
+
+    mrpt::maps::CPointsMap* inPc = mp2p_icp::MapToPointsMap(*inLayer);
+    if (!inPc)
+    {
+        THROW_EXCEPTION_FMT(
+            "Layer '%s' must be of point cloud type.", input_pointcloud_layer.c_str());
+    }
+
+    // If there is nothing to de-skew and the output layer would be a new cloud of the same class
+    // than the input, the output layer can share the input object instead of copying it:
+    const bool canShareInputLayer =
+        !in_place && inPc == inLayer.get() && inOut.layers.count(output_pointcloud_layer) == 0 &&
+        mrpt::rtti::findRegisteredClass(output_layer_class) == inLayer->GetRuntimeClass();
+
+    // Create if new: Append to existing layer, if already existed.
+    mrpt::maps::CPointsMap::Ptr outPc;
 
     // optional fields: get insertion context only if we are not doing in-place correction:
     std::optional<mrpt::maps::CPointsMap::InsertCtx> insert_ctx;
-    if (outPc)
+
+    const auto prepareOutputLayer = [&]()
     {
+        outPc = GetOrCreatePointLayer(
+            inOut, output_pointcloud_layer, false /*dont allow empty names*/, output_layer_class);
+
         // Copy all point fields from the source:
         outPc->registerPointFieldsFrom(*inPc);
+
+        // Reserve memory in output layer (after registering the fields, to reserve them too):
+        outPc->reserve(outPc->size() + inPc->size());
 
         // and then, prepare structures for fast copying:
         insert_ctx = outPc->prepareForInsertPointsFrom(*inPc);
         mp2p_icp::warn_on_field_padding_mismatch(*inPc, *outPc, *this);
-    }
+    };
+
+    // Forward the input points to the output, without any correction:
+    const auto passThroughInput = [&]()
+    {
+        if (in_place)
+        {
+            return;
+        }
+        if (canShareInputLayer)
+        {
+            inOut.layers[output_pointcloud_layer] = inLayer;
+            return;
+        }
+        if (!outPc)
+        {
+            prepareOutputLayer();
+        }
+        outPc->insertAnotherMap(inPc, mrpt::poses::CPose3D::Identity());
+    };
 
     // If the input is empty, just move on:
     if (inPc->empty())
     {
         MRPT_LOG_DEBUG_STREAM(
             "Silently ignoring empty input layer: '" << input_pointcloud_layer << "'");
+        passThroughInput();
         return;
     }
 
@@ -475,10 +495,7 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     {
         if (silently_ignore_no_timestamps || deskewDisabled || hasZeroTimeSpan)
         {
-            if (!in_place)
-            {
-                outPc->insertAnotherMap(inPc, mrpt::poses::CPose3D::Identity());
-            }
+            passThroughInput();
 
             if (!deskewDisabled)
             {
@@ -498,6 +515,10 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     ASSERT_EQUAL_(Ts->size(), n);
 
     // Yes, we have timestamps, apply de-skew:
+    if (!in_place)
+    {
+        prepareOutputLayer();
+    }
     const size_t n0 = outPc ? outPc->size() : 0;
     if (outPc)
     {
@@ -681,8 +702,8 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             // Resize back: we will let insertAnotherMap handle the append
             // (which manages size and per-point fields consistently).
             outPc->resize(n0);
-            outPc->insertAnotherMap(inPc, mrpt::poses::CPose3D::Identity());
         }
+        passThroughInput();
         return;
     }
 

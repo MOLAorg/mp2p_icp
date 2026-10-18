@@ -69,6 +69,11 @@ enum class MotionCompensationMethod : uint8_t
  *   `silently_ignore_no_timestamps` is set to `true`, in which case the input
  *   cloud will be just moved forward to the output.
  *
+ * - Whenever points are forwarded without correction (no timestamps, method `None`, or no
+ *   motion information), if the output layer does not exist yet and `output_layer_class` is the
+ *   class of the input layer, the output layer will be the same object than the input layer
+ *   (shared, not copied).
+ *
  * \ingroup mp2p_icp_filters_grp
  */
 class FilterDeskew : public mp2p_icp_filters::FilterBase
