@@ -233,7 +233,7 @@ int main(int argc, char** argv)
 
         // Save as mm file:
         mp2p_icp::metric_map_t mm;
-        mm.layers["raw"] = std::move(pc);
+        mm.layers[cli.argLayer] = std::move(pc);
 
         if (cli.argID.has_value())
         {
