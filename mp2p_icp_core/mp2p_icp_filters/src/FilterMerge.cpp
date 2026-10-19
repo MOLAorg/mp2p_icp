@@ -75,8 +75,6 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
     const auto mapPtr = inOut.layers.at(params.input_pointcloud_layer);
     ASSERT_(mapPtr);
 
-    // This may seem as an (unnecessary?) copy for layers actually being point clouds, but it's
-    // safer to make a copy to prevent modifying the original observation pointcloud.
     const auto pcPtr = mp2p_icp::MapToPointsMap(*mapPtr);
     ASSERTMSG_(
         pcPtr, mrpt::format(
@@ -92,33 +90,37 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
 
     mrpt::maps::CMetricMap::Ptr out = inOut.layers.at(params.target_layer);
 
-    // Create fake observation for insertion:
-    mrpt::obs::CObservationPointCloud obs;
-    // Create cloud of the same type than the input to avoid losing point fields:
-    auto newCloudObj = pcPtr->GetRuntimeClass()->createObject();
-    auto pts         = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(newCloudObj);
-    ASSERTMSG_(pts, "Not a pointcloud class as input?");
-
-    obs.pointcloud = pts;
-
-    // Copy the input layer here, as seen from the robot (hence the "-"):
     const auto robotPose = mrpt::poses::CPose3D(params.robot_pose);
 
-    // insertAnotherMap() transforms the point XYZ coordinates by the given
-    // pose, but copies all other registered fields verbatim. If the cloud
-    // carries view-direction unit vectors (view_x/y/z), those must be
-    // rotated too, or they will end up expressed in the wrong frame.
-    if (params.input_layer_in_local_coordinates)
+    // Transformation from the input layer frame to the robot frame (hence the "-"):
+    const auto appliedTf =
+        params.input_layer_in_local_coordinates ? mrpt::poses::CPose3D::Identity() : -robotPose;
+
+    // Create fake observation for insertion:
+    mrpt::obs::CObservationPointCloud obs;
+
+    // Insertion only reads the observation, so the input cloud can be used as is if it does not
+    // need to be transformed (and it is not the target map itself):
+    auto inputCloud = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(mapPtr);
+    if (inputCloud && mapPtr != out && appliedTf == mrpt::poses::CPose3D::Identity())
     {
-        const auto appliedTf = mrpt::poses::CPose3D::Identity();
-        pts->insertAnotherMap(pcPtr, appliedTf);
-        mp2p_icp::rotateViewDirectionFields(*pts, appliedTf);
+        obs.pointcloud = inputCloud;
     }
     else
     {
-        const auto invRobotPose = -robotPose;
-        pts->insertAnotherMap(pcPtr, invRobotPose);
-        mp2p_icp::rotateViewDirectionFields(*pts, invRobotPose);
+        // Create cloud of the same type than the input to avoid losing point fields:
+        auto newCloudObj = pcPtr->GetRuntimeClass()->createObject();
+        auto pts         = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(newCloudObj);
+        ASSERTMSG_(pts, "Not a pointcloud class as input?");
+
+        // insertAnotherMap() transforms the point XYZ coordinates by the given
+        // pose, but copies all other registered fields verbatim. If the cloud
+        // carries view-direction unit vectors (view_x/y/z), those must be
+        // rotated too, or they will end up expressed in the wrong frame.
+        pts->insertAnotherMap(pcPtr, appliedTf);
+        mp2p_icp::rotateViewDirectionFields(*pts, appliedTf);
+
+        obs.pointcloud = pts;
     }
 
     // Merge into map:

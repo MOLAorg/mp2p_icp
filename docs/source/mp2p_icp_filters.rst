@@ -629,7 +629,7 @@ Filter: `FilterDeskew`
 * **in\_place** (``bool``, default: `false`):
   If `true`, the deskewed points replace the input layer (most efficient).
 
-* **output\_layer\_class** (:cpp:type:`std::string`, default: `mrpt::maps::CPointsMapXYZI`):
+* **output\_layer\_class** (:cpp:type:`std::string`, default: `mrpt::maps::CGenericPointsMap`):
   The class name for the output layer if it needs to be created.
 
 * **silently\_ignore\_no\_timestamps** (``bool``, default: `false`):

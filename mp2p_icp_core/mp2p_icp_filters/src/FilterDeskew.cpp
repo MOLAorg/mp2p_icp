@@ -409,12 +409,6 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             THROW_EXCEPTION_FMT(
                 "Layer '%s' must be of point cloud type.", input_pointcloud_layer.c_str());
         }
-
-        // Reserve memory in output layer:
-        if (!in_place)
-        {
-            outPc->reserve(outPc->size() + inPc->size());
-        }
     }
     else
     {
@@ -429,6 +423,9 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
     {
         // Copy all point fields from the source:
         outPc->registerPointFieldsFrom(*inPc);
+
+        // Reserve memory in output layer (after registering the fields, to reserve them too):
+        outPc->reserve(outPc->size() + inPc->size());
 
         // and then, prepare structures for fast copying:
         insert_ctx = outPc->prepareForInsertPointsFrom(*inPc);
