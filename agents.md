@@ -82,8 +82,6 @@ Filters are chained and applied in-place to `metric_map_t`, configured via YAML
   hash makes `tsl::robin_map` grow without limit once it holds that many keys.
 - Never `insertPointFast()` into a layer with registered per-point fields: use
   `insertPointFrom()`, or field vectors fall out of sync with x/y/z.
-- Two layers may share the same object (e.g. `FilterDeskew` with nothing to de-skew), so
-  in-place filters must not assume a layer is exclusively owned.
 
 ## Build and test
 
