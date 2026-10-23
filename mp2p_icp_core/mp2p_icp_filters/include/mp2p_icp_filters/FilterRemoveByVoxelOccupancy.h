@@ -32,11 +32,15 @@ namespace mp2p_icp_filters
  *
  * There are two output layer (you can define one or both):
  *
- * - `output_layer_static_objects`: for those points within voxels with high
- * occupancy ("static objects").
- * - `output_layer_dynamic_objects`: for those points within voxels with low
- * occupancy
- * ("dynamic objects").
+ * - `output_layer_static_objects`: for those points within voxels with an
+ * occupancy above `max(t, 1-t)` ("static objects"), with
+ * `t=occupancy_threshold`.
+ * - `output_layer_dynamic_objects`: for those points within voxels with an
+ * occupancy below `min(t, 1-t)` ("dynamic objects").
+ *
+ * Points in voxels with an occupancy in between (uncertain) go to neither
+ * output layer, so a threshold farther from 0.5 drops more points from both.
+ * Points outside of the voxel map are also dropped.
  *
  * The input layers are:
  *

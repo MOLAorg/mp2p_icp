@@ -26,8 +26,8 @@ generators:
         creationOpts:
           resolution: 0.25 # [m]
           #resolution: $f{0.05*MAX_SENSOR_RANGE} # [m]  # You can also use formulas in any numeric field
-        #insertionOpts:
-        # none required for this class
+        insertOpts:
+          prob_miss: 0.49 # P(occupied | miss): weakest miss, as this pipeline was tuned with
         likelihoodOpts:
           decimation: 1
           occupiedThreshold: 0.60
