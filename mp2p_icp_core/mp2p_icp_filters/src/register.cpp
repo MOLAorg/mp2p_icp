@@ -40,11 +40,11 @@
 #include <mp2p_icp_filters/FilterDeskew.h>
 #include <mp2p_icp_filters/FilterEdgesPlanes.h>
 #include <mp2p_icp_filters/FilterFartherPointSampling.h>
+#include <mp2p_icp_filters/FilterInsertPoint.h>
 #include <mp2p_icp_filters/FilterMLS.h>
 #include <mp2p_icp_filters/FilterMerge.h>
 #include <mp2p_icp_filters/FilterNormalizeIntensity.h>
 #include <mp2p_icp_filters/FilterPlanePatches.h>
-#include <mp2p_icp_filters/FilterInsertPoint.h>
 #include <mp2p_icp_filters/FilterPoleDetector.h>
 #include <mp2p_icp_filters/FilterPolygon2D.h>
 #include <mp2p_icp_filters/FilterRangeBiasCorrection.h>

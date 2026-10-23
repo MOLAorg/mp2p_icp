@@ -149,8 +149,15 @@ void testWithSeeds()
     ASSERT_(hasPointNear(*obs, 8.0f, 11.0f, 0.3f));
     ASSERT_(!hasPointNear(*trav, 10.0f, 11.0f));
 
-    // The never observed band between strips borders the reachable region.
-    ASSERT_(hasPointNear(*obs, 3.0f, 7.5f, 1.2f));
+    // The never observed band between strips (y in [6,9)) borders the reachable
+    // region after the ground fill (ground_fill_distance=1 m) of each strip, and
+    // its middle is not traversable:
+    ASSERT_(hasPointNear(*obs, 3.0f, 7.1f, 0.2f));
+    for (size_t i = 0; i < trav->size(); i++)
+    {
+        const float y = trav->getPointsBufferRef_y()[i];
+        ASSERT_(y < 7.05f || y > 7.95f);
+    }
 }
 
 void testWithoutSeeds()

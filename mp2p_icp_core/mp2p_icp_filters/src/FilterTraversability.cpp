@@ -240,12 +240,15 @@ void FilterTraversability::filter(mp2p_icp::metric_map_t& inOut) const
         const auto bb = pcPtr->boundingBox();
         g.x0          = bb.min.x - g.res;
         g.y0          = bb.min.y - g.res;
-        g.nx          = static_cast<int>(std::ceil((bb.max.x - g.x0) / g.res)) + 2;
-        g.ny          = static_cast<int>(std::ceil((bb.max.y - g.y0) / g.res)) + 2;
+        // Check the size before converting to int:
+        const double nx = std::ceil((bb.max.x - g.x0) / g.res) + 2;
+        const double ny = std::ceil((bb.max.y - g.y0) / g.res) + 2;
+        ASSERTMSG_(
+            nx * ny <= static_cast<double>(kMaxCells),
+            mrpt::format("Grid of %.0fx%.0f cells is too large: increase 'resolution'.", nx, ny));
+        g.nx = static_cast<int>(nx);
+        g.ny = static_cast<int>(ny);
     }
-    ASSERTMSG_(
-        g.size() <= kMaxCells,
-        mrpt::format("Grid of %dx%d cells is too large: increase 'resolution'.", g.nx, g.ny));
 
     // 1) Ground model -------------------------------------------------------
     // Lowest point per cell:
@@ -277,7 +280,10 @@ void FilterTraversability::filter(mp2p_icp::metric_map_t& inOut) const
         }
     }
 
-    // Interpolate unobserved ground (diffusion from the accepted cells):
+    // Interpolate unobserved ground (diffusion from the accepted cells). This
+    // includes never observed cells, by design: sparse ground far from the sensor
+    // stays continuous, at the price of extending the ground up to
+    // ground_fill_distance past edges whose other side was never seen.
     const int fillSteps = static_cast<int>(std::floor(p.ground_fill_distance / g.res));
     if (fillSteps > 0)
     {

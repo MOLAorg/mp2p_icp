@@ -744,10 +744,12 @@ Filter: `FilterFartherPointSampling`
 
 ---
 
+.. _FilterInsertPoint:
+
 Filter: `FilterInsertPoint`
 ---------------------------
 
-**Description**: Appends one point to a point cloud layer (a `mrpt::maps::CSimplePointsMap`, created if it does not exist). Its coordinates may be formulas of the pipeline variables, e.g. to collect the keyframe positions while building a map with ``sm2mm``, as seeds for `FilterTraversability`_.
+**Description**: Appends one point to a point cloud layer (a `mrpt::maps::CSimplePointsMap`, created if it does not exist). Its coordinates may be formulas of the pipeline variables, e.g. to collect the keyframe positions while building a map with ``sm2mm``, as seeds for `FilterTraversability`_. Note that ``sm2mm`` runs its ``filters`` once per handled observation: this is one point per keyframe only if one sensor is processed (e.g. only point clouds are handled by the generators).
 
 **Parameters**:
 
@@ -1339,7 +1341,7 @@ Filter: `FilterTraversability`
 
 The cloud is analyzed on a 2D grid of ``resolution``:
 
-1. **Ground model**: the lowest point of each cell is its ground, if not too far above the lowest points around it (``ground_envelope_size``, ``ground_envelope_slope_deg``). Cells where only treetops, wall or table tops were seen get their ground interpolated from neighboring ground, up to ``ground_fill_distance``.
+1. **Ground model**: the lowest point of each cell is its ground, if not too far above the lowest points around it (``ground_envelope_size``, ``ground_envelope_slope_deg``). Cells where only treetops, wall or table tops were seen get their ground interpolated from neighboring ground, up to ``ground_fill_distance``. Never observed cells within that distance get interpolated ground too, so sparse ground stays continuous; as a consequence, the edge of a drop-off whose lower side was never seen is placed up to ``ground_fill_distance`` past the real edge (reduce it if that matters).
 2. **Per cell checks**: a cell is not traversable if the slope of a plane fitted to the ground within ``slope_window_radius`` exceeds ``max_slope_deg``, if the ground height changes by more than ``max_step`` to a neighbor cell, or if it has at least ``body_min_points`` points between ``body_min_height`` and ``body_max_height`` above its ground (higher overhangs are ignored).
 3. **Reachability** (only with ``seeds_pointcloud_layer``, e.g. the trajectory followed while mapping, see `FilterInsertPoint`_): the traversable region is grown from the seeds, traversable by definition within ``seeds_radius``, without crossing steps. Obstacles are then the border of the reachable region (including never observed cells if ``unknown_is_obstacle``, e.g. the hidden side of a drop-off) and all non traversable cells up to ``obstacle_distance`` from it. Without seeds, all non traversable observed cells are obstacles.
 
@@ -1369,7 +1371,7 @@ The outputs are points at the cell centers, at their ground height. The grid is 
 
 * **ground\_envelope\_size** (``float``, default: `1.0`), **ground\_envelope\_slope\_deg** (``float``, default: `30.0`): Window and tolerated slope of the ground lower envelope.
 
-* **ground\_fill\_distance** (``float``, default: `1.0`): Maximum distance to interpolate unobserved ground (m).
+* **ground\_fill\_distance** (``float``, default: `1.0`): Maximum distance to interpolate ground into cells where it was not seen: only non-ground points (e.g. under a tree canopy) or no points at all (m).
 
 * **seeds\_radius** (``float``, default: `0.30`): Radius around each seed point that is traversable (m).
 

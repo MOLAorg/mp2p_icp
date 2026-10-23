@@ -28,7 +28,9 @@ namespace mp2p_icp_filters
 /** Appends one point to a point cloud layer, creating it if it does not exist.
  *
  * The coordinates may be formulas of the pipeline variables, e.g. to collect the
- * keyframe positions while building a map with sm2mm:
+ * keyframe positions while building a map with sm2mm (its `filters` run once per
+ * handled observation, so this is one point per keyframe if only one sensor is
+ * processed):
  *
  * \code
  * - class_name: mp2p_icp_filters::FilterInsertPoint
