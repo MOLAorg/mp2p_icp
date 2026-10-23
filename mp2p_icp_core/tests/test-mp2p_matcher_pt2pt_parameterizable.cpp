@@ -162,6 +162,20 @@ void test_adaptive_distances()
     ASSERT_NEAR_(declaredParameterValue(m, "0.5*MATCH_THRESHOLD"), 0.25, 1e-4);
     ASSERT_NEAR_(declaredParameterValue(m, "0.2*MATCH_THRESHOLD"), 0.10, 1e-4);
 }
+
+void test_parameter_source_variable_lookup()
+{
+    mp2p_icp::ParameterSource src;
+    ASSERT_(!src.hasVariable("A"));
+    ASSERT_(!src.getVariableValue("A").has_value());
+    ASSERT_(src.getVariableValues().empty());
+
+    src.updateVariable("A", 2.5);
+    ASSERT_(src.hasVariable("A"));
+    ASSERT_(!src.hasVariable("B"));
+    ASSERT_NEAR_(src.getVariableValue("A").value(), 2.5, 1e-12);
+    ASSERT_EQUAL_(src.getVariableValues().size(), 1U);
+}
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -172,6 +186,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_point2plane_distance_threshold();
         test_point2line_distance_threshold();
         test_adaptive_distances();
+        test_parameter_source_variable_lookup();
     }
     catch (std::exception& e)
     {
