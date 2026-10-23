@@ -44,7 +44,7 @@ Build via colcon only. Each library exports its own CMake target (e.g.
 ## CLI applications
 
 Argument parsing uses CLI11. Core: `mm2las`, `mm2ply`, `mm2txt`, `mm2grid`, `mm-filter`,
-`mm-info`, `mm-georef`, `sm2mm`, `sm-cli`, `icp-run`, `kitti2mm`, `txt2mm`,
+`mm-info`, `mm-georef`, `mm-merge`, `sm2mm`, `sm-cli`, `icp-run`, `kitti2mm`, `txt2mm`,
 `rawlog-filter`. Viz: `mm-viewer`, `icp-log-viewer`.
 
 ## GUI apps (mp2p_icp_viz)
@@ -111,8 +111,12 @@ workspace), `mola_imu_preintegration` (optional, for `FilterDeskew`).
 
 ## Update rules
 
-- New/updated `mp2p_icp_filters` classes: sync `docs/source/mp2p_icp_filters.rst` and
-  `~/code/mp2p-pipeline-editor-sources` if it exists (read its `README.md`)
+- New/updated `mp2p_icp_filters` classes (new classes, parameters, behavior): keep
+  `docs/source/mp2p_icp_filters.rst` in sync, and `~/code/mp2p-pipeline-editor-sources`
+  if it exists (read its `README.md`)
+- New/updated CLI apps (new apps, arguments, behavior): keep `docs/source/app_<name>.rst`
+  (including the `--help` output it embeds), `mp2p_icp_applications.rst`, the app's
+  `README.md`, the root `README.md` app list and the app list above in sync
 
 ## MRPT3 to-do
 

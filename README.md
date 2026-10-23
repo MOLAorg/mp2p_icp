@@ -64,6 +64,8 @@ The full repository also includes these applications (see [mp2p_icp_core/apps/](
  * **[mm-info](https://docs.mola-slam.org/latest/app_mm-info.html)**: Displays a summary of metric map contents including layers, point counts, and metadata.
  
  * **[mm-georef](https://docs.mola-slam.org/latest/app_mm-georef.html)**: Extracts or injects geo-referencing information between metric map files (`.mm`) and standalone georeferencing files (`.georef`).
+ 
+ * **[mm-merge](https://docs.mola-slam.org/latest/app_mm-merge.html)**: Merges the layers of several metric map files (`.mm`) into one, with explicit handling of layer name conflicts.
 
 ### Visualization Tools
  * **[mm-viewer](https://docs.mola-slam.org/latest/app_mm-viewer.html)**: GUI application to visualize metric map (`.mm`) files. Supports loading additional 3D scenes and trajectory files in TUM format.
