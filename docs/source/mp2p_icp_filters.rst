@@ -1341,8 +1341,8 @@ Filter: `FilterTraversability`
 
 The cloud is analyzed on a 2D grid of ``resolution``:
 
-1. **Ground model**: the lowest point of each cell is its ground, if not too far above the lowest points around it (``ground_envelope_size``, ``ground_envelope_slope_deg``). Cells where only treetops, wall or table tops were seen get their ground interpolated from neighboring ground, up to ``ground_fill_distance``. Never observed cells within that distance get interpolated ground too, so sparse ground stays continuous; as a consequence, the edge of a drop-off whose lower side was never seen is placed up to ``ground_fill_distance`` past the real edge (reduce it if that matters).
-2. **Per cell checks**: a cell is not traversable if the slope of a plane fitted to the ground within ``slope_window_radius`` exceeds ``max_slope_deg``, if the ground height changes by more than ``max_step`` to a neighbor cell, or if it has at least ``body_min_points`` points between ``body_min_height`` and ``body_max_height`` above its ground (higher overhangs are ignored).
+1. **Ground model**: the lowest point of each cell is its ground, if not too far above the lowest points around it (``ground_envelope_size``, ``ground_envelope_slope_deg``). Cells where only treetops, wall or table tops were seen get their ground interpolated from neighboring ground, up to ``ground_fill_distance``. Under tree canopies the ground hits may be meters apart, so both this distance and the envelope window must be large enough. Never observed cells take the ground of the nearest cell with ground, up to ``ground_fill_distance_unobserved``, so sparse ground stays continuous and steps are not smoothed away; as a consequence, the edge of a drop-off whose lower side was never seen is placed up to that distance past the real edge (reduce it if that matters).
+2. **Per cell checks**: a cell is not traversable if the slope of a plane fitted to the ground within ``slope_window_radius`` exceeds ``max_slope_deg``, if the ground height changes by more than ``max_step`` to a neighbor cell (only next to observed cells: between never observed ones it is an artifact of the fill), or if it has at least ``body_min_points`` points between ``body_min_height`` and ``body_max_height`` above its ground (higher overhangs are ignored).
 3. **Reachability** (only with ``seeds_pointcloud_layer``, e.g. the trajectory followed while mapping, see `FilterInsertPoint`_): the traversable region is grown from the seeds, traversable by definition within ``seeds_radius``, without crossing steps. Obstacles are then the border of the reachable region (including never observed cells if ``unknown_is_obstacle``, e.g. the hidden side of a drop-off) and all non traversable cells up to ``obstacle_distance`` from it. Without seeds, all non traversable observed cells are obstacles.
 
 The outputs are points at the cell centers, at their ground height. The grid is dense over the bounding box of the input: use a coarser resolution for very large maps.
@@ -1369,9 +1369,11 @@ The outputs are points at the cell centers, at their ground height. The grid is 
 
 * **body\_min\_points** (:cpp:type:`uint32_t`, default: `2`): Minimum points in the body band for an obstacle.
 
-* **ground\_envelope\_size** (``float``, default: `1.0`), **ground\_envelope\_slope\_deg** (``float``, default: `30.0`): Window and tolerated slope of the ground lower envelope.
+* **ground\_envelope\_size** (``float``, default: `5.0`), **ground\_envelope\_slope\_deg** (``float``, default: `15.0`): Window and tolerated slope of the ground lower envelope.
 
-* **ground\_fill\_distance** (``float``, default: `1.0`): Maximum distance to interpolate ground into cells where it was not seen: only non-ground points (e.g. under a tree canopy) or no points at all (m).
+* **ground\_fill\_distance** (``float``, default: `3.0`): Maximum distance to interpolate ground into observed cells whose lowest point is not ground, e.g. under a tree canopy (m).
+
+* **ground\_fill\_distance\_unobserved** (``float``, default: `1.0`): Maximum distance to interpolate ground into never observed cells (m).
 
 * **seeds\_radius** (``float``, default: `0.30`): Radius around each seed point that is traversable (m).
 

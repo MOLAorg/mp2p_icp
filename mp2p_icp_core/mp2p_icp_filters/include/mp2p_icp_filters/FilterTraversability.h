@@ -34,13 +34,17 @@ namespace mp2p_icp_filters
  *     far above the lowest points around it (`ground_envelope_size`,
  *     `ground_envelope_slope_deg`): cells where only treetops, wall or table tops
  *     were seen get their ground interpolated from neighboring ground, up to
- *     `ground_fill_distance`. Never observed cells within that distance get
- *     interpolated ground too, so sparse ground stays continuous: the edge of a
- *     drop-off whose lower side was never seen is placed up to
- *     `ground_fill_distance` past the real edge (reduce it if that matters).
+ *     `ground_fill_distance` (under tree canopies the ground hits may be meters
+ *     apart, so both this and `ground_envelope_size` must be large enough).
+ *     Never observed cells take the ground of the nearest cell with ground, up to
+ *     `ground_fill_distance_unobserved`, so sparse ground stays continuous and
+ *     steps are not smoothed away: the edge of a drop-off whose lower side was
+ *     never seen is placed up to that distance past the real edge (reduce it if
+ *     that matters).
  *  2. **Per cell checks**: a cell is not traversable if the slope of a plane fitted to
  *     the ground within `slope_window_radius` exceeds `max_slope_deg`, if the
- *     ground height changes by more than `max_step` to a neighbor cell, or if it
+ *     ground height changes by more than `max_step` to a neighbor cell (only next
+ *     to observed cells: elsewhere it is an artifact of the fill), or if it
  *     has at least `body_min_points` points between `body_min_height` and
  *     `body_max_height` above its ground (overhangs higher than the vehicle are
  *     ignored).
@@ -108,14 +112,17 @@ class FilterTraversability : public mp2p_icp_filters::FilterBase
         uint32_t body_min_points = 2;
 
         /** Window for the lower envelope of the ground [m] */
-        float ground_envelope_size = 1.0f;
+        float ground_envelope_size = 5.0f;
 
         /** Slope tolerated within the ground envelope window [deg] */
-        float ground_envelope_slope_deg = 30.0f;
+        float ground_envelope_slope_deg = 15.0f;
 
-        /** Maximum distance to interpolate ground into cells where it was not
-         *  seen (only non-ground points, or no points at all) [m] */
-        float ground_fill_distance = 1.0f;
+        /** Maximum distance to interpolate ground into observed cells whose lowest
+         *  point is not ground (e.g. under a tree canopy) [m] */
+        float ground_fill_distance = 3.0f;
+
+        /** Maximum distance to interpolate ground into never observed cells [m] */
+        float ground_fill_distance_unobserved = 1.0f;
 
         /** Radius around each seed point that is traversable [m] */
         float seeds_radius = 0.30f;

@@ -193,6 +193,55 @@ void testWithoutSeeds()
     ASSERT_(hasPointNear(*obs, 8.0f, 11.0f, 0.3f));
 }
 
+// Flat ground under a tree canopy: the ground was only seen every 2 m (scan
+// rings), and most cells only have canopy points. It must stay traversable.
+void testUnderCanopy()
+{
+    auto pc = mrpt::maps::CSimplePointsMap::Create();
+    for (float x = 0.0f; x < 16.0f; x += 0.05f)
+    {
+        for (float y = 0.0f; y < 6.0f; y += 0.05f)
+        {
+            const bool underCanopy = x >= 5.0f;
+            const bool groundRing  = std::fmod(x, 2.0f) < 0.1f;
+            if (!underCanopy || groundRing)
+            {
+                pc->insertPoint(x, y, 0.0f);
+            }
+            if (underCanopy)
+            {
+                pc->insertPoint(x, y, 2.5f + 0.5f * std::sin(x + y));
+            }
+        }
+    }
+    mp2p_icp::metric_map_t map;
+    map.layers["raw"] = pc;
+    auto seeds        = mrpt::maps::CSimplePointsMap::Create();
+    for (float x = 1.0f; x < 4.0f; x += 0.5f)
+    {
+        seeds->insertPoint(x, 3.0f, 0.13f);
+    }
+    map.layers["seeds"] = seeds;
+
+    mp2p_icp_filters::FilterTraversability filter;
+    mrpt::containers::yaml                 p;
+    p["input_pointcloud_layer"]   = "raw";
+    p["seeds_pointcloud_layer"]   = "seeds";
+    p["output_layer_obstacles"]   = "obstacles";
+    p["output_layer_traversable"] = "traversable";
+    filter.initialize(p);
+    filter.filter(map);
+
+    const auto obs  = map.point_layer("obstacles");
+    const auto trav = map.point_layer("traversable");
+    ASSERT_(obs && trav);
+    for (float x = 6.0f; x < 14.0f; x += 0.5f)
+    {
+        ASSERT_(hasPointNear(*trav, x, 3.0f));
+        ASSERT_(!hasPointNear(*obs, x, 3.0f));
+    }
+}
+
 }  // namespace
 
 int main()
@@ -201,6 +250,7 @@ int main()
     {
         testWithSeeds();
         testWithoutSeeds();
+        testUnderCanopy();
         std::cout << "FilterTraversability Unit Test Passed!" << std::endl;
     }
     catch (const std::exception& e)

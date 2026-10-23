@@ -172,6 +172,7 @@ void FilterTraversability::Parameters::load_from_yaml(
     DECLARE_PARAMETER_IN_OPT(c, ground_envelope_size, parent);
     DECLARE_PARAMETER_IN_OPT(c, ground_envelope_slope_deg, parent);
     DECLARE_PARAMETER_IN_OPT(c, ground_fill_distance, parent);
+    DECLARE_PARAMETER_IN_OPT(c, ground_fill_distance_unobserved, parent);
     DECLARE_PARAMETER_IN_OPT(c, seeds_radius, parent);
     DECLARE_PARAMETER_IN_OPT(c, obstacle_distance, parent);
 
@@ -280,16 +281,15 @@ void FilterTraversability::filter(mp2p_icp::metric_map_t& inOut) const
         }
     }
 
-    // Interpolate unobserved ground (diffusion from the accepted cells). This
-    // includes never observed cells, by design: sparse ground far from the sensor
-    // stays continuous, at the price of extending the ground up to
-    // ground_fill_distance past edges whose other side was never seen.
-    const int fillSteps = static_cast<int>(std::floor(p.ground_fill_distance / g.res));
-    if (fillSteps > 0)
+    // Observed cells without ground (e.g. under a tree canopy, where the ground
+    // hits may be meters apart) get their ground interpolated, by diffusion from
+    // the accepted cells, up to ground_fill_distance:
+    const int fillStepsObserved = static_cast<int>(std::floor(p.ground_fill_distance / g.res));
+    if (fillStepsObserved > 0)
     {
-        const auto           distToGround = distanceFrom(g, accepted, fillSteps);
+        const auto           distToGround = distanceFrom(g, accepted, fillStepsObserved);
         std::vector<uint8_t> hasValue     = accepted;
-        for (int iter = 0; iter < 4 * fillSteps; iter++)
+        for (int iter = 0; iter < 4 * fillStepsObserved; iter++)
         {
             auto newGround   = ground;
             auto newHasValue = hasValue;
@@ -298,7 +298,8 @@ void FilterTraversability::filter(mp2p_icp::metric_map_t& inOut) const
                 for (int i = 0; i < g.nx; i++)
                 {
                     const size_t c = g.idx(i, j);
-                    if (accepted[c] || distToGround[c] > fillSteps)
+                    if (accepted[c] || !std::isfinite(lowest[c]) ||
+                        distToGround[c] > fillStepsObserved)
                     {
                         continue;
                     }
@@ -324,6 +325,31 @@ void FilterTraversability::filter(mp2p_icp::metric_map_t& inOut) const
             }
             ground.swap(newGround);
             hasValue.swap(newHasValue);
+        }
+    }
+
+    // Never observed cells are filled too, by design, so sparse ground stays
+    // continuous, up to ground_fill_distance_unobserved (that is how far the
+    // ground extends past edges whose other side was never seen). They take the
+    // ground of the nearest cell with ground, instead of an average, so a step
+    // reaching the unobserved area is not smoothed into a ramp around its end:
+    const int fillStepsUnobserved =
+        static_cast<int>(std::floor(p.ground_fill_distance_unobserved / g.res));
+    if (fillStepsUnobserved > 0)
+    {
+        std::vector<uint8_t> hasGround(g.size(), 0);
+        for (size_t c = 0; c < g.size(); c++)
+        {
+            hasGround[c] = std::isnan(ground[c]) ? 0 : 1;
+        }
+        auto       nearestGround = ground;
+        const auto dist          = distanceFrom(g, hasGround, fillStepsUnobserved, &nearestGround);
+        for (size_t c = 0; c < g.size(); c++)
+        {
+            if (!hasGround[c] && !std::isfinite(lowest[c]) && dist[c] <= fillStepsUnobserved)
+            {
+                ground[c] = nearestGround[c];
+            }
         }
     }
     const auto known = [&](size_t c) { return !std::isnan(ground[c]); };
@@ -403,7 +429,20 @@ void FilterTraversability::filter(mp2p_icp::metric_map_t& inOut) const
                     steep          = std::hypot(a, b) > maxSlopeTan;
                 }
             }
-            geomObstacle[c] = (steep || maxStep > p.max_step) ? 1 : 0;
+            // Steps only count where there is observed data: between never observed
+            // cells they are artifacts of the ground fill, where the nearest ground of
+            // two cells comes from different places (the reachability still does not
+            // cross them).
+            bool observedNearby = false;
+            for (int dj = -1; dj <= 1 && !observedNearby; dj++)
+            {
+                for (int di = -1; di <= 1 && !observedNearby; di++)
+                {
+                    observedNearby =
+                        g.inside(i + di, j + dj) && std::isfinite(lowest[g.idx(i + di, j + dj)]);
+                }
+            }
+            geomObstacle[c] = (steep || (observedNearby && maxStep > p.max_step)) ? 1 : 0;
         }
     }
 
