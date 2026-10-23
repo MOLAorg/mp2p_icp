@@ -44,6 +44,7 @@
 #include <mp2p_icp_filters/FilterMerge.h>
 #include <mp2p_icp_filters/FilterNormalizeIntensity.h>
 #include <mp2p_icp_filters/FilterPlanePatches.h>
+#include <mp2p_icp_filters/FilterInsertPoint.h>
 #include <mp2p_icp_filters/FilterPoleDetector.h>
 #include <mp2p_icp_filters/FilterPolygon2D.h>
 #include <mp2p_icp_filters/FilterRangeBiasCorrection.h>
@@ -52,6 +53,7 @@
 #include <mp2p_icp_filters/FilterRenameLayer.h>
 #include <mp2p_icp_filters/FilterSOR.h>
 #include <mp2p_icp_filters/FilterTransformPointCloud.h>
+#include <mp2p_icp_filters/FilterTraversability.h>
 #include <mp2p_icp_filters/FilterVoxelSOR.h>
 #include <mp2p_icp_filters/FilterVoxelSlice.h>
 #include <mp2p_icp_filters/Generator.h>
@@ -91,6 +93,7 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::FilterMerge));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterMLS));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterNormalizeIntensity));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterInsertPoint));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterPoleDetector));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterPolygon2D));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRangeBiasCorrection));
@@ -99,6 +102,7 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRenameLayer));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterSOR));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterTransformPointCloud));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterTraversability));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterVoxelSlice));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterVoxelSOR));
 }

@@ -38,6 +38,7 @@ set(LIB_SRCS
   src/FilterMLS.cpp
   src/FilterNormalizeIntensity.cpp
   src/FilterPlanePatches.cpp
+  src/FilterInsertPoint.cpp
   src/FilterPoleDetector.cpp
   src/FilterPolygon2D.cpp
   src/FilterRangeBiasCorrection.cpp
@@ -46,6 +47,7 @@ set(LIB_SRCS
   src/FilterRenameLayer.cpp
   src/FilterSOR.cpp
   src/FilterTransformPointCloud.cpp
+  src/FilterTraversability.cpp
   src/FilterVoxelSlice.cpp
   src/FilterVoxelSOR.cpp
   src/Generator.cpp
@@ -88,6 +90,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterMLS.h
   include/mp2p_icp_filters/FilterNormalizeIntensity.h
   include/mp2p_icp_filters/FilterPlanePatches.h
+  include/mp2p_icp_filters/FilterInsertPoint.h
   include/mp2p_icp_filters/FilterPoleDetector.h
   include/mp2p_icp_filters/FilterPolygon2D.h
   include/mp2p_icp_filters/FilterRangeBiasCorrection.h
@@ -96,6 +99,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterRemovePointCloudField.h
   include/mp2p_icp_filters/FilterSOR.h
   include/mp2p_icp_filters/FilterTransformPointCloud.h
+  include/mp2p_icp_filters/FilterTraversability.h
   include/mp2p_icp_filters/FilterVoxelSlice.h
   include/mp2p_icp_filters/FilterVoxelSOR.h
   include/mp2p_icp_filters/Generator.h
