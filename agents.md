@@ -116,7 +116,9 @@ workspace), `mola_imu_preintegration` (optional, for `FilterDeskew`).
   if it exists (read its `README.md`)
 - New/updated CLI apps (new apps, arguments, behavior): keep `docs/source/app_<name>.rst`
   (including the `--help` output it embeds), `mp2p_icp_applications.rst`, the app's
-  `README.md`, the root `README.md` app list and the app list above in sync
+  `README.md`, the root `README.md` app list and the app list above in sync. A new app page
+  also needs its `.. include::` stub in the MOLAorg/mola repo (`docs/source/`, plus its
+  listings in `map-tools.rst` / `why-mola.rst`), or the docs CI fails
 
 ## MRPT3 to-do
 

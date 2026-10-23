@@ -25,6 +25,7 @@
 #include <mrpt/system/os.h>
 
 #include <CLI/CLI.hpp>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -94,12 +95,17 @@ void apply_explicit_renames(const Cli& cli, std::vector<mp2p_icp::metric_map_t>&
         const auto oldName = r.substr(colonPos + 1, pipePos - colonPos - 1);
         const auto newName = r.substr(pipePos + 1);
 
-        std::size_t idx = 0;
+        std::size_t idx      = 0;
+        std::size_t consumed = 0;
         try
         {
-            idx = std::stoul(idxStr);
+            idx = std::stoul(idxStr, &consumed);
         }
         catch (const std::exception&)
+        {
+            consumed = 0;
+        }
+        if (consumed == 0 || consumed != idxStr.size())
         {
             THROW_EXCEPTION_FMT("Invalid input index in --rename argument '%s'", r.c_str());
         }
@@ -199,6 +205,18 @@ void run_mm_merge(const Cli& cli)
     if (cli.argInputs.size() < 2)
     {
         THROW_EXCEPTION("At least two input files must be provided with -i/--input.");
+    }
+
+    // Writing over an input would destroy it if the save fails midway:
+    for (const auto& fil : cli.argInputs)
+    {
+        std::error_code ec;
+        if (std::filesystem::equivalent(fil, cli.argOutput, ec))
+        {
+            THROW_EXCEPTION_FMT(
+                "The output file '%s' must be different from all input files.",
+                cli.argOutput.c_str());
+        }
     }
 
     std::vector<mp2p_icp::metric_map_t> maps(cli.argInputs.size());
