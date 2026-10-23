@@ -47,7 +47,7 @@ generators:
           #resolution: $f{0.05*MAX_SENSOR_RANGE} # [m]  # You can also use formulas in any numeric field
         insertOpts:
           #max_range: -1
-          prob_miss: 0.45
+          prob_miss: 0.49 # P(occupied | miss): weakest miss, as this pipeline was tuned with
           prob_hit: 0.65
           clamp_min: 0.05
           clamp_max: 0.95

@@ -1125,7 +1125,7 @@ This is typically used to separate **static** (high occupancy) and **dynamic** (
 
 * **output\_layer\_dynamic\_objects** (:cpp:type:`std::string`, optional): Output layer for points within low-occupancy voxels ("dynamic objects").
 
-* **occupancy\_threshold** (``float``, default: `0.6f`): The occupancy probability threshold. Voxels above this are considered "static".
+* **occupancy\_threshold** (``double``, default: `0.4`): The occupancy probability threshold :math:`t` (:math:`t` and :math:`1-t` are equivalent). Points in voxels with an occupancy above :math:`\max(t,1-t)` are "static", below :math:`\min(t,1-t)` "dynamic", and those in between (uncertain), or outside of the voxel map, go to **neither** output layer. Hence, a threshold farther from 0.5 drops more points from both outputs.
 
 .. code-block:: yaml
 
