@@ -23,6 +23,7 @@
 #include <mrpt/core/pimpl.h>
 #include <mrpt/maps/CPointsMap.h>
 
+#include <cmath>
 #include <vector>
 
 /** \ingroup mp2p_icp_filters_grp */
@@ -150,7 +151,13 @@ class PointCloudToVoxelGrid
         }
     };
 
-    inline int32_t coord2idx(float xyz) const { return static_cast<int32_t>(xyz / resolution_); }
+    /** Voxel index along one axis: voxel `i` spans `[i*resolution, (i+1)*resolution)`.
+     *  Rounds down (`floor`), not toward zero, so that voxels straddling an
+     *  axis plane are not merged into one of double width. */
+    inline int32_t coord2idx(float xyz) const
+    {
+        return static_cast<int32_t>(std::floor(xyz / resolution_));
+    }
 
     void visit_voxels(
         const std::function<void(const indices_t idx, const voxel_t& vxl)>& userCode) const;
