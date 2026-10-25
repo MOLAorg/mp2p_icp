@@ -21,6 +21,7 @@
  */
 
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp/yaml_variables.h>
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
@@ -160,7 +161,7 @@ void run_sm_to_mm(CLI_& cli)
     {
         const auto filYaml = cli.argPipeline;
         ASSERT_FILE_EXISTS_(filYaml);
-        yamlData = mrpt::containers::yaml::FromFile(filYaml);
+        yamlData = mp2p_icp::load_yaml_file(filYaml);
     }
 
     mp2p_icp::metric_map_t mm;
@@ -236,7 +237,7 @@ void run_sm_to_mm(CLI_& cli)
         }
         else
         {
-            const auto yamlGeoRef = mrpt::containers::yaml::FromFile(filGeoRef);
+            const auto yamlGeoRef = mp2p_icp::load_yaml_file(filGeoRef);
             g                     = mp2p_icp::FromYAML(yamlGeoRef);
         }
 

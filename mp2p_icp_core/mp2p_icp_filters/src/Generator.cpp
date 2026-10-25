@@ -23,6 +23,7 @@
 #endif
 
 #include <mp2p_icp/pointcloud_sanity_check.h>
+#include <mp2p_icp/yaml_variables.h>
 #include <mp2p_icp_filters/CreateMetricMapFromDefinition.h>
 #include <mp2p_icp_filters/Generator.h>
 #include <mp2p_icp_filters/GetOrCreatePointLayer.h>
@@ -611,7 +612,7 @@ GeneratorSet mp2p_icp_filters::generators_from_yaml(
 GeneratorSet mp2p_icp_filters::generators_from_yaml_file(
     const std::string& filename, const mrpt::system::VerbosityLevel& vLevel)
 {
-    const auto yamlContent = mrpt::containers::yaml::FromFile(filename);
+    const auto yamlContent = mp2p_icp::load_yaml_file(filename);
 
     ASSERT_(yamlContent.has("generators") && yamlContent["generators"].isSequence());
 

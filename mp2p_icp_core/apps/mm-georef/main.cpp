@@ -20,6 +20,7 @@
  */
 
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp/yaml_variables.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/io/CFileGZOutputStream.h>
@@ -123,7 +124,7 @@ void run_mm_inject(Cli& cli)
     }
     else
     {
-        const auto yamlData = mrpt::containers::yaml::FromFile(filIn);
+        const auto yamlData = mp2p_icp::load_yaml_file(filIn);
 
         g = mp2p_icp::FromYAML(yamlData);
     }

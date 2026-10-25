@@ -19,6 +19,7 @@
  */
 
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp/yaml_variables.h>
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
 #include <mp2p_icp_filters/estimate_up_from_normals.h>
 #include <mp2p_icp_filters/sm2mm.h>
@@ -257,7 +258,7 @@ int commandLevelWalls()
     if (!cli->arg_pipeline.empty())
     {
         ASSERT_FILE_EXISTS_(cli->arg_pipeline);
-        pipeline = mrpt::containers::yaml::FromFile(cli->arg_pipeline);
+        pipeline = mp2p_icp::load_yaml_file(cli->arg_pipeline);
     }
     else
     {

@@ -23,6 +23,7 @@
 #include <mp2p_icp/icp_pipeline_from_yaml.h>
 #include <mp2p_icp/load_xyz_file.h>
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp/yaml_variables.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/Generator.h>
 #include <mrpt/core/Clock.h>
@@ -256,7 +257,7 @@ void runIcp()
         }
     }
 
-    const auto cfg = mrpt::containers::yaml::FromFile(argYamlConfigFile);
+    const auto cfg = mp2p_icp::load_yaml_file(argYamlConfigFile);
 
     // ------------------------------
     // Generators set

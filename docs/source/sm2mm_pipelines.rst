@@ -47,6 +47,37 @@ Each pipeline file can contain these sections:
 Refer to example pipeline files `sm2mm_*.yaml` under the `demos directory <https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/demos>`_.
 Some of them are explained below with a diagram.
 
+.. _yaml_variables:
+
+Variables
+~~~~~~~~~~~
+
+YAML files loaded by ``sm2mm`` and the rest of mp2p_icp applications (``mm-filter``, ``rawlog-filter``,
+``icp-run``, ``sm-cli``, ``mm-georef``) may contain variables, expanded before parsing the file:
+
+- ``${VAR|default}``: replaced by the value of the environment variable ``VAR`` if defined, or by ``default`` otherwise.
+  The default may be empty: ``${VAR|}``.
+- ``${VAR}``: replaced by the value of the environment variable ``VAR``. Loading the file fails if it is not defined.
+- ``${CURRENT_YAML_FILE_PATH}``: the directory of the YAML file.
+
+Variables may appear anywhere, including within quoted strings and formulas, e.g. ``"robot_x - ${RANGE|10.0}"``,
+but are ignored within comments. For example, with this in ``my_pipeline.yaml``:
+
+.. code-block:: yaml
+
+    voxel_filter_resolution: ${VOXEL_SIZE|0.20} # [m]
+
+the default voxel size can be changed from the command line:
+
+.. code-block:: bash
+
+    VOXEL_SIZE=0.10 sm2mm -i map.simplemap -o map.mm -p my_pipeline.yaml
+
+.. note::
+
+    This is a subset of the YAML syntax of MOLA launch files, which also supports ``$include{}`` and ``$(cmd)``.
+    To use those too, expand the file first with ``mola-yaml-parser``.
+
 
 |
 

@@ -19,6 +19,7 @@
  * @date   Feb 13, 2024
  */
 
+#include <mp2p_icp/yaml_variables.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mp2p_icp_filters/Generator.h>
 #include <mrpt/containers/yaml.h>
@@ -112,7 +113,7 @@ void run_mm_filter(Cli& cli)
 
     if (!cli.argPipeline.empty())
     {
-        const auto yamlData = mrpt::containers::yaml::FromFile(cli.argPipeline);
+        const auto yamlData = mp2p_icp::load_yaml_file(cli.argPipeline);
 
         // Optional `generators:` section: only used here to pre-create brand-new,
         // empty layers of an arbitrary metric map class (e.g. mola::KeyframePointCloudMap),
