@@ -50,7 +50,7 @@ Some of them are explained below with a diagram.
 .. _yaml_variables:
 
 Variables
-~~~~~~~~~~~
+---------
 
 YAML files loaded by ``sm2mm`` and the rest of mp2p_icp applications (``mm-filter``, ``rawlog-filter``,
 ``icp-run``, ``sm-cli``, ``mm-georef``) may contain variables, expanded before parsing the file:
