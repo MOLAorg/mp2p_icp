@@ -247,10 +247,16 @@ void PointCloudToVoxelGrid::clear()
 {
     if (use_tsl_robin_map_)
     {
-        // Low min_load_factor lets clear() shrink the bucket array, freeing
-        // peak memory rather than retaining it across filter invocations.
-        impl_->pts_voxels.min_load_factor(0.01f);
-        impl_->pts_voxels.clear();
+        // Keep the bucket array for the next run, which in a per-scan filter
+        // holds about as many voxels as this one: releasing it made every run
+        // grow the table again from empty, rehashing at each doubling. It is
+        // only released when far larger than what this run needed (a nonzero
+        // min_load_factor makes clear() shrink it).
+        auto&      voxels = impl_->pts_voxels;
+        const bool oversized =
+            voxels.bucket_count() > 8 * std::max<std::size_t>(voxels.size(), 4096);
+        voxels.min_load_factor(oversized ? 0.01f : 0.0f);
+        voxels.clear();
     }
     else
     {
