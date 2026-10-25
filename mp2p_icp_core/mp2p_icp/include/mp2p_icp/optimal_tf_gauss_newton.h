@@ -45,10 +45,13 @@ struct OptimalTF_GN_Parameters
      *
      * \note The information matrix is applied to the residual
      * `log(P_prior^-1 · P_cur)` and is therefore expressed in the SE(3) **Lie**
-     * tangent: entries [0..2] are x,y,z and [3..5] are the rotation-VECTOR
-     * components (w_x, w_y, w_z), i.e. approximately (roll, pitch, yaw) axes.
-     * This is NOT MRPT's (x, y, z, yaw, pitch, roll) Euler ordering used by
-     * CPose3DPDFGaussian elsewhere: the two swap indices 3 and 5.
+     * tangent: entries [0..2] are the translation in the frame of the prior
+     * mean and [3..5] are the rotation-VECTOR components (w_x, w_y, w_z),
+     * i.e. approximately (roll, pitch, yaw) axes. This is NOT MRPT's
+     * (x, y, z, yaw, pitch, roll) Euler ordering used by CPose3DPDFGaussian
+     * elsewhere, nor ICP Results::optimal_tf.cov: the two swap indices 3 and 5.
+     * Convert an information matrix in that layout with
+     * mp2p_icp::information_ypr_to_tangent().
      */
     std::optional<mrpt::poses::CPose3DPDFGaussianInf> prior;
 
