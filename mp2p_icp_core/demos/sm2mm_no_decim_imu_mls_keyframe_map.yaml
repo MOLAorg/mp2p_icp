@@ -8,6 +8,16 @@
 #                an empty layer "localmap" for GICP MOLA-LIO usage.
 #  - Filters per observation: Deskew using IMU, remove close points.
 #  - Final filters at end: intensity normalization, MLS filtering, insert into "localmap"
+#
+# Variables (define them as environment variables to override these defaults):
+#  SM2MM_DESKEW_METHOD=MotionCompensationMethod::IMU
+#      scan de-skew: MotionCompensationMethod::{None,Linear,IMU}
+#  SM2MM_MIN_RANGE=3.0
+#      drop points closer than this to the robot (e.g. its body) [m]
+#  SM2MM_MLS_SEARCH_RADIUS=0.10
+#      MLS neighbor search radius [m]
+#  SM2MM_MLS_POLYNOMIAL_ORDER=2
+#      MLS polynomial order (1: plane, 2: quadratic)
 # ---------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------
@@ -61,7 +71,7 @@ filters:
     params:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "deskewed"
-      method: MotionCompensationMethod::IMU
+      method: ${SM2MM_DESKEW_METHOD|MotionCompensationMethod::IMU}
       ignore_accelerometer: true # Set to false if using high-quality IMU and in Drones, etc.
       silently_ignore_no_timestamps: false
 
@@ -82,7 +92,7 @@ filters:
       input_pointcloud_layer: "deskewed"
       output_layer_outside: "filtered"
       range_min: 0.0
-      range_max: 3.0
+      range_max: ${SM2MM_MIN_RANGE|3.0}
       metric_l_infinity: true # Faster
       # Measure distances from the moving robot pose:
       center: [robot_x, robot_y, robot_z]
@@ -119,13 +129,13 @@ final_filters:
 
       # Search radius (in meters) for finding neighbors around each query point.
       # A larger radius results in a smoother but potentially less detailed surface.
-      search_radius: 0.10
+      search_radius: ${SM2MM_MLS_SEARCH_RADIUS|0.10}
 
       # Order of the polynomial to fit to the local neighborhood.
       # 1: Planar fit (fastest, basically a weighted PCA for normals).
       # 2: Quadratic fit (standard for curvature/better smoothing).
       # 3+: Higher order (can lead to oscillations/overfitting).
-      polynomial_order: 2
+      polynomial_order: ${SM2MM_MLS_POLYNOMIAL_ORDER|2}
 
       # Minimum number of neighbors required to successfully compute a fit.
       # Should be at least 3 for a basic plane (order 1), and more for order 2+.

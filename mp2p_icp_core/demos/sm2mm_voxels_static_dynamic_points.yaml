@@ -6,6 +6,20 @@
 # Explanation of this particular pipeline:
 #  Creates a 3D voxel map and a point cloud (without downsampling! it may become quite large),
 #  then in a final step, uses voxel occupancy to tell "dynamic" from "static" points.
+#
+# Variables (define them as environment variables to override these defaults):
+#  SM2MM_VOXELMAP_RESOLUTION=0.25
+#      voxel map resolution [m]
+#  SM2MM_DESKEW_METHOD=MotionCompensationMethod::Linear
+#      scan de-skew: MotionCompensationMethod::{None,Linear,IMU}
+#  SM2MM_MIN_RANGE=5.0
+#      drop points closer than this to the robot (e.g. its body) [m]
+#  SM2MM_MAX_RANGE=100.0
+#      drop points farther than this from the robot [m]
+#  SM2MM_VOXEL_SIZE=0.20
+#      voxel size of the per-keyframe downsampling [m]
+#  SM2MM_OCCUPANCY_THRESHOLD=0.7
+#      min voxel occupancy to keep its points as static [0,1]
 # -----------------------------------------------------------------------------
 
 # --------------------------------------------------------
@@ -43,7 +57,7 @@ generators:
         class: mrpt::maps::CVoxelMap
         #plugin: 'libmola_metric_maps.so' # Import additional custom user-defined map classes (search in LD_LIBRARY_PATH)
         creationOpts:
-          resolution: 0.25 # [m]
+          resolution: ${SM2MM_VOXELMAP_RESOLUTION|0.25} # [m]
           #resolution: $f{0.05*MAX_SENSOR_RANGE} # [m]  # You can also use formulas in any numeric field
         insertOpts:
           #max_range: -1
@@ -88,6 +102,7 @@ filters:
     params:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "deskewed"
+      method: ${SM2MM_DESKEW_METHOD|MotionCompensationMethod::Linear}
       ignore_accelerometer: true # Set to false if using high-quality IMU and in Drones, etc.
       silently_ignore_no_timestamps: true # To handle more dataset types
       output_layer_class: "mrpt::maps::CGenericPointsMap" # Keep all channels: intensity, ring, ...
@@ -106,8 +121,8 @@ filters:
     params:
       input_pointcloud_layer: "deskewed"
       output_layer_between: "filtered"
-      range_min: 5.0
-      range_max: 100
+      range_min: ${SM2MM_MIN_RANGE|5.0}
+      range_max: ${SM2MM_MAX_RANGE|100.0}
       center: [robot_x, robot_y, robot_z]
 
   - class_name: mp2p_icp_filters::FilterMerge
@@ -121,7 +136,7 @@ filters:
     params:
       input_pointcloud_layer: "filtered"
       output_pointcloud_layer: "pre_map"
-      voxel_filter_resolution: 0.20 # [m]
+      voxel_filter_resolution: ${SM2MM_VOXEL_SIZE|0.20} # [m]
       decimate_method: DecimateMethod::FirstPoint
 
   - class_name: mp2p_icp_filters::FilterMerge
@@ -146,4 +161,4 @@ final_filters:
       input_voxel_layer: "voxelmap"
       output_layer_static_objects: "static_map"
       output_layer_dynamic_objects: "dynamic_map"
-      occupancy_threshold: 0.7
+      occupancy_threshold: ${SM2MM_OCCUPANCY_THRESHOLD|0.7}

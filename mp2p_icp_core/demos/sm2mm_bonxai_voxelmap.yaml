@@ -6,6 +6,20 @@
 # Explanation of this particular pipeline:
 #  Create a 3D voxel map in which all observations are to be merged after
 #  downsampling.
+#
+# Variables (define them as environment variables to override these defaults):
+#  SM2MM_VOXELMAP_RESOLUTION=0.25
+#      voxel map resolution [m]
+#  SM2MM_OCCUPIED_THRESHOLD=0.60
+#      voxel occupancy to consider a voxel occupied [0,1]
+#  SM2MM_DESKEW_METHOD=MotionCompensationMethod::Linear
+#      scan de-skew: MotionCompensationMethod::{None,Linear,IMU}
+#  SM2MM_MIN_RANGE=5.0
+#      drop points closer than this to the robot (e.g. its body) [m]
+#  SM2MM_MAX_RANGE=100.0
+#      drop points farther than this from the robot [m]
+#  SM2MM_VOXEL_SIZE=0.15
+#      voxel size of the per-keyframe downsampling [m]
 # -----------------------------------------------------------------------------
 
 # --------------------------------------------------------
@@ -24,15 +38,15 @@ generators:
         class: mrpt::maps::CVoxelMap
         #plugin: 'libmola_metric_maps.so' # Import additional custom user-defined map classes (search in LD_LIBRARY_PATH)
         creationOpts:
-          resolution: 0.25 # [m]
+          resolution: ${SM2MM_VOXELMAP_RESOLUTION|0.25} # [m]
           #resolution: $f{0.05*MAX_SENSOR_RANGE} # [m]  # You can also use formulas in any numeric field
         insertOpts:
           prob_miss: 0.49 # P(occupied | miss): weakest miss, as this pipeline was tuned with
         likelihoodOpts:
           decimation: 1
-          occupiedThreshold: 0.60
+          occupiedThreshold: ${SM2MM_OCCUPIED_THRESHOLD|0.60}
         renderOpts:
-          occupiedThreshold: 0.60
+          occupiedThreshold: ${SM2MM_OCCUPIED_THRESHOLD|0.60}
           freeThreshold: 0.40
           generateFreeVoxels: false
 
@@ -59,6 +73,7 @@ filters:
     params:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "deskewed"
+      method: ${SM2MM_DESKEW_METHOD|MotionCompensationMethod::Linear}
       ignore_accelerometer: true # Set to false if using high-quality IMU and in Drones, etc.
       #silently_ignore_no_timestamps: true # To handle more dataset types
       output_layer_class: "mrpt::maps::CGenericPointsMap" # Keep all channels: intensity, ring, ...
@@ -77,15 +92,15 @@ filters:
     params:
       input_pointcloud_layer: "deskewed"
       output_layer_between: "filtered"
-      range_min: 5.0
-      range_max: 100
+      range_min: ${SM2MM_MIN_RANGE|5.0}
+      range_max: ${SM2MM_MAX_RANGE|100.0}
       center: [robot_x, robot_y, robot_z]
 
   - class_name: mp2p_icp_filters::FilterDecimateVoxels
     params:
       input_pointcloud_layer: "filtered"
       output_pointcloud_layer: "localmap_pre"
-      voxel_filter_resolution: 0.15 # [m]
+      voxel_filter_resolution: ${SM2MM_VOXEL_SIZE|0.15} # [m]
       decimate_method: DecimateMethod::FirstPoint
 
   - class_name: mp2p_icp_filters::FilterMerge

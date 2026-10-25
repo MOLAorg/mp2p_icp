@@ -7,6 +7,14 @@
 #  - Generators: default generator is used (creates an 'raw' layer).
 #  - Filters: Just one downsampling filter, with an additional removal of close
 #             points (e.g. the robot body)
+#
+# Variables (define them as environment variables to override these defaults):
+#  SM2MM_DESKEW_METHOD=MotionCompensationMethod::IMU
+#      scan de-skew: MotionCompensationMethod::{None,Linear,IMU}
+#  SM2MM_VOXEL_SIZE=0.02
+#      voxel size of the per-keyframe downsampling [m]
+#  SM2MM_MIN_RANGE=5.0
+#      drop points closer than this to the robot (e.g. its body) [m]
 # -----------------------------------------------------------------------------
 
 # --------------------------------------------------------
@@ -31,7 +39,7 @@ filters:
     params:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "deskewed"
-      method: MotionCompensationMethod::IMU
+      method: ${SM2MM_DESKEW_METHOD|MotionCompensationMethod::IMU}
       ignore_accelerometer: true # Set to false if using high-quality IMU and in Drones, etc.
       #silently_ignore_no_timestamps: true # To handle more dataset types
       output_layer_class: "mrpt::maps::CGenericPointsMap" # Keep all channels: intensity, ring, ...
@@ -50,7 +58,7 @@ filters:
     params:
       input_pointcloud_layer: "deskewed"
       output_pointcloud_layer: "decimated"
-      voxel_filter_resolution: 0.02 # [m]
+      voxel_filter_resolution: ${SM2MM_VOXEL_SIZE|0.02} # [m]
       decimate_method: DecimateMethod::FirstPoint
 
   - class_name: mp2p_icp_filters::FilterByRange
@@ -58,7 +66,7 @@ filters:
       input_pointcloud_layer: "decimated"
       output_layer_outside: "filtered"
       range_min: 0.0
-      range_max: 5.0
+      range_max: ${SM2MM_MIN_RANGE|5.0}
       # Measure distances from the moving robot pose:
       center: [robot_x, robot_y, robot_z]
 

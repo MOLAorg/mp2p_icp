@@ -7,6 +7,12 @@
 #  - Generators: default generator is used (creates an 'raw' layer).
 #  - Filters: Deskew using IMU, remove close points.
 #  - Final filters: intensity normalization.
+#
+# Variables (define them as environment variables to override these defaults):
+#  SM2MM_DESKEW_METHOD=MotionCompensationMethod::IMU
+#      scan de-skew: MotionCompensationMethod::{None,Linear,IMU}
+#  SM2MM_MIN_RANGE=3.0
+#      drop points closer than this to the robot (e.g. its body) [m]
 # -----------------------------------------------------------------------------
 
 # --------------------------------------------------------
@@ -31,7 +37,7 @@ filters:
     params:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "deskewed"
-      method: MotionCompensationMethod::IMU
+      method: ${SM2MM_DESKEW_METHOD|MotionCompensationMethod::IMU}
       ignore_accelerometer: true # Set to false if using high-quality IMU and in Drones, etc.
       silently_ignore_no_timestamps: false
 
@@ -52,7 +58,7 @@ filters:
       input_pointcloud_layer: "deskewed"
       output_layer_outside: "filtered"
       range_min: 0.0
-      range_max: 3.0
+      range_max: ${SM2MM_MIN_RANGE|3.0}
       metric_l_infinity: true # Faster
       # Measure distances from the moving robot pose:
       center: [robot_x, robot_y, robot_z]

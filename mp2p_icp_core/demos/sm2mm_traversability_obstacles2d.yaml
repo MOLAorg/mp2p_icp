@@ -1,0 +1,212 @@
+# -----------------------------------------------------------------------------
+# Pipeline definition file for sm2mm (simplemap-to-metricmap)
+#
+# See: https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/apps/sm2mm
+#
+# Explanation of this particular pipeline:
+#  Builds the static obstacles for 2D path planning of a ground vehicle, from
+#  a traversability analysis of the whole 3D map (FilterTraversability).
+#
+#  Output: one layer "obstacles2d" (mrpt::maps::CSimplePointsMap), a sparse 2D
+#  cloud (z=0) with one point per obstacle cell:
+#   - a 2.5D ground model of the map (lowest points, unseen ground filled in),
+#   - obstacles: ground tilted more than SM2MM_MAX_SLOPE_DEG, steps (or
+#     drop-offs) higher than SM2MM_MAX_STEP, and anything at the height of the
+#     vehicle body above the local ground (so it follows any slope),
+#   - only around the region reachable from the mapping trajectory, which is
+#     traversable by definition: never observed cells bordering it (e.g. the
+#     hidden side of a drop-off) are obstacles too.
+#
+#  Dynamic objects (e.g. people walking by while mapping) are removed first
+#  with a ray-traced voxel occupancy map: a voxel seen occupied in some
+#  keyframes but crossed by laser rays in others ends up with a low occupancy,
+#  and its points are dropped.
+#
+#  Keyframes must have point clouds with timestamps and an IMU velocity buffer
+#  for the IMU de-skew (as stored by MOLA-LIO), or set
+#  SM2MM_DESKEW_METHOD=MotionCompensationMethod::None.
+#
+# Variables (define them as environment variables to override these defaults):
+#  SM2MM_DESKEW_METHOD=MotionCompensationMethod::IMU
+#      scan de-skew: MotionCompensationMethod::{None,Linear,IMU}
+#  SM2MM_WINDOW_RANGE=12.0
+#      half side of the square window around each keyframe [m]
+#  SM2MM_MIN_RANGE=1.0
+#      drop points closer than this to the robot (e.g. its body) [m]
+#  SM2MM_LIDAR_HEIGHT=0.55
+#      height of the LiDAR above the robot frame origin, for ray tracing [m]
+#  SM2MM_OCCUPANCY_THRESHOLD=0.7
+#      min voxel occupancy to keep its points as static [0,1]
+#  SM2MM_GRID_RESOLUTION=0.20
+#      traversability grid cell size, also the output point spacing [m]
+#  SM2MM_MAX_SLOPE_DEG=15.0
+#      max traversable ground slope (tilt) [deg]
+#  SM2MM_MAX_STEP=0.15
+#      max traversable step [m]
+#  SM2MM_BODY_MIN_HEIGHT=0.25
+#      vehicle body band above the local ground: bottom [m]
+#  SM2MM_BODY_MAX_HEIGHT=1.20
+#      vehicle body band above the local ground: top [m] (higher overhangs are ignored)
+#  SM2MM_SEEDS_RADIUS=0.50
+#      traversable radius around each trajectory pose [m] (about half the vehicle length)
+# -----------------------------------------------------------------------------
+
+# --------------------------------------------------------
+# 1) Generator (observation -> local frame metric maps)
+# --------------------------------------------------------
+generators:
+  - class_name: mp2p_icp_filters::Generator
+    params:
+      target_layer: "raw"
+      filterOutPointsAtZero: true # Remove invalid points in 'organized' LiDAR scans
+      # Only the LiDAR: keyframes may also hold IMU or GNSS readings.
+      process_class_names_regex: "mrpt::obs::CObservationPointCloud"
+
+  # Just create the voxel map once; it is filled by the filters below:
+  - class_name: mp2p_icp_filters::Generator
+    params:
+      target_layer: "voxelmap"
+      process_class_names_regex: ""
+      metric_map_definition:
+        class: mrpt::maps::CVoxelMap
+        creationOpts:
+          resolution: 0.20 # [m]
+        insertOpts:
+          # P(occupied | miss): the weakest miss, since stronger misses erase
+          # most of the ground through rays at grazing angles.
+          prob_miss: 0.49
+          prob_hit: 0.65
+          clamp_min: 0.05
+          clamp_max: 0.95
+          ray_trace_free_space: true
+          decimation: 1
+        likelihoodOpts:
+          decimation: 1
+          occupiedThreshold: 0.51
+        renderOpts:
+          occupiedThreshold: 0.51
+          freeThreshold: 0.40
+          generateFreeVoxels: false
+
+# --------------------------------------------------------
+# 2) Per local frame filtering
+# --------------------------------------------------------
+filters:
+  - class_name: mp2p_icp_filters::FilterAdjustTimestamps
+    params:
+      pointcloud_layer: "raw"
+      silently_ignore_no_timestamps: true
+      method: "TimestampAdjustMethod::MiddleIsZero"
+
+  - class_name: mp2p_icp_filters::FilterDeskew
+    params:
+      input_pointcloud_layer: "raw"
+      output_pointcloud_layer: "deskewed"
+      method: ${SM2MM_DESKEW_METHOD|MotionCompensationMethod::IMU}
+      ignore_accelerometer: true
+      silently_ignore_no_timestamps: true
+      output_layer_class: "mrpt::maps::CSimplePointsMap" # Only XYZ is needed
+      twist: [vx, vy, vz, wx, wy, wz]
+      # In sm2mm, points are already in global coordinates:
+      points_already_global: true
+      robot_pose: [robot_x, robot_y, robot_z, robot_yaw, robot_pitch, robot_roll]
+
+  # Square window around the robot, from below the ground up to above the
+  # vehicle body (treetops and ceilings are not needed):
+  - class_name: mp2p_icp_filters::FilterBoundingBox
+    params:
+      input_pointcloud_layer: "deskewed"
+      inside_pointcloud_layer: "window"
+      bounding_box_min:
+        - "robot_x - ${SM2MM_WINDOW_RANGE|12.0}"
+        - "robot_y - ${SM2MM_WINDOW_RANGE|12.0}"
+        - "robot_z - 10.0"
+      bounding_box_max:
+        - "robot_x + ${SM2MM_WINDOW_RANGE|12.0}"
+        - "robot_y + ${SM2MM_WINDOW_RANGE|12.0}"
+        - "robot_z + 3.0"
+
+  # Drop the vehicle body:
+  - class_name: mp2p_icp_filters::FilterByRange
+    params:
+      input_pointcloud_layer: "window"
+      output_layer_between: "near"
+      range_min: ${SM2MM_MIN_RANGE|1.0} # [m]
+      range_max: 1000.0 # [m]
+      center: [robot_x, robot_y, robot_z]
+
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      input_pointcloud_layer: "near"
+      output_pointcloud_layer: "accum"
+      voxel_filter_resolution: 0.05 # [m]
+      decimate_method: DecimateMethod::FirstPoint
+
+  # Rays are traced from the LiDAR to the whole scan (not only the window), so
+  # people walking near the robot are crossed by many rays to the walls and
+  # ceiling behind them. Decimated to the voxel size:
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      input_pointcloud_layer: "deskewed"
+      output_pointcloud_layer: "rays"
+      voxel_filter_resolution: 0.20 # [m]
+      decimate_method: DecimateMethod::FirstPoint
+
+  - class_name: mp2p_icp_filters::FilterMerge
+    params:
+      input_pointcloud_layer: "rays"
+      target_layer: "voxelmap"
+      robot_pose:
+        - robot_x
+        - robot_y
+        - "robot_z + ${SM2MM_LIDAR_HEIGHT|0.55}"
+        - robot_yaw
+        - robot_pitch
+        - robot_roll
+
+  # The mapping trajectory: where the robot has been is traversable.
+  - class_name: mp2p_icp_filters::FilterInsertPoint
+    params:
+      target_layer: "trajectory"
+      point: [robot_x, robot_y, robot_z]
+
+  - class_name: mp2p_icp_filters::FilterDeleteLayer
+    params:
+      pointcloud_layer_to_remove: ["raw", "deskewed", "window", "near", "rays"]
+
+# -------------------------------------------------------------------
+# 3) Final, overall filter pipeline to apply to the whole metric map
+# -------------------------------------------------------------------
+final_filters:
+  # Keep only static points:
+  - class_name: mp2p_icp_filters::FilterRemoveByVoxelOccupancy
+    params:
+      input_pointcloud_layer: "accum"
+      input_voxel_layer: "voxelmap"
+      output_layer_static_objects: "static"
+      occupancy_threshold: ${SM2MM_OCCUPANCY_THRESHOLD|0.7}
+
+  - class_name: mp2p_icp_filters::FilterTraversability
+    params:
+      input_pointcloud_layer: "static"
+      seeds_pointcloud_layer: "trajectory"
+      output_layer_obstacles: "obstacle_cells"
+      resolution: ${SM2MM_GRID_RESOLUTION|0.20} # [m]
+      max_slope_deg: ${SM2MM_MAX_SLOPE_DEG|15.0} # [deg]
+      max_step: ${SM2MM_MAX_STEP|0.15} # [m]
+      body_min_height: ${SM2MM_BODY_MIN_HEIGHT|0.25} # [m]
+      body_max_height: ${SM2MM_BODY_MAX_HEIGHT|1.20} # [m]
+      seeds_radius: ${SM2MM_SEEDS_RADIUS|0.50} # [m]
+
+  # 2D: all points at z=0, one per cell:
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      input_pointcloud_layer: "obstacle_cells"
+      output_pointcloud_layer: "obstacles2d"
+      voxel_filter_resolution: ${SM2MM_GRID_RESOLUTION|0.20} # [m]
+      decimate_method: DecimateMethod::ClosestToAverage
+      flatten_to: 0.0 # [m]
+
+  - class_name: mp2p_icp_filters::FilterDeleteLayer
+    params:
+      pointcloud_layer_to_remove: ["accum", "voxelmap", "static", "trajectory", "obstacle_cells"]
