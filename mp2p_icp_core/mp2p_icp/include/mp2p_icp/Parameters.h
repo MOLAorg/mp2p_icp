@@ -81,6 +81,10 @@ struct Parameters : public mrpt::serialization::CSerializable
     /** If enabled, the intermediary pairings and SE(3) solution for each
      *  ICP step will be also stored in the mp2p_icp::LogRecord to help
      *  investigating how ICP made progress.
+     *
+     *  Only applies when a LogRecord is generated: with generateDebugFiles, a
+     *  functor_should_generate_debug_file, or an `outputDebugInfo` argument
+     *  to ICP::align(). Otherwise it is ignored.
      */
     bool saveIterationDetails = false;
 

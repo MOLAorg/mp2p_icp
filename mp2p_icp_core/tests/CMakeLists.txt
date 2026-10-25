@@ -50,6 +50,7 @@ endif()
 #mp2p_add_test(mp2p_matcher_pt2pl)  # TODO: This now requires a NP metric map to run the test
 mp2p_add_test(georef-yaml)
 mp2p_add_test(mp2p_cov2cov)
+mp2p_add_test(mp2p_icp_save_iteration_details)
 mp2p_add_test(mp2p_point_weight_by_range)
 mp2p_add_test(mp2p_point_weight_by_incidence)
 mp2p_add_test(mp2p_gravity_prior)

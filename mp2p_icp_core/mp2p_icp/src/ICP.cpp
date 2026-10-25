@@ -296,8 +296,10 @@ void ICP::align(
         const bool stalled =
             (std::abs(delta_xyz) < p.minAbsStep_trans && std::abs(delta_rot) < p.minAbsStep_rot);
 
-        // store partial solutions for logging/debuging?
-        if (p.saveIterationDetails &&
+        // store partial solutions for logging/debuging? They go into the debug
+        // record, which only exists if one was requested (see
+        // generateDebugRecord above).
+        if (currentLog && p.saveIterationDetails &&
             (p.decimationIterationDetails == 0 ||
              state.currentIteration % p.decimationIterationDetails == 0 || stalled))
         {
