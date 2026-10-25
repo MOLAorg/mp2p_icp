@@ -27,6 +27,7 @@ visualization, or further geometric analysis.
 .. note::
 
    Pipeline files are explained in :ref:`this page <sm2mm_pipelines>`, together with examples.
+   They may contain :ref:`variables <yaml_variables>` like ``${VAR|default}``, expanded from environment variables.
 
 
 Geo-referencing support

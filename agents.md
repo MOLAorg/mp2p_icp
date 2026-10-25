@@ -90,6 +90,8 @@ Filters are chained and applied in-place to `metric_map_t`, configured via YAML
   hash makes `tsl::robin_map` grow without limit once it holds that many keys.
 - Never `insertPointFast()` into a layer with registered per-point fields: use
   `insertPointFrom()`, or field vectors fall out of sync with x/y/z.
+- Load YAML files with `mp2p_icp::load_yaml_file()` (`yaml_variables.h`), never
+  `yaml::FromFile()`, so `${VAR|default}` variables get expanded.
 
 ## Build and test
 

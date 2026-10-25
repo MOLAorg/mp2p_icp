@@ -5,6 +5,7 @@ project(mp2p_icp_common LANGUAGES CXX)
 set(LIB_SRCS
   src/load_plugin.cpp
   src/Parameterizable.cpp
+  src/yaml_variables.cpp
   #
   src/register.cpp # This must be last
 )
@@ -12,6 +13,7 @@ set(LIB_SRCS
 set(LIB_PUBLIC_HDRS
   include/mp2p_icp/load_plugin.h
   include/mp2p_icp/Parameterizable.h
+  include/mp2p_icp/yaml_variables.h
 )
 
 if (mola_imu_preintegration_FOUND)
@@ -23,10 +25,12 @@ mola_add_library(
   TARGET ${PROJECT_NAME}
   SOURCES ${LIB_SRCS} ${LIB_PUBLIC_HDRS}
   PUBLIC_LINK_LIBRARIES
+    mrpt::mrpt_containers
     mrpt::mrpt_expr
     mrpt::mrpt_system
     ${imu_pub_link_}
   CMAKE_DEPENDENCIES
+    mrpt_containers
     mrpt_system
     mrpt_expr
     ${imu_cmake_dep_}

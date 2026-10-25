@@ -19,6 +19,7 @@
  */
 
 #include <mp2p_icp/load_plugin.h>
+#include <mp2p_icp/yaml_variables.h>
 #include <mp2p_icp_filters/FilterBase.h>
 #include <mrpt/system/CTimeLogger.h>
 
@@ -144,7 +145,7 @@ FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml(
 FilterPipeline mp2p_icp_filters::filter_pipeline_from_yaml_file(
     const std::string& filename, const mrpt::system::VerbosityLevel& vLevel)
 {
-    const auto yamlContent = mrpt::containers::yaml::FromFile(filename);
+    const auto yamlContent = mp2p_icp::load_yaml_file(filename);
 
     ASSERT_(yamlContent.has("filters") && yamlContent["filters"].isSequence());
 

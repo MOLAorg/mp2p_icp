@@ -8,6 +8,7 @@ mola_add_executable(
     main.cpp
   LINK_LIBRARIES
     mp2p_icp_map
+    mp2p_icp_common
     CLI11::CLI11
 )
 

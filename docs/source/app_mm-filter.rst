@@ -5,6 +5,7 @@ Application: ``mm-filter``
 ===============================
 
 This CLI tool applies :ref:`sm2mm pipelines <sm2mm_pipelines>` to metric map files (``.mm``).
+Pipeline files may contain :ref:`variables <yaml_variables>` like ``${VAR|default}``, expanded from environment variables.
 
 The tool can operate in two modes:
 
