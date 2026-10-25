@@ -48,10 +48,12 @@ struct OptimalTF_GN_Parameters
      * tangent: entries [0..2] are the translation in the frame of the prior
      * mean and [3..5] are the rotation-VECTOR components (w_x, w_y, w_z),
      * i.e. approximately (roll, pitch, yaw) axes. This is NOT MRPT's
-     * (x, y, z, yaw, pitch, roll) Euler ordering used by CPose3DPDFGaussian
-     * elsewhere, nor ICP Results::optimal_tf.cov: the two swap indices 3 and 5.
-     * Convert an information matrix in that layout with
-     * mp2p_icp::information_ypr_to_tangent().
+     * (x, y, z, yaw, pitch, roll) layout used by CPose3DPDFGaussian
+     * elsewhere, nor ICP Results::optimal_tf.cov. The two are not a
+     * reordering of each other: near a level pose they roughly swap indices
+     * 3 and 5, but in general the conversion depends on the pose (it turns
+     * the translation and mixes the angles), so convert an information matrix
+     * in that layout with mp2p_icp::information_ypr_to_tangent().
      */
     std::optional<mrpt::poses::CPose3DPDFGaussianInf> prior;
 
