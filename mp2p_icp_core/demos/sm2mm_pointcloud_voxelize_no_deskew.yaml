@@ -7,6 +7,12 @@
 #  - Generators: default generator is used (creates an 'raw' layer).
 #  - Filters: Just one downsampling filter, with an additional removal of close
 #             points (e.g. the robot body)
+#
+# Variables (define them as environment variables to override these defaults):
+#  SM2MM_VOXEL_SIZE=0.10
+#      voxel size of the per-keyframe downsampling [m]
+#  SM2MM_MIN_RANGE=5.0
+#      drop points closer than this to the robot (e.g. its body) [m]
 # -----------------------------------------------------------------------------
 
 # --------------------------------------------------------
@@ -25,7 +31,7 @@ filters:
     params:
       input_pointcloud_layer: "raw"
       output_pointcloud_layer: "decimated"
-      voxel_filter_resolution: 0.10 # [m]
+      voxel_filter_resolution: ${SM2MM_VOXEL_SIZE|0.10} # [m]
       decimate_method: DecimateMethod::FirstPoint
 
   - class_name: mp2p_icp_filters::FilterByRange
@@ -33,7 +39,7 @@ filters:
       input_pointcloud_layer: "decimated"
       output_layer_outside: "localmap"
       range_min: 0.0
-      range_max: 5.0
+      range_max: ${SM2MM_MIN_RANGE|5.0}
       # Measure distances from the moving robot pose:
       center: [robot_x, robot_y, robot_z]
 

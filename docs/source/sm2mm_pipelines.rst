@@ -46,6 +46,7 @@ Each pipeline file can contain these sections:
 
 Refer to example pipeline files `sm2mm_*.yaml` under the `demos directory <https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/demos>`_.
 Some of them are explained below with a diagram.
+Their main parameters can be changed without editing them, through ``SM2MM_*`` :ref:`variables <yaml_variables>` listed in each file header.
 
 .. _yaml_variables:
 
@@ -221,4 +222,75 @@ enabling differentiation between stationary map features and moving objects for 
     :icon: list-unordered
 
     .. literalinclude:: ../../../mp2p_icp/mp2p_icp_core/demos/sm2mm_voxels_static_dynamic_points.yaml
+       :language: yaml
+
+|
+
+---------
+
+|
+
+Pipeline: ``sm2mm_traversability_obstacles2d.yaml``
+------------------------------------------------------
+
+**Purpose:** Build the static obstacles for 2D path planning of a ground vehicle, as a sparse 2D point cloud (layer ``obstacles2d``)
+with one point per non-traversable cell of a traversability analysis of the whole 3D map
+(:ref:`FilterTraversability <FilterTraversability>`).
+
+Stages:
+
+- Per keyframe: de-skew, crop a square window around the robot, remove the vehicle body, accumulate the points,
+  and ray trace the whole scan into a voxel occupancy map.
+- The mapping trajectory is stored as the seeds of traversable space.
+- Final: points of dynamic objects (low voxel occupancy) are removed, then the traversability analysis builds a 2.5D ground model
+  and marks as obstacles: ground tilted more than ``max_slope_deg``, steps or drop-offs higher than ``max_step``,
+  anything within the vehicle body height band above the local ground, and the unobserved border of the region reachable from the trajectory.
+  The obstacle cells are finally flattened to ``z=0``.
+
+.. image:: https://mrpt.github.io/imgs/sm2mm_traversability_obstacles2d.png
+    :alt: sm2mm traversability obstacles diagram
+    :align: center
+
+|
+
+.. dropdown:: Example result screenshots
+    :icon: image
+    :open:
+
+    .. image:: https://mrpt.github.io/imgs/smm2_demo_traversability_obstacles2d.png
+        :alt: sm2mm traversability obstacles example result
+        :align: center
+        :target: https://mrpt.github.io/imgs/smm2_demo_traversability_obstacles2d.png
+
+Main :ref:`variables <yaml_variables>` (see the file header for all of them):
+
+.. list-table::
+   :header-rows: 1
+
+   * - Variable
+     - Default
+     - Description
+   * - ``SM2MM_MAX_SLOPE_DEG``
+     - 15.0
+     - Max traversable ground slope (tilt) [deg]
+   * - ``SM2MM_MAX_STEP``
+     - 0.15
+     - Max traversable step [m]
+   * - ``SM2MM_BODY_MIN_HEIGHT``, ``SM2MM_BODY_MAX_HEIGHT``
+     - 0.25, 1.20
+     - Vehicle body band above the local ground [m]
+   * - ``SM2MM_GRID_RESOLUTION``
+     - 0.20
+     - Grid cell size, also the output point spacing [m]
+   * - ``SM2MM_OCCUPANCY_THRESHOLD``
+     - 0.7
+     - Min voxel occupancy to keep points as static [0,1]
+   * - ``SM2MM_DESKEW_METHOD``
+     - ``MotionCompensationMethod::IMU``
+     - Scan de-skew method (``None`` for keyframes without timestamps or IMU data)
+
+.. dropdown:: Pipeline YAML code
+    :icon: list-unordered
+
+    .. literalinclude:: ../../../mp2p_icp/mp2p_icp_core/demos/sm2mm_traversability_obstacles2d.yaml
        :language: yaml
