@@ -24,6 +24,7 @@
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/version.h>
 
+#include <cmath>
 #include <unordered_map>
 
 IMPLEMENTS_MRPT_OBJECT(FilterPoleDetector, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
@@ -53,9 +54,13 @@ struct index2d_t
     }
 };
 
+// Rounds down (not toward zero), so that every cell has the same size, also the
+// ones touching the x=0 or y=0 axes:
 index2d_t<> xy_to_index(float x, float y, float resolution)
 {
-    return {static_cast<int32_t>(x / resolution), static_cast<int32_t>(y / resolution)};
+    return {
+        static_cast<int32_t>(std::floor(x / resolution)),
+        static_cast<int32_t>(std::floor(y / resolution))};
 }
 
 /** This implement the optimized hash from this paper (adapted for 2D)

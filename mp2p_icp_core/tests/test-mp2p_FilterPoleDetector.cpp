@@ -82,6 +82,38 @@ int main()
         // Ground points should be in the other layer
         ASSERT_(outOther->size() > 0);
 
+        // 5. Cells must all have the same size, also next to the axes. A pole at
+        //    (-0.5,-0.5) lies in the cell [-1,0)x[-1,0), which it shares with exactly
+        //    4 ground points (x,y in {-1,-0.5}). Rounding toward zero instead of
+        //    down would make that cell (-1,1)x(-1,1) and pull 9 ground points in.
+        {
+            auto pc2 = mrpt::maps::CSimplePointsMap::Create();
+            for (float x = -2.0f; x <= 2.0f; x += 0.5f)
+            {
+                for (float y = -2.0f; y <= 2.0f; y += 0.5f)
+                {
+                    pc2->insertPoint(x, y, 0.0f);
+                }
+            }
+            size_t nPolePts = 0;
+            for (float z = 1.0f; z <= 10.0f; z += 0.5f)
+            {
+                pc2->insertPoint(-0.5f, -0.5f, z);
+                nPolePts++;
+            }
+
+            FilterPoleDetector filter2;
+            filter2.initialize(p);
+
+            mp2p_icp::metric_map_t map2;
+            map2.layers["raw"] = pc2;
+            filter2.filter(map2);
+
+            auto poles2 = map2.layer<mrpt::maps::CPointsMap>("poles");
+            ASSERT_(poles2 != nullptr);
+            ASSERT_EQUAL_(poles2->size(), nPolePts + 4);
+        }
+
         std::cout << "FilterPoleDetector Unit Test Passed!" << std::endl;
     }
     catch (const std::exception& e)
