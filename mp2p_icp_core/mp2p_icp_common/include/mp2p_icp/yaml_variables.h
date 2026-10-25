@@ -36,8 +36,10 @@ namespace mp2p_icp
  *  2. An entry `VAR` in `variables`.
  *  3. The inline default after `|`, which may be empty (`${VAR|}`).
  *
- * If none applies, an exception is thrown. Tokens within YAML comments (after
- * a `#` on the same line) are not expanded, and substituted values are not
+ * If none applies, an exception is thrown. Only `CURRENT_YAML_FILE_PATH` is
+ * looked up in `variables` before the environment.
+ * Tokens within YAML comments (after a `#` that starts the line or follows a
+ * blank, outside quotes) are not expanded, and substituted values are not
  * scanned again for more tokens.
  *
  * Expansion works on the raw text, so tokens may appear anywhere, including
@@ -52,7 +54,7 @@ namespace mp2p_icp
 /** Loads a YAML file, expanding its variables with expand_yaml_variables().
  *
  * In addition to `variables`, the variable `CURRENT_YAML_FILE_PATH` is
- * defined as the directory of the file.
+ * always the directory of the file, overriding any variable of the same name.
  *
  * \exception std::exception If the file cannot be read, a variable is
  * undefined and has no default, or the expanded text is not valid YAML.

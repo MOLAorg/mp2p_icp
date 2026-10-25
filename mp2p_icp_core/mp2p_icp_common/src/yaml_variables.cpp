@@ -23,6 +23,7 @@
 #include <mrpt/system/filesystem.h>
 
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -30,6 +31,8 @@
 
 namespace
 {
+constexpr const char* CURRENT_YAML_FILE_PATH = "CURRENT_YAML_FILE_PATH";
+
 /** Returns the position of the `searchEndChar` closing a bracket already open
  *  before `pos`, taking nested `otherStartChar` into account, or npos. */
 [[nodiscard]] std::string::size_type findClosing(
@@ -64,21 +67,49 @@ namespace
     return {s.substr(0, pos), s.substr(pos + 1)};
 }
 
-/** True if there is a `#` between the beginning of the line and `pos`. */
-[[nodiscard]] bool linePositionIsCommentedOut(const std::string& text, size_t pos) noexcept
+/** True if `pos` lies within a YAML comment: after a `#` that starts the line
+ *  or follows a blank, outside quoted scalars. Quotes are tracked from the
+ *  beginning of the line only. */
+[[nodiscard]] bool positionIsInComment(const std::string& text, size_t pos) noexcept
 {
-    while (true)
+    const auto   prevEol   = text.find_last_of("\r\n", pos);
+    const size_t lineStart = (prevEol == std::string::npos) ? 0 : prevEol + 1;
+
+    const auto startsToken = [&](size_t i)
+    { return i == lineStart || std::strchr(" \t[{,", text[i - 1]) != nullptr; };
+
+    char quote = 0;
+    for (size_t i = lineStart; i < pos; ++i)
     {
-        if (text[pos] == '#')
+        const char ch = text[i];
+        if (quote == '"')
+        {
+            if (ch == '\\')
+            {
+                ++i;
+            }
+            else if (ch == '"')
+            {
+                quote = 0;
+            }
+        }
+        else if (quote == '\'')
+        {
+            if (ch == '\'')
+            {
+                quote = 0;
+            }
+        }
+        else if ((ch == '"' || ch == '\'') && startsToken(i))
+        {
+            quote = ch;
+        }
+        else if (ch == '#' && startsToken(i))
         {
             return true;
         }
-        if (pos == 0 || text[pos] == '\n' || text[pos] == '\r')
-        {
-            return false;
-        }
-        --pos;
     }
+    return false;
 }
 }  // namespace
 
@@ -100,6 +131,16 @@ std::string mp2p_icp::expand_yaml_variables(
 
         result.append(text, pos, tokenStart - pos);
 
+        // Keep comments verbatim, up to the end of the line:
+        if (positionIsInComment(text, tokenStart))
+        {
+            const auto eol = text.find_first_of("\r\n", tokenStart);
+            const auto end = (eol == std::string::npos) ? text.size() : eol;
+            result.append(text, tokenStart, end - tokenStart);
+            pos = end;
+            continue;
+        }
+
         const size_t exprStart = tokenStart + 2;
         const auto   exprEnd   = findClosing(exprStart, text, '}', '{');
         if (exprEnd == std::string::npos)
@@ -112,16 +153,14 @@ std::string mp2p_icp::expand_yaml_variables(
         const std::string varExpr = text.substr(exprStart, exprEnd - exprStart);
         pos                       = exprEnd + 1;
 
-        // Keep tokens in comments verbatim:
-        if (linePositionIsCommentedOut(text, tokenStart))
-        {
-            result.append(text, tokenStart, pos - tokenStart);
-            continue;
-        }
-
         const auto [varname, defaultValue] = splitVerticalBar(varExpr);
 
-        if (const char* env = ::getenv(varname.c_str()); env != nullptr)
+        if (const auto it = variables.find(varname);
+            varname == CURRENT_YAML_FILE_PATH && it != variables.end())
+        {
+            result += it->second;
+        }
+        else if (const char* env = ::getenv(varname.c_str()); env != nullptr)
         {
             result += env;
         }
@@ -157,9 +196,8 @@ mrpt::containers::yaml mp2p_icp::load_yaml_file(
     ss << f.rdbuf();
 
     auto vars = variables;
-    vars.emplace(
-        "CURRENT_YAML_FILE_PATH",
-        mrpt::system::extractFileDirectory(mrpt::system::toAbsolutePath(fileName)));
+    vars[CURRENT_YAML_FILE_PATH] =
+        mrpt::system::extractFileDirectory(mrpt::system::toAbsolutePath(fileName));
 
     try
     {
