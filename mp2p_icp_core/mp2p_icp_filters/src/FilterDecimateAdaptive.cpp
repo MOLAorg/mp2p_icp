@@ -26,6 +26,7 @@
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/random/RandomGenerators.h>
 #include <mrpt/version.h>
+#include <tsl/robin_map.h>
 
 #include <algorithm>
 #include <cmath>
@@ -210,74 +211,147 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         v.indices = idx;
     };
 
-    // Parse input cloud through subsampling:
+    // Fast path for the default FirstPoint method: when every output's budget
+    // binds (at least as many occupied voxels as points requested), the
+    // resampling below only ever takes the first point (lowest index) of each
+    // visited voxel, visiting voxels in order of their first point. A single
+    // hash pass in input order yields exactly that list, already in canonical
+    // order, so the per-thread grids, their merge, the per-voxel index sorts
+    // and the voxel sort below can all be skipped. Same output, bit for bit.
+    std::vector<std::uint32_t> fastFirstIdx;
+    bool                       fastPathDone = false;
+    if (_.decimate_method == DecimateMethod::FirstPoint && _.minimum_input_points_per_voxel <= 1)
+    {
+        using indices_t = PointCloudToVoxelGrid::indices_t;
+        tsl::robin_map<indices_t, std::uint32_t, PointCloudToVoxelGrid::IndicesHash> firstOf;
+        const auto&  xs  = pc.getPointsBufferRef_x();
+        const auto&  ys  = pc.getPointsBufferRef_y();
+        const auto&  zs  = pc.getPointsBufferRef_z();
+        const float  res = params.voxel_size;  // same float division as coord2idx()
+        const size_t n   = xs.size();
+        firstOf.reserve(n / 4);
+        fastFirstIdx.reserve(n / 4);
+        std::vector<indices_t> keys;
+        keys.reserve(n / 4);
+        for (size_t i = 0; i < n; i++)
+        {
+            // Rounded down, exactly as PointCloudToVoxelGrid::coord2idx():
+            const indices_t key(
+                static_cast<int32_t>(std::floor(xs[i] / res)),
+                static_cast<int32_t>(std::floor(ys[i] / res)),
+                static_cast<int32_t>(std::floor(zs[i] / res)));
+            if (firstOf.try_emplace(key, 0U).second)
+            {
+                fastFirstIdx.push_back(static_cast<std::uint32_t>(i));
+                keys.push_back(key);
+            }
+        }
+        const size_t nV = fastFirstIdx.size();
+
+        bool budgetBinds = nV > 0;
+        for (const auto& target : _.outputs)
+        {
+            size_t want = target.desired_output_point_count;
+            if (target.maximum_voxel_stride > 0)
+            {
+                const double cap = static_cast<double>(
+                    std::min<std::size_t>(pc.size(), std::numeric_limits<uint32_t>::max()));
+                const double wanted =
+                    std::ceil(static_cast<double>(nV) / target.maximum_voxel_stride);
+                want = std::max(want, static_cast<size_t>(std::min(wanted, cap)));
+            }
+            if (want > nV)
+            {
+                budgetBinds = false;
+            }
+        }
+
+        if (budgetBinds)
+        {
+            voxels.reserve(nV);
+            for (size_t j = 0; j < nV; j++)
+            {
+                auto& v           = voxels.emplace_back();
+                v.voxel.begin_ptr = &fastFirstIdx[j];
+                v.voxel.count     = 1;
+                v.indices         = keys[j];
+            }
+            nTotalVoxels = nV;
+            fastPathDone = true;
+        }
+    }
+
+    if (!fastPathDone)
+    {
+        // Parse input cloud through subsampling:
 #if defined(MP2P_HAS_TBB)
 
-    // Clear from past runs:
-    for (auto& grid : impl_->tls)
-    {
-        grid.setConfiguration(params.voxel_size, true);
-    }
-
-    const auto pointCount = pc.size();
-
-    const size_t grainsize = params.parallelization_grain_size;  // minimum block size hint
-
-    tbb::parallel_for(
-        tbb::blocked_range<size_t>(0, pointCount, grainsize),
-        [&](const tbb::blocked_range<size_t>& r)
+        // Clear from past runs:
+        for (auto& grid : impl_->tls)
         {
-            const auto start  = r.begin();
-            const auto length = r.end() - r.begin();
+            grid.setConfiguration(params.voxel_size, true);
+        }
 
-            bool  tls_exists;
-            auto& grid = impl_->tls.local(tls_exists);
-            if (!tls_exists)
+        const auto pointCount = pc.size();
+
+        const size_t grainsize = params.parallelization_grain_size;  // minimum block size hint
+
+        tbb::parallel_for(
+            tbb::blocked_range<size_t>(0, pointCount, grainsize),
+            [&](const tbb::blocked_range<size_t>& r)
             {
-                // Configure for first time:
-                grid.setConfiguration(params.voxel_size, true);
-            }
-            grid.processPointCloud(pc, start, length);
-        });
+                const auto start  = r.begin();
+                const auto length = r.end() - r.begin();
 
-    // Reassemble the per-thread grids: a voxel key is global, so the same
-    // spatial voxel is present in every grid whose block saw points in it.
-    // Visiting the grids separately would treat each fragment as an
-    // independent voxel, which both breaks the one-representative-per-voxel
-    // contract and makes the result depend on how work was split.
-    impl_->merged_grid.setConfiguration(params.voxel_size, true);
+                bool  tls_exists;
+                auto& grid = impl_->tls.local(tls_exists);
+                if (!tls_exists)
+                {
+                    // Configure for first time:
+                    grid.setConfiguration(params.voxel_size, true);
+                }
+                grid.processPointCloud(pc, start, length);
+            });
 
-    impl_->parts.clear();
-    for (const auto& grid : impl_->tls)
-    {
-        impl_->parts.push_back(&grid);
-    }
-    impl_->merged_grid.mergeFrom(impl_->parts);
-    impl_->merged_grid.sortVoxelPointIndices();
+        // Reassemble the per-thread grids: a voxel key is global, so the same
+        // spatial voxel is present in every grid whose block saw points in it.
+        // Visiting the grids separately would treat each fragment as an
+        // independent voxel, which both breaks the one-representative-per-voxel
+        // contract and makes the result depend on how work was split.
+        impl_->merged_grid.setConfiguration(params.voxel_size, true);
 
-    voxels.reserve(impl_->merged_grid.size());
+        impl_->parts.clear();
+        for (const auto& grid : impl_->tls)
+        {
+            impl_->parts.push_back(&grid);
+        }
+        impl_->merged_grid.mergeFrom(impl_->parts);
+        impl_->merged_grid.sortVoxelPointIndices();
 
-    impl_->merged_grid.visit_voxels(lambdaVisitVoxel);
+        voxels.reserve(impl_->merged_grid.size());
+
+        impl_->merged_grid.visit_voxels(lambdaVisitVoxel);
 
 #else
-    impl_->filter_grid.clear();
-    impl_->filter_grid.setConfiguration(params.voxel_size, true);
-    impl_->filter_grid.processPointCloud(pc);
+        impl_->filter_grid.clear();
+        impl_->filter_grid.setConfiguration(params.voxel_size, true);
+        impl_->filter_grid.processPointCloud(pc);
 
-    voxels.reserve(impl_->filter_grid.size());
+        voxels.reserve(impl_->filter_grid.size());
 
-    impl_->filter_grid.visit_voxels(lambdaVisitVoxel);
+        impl_->filter_grid.visit_voxels(lambdaVisitVoxel);
 
 #endif
 
-    // Canonical voxel order. Hash map traversal order is an implementation
-    // detail, and the resampling below walks this list with a stride, so which
-    // voxels make it to the output would otherwise depend on it. Ordering by
-    // the first input point of each voxel gives the same list for any map type
-    // and any number of threads.
-    std::sort(
-        voxels.begin(), voxels.end(),
-        [](const DataPerVoxel& a, const DataPerVoxel& b) { return a.voxel[0] < b.voxel[0]; });
+        // Canonical voxel order. Hash map traversal order is an implementation
+        // detail, and the resampling below walks this list with a stride, so which
+        // voxels make it to the output would otherwise depend on it. Ordering by
+        // the first input point of each voxel gives the same list for any map type
+        // and any number of threads.
+        std::sort(
+            voxels.begin(), voxels.end(),
+            [](const DataPerVoxel& a, const DataPerVoxel& b) { return a.voxel[0] < b.voxel[0]; });
+    }
 
     const size_t nVoxels = voxels.size();
 
