@@ -26,6 +26,7 @@
 #include <mrpt/poses/Lie/SE.h>
 
 #include <Eigen/Dense>
+#include <cmath>
 
 using namespace mp2p_icp;
 
@@ -272,9 +273,11 @@ mrpt::math::CMatrixDouble66 covariance_censi3d(
     const M6 Hinv_M    = Hldlt.solve(M);
     const M6 cov_eigen = Hldlt.solve(Hinv_M.transpose()).transpose();
 
-    mrpt::math::CMatrixDouble66 cov;
-    cov.asEigen() = cov_eigen;
-    return cov;
+    // That is the covariance of the tangent perturbation the Jacobians above
+    // are taken in (pose * exp(eps)), not of [x y z yaw pitch roll]:
+    mrpt::math::CMatrixDouble66 covTangent;
+    covTangent.asEigen() = cov_eigen;
+    return covariance_tangent_to_ypr(covTangent, pose);
 }
 
 }  // namespace
@@ -331,6 +334,65 @@ void CovarianceParameters::save_to(mrpt::containers::yaml& p) const
     MCP_SAVE(p, floor_sigma_angles);
     MCP_SAVE(p, finDif_xyz);
     MCP_SAVE(p, finDif_angles);
+}
+
+mrpt::math::CMatrixDouble66 mp2p_icp::jacobian_ypr_wrt_tangent(const mrpt::poses::CPose3D& pose)
+{
+    // MRPT's SE(3) pseudo-exponential leaves the translation unrotated, so
+    // pose * exp([rho, omega]) = [R * Exp(omega) | t + R * rho]: the
+    // translation only depends on rho, through R.
+    //
+    // For R = Rz(yaw) * Ry(pitch) * Rx(roll), a body angular rate omega and the
+    // Euler angle rates are related by
+    //   omega = [ roll' - sin(pitch) * yaw',
+    //             cos(roll) * pitch' + sin(roll) * cos(pitch) * yaw',
+    //            -sin(roll) * pitch' + cos(roll) * cos(pitch) * yaw' ]
+    // whose inverse is the rotation block below.
+    const double cp = std::cos(pose.pitch());
+    const double sp = std::sin(pose.pitch());
+    const double cr = std::cos(pose.roll());
+    const double sr = std::sin(pose.roll());
+
+    // Gimbal lock: yaw and roll are undefined there; keep the result finite.
+    constexpr double MIN_COS_PITCH = 1e-9;
+    const double     cpSafe = std::abs(cp) < MIN_COS_PITCH ? std::copysign(MIN_COS_PITCH, cp) : cp;
+
+    mrpt::math::CMatrixDouble66 J;
+    J.setZero();
+    J.asEigen().block<3, 3>(0, 0) = pose.getRotationMatrix().asEigen();
+
+    // yaw:
+    J(3, 4) = sr / cpSafe;
+    J(3, 5) = cr / cpSafe;
+    // pitch:
+    J(4, 4) = cr;
+    J(4, 5) = -sr;
+    // roll:
+    J(5, 3) = 1.0;
+    J(5, 4) = sr * sp / cpSafe;
+    J(5, 5) = cr * sp / cpSafe;
+
+    return J;
+}
+
+mrpt::math::CMatrixDouble66 mp2p_icp::covariance_tangent_to_ypr(
+    const mrpt::math::CMatrixDouble66& covTangent, const mrpt::poses::CPose3D& pose)
+{
+    const M6 J = jacobian_ypr_wrt_tangent(pose).asEigen();
+
+    mrpt::math::CMatrixDouble66 cov;
+    cov.asEigen() = J * covTangent.asEigen() * J.transpose();
+    return cov;
+}
+
+mrpt::math::CMatrixDouble66 mp2p_icp::information_ypr_to_tangent(
+    const mrpt::math::CMatrixDouble66& infoYpr, const mrpt::poses::CPose3D& pose)
+{
+    const M6 J = jacobian_ypr_wrt_tangent(pose).asEigen();
+
+    mrpt::math::CMatrixDouble66 info;
+    info.asEigen() = J.transpose() * infoYpr.asEigen() * J;
+    return info;
 }
 
 // other ideas?

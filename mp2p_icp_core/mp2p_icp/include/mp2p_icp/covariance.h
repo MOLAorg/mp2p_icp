@@ -21,9 +21,18 @@
 
 #include <mp2p_icp/Pairings.h>
 #include <mrpt/math/CMatrixFixed.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/typemeta/TEnumType.h>
 
 #include <cstdint>
+
+/** Feature-detection macro for downstream packages: defined only by mp2p_icp
+ * releases where every covariance() method, Censi3D included, returns the
+ * `mrpt::poses::CPose3DPDFGaussian` layout, and that provide
+ * jacobian_ypr_wrt_tangent(), covariance_tangent_to_ypr() and
+ * information_ypr_to_tangent(). Before them, Censi3D returned the covariance of
+ * the solver's SE(3) tangent instead. */
+#define MP2P_ICP_HAS_COVARIANCE_YPR_CONVERSIONS 1
 
 namespace mp2p_icp
 {
@@ -42,7 +51,9 @@ struct CovarianceParameters
          *  M = sum J_i^T Sigma_z_i J_i. For cov2cov pairings the per-pair
          *  Sigma_z = inv(cov_inv) is used directly; for pt2pt without
          *  per-pair noise, an isotropic Sigma_z = defaultPointSigma^2 * I
-         *  is assumed. Reference: Censi 2007, Prakhya 2015. */
+         *  is assumed. Reference: Censi 2007, Prakhya 2015.
+         *  Computed in the solver's SE(3) tangent, then converted to the
+         *  [x y z yaw pitch roll] layout with covariance_tangent_to_ypr(). */
         Censi3D,
     };
 
@@ -78,11 +89,50 @@ struct CovarianceParameters
 
 /** Covariance estimation methods for an ICP result.
  *
+ * Whatever the method, the result is in the layout of
+ * `mrpt::poses::CPose3DPDFGaussian::cov`: `[x y z yaw pitch roll]`, with the
+ * translation in the frame `finalAlignSolution` is expressed in (the "global"
+ * one), as stored in Results::optimal_tf.
+ *
  * \ingroup mp2p_icp_grp
  */
 mrpt::math::CMatrixDouble66 covariance(
     const Pairings& finalPairings, const mrpt::poses::CPose3D& finalAlignSolution,
     const CovarianceParameters& p);
+
+/** Jacobian of the `[x y z yaw pitch roll]` coordinates of `pose · exp(eps)`
+ * with respect to `eps`, at `eps = 0`. `eps = [rho, omega]` is the right
+ * (body-frame) perturbation of `mrpt::poses::Lie::SE<3>`, translation first:
+ * the tangent the ICP solvers linearize in, and the one of the `prior`
+ * information of ICP::align().
+ *
+ * It is block diagonal: the rotation `R` of `pose` turns the body-frame
+ * translation into the global one, and the lower block turns body angular
+ * rates into rates of yaw, pitch and roll. That block is singular at
+ * pitch = +-90 deg, where yaw and roll are undefined; it is kept finite there.
+ *
+ * \ingroup mp2p_icp_grp
+ */
+mrpt::math::CMatrixDouble66 jacobian_ypr_wrt_tangent(const mrpt::poses::CPose3D& pose);
+
+/** Converts the covariance of the right tangent perturbation of `pose` (see
+ * jacobian_ypr_wrt_tangent()) into the `mrpt::poses::CPose3DPDFGaussian` layout
+ * `[x y z yaw pitch roll]`: `J * covTangent * J^T`.
+ *
+ * \ingroup mp2p_icp_grp
+ */
+mrpt::math::CMatrixDouble66 covariance_tangent_to_ypr(
+    const mrpt::math::CMatrixDouble66& covTangent, const mrpt::poses::CPose3D& pose);
+
+/** Converts an information matrix in the `mrpt::poses::CPose3DPDFGaussianInf`
+ * layout `[x y z yaw pitch roll]` into the right tangent of `pose` (see
+ * jacobian_ypr_wrt_tangent()), which is what the `prior` of ICP::align() and
+ * OptimalTF_GN_Parameters::prior expect: `J^T * infoYpr * J`.
+ *
+ * \ingroup mp2p_icp_grp
+ */
+mrpt::math::CMatrixDouble66 information_ypr_to_tangent(
+    const mrpt::math::CMatrixDouble66& infoYpr, const mrpt::poses::CPose3D& pose);
 
 }  // namespace mp2p_icp
 

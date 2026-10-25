@@ -66,6 +66,11 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
      * preprocessed to extract features, etc.) and returns the relative pose of
      * pcLocal with respect to pcGlobal.
      *
+     * \param prior Optional prior of the solution. Its information matrix is
+     *        in the SE(3) tangent of the prior mean, not in the
+     *        [x y z yaw pitch roll] layout of `result.optimal_tf.cov`; see
+     *        OptimalTF_GN_Parameters::prior and information_ypr_to_tangent().
+     *
      * \param gravityPrior Optional gravity ("verticality") observation. Unlike
      *        `prior`, it constrains only the two tilt DOFs and leaves rotation
      *        about gravity (yaw) and all translations free. See

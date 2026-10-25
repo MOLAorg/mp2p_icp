@@ -29,7 +29,9 @@ namespace mp2p_icp
 struct Results
 {
     /** The found value (mean + covariance) of the optimal transformation of
-     * "local" wrt "global". */
+     * "local" wrt "global". The covariance has the usual
+     * `CPose3DPDFGaussian` layout, `[x y z yaw pitch roll]` with the
+     * translation in the "global" frame, whatever the covariance method. */
     mrpt::poses::CPose3DPDFGaussian optimal_tf;
 
     /** Found scale (if supported by the underlying algorithm) for optimal_tf */

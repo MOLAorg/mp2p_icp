@@ -71,6 +71,12 @@ All components are `Parameterizable`, configured via YAML.
 `tbb::parallel_reduce`; use `tbb::parallel_deterministic_reduce` with an explicit grain
 size. Guarded by `test-mp2p_solver_determinism`.
 
+**Pose covariance conventions:** `Results::optimal_tf.cov` (every `covariance()` method)
+is in the `CPose3DPDFGaussian` layout `[x y z yaw pitch roll]`, translation in the global
+frame. The solvers linearize in the right SE(3) tangent `pose·exp([rho, omega])`, and the
+GN `prior` information is applied in that tangent of the prior mean. Convert between the
+two only with the helpers in `covariance.h`. Guarded by `test-mp2p_covariance_conventions`.
+
 ## Filter pipeline
 
 Filters are chained and applied in-place to `metric_map_t`, configured via YAML
