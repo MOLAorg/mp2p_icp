@@ -33,7 +33,9 @@
 #include <mrpt/random.h>
 
 #include <Eigen/Dense>
+#include <cmath>
 #include <iostream>
+#include <limits>
 
 using namespace mrpt::literals;  // for .0_deg suffix
 
@@ -148,6 +150,44 @@ void test_cov2cov_optimization_basic()
     ASSERT_LT_(mrpt::poses::Lie::SO<3>::log(poseError.getRotationMatrix()).norm(), 0.1);
 
     std::cout << "[test_cov2cov_optimization_basic] PASSED\n";
+}
+
+// ===========================================================================
+//  A non-finite pairing makes the solver fail, without corrupting the pose
+// ===========================================================================
+
+void test_cov2cov_nonfinite_pairing()
+{
+    std::cout << "[test_cov2cov_nonfinite_pairing] Running...\n";
+
+    const auto initPose =
+        mrpt::poses::CPose3D::FromXYZYawPitchRoll(0.5, 0.2, 0.1, 5.0_deg, 0.0_deg, 0.0_deg);
+
+    mp2p_icp::Pairings pairings;
+    for (int i = 0; i < 10; i++)
+    {
+        auto& p  = pairings.paired_cov2cov.emplace_back();
+        p.global = {1.0f * i, 2.0f * (i % 3), 0.5f * (i % 2)};
+        p.local  = p.global;
+        p.cov_inv.setIdentity();
+    }
+    pairings.paired_cov2cov[3].global.x = std::numeric_limits<float>::quiet_NaN();
+
+    mp2p_icp::OptimalTF_GN_Parameters gnParams;
+    gnParams.linearizationPoint = initPose;
+
+    mp2p_icp::OptimalTF_Result result;
+
+    const bool run_ok = mp2p_icp::optimal_tf_gauss_newton(pairings, result, gnParams);
+    ASSERT_(!run_ok);
+
+    for (const double v : result.optimalPose.asVectorVal())
+    {
+        ASSERT_(std::isfinite(v));
+    }
+    ASSERT_LT_((result.optimalPose - initPose).translation().norm(), 1e-9);
+
+    std::cout << "[test_cov2cov_nonfinite_pairing] PASSED\n";
 }
 
 // ===========================================================================
@@ -641,6 +681,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         // Run all tests
         test_cov2cov_optimization_basic();
         test_cov2cov_optimization_random();
+        test_cov2cov_nonfinite_pairing();
         test_cov2cov_covariance_output_valid();
         test_cov2cov_only_covariance();
         test_cov2cov_mixed_pairings();

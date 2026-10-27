@@ -809,7 +809,19 @@ bool mp2p_icp::optimal_tf_gauss_newton(
         // 3) Solve Gauss-Newton:
         // g = J.transpose() * err;
         // H = J.transpose() * J;
-        const Eigen::Matrix<double, 6, 1> delta = -H.ldlt().solve(g);
+        const auto                        ldlt  = H.ldlt();
+        const Eigen::Matrix<double, 6, 1> delta = -ldlt.solve(g);
+
+        // A non-finite pairing or a numerically broken system must not reach
+        // the pose: keep the last valid estimate and report the failure.
+        if (ldlt.info() != Eigen::Success || !delta.allFinite())
+        {
+            if (gnParams.verbose)
+            {
+                std::cout << "[P2P GN] iter:" << iter << " non-finite step, aborting.\n";
+            }
+            return false;
+        }
 
         if (auto* hs = hSpectrumStream(); hs)
         {
