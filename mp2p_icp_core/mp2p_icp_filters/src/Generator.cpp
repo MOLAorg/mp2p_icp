@@ -43,13 +43,28 @@
 #include <mrpt/system/filesystem.h>
 #include <mrpt/version.h>
 
+#include <map>
+#include <mutex>
+#include <string>
+
 #include "Generator_view_vector_impl.h"
 
 IMPLEMENTS_MRPT_OBJECT(Generator, mrpt::rtti::CObject, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
 
-Generator::Generator() : mrpt::system::COutputLogger("Generator") {}
+struct Generator::ImuState
+{
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
+    std::mutex                                       mtx;
+    std::map<std::string, mola::imu::ImuTransformer> transformers;  // by sensor label
+#endif
+};
+
+Generator::Generator()
+    : mrpt::system::COutputLogger("Generator"), imu_state_(std::make_shared<ImuState>())
+{
+}
 
 void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Generator& parent)
 {
@@ -249,31 +264,6 @@ bool Generator::filterVelodyneScan(  //
     return true;  // implemented
 }
 
-#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
-class ImuTransformerManager
-{
-   public:
-    static mola::imu::ImuTransformer& getInstance(const std::string& sensorLabel)
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto                        it = transformers_.find(sensorLabel);
-        if (it == transformers_.end())
-        {
-            auto [newIt, _] = transformers_.emplace(sensorLabel, mola::imu::ImuTransformer());
-            return newIt->second;
-        }
-        return it->second;
-    }
-
-   private:
-    static std::mutex                                       mutex_;
-    static std::map<std::string, mola::imu::ImuTransformer> transformers_;
-};
-
-std::mutex                                       ImuTransformerManager::mutex_;
-std::map<std::string, mola::imu::ImuTransformer> ImuTransformerManager::transformers_;
-#endif
-
 bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu_raw) const
 {
 #if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
@@ -285,10 +275,13 @@ bool Generator::processIMU(const mrpt::obs::CObservationIMU& imu_raw) const
 
     const double t = mrpt::Clock::toDouble(imu_raw.timestamp);
 
-    auto& imu_transformer = ImuTransformerManager::getInstance(imu_raw.sensorLabel);
-
-    // Convert IMU readings to vehicle frame of reference:
-    const auto imu = imu_transformer.process(imu_raw);
+    // Convert IMU readings to vehicle frame of reference. The transformer is
+    // stateful, so it is used under the lock too, not only looked up:
+    mrpt::obs::CObservationIMU imu;
+    {
+        std::lock_guard<std::mutex> lck(imu_state_->mtx);
+        imu = imu_state_->transformers[imu_raw.sensorLabel].process(imu_raw);
+    }
 
     // gyroscope data:
     if (imu.has(mrpt::obs::IMU_WX) && imu.has(mrpt::obs::IMU_WY) && imu.has(mrpt::obs::IMU_WZ))
