@@ -20,6 +20,9 @@
  */
 #pragma once
 
+// render_params_point_layer_t::hideBackFacing is available:
+#define MP2P_ICP_HAS_RENDER_HIDE_BACK_FACING 1
+
 #include <mp2p_icp/layer_name_t.h>
 #include <mrpt/img/TColor.h>
 #include <mrpt/img/color_maps.h>
@@ -134,11 +137,29 @@ struct render_params_point_layer_t
     bool render_voxelmaps_as_points  = false;
     bool render_voxelmaps_free_space = false;
 
+    /** Hide points seen from behind, for point clouds with per-point
+     * "normal_{x,y,z}" or, otherwise, "view_{x,y,z}" fields (needs MRPT >= 3.5.4).
+     */
+    bool hideBackFacing = false;
+
+    /** For hideBackFacing: max angle (degrees) between a point direction and
+     * the direction towards the camera for the point to be visible, when
+     * directions come from normals. 90 hides everything seen from behind. */
+    float backFacingMaxAngleNormals_deg = 90.0f;
+
+    /** Like backFacingMaxAngleNormals_deg, when directions come from view
+     * vectors, a rough proxy of the surface side (e.g. distant ground points
+     * have almost horizontal view vectors), hence a wider default. */
+    float backFacingMaxAngleView_deg = 120.0f;
+
     bool operator==(const render_params_point_layer_t& o) const
     {
         return pointSize == o.pointSize && color == o.color && colorMode == o.colorMode &&
                render_voxelmaps_as_points == o.render_voxelmaps_as_points &&
-               render_voxelmaps_free_space == o.render_voxelmaps_free_space;
+               render_voxelmaps_free_space == o.render_voxelmaps_free_space &&
+               hideBackFacing == o.hideBackFacing &&
+               backFacingMaxAngleNormals_deg == o.backFacingMaxAngleNormals_deg &&
+               backFacingMaxAngleView_deg == o.backFacingMaxAngleView_deg;
     }
     bool operator!=(const render_params_point_layer_t& o) const { return !(*this == o); }
 };
