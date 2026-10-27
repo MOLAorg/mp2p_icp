@@ -45,6 +45,8 @@ void FilterNormals::filter(mp2p_icp::metric_map_t& inOut) const
 {
     checkAllParametersAreRealized();
     ASSERT_GE_(params.knn, 3U);
+    ASSERT_GT_(params.max_search_distance, 0);
+    ASSERT_GT_(params.parallelization_grain_size, 0U);
 
     auto pcPtr = inOut.layer<mrpt::maps::CPointsMap>(params.pointcloud_layer);
     ASSERTMSG_(pcPtr, "FilterNormals: input layer not found or not a point cloud");
@@ -53,6 +55,10 @@ void FilterNormals::filter(mp2p_icp::metric_map_t& inOut) const
     // Register the output fields before building the KD-tree:
     for (const char* f : {"normal_x", "normal_y", "normal_z"})
     {
+        if (pc.getPointsBufferRef_float_field(f) != nullptr)
+        {
+            continue;
+        }
         ASSERTMSG_(
             pc.registerField_float(f),
             "FilterNormals: the input layer class does not support extra fields");
@@ -113,6 +119,13 @@ void FilterNormals::filter(mp2p_icp::metric_map_t& inOut) const
 
         Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> es;
         es.computeDirect(S, Eigen::ComputeEigenvectors);
+
+        // Coincident or collinear neighbors do not define a plane:
+        const auto& ev = es.eigenvalues();  // ascending order
+        if (!(ev[1] > 1e-6f * ev[2]))
+        {
+            return;
+        }
         Eigen::Vector3f n = es.eigenvectors().col(0);  // smallest eigenvalue
 
         if (hasView && n.x() * (*vxs)[i] + n.y() * (*vys)[i] + n.z() * (*vzs)[i] < 0)
