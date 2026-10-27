@@ -416,7 +416,8 @@ void FilterDecimateAdaptive::filter(mp2p_icp::metric_map_t& inOut) const
         bool anyInsertInTheRound = false;
 
         std::size_t i_frac = 0;
-        while (outPc->size() < pointCountTarget)
+        // The output layer may already hold points: the budget is for the new ones.
+        while (outPc->size() - sizeBefore < pointCountTarget)
         {
             std::size_t i = i_frac >> FRACTIONARY_BIT_COUNT;
 

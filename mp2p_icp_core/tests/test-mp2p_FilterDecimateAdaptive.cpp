@@ -83,6 +83,32 @@ int main()
         }
 
         // ---------------------------------------------------------
+        // Test: appending to a non-empty output layer adds the full budget
+        // ---------------------------------------------------------
+        {
+            FilterDecimateAdaptive filter;
+            mrpt::containers::yaml p;
+            p["input_pointcloud_layer"]         = "raw";
+            p["output_pointcloud_layer"]        = "adaptive_out";
+            p["desired_output_point_count"]     = 500;
+            p["voxel_size"]                     = 0.5f;
+            p["minimum_input_points_per_voxel"] = 1;
+
+            filter.initialize(p);
+
+            auto         out        = map.layer<mrpt::maps::CPointsMap>("adaptive_out");
+            const size_t sizeBefore = out->size();
+            ASSERT_(sizeBefore > 0);
+
+            filter.filter(map);
+
+            out = map.layer<mrpt::maps::CPointsMap>("adaptive_out");
+            ASSERT_NEAR_(out->size() - sizeBefore, 500, 20);
+
+            std::cout << "[Test Passed] Adaptive decimation appends its whole budget\n";
+        }
+
+        // ---------------------------------------------------------
         // Test: two output layers from one single voxelization pass
         // ---------------------------------------------------------
         {

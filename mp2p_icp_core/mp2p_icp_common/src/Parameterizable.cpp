@@ -15,8 +15,26 @@
 #include <mp2p_icp/Parameterizable.h>
 #include <mrpt/core/exceptions.h>
 
+#include <limits>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
+
+namespace
+{
+// Out-of-range conversions from floating point to an unsigned type are UB.
+uint32_t toUint32Checked(double val, const std::string& expression)
+{
+    if (!(val >= 0 && val <= std::numeric_limits<uint32_t>::max()))
+    {
+        std::stringstream ss;
+        ss << "[ParameterSource] Expression '" << expression << "' evaluates to " << val
+           << ", out of range for an unsigned integer parameter.";
+        throw std::runtime_error(ss.str());
+    }
+    return static_cast<uint32_t>(val);
+}
+}  // namespace
 
 using namespace mp2p_icp;
 
@@ -80,7 +98,7 @@ void ParameterSource::realize()
         const double val = p->compiled->eval();
 
         std::visit(
-            [val](auto&& arg)
+            [val, &p](auto&& arg)
             {
                 using T = std::decay_t<decltype(arg)>;
 
@@ -99,7 +117,7 @@ void ParameterSource::realize()
                 }
                 else if constexpr (std::is_same_v<T, uint32_t*>)
                 {
-                    *arg = static_cast<uint32_t>(val);
+                    *arg = toUint32Checked(val, p->expression);
                 }
             },
             p->target);
@@ -119,16 +137,13 @@ void Parameterizable::parseAndDeclareParameter_impl(const std::string& value, T&
     // Try to evaluate the expression now:
     // If it does not contain unknown variables, it will remain
     // constant and will need not updates from "realize()":
+    std::optional<double> constantValue;
     try
     {
         mrpt::expr::CRuntimeCompiledExpression e;
         e.compile(value);
-        // Yes, it was successful: mark as constant and store value:
-        ipm.is_constant        = true;
-        ipm.has_been_evaluated = true;
-        // Store result:
-        target       = static_cast<T>(e.eval());
-        ipm.compiled = std::move(e);
+        constantValue = e.eval();
+        ipm.compiled  = std::move(e);
     }
     catch (const std::exception&)  // NOLINT
     {
@@ -136,6 +151,24 @@ void Parameterizable::parseAndDeclareParameter_impl(const std::string& value, T&
         // Ignore this exception at this moment. Will trigger if
         // raised again in realize() after defining the variables.
     }
+
+    if (!constantValue.has_value())
+    {
+        return;
+    }
+
+    // Yes, it was successful: mark as constant and store value. Outside the
+    // try block, so a range error is not mistaken for a missing variable:
+    if constexpr (std::is_same_v<T, uint32_t>)
+    {
+        target = toUint32Checked(*constantValue, value);
+    }
+    else
+    {
+        target = static_cast<T>(*constantValue);
+    }
+    ipm.is_constant        = true;
+    ipm.has_been_evaluated = true;
 }
 
 void Parameterizable::parseAndDeclareParameter(const std::string& value, double& target)

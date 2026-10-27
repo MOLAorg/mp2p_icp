@@ -837,15 +837,8 @@ bool metric_map_t::load_from_file(
 
 metric_map_t::Ptr metric_map_t::get_shared_from_this()
 {
-    try
-    {
-        return shared_from_this();
-    }
-    catch (const std::bad_weak_ptr&)
-    {
-        // Not created as a shared_ptr.
-        return {};
-    }
+    // Empty if not created as a shared_ptr.
+    return weak_from_this().lock();
 }
 
 metric_map_t::Ptr metric_map_t::get_shared_from_this_or_clone()
@@ -860,15 +853,8 @@ metric_map_t::Ptr metric_map_t::get_shared_from_this_or_clone()
 
 metric_map_t::ConstPtr metric_map_t::get_shared_from_this() const
 {
-    try
-    {
-        return shared_from_this();
-    }
-    catch (const std::bad_weak_ptr&)
-    {
-        // Not created as a shared_ptr.
-        return {};
-    }
+    // Empty if not created as a shared_ptr.
+    return weak_from_this().lock();
 }
 
 metric_map_t::ConstPtr metric_map_t::get_shared_from_this_or_clone() const

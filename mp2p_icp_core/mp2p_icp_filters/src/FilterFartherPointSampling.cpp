@@ -25,8 +25,6 @@
 #include <mrpt/version.h>
 
 #include <cmath>
-#include <cstdlib>
-#include <ctime>
 #include <limits>
 #include <queue>
 #include <vector>
@@ -118,9 +116,9 @@ void FilterFartherPointSampling::filter(mp2p_icp::metric_map_t& inOut) const
     std::vector<double>           minDist(input_size, std::numeric_limits<double>::max());
     std::priority_queue<HeapItem> heap;
 
-    // Pick random start
-    srand((unsigned)time(NULL));
-    std::size_t idx = rand() % input_size;
+    // Fixed start point: the output is reproducible, and the library does not
+    // touch the process-wide rand() state.
+    std::size_t idx = 0;
 
     outPc->insertPointFrom(idx, ctx);
 
