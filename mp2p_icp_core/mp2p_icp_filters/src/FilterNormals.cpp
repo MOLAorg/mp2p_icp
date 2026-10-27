@@ -122,7 +122,7 @@ void FilterNormals::filter(mp2p_icp::metric_map_t& inOut) const
 
         // Coincident or collinear neighbors do not define a plane:
         const auto& ev = es.eigenvalues();  // ascending order
-        if (!(ev[1] > 1e-6f * ev[2]))
+        if (!(ev[1] > 1e-3f * ev[2]))
         {
             return;
         }
