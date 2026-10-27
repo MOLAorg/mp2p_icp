@@ -536,6 +536,14 @@ void metric_map_t::clear() { *this = metric_map_t(); }
 void metric_map_t::merge_with(
     const metric_map_t& otherPc, const std::optional<mrpt::math::TPose3D>& otherRelativePose)
 {
+    // Merging a map into itself would append to the containers being read:
+    if (&otherPc == this)
+    {
+        const metric_map_t copy = otherPc;
+        merge_with(copy, otherRelativePose);
+        return;
+    }
+
     auto pose = mrpt::poses::CPose3D::Identity();
 
     if (otherRelativePose.has_value())

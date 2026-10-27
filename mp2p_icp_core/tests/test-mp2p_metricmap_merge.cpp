@@ -58,6 +58,33 @@ void test_merge_planes_with_pose()
     std::cout << "[test_merge_planes_with_pose] PASSED\n";
 }
 
+void test_self_merge_with_pose()
+{
+    mp2p_icp::metric_map_t m;
+    for (int i = 0; i < 50; i++)  // enough to force a reallocation when appending
+    {
+        m.planes.emplace_back(
+            mrpt::math::TPlane(0, 0, 1, -i), mrpt::math::TPoint3D(0, 0, i), 1.0, 10U);
+        m.lines.emplace_back(mrpt::math::TLine3D::FromPointAndDirector({0, 0, 1.0 * i}, {1, 0, 0}));
+    }
+    auto pts = mrpt::maps::CSimplePointsMap::Create();
+    pts->insertPoint(1, 2, 3);
+    m.layers["p"] = pts;
+
+    const auto pose = mrpt::poses::CPose3D::FromXYZYawPitchRoll(0, 0, 10.0, 0, 0, 0);
+    m.merge_with(m, pose.asTPose());
+
+    ASSERT_EQUAL_(m.planes.size(), 100U);
+    ASSERT_EQUAL_(m.lines.size(), 100U);
+    ASSERT_EQUAL_(m.layer<mrpt::maps::CPointsMap>("p")->size(), 2U);
+    for (int i = 0; i < 50; i++)
+    {
+        ASSERT_LT_(std::abs(m.planes.at(50 + i).centroid.z - (i + 10.0)), 1e-9);
+    }
+
+    std::cout << "[test_self_merge_with_pose] PASSED\n";
+}
+
 void test_merge_mismatched_layer_types()
 {
     mp2p_icp::metric_map_t m;
@@ -86,6 +113,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     try
     {
         test_merge_planes_with_pose();
+        test_self_merge_with_pose();
         test_merge_mismatched_layer_types();
         return 0;
     }
