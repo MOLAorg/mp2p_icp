@@ -61,10 +61,29 @@ struct Generator::ImuState
 #endif
 };
 
-Generator::Generator()
-    : mrpt::system::COutputLogger("Generator"), imu_state_(std::make_shared<ImuState>())
+Generator::ImuStateHolder::ImuStateHolder() : p_(std::make_unique<ImuState>()) {}
+Generator::ImuStateHolder::~ImuStateHolder() = default;
+
+Generator::ImuStateHolder::ImuStateHolder(const ImuStateHolder& o)
+    : p_(std::make_unique<ImuState>())
 {
+    *this = o;
 }
+
+Generator::ImuStateHolder& Generator::ImuStateHolder::operator=(
+    [[maybe_unused]] const ImuStateHolder& o)
+{
+#if defined(MP2P_ICP_HAS_MOLA_IMU_PREINTEGRATION)
+    if (this != &o)
+    {
+        std::scoped_lock lck(p_->mtx, o.p_->mtx);
+        p_->transformers = o.p_->transformers;
+    }
+#endif
+    return *this;
+}
+
+Generator::Generator() : mrpt::system::COutputLogger("Generator") {}
 
 void Generator::Parameters::load_from_yaml(const mrpt::containers::yaml& c, Generator& parent)
 {

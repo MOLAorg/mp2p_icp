@@ -250,9 +250,23 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
         const mrpt::math::TPoint3D& sensorOrigin) const;
 
     /** State of the IMU readings conversion, one per instance, so generators in
-     *  different pipelines do not share it. */
+     *  different pipelines do not share it. A copy (or clone) gets its own
+     *  deep copy of it. */
     struct ImuState;
-    std::shared_ptr<ImuState> imu_state_;
+    class ImuStateHolder
+    {
+       public:
+        ImuStateHolder();
+        ~ImuStateHolder();
+        ImuStateHolder(const ImuStateHolder& o);
+        ImuStateHolder& operator=(const ImuStateHolder& o);
+
+        ImuState* operator->() const { return p_.get(); }
+
+       private:
+        std::unique_ptr<ImuState> p_;
+    };
+    ImuStateHolder imu_state_;
 };
 
 /** A set of generators  */
