@@ -185,7 +185,8 @@ void test_cov2cov_nonfinite_pairing()
     {
         ASSERT_(std::isfinite(v));
     }
-    ASSERT_LT_((result.optimalPose - initPose).translation().norm(), 1e-9);
+    // The whole pose, rotation included, must be the linearization point:
+    ASSERT_LT_(mrpt::poses::Lie::SE<3>::log(result.optimalPose - initPose).norm(), 1e-9);
 
     std::cout << "[test_cov2cov_nonfinite_pairing] PASSED\n";
 }
