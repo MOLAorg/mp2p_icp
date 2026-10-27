@@ -942,6 +942,47 @@ The data is updated **in-place** in the input/output layer.
 
 ---
 
+Filter: `FilterNormals`
+-----------------------
+
+**Description**: Estimates per-point surface normals, in place, as the eigenvector of the smallest
+eigenvalue of the covariance of the k nearest neighbors of each point.
+It adds the ``normal_x``, ``normal_y``, ``normal_z`` fields to the input layer, which must support
+extra per-point fields (e.g. ``mrpt::maps::CGenericPointsMap``).
+If the layer has the ``view_x/y/z`` fields (see the ``Generator``), normals are flipped to point
+towards the sensor, i.e. outside of solid bodies. Points with fewer than 3 neighbors get a zero normal.
+Unlike ``FilterMLS``, points are not moved nor resampled, so this is much cheaper.
+
+**Parameters**:
+
+* **pointcloud_layer** (:cpp:type:`std::string`): The layer to which normals are added.
+
+* **knn** (``unsigned int``, default: `10`): Number of nearest neighbors (including the point itself) used in the fit. Must be at least 3.
+
+* **max_search_distance** (``float``, default: `1.0`): Neighbors farther than this distance [m] are ignored.
+
+* **parallelization_grain_size** (:cpp:type:`size_t`, default: `1024`): When TBB is enabled, the minimum number of points processed per parallel task.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterNormals
+        params:
+          pointcloud_layer: 'raw'
+          knn: 10
+          max_search_distance: 1.0
+
+**Usage tips**:
+
+* The cost is dominated by building the KD-tree and the neighbor searches: on a dense 3D LiDAR scan
+  it can take tens of milliseconds, so prefer running it on a decimated cloud when possible.
+* For sparse (decimated) clouds, increase ``max_search_distance`` so that enough neighbors are found.
+
+|
+
+---
+
 Filter: `FilterPlanePatches`
 ----------------------------
 
