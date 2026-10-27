@@ -188,6 +188,9 @@ struct AppState
     bool  view2D                     = false;
     bool  viewVoxelsAsPoints         = false;
     bool  viewVoxelsFreeSpace        = false;
+    bool  hideBackFacing             = false;
+    float backFacingMaxAngleNormals  = 90.0f;
+    float backFacingMaxAngleView     = 120.0f;
     bool  colorizeMap                = true;
     bool  keepNativeCloudColors      = false;
     bool  autoBBoxOutliers           = true;
@@ -1349,10 +1352,13 @@ void rebuild_3d_view()
 
     // Rendering style, common to all point layers:
     mp2p_icp::render_params_point_layer_t rpL;
-    rpL.pointSize                   = app.pointSize;
-    rpL.color                       = mrpt::img::TColor(0xff, 0x00, 0x00, 0x80);
-    rpL.render_voxelmaps_as_points  = app.viewVoxelsAsPoints;
-    rpL.render_voxelmaps_free_space = app.viewVoxelsFreeSpace;
+    rpL.pointSize                     = app.pointSize;
+    rpL.color                         = mrpt::img::TColor(0xff, 0x00, 0x00, 0x80);
+    rpL.render_voxelmaps_as_points    = app.viewVoxelsAsPoints;
+    rpL.render_voxelmaps_free_space   = app.viewVoxelsFreeSpace;
+    rpL.hideBackFacing                = app.hideBackFacing;
+    rpL.backFacingMaxAngleNormals_deg = app.backFacingMaxAngleNormals;
+    rpL.backFacingMaxAngleView_deg    = app.backFacingMaxAngleView;
 
     if (app.colorizeMap)
     {
@@ -1780,6 +1786,24 @@ void renderMapsPanel()
     ImGui::SliderFloat("Point size", &app.pointSize, 1.0f, 10.0f);
     ImGui::Checkbox("Render voxel maps as point clouds", &app.viewVoxelsAsPoints);
     ImGui::Checkbox("Render free space of voxel maps", &app.viewVoxelsFreeSpace);
+
+    ImGui::Checkbox("Hide back-facing points", &app.hideBackFacing);
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip(
+            "Hide points seen from behind, using their normal_{x,y,z} fields or,\n"
+            "otherwise, view_{x,y,z} (direction towards the sensor).\n"
+            "No effect on point clouds without those fields.");
+    }
+    if (app.hideBackFacing)
+    {
+        ImGui::Indent();
+        ImGui::SliderFloat(
+            "Max angle, normals [deg]", &app.backFacingMaxAngleNormals, 45.0f, 180.0f, "%.0f");
+        ImGui::SliderFloat(
+            "Max angle, view vectors [deg]", &app.backFacingMaxAngleView, 45.0f, 180.0f, "%.0f");
+        ImGui::Unindent();
+    }
 
     ImGui::Checkbox("Recolorize points", &app.colorizeMap);
     ImGui::SameLine();
@@ -2295,7 +2319,12 @@ int mainShowGui()
     app.view2D              = appCfg.read_bool("", "view2D", app.view2D);
     app.viewVoxelsAsPoints  = appCfg.read_bool("", "viewVoxelsAsPoints", app.viewVoxelsAsPoints);
     app.viewVoxelsFreeSpace = appCfg.read_bool("", "viewVoxelsFreeSpace", app.viewVoxelsFreeSpace);
-    app.colorizeMap         = appCfg.read_bool("", "colorizeMap", app.colorizeMap);
+    app.hideBackFacing      = appCfg.read_bool("", "hideBackFacing", app.hideBackFacing);
+    app.backFacingMaxAngleNormals =
+        appCfg.read_float("", "backFacingMaxAngleNormals", app.backFacingMaxAngleNormals);
+    app.backFacingMaxAngleView =
+        appCfg.read_float("", "backFacingMaxAngleView", app.backFacingMaxAngleView);
+    app.colorizeMap = appCfg.read_bool("", "colorizeMap", app.colorizeMap);
     app.keepNativeCloudColors =
         appCfg.read_bool("", "keepNativeCloudColors", app.keepNativeCloudColors);
     app.autoBBoxOutliers = appCfg.read_bool("", "autoBBoxOutliers", app.autoBBoxOutliers);
@@ -2328,6 +2357,9 @@ int mainShowGui()
     appCfg.write("", "view2D", app.view2D);
     appCfg.write("", "viewVoxelsAsPoints", app.viewVoxelsAsPoints);
     appCfg.write("", "viewVoxelsFreeSpace", app.viewVoxelsFreeSpace);
+    appCfg.write("", "hideBackFacing", app.hideBackFacing);
+    appCfg.write("", "backFacingMaxAngleNormals", app.backFacingMaxAngleNormals);
+    appCfg.write("", "backFacingMaxAngleView", app.backFacingMaxAngleView);
     appCfg.write("", "colorizeMap", app.colorizeMap);
     appCfg.write("", "keepNativeCloudColors", app.keepNativeCloudColors);
     appCfg.write("", "autoBBoxOutliers", app.autoBBoxOutliers);
