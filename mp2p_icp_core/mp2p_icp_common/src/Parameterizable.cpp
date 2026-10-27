@@ -15,6 +15,7 @@
 #include <mp2p_icp/Parameterizable.h>
 #include <mrpt/core/exceptions.h>
 
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 
@@ -80,7 +81,7 @@ void ParameterSource::realize()
         const double val = p->compiled->eval();
 
         std::visit(
-            [val](auto&& arg)
+            [val, &p](auto&& arg)
             {
                 using T = std::decay_t<decltype(arg)>;
 
@@ -99,6 +100,14 @@ void ParameterSource::realize()
                 }
                 else if constexpr (std::is_same_v<T, uint32_t*>)
                 {
+                    // Out-of-range conversions to an unsigned type are UB:
+                    if (!(val >= 0 && val <= std::numeric_limits<uint32_t>::max()))
+                    {
+                        std::stringstream ss;
+                        ss << "[ParameterSource] Expression '" << p->expression << "' evaluates to "
+                           << val << ", out of range for an unsigned integer parameter.";
+                        throw std::runtime_error(ss.str());
+                    }
                     *arg = static_cast<uint32_t>(val);
                 }
             },
