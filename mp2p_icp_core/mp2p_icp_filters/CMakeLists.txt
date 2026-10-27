@@ -45,6 +45,7 @@ set(LIB_SRCS
   src/FilterRemoveByVoxelOccupancy.cpp
   src/FilterRemovePointCloudField.cpp
   src/FilterRenameLayer.cpp
+  src/FilterNormals.cpp
   src/FilterSOR.cpp
   src/FilterTransformPointCloud.cpp
   src/FilterTraversability.cpp
@@ -97,6 +98,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterRemoveByVoxelOccupancy.h
   include/mp2p_icp_filters/FilterRenameLayer.h
   include/mp2p_icp_filters/FilterRemovePointCloudField.h
+  include/mp2p_icp_filters/FilterNormals.h
   include/mp2p_icp_filters/FilterSOR.h
   include/mp2p_icp_filters/FilterTransformPointCloud.h
   include/mp2p_icp_filters/FilterTraversability.h

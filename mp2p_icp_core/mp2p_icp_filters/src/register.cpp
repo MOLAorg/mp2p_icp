@@ -44,6 +44,7 @@
 #include <mp2p_icp_filters/FilterMLS.h>
 #include <mp2p_icp_filters/FilterMerge.h>
 #include <mp2p_icp_filters/FilterNormalizeIntensity.h>
+#include <mp2p_icp_filters/FilterNormals.h>
 #include <mp2p_icp_filters/FilterPlanePatches.h>
 #include <mp2p_icp_filters/FilterPoleDetector.h>
 #include <mp2p_icp_filters/FilterPolygon2D.h>
@@ -100,6 +101,7 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRemoveByVoxelOccupancy));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRemovePointCloudField));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRenameLayer));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterNormals));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterSOR));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterTransformPointCloud));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterTraversability));
