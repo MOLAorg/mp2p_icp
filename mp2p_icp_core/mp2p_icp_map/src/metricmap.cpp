@@ -21,6 +21,7 @@
 #include <mp2p_icp/MetricMapMergeCapable.h>
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/format.h>
 #include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/maps/CVoxelMapRGB.h>
@@ -535,6 +536,14 @@ void metric_map_t::clear() { *this = metric_map_t(); }
 void metric_map_t::merge_with(
     const metric_map_t& otherPc, const std::optional<mrpt::math::TPose3D>& otherRelativePose)
 {
+    // Merging a map into itself would append to the containers being read:
+    if (&otherPc == this)
+    {
+        const metric_map_t copy = otherPc;
+        merge_with(copy, otherRelativePose);
+        return;
+    }
+
     auto pose = mrpt::poses::CPose3D::Identity();
 
     if (otherRelativePose.has_value())
@@ -565,12 +574,16 @@ void metric_map_t::merge_with(
             otherPc.planes.begin(), otherPc.planes.end(), std::back_inserter(planes),
             [&](const plane_patch_t& l)
             {
-                plane_patch_t g;
-                g.centroid = pose.composePoint(l.centroid);
+                plane_patch_t g = l;  // keeps area and point count
+                g.centroid      = pose.composePoint(l.centroid);
 
-                // TODO(JLBC): Finish rotating planes
-                // ...
-                THROW_EXCEPTION("To-do");
+                // Transform one point of the plane and its normal:
+                const mrpt::math::TVector3D n  = l.plane.getNormalVector();
+                const double                n2 = n.sqrNorm();
+                ASSERTMSG_(n2 > 0, "Cannot transform a plane with a null normal vector");
+                const mrpt::math::TPoint3D p0 = n * (-l.plane.coefs[3] / n2);
+                g.plane                       = mrpt::math::TPlane::FromPointAndNormal(
+                                          pose.composePoint(p0), pose.rotateVector(n));
                 return g;
             });
     }
@@ -616,8 +629,13 @@ void metric_map_t::merge_with(
         {  // merge with existing layer:
             if (auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(layers[name]); pts)
             {
-                pts->insertAnotherMap(
-                    std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(otherMap).get(), pose);
+                const auto otherPts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(otherMap);
+                ASSERTMSG_(
+                    otherPts, mrpt::format(
+                                  "Cannot merge layer '%s': the target is a point cloud but the "
+                                  "source is a '%s'",
+                                  name.c_str(), otherMap->GetRuntimeClass()->className));
+                pts->insertAnotherMap(otherPts.get(), pose);
                 continue;
             }
             auto mrg_trg = std::dynamic_pointer_cast<MetricMapMergeCapable>(layers[name]);

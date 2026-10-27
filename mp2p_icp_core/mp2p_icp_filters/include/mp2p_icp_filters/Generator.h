@@ -30,6 +30,7 @@
 #include <mrpt/system/COutputLogger.h>
 #include <mrpt/system/CTimeLogger.h>
 
+#include <memory>
 #include <regex>
 #include <stdexcept>
 
@@ -247,6 +248,25 @@ class Generator : public mrpt::rtti::CObject,  // RTTI support
     void addViewVectorField(
         mrpt::maps::CPointsMap& pc, size_t firstNewPtIdx,
         const mrpt::math::TPoint3D& sensorOrigin) const;
+
+    /** State of the IMU readings conversion, one per instance, so generators in
+     *  different pipelines do not share it. A copy (or clone) gets its own
+     *  deep copy of it. */
+    struct ImuState;
+    class ImuStateHolder
+    {
+       public:
+        ImuStateHolder();
+        ~ImuStateHolder();
+        ImuStateHolder(const ImuStateHolder& o);
+        ImuStateHolder& operator=(const ImuStateHolder& o);
+
+        ImuState* operator->() const { return p_.get(); }
+
+       private:
+        std::unique_ptr<ImuState> p_;
+    };
+    ImuStateHolder imu_state_;
 };
 
 /** A set of generators  */
