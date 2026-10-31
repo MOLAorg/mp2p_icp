@@ -25,6 +25,7 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/TPose3D.h>
 #include <mrpt/obs/CObservationPointCloud.h>
+#include <mrpt/version.h>
 
 IMPLEMENTS_MRPT_OBJECT(FilterMerge, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
@@ -114,11 +115,14 @@ void FilterMerge::filter(mp2p_icp::metric_map_t& inOut) const
         ASSERTMSG_(pts, "Not a pointcloud class as input?");
 
         // insertAnotherMap() transforms the point XYZ coordinates by the given
-        // pose, but copies all other registered fields verbatim. If the cloud
-        // carries view-direction unit vectors (view_x/y/z), those must be
-        // rotated too, or they will end up expressed in the wrong frame.
+        // pose. Since MRPT 3.6.0 it also rotates the direction fields; older
+        // versions copy them verbatim, so view-direction unit vectors
+        // (view_x/y/z) must be rotated here, or they would end up expressed in
+        // the wrong frame.
         pts->insertAnotherMap(pcPtr, appliedTf);
+#if MRPT_VERSION < 0x030600
         mp2p_icp::rotateViewDirectionFields(*pts, appliedTf);
+#endif
 
         obs.pointcloud = pts;
     }

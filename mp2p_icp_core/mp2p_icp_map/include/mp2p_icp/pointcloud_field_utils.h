@@ -57,10 +57,10 @@ bool warn_on_field_padding_mismatch(
  *  \a tf, leaving the point coordinates untouched.
  *
  *  This must be called whenever a point cloud carrying these fields is
- *  re-expressed in a different frame of reference (e.g. via
- *  `CPointsMap::insertAnotherMap()`), since that operation transforms the XYZ
- *  coordinates but copies all other registered fields verbatim, which would
- *  otherwise leave the view vectors expressed in the wrong frame.
+ *  re-expressed in a different frame of reference by an operation that only
+ *  transforms the XYZ coordinates, e.g. `CPointsMap::changeCoordinatesReference()`,
+ *  or `CPointsMap::insertAnotherMap()` before MRPT 3.6.0 (since that version,
+ *  it rotates the direction fields itself: do not call this after it).
  *
  *  If \a pts does not have all three fields, or \a tf is the identity
  *  transformation, this is a no-op.
