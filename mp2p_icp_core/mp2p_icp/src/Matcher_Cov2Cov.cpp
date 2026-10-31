@@ -117,6 +117,21 @@ bool Matcher_Cov2Cov::impl_match(
                 lcLayerMap->GetRuntimeClass()->className);
         }
 
+        // Each map class only pairs against itself (it recomputes the local
+        // covariances with its own internal structures): report a mismatch
+        // with both names, e.g. a map loaded from a file built with another
+        // local map class than the one the pipeline uses for scans.
+        const auto* glClass = glLayerMap->GetRuntimeClass();
+        const auto* lcClass = lcLayerMap->GetRuntimeClass();
+        if (!glClass->derivedFrom(lcClass) && !lcClass->derivedFrom(glClass))
+        {
+            THROW_EXCEPTION_FMT(
+                "Global layer '%s' (class '%s') and local layer '%s' (class '%s') must be of "
+                "the same map class to be matched by Matcher_Cov2Cov",
+                globalLayerName.c_str(), glClass->className, localLayerName.c_str(),
+                lcClass->className);
+        }
+
         out.potential_pairings += lcLayer->point_count();
 
         // matcher implementation:
