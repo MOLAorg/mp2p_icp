@@ -2,6 +2,30 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* New filters: FilterTraversability (obstacles over a 2.5D ground model, canopy aware) and FilterInsertPoint (`#135 <https://github.com/MOLAorg/mp2p_icp/issues/135>`_)
+* New filter: FilterNormals (`#147 <https://github.com/MOLAorg/mp2p_icp/issues/147>`_)
+* New cli tool mm-merge, to merge the layers of several metric map files (`#137 <https://github.com/MOLAorg/mp2p_icp/issues/137>`_)
+* sm-cli: new 'level-walls' to correct global pitch/roll from wall and floor normals (`#128 <https://github.com/MOLAorg/mp2p_icp/issues/128>`_)
+* mm2txt: new --no-header flag; txt2mm: honor --layer
+* YAML: expand ${VAR|default} variables, quote-aware comments (`#142 <https://github.com/MOLAorg/mp2p_icp/issues/142>`_)
+* ParameterSource: new hasVariable() and getVariableValue(); getVariableValues() returns a const reference
+* Censi3D covariance returned in the [x y z yaw pitch roll] layout (`#141 <https://github.com/MOLAorg/mp2p_icp/issues/141>`_)
+* Do not rotate view directions twice with MRPT >= 3.6.0 (`#148 <https://github.com/MOLAorg/mp2p_icp/issues/148>`_)
+* Voxel grids: round voxel indices down, not toward zero (`#139 <https://github.com/MOLAorg/mp2p_icp/issues/139>`_)
+* metric_map_t::merge_with(): transform planes, handle self-merge, reject non-point into point layers (`#144 <https://github.com/MOLAorg/mp2p_icp/issues/144>`_)
+* Generator: per-instance IMU transformers and deep-copied IMU state
+* Parameterizable: reject out-of-range unsigned parameters
+* Gauss-Newton: fail on a non-finite step instead of returning a NaN pose
+* FilterDeskew, FilterMerge, FilterByRange: fewer copies and allocations
+* FilterFartherPointSampling: deterministic start point; FilterDecimateAdaptive: correct budget count
+* Matcher_Cov2Cov: clear error for layers of different map classes (`#149 <https://github.com/MOLAorg/mp2p_icp/issues/149>`_)
+* sm2mm: never add keyframe IMU readings to a restored velocity buffer
+* demos: sm2mm traversability 2D obstacles pipeline; voxel map demos pin prob_miss (`#143 <https://github.com/MOLAorg/mp2p_icp/issues/143>`_)
+* Fix compiler warnings
+* Contributors: Jose Luis Blanco-Claraco
+
 3.0.2 (2026-10-06)
 ------------------
 * Fix voxel grid hash masked to 20 bits, which blew up tsl::robin_map memory (`#127 <https://github.com/MOLAorg/mp2p_icp/issues/127>`_)
