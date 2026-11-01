@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.1.0 (2026-11-01)
+------------------
 * New filters: FilterTraversability (obstacles over a 2.5D ground model, canopy aware) and FilterInsertPoint (`#135 <https://github.com/MOLAorg/mp2p_icp/issues/135>`_)
 * New filter: FilterNormals (`#147 <https://github.com/MOLAorg/mp2p_icp/issues/147>`_)
 * New cli tool mm-merge, to merge the layers of several metric map files (`#137 <https://github.com/MOLAorg/mp2p_icp/issues/137>`_)

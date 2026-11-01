@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_viz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.1.0 (2026-11-01)
+------------------
 * Render params: option to hide back-facing points (`#146 <https://github.com/MOLAorg/mp2p_icp/issues/146>`_)
 * mm-viewer: distance measuring tool and Material Symbols icons (`#130 <https://github.com/MOLAorg/mp2p_icp/issues/130>`_)
 * Contributors: Jose Luis Blanco-Claraco
