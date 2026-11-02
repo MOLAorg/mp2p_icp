@@ -164,9 +164,9 @@ std::string mp2p_icp::expand_yaml_variables(
         {
             result += env;
         }
-        else if (const auto it = variables.find(varname); it != variables.end())
+        else if (const auto itVar = variables.find(varname); itVar != variables.end())
         {
-            result += it->second;
+            result += itVar->second;
         }
         else if (defaultValue.has_value())
         {
