@@ -105,8 +105,12 @@ LTO is disabled for GCC < 12 (it miscompiles devirtualized calls into MRPT class
 
 ## Dependencies
 
-MRPT (≥ 2.15.4 core, ≥ 2.15.11 viz), CLI11, TBB (optional), `mola_common` (colcon
+MRPT 3.x, CLI11, TBB (optional), `mola_common` (colcon
 workspace), `mola_imu_preintegration` (optional, for `FilterDeskew`).
+
+MRPT 2.x is obsolete: do not add code paths, workarounds or features for it. The "stable"
+CI jobs use the older MRPT 3.x of the ROS main repos, so APIs from newer releases must be
+guarded (feature macros such as `MRPT_HAS_METRIC_MAP_POINTS_VIEW`, or `MRPT_VERSION`).
 
 ## Coding conventions
 

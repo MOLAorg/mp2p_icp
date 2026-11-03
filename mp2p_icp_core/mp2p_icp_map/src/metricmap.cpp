@@ -998,7 +998,7 @@ const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMapView(const mrpt::maps::CMe
 #if defined(MRPT_HAS_METRIC_MAP_POINTS_VIEW)
     return mrpt::maps::asPointsMap(map);
 #else
-    // No generic point cloud view in MRPT < 3.
+    // No generic point cloud view in MRPT < 3.5.3.
     return nullptr;
 #endif
 }
