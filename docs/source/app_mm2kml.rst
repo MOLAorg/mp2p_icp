@@ -53,7 +53,7 @@ Point colors (``--color-by``) represent:
 The color scale spans the 2% to 98% percentiles of these values, or ``--color-range``.
 
 Map layers whose classes are not point clouds but can provide one (e.g. keyframe-based maps
-from ``mola_metric_maps``, with ``--load-plugins``) are also supported.
+from ``mola_metric_maps``, with ``--load-plugins``) are also supported with MRPT >=3.
 
 Usage
 -----

@@ -326,7 +326,8 @@ const mrpt::maps::CPointsMap* layer_as_points(const mrpt::maps::CMetricMap& m)
 #if defined(MRPT_HAS_METRIC_MAP_POINTS_VIEW)
     return mrpt::maps::asPointsMap(m);
 #else
-    return m.getAsSimplePointsMap();
+    // No generic point cloud view in MRPT < 3.
+    return nullptr;
 #endif
 }
 
