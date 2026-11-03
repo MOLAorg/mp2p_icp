@@ -146,6 +146,17 @@ void ZipWriter::add_file(const std::string& name, const std::string& data)
 
 bool ZipWriter::save(const std::string& fileName) const
 {
+    // Classic ZIP stores offsets as 32-bit values (no ZIP64 here):
+    uint64_t archiveSize = 22;  // end of central directory record
+    for (const auto& e : entries_)
+    {
+        archiveSize += 30 + 46 + 2 * e.name.size() + e.deflated.size();
+    }
+    if (archiveSize > std::numeric_limits<uint32_t>::max())
+    {
+        throw std::runtime_error("ZipWriter: archives larger than 4 GiB are not supported");
+    }
+
     std::vector<uint8_t> out;
     std::vector<uint8_t> centralDir;
 
@@ -210,7 +221,8 @@ bool ZipWriter::save(const std::string& fileName) const
         return false;
     }
     f.write(reinterpret_cast<const char*>(out.data()), static_cast<std::streamsize>(out.size()));
-    return f.good();
+    f.close();
+    return !f.fail();
 }
 
 }  // namespace mm2kml

@@ -118,13 +118,16 @@ uint64_t cell_key(int64_t ix, int64_t iy)
            static_cast<uint64_t>(static_cast<uint32_t>(iy));
 }
 
-// 21 bits per axis: unique within +-1e6 voxels, wraps around beyond that.
-uint64_t voxel_key(int64_t ix, int64_t iy, int64_t iz)
+using VoxelIdx = std::array<int64_t, 3>;
+
+struct VoxelIdxHash
 {
-    constexpr uint64_t mask = (1ULL << 21) - 1;
-    return ((static_cast<uint64_t>(ix) & mask) << 42) | ((static_cast<uint64_t>(iy) & mask) << 21) |
-           (static_cast<uint64_t>(iz) & mask);
-}
+    size_t operator()(const VoxelIdx& v) const
+    {
+        return std::hash<int64_t>()(v[0]) ^ (std::hash<int64_t>()(v[1]) * 73856093) ^
+               (std::hash<int64_t>()(v[2]) * 19349663);
+    }
+};
 
 int64_t cell_idx(double coord, double cellSize)
 {
@@ -379,19 +382,28 @@ std::string make_model_dae(
     const EnuCloud& cloud, const std::vector<size_t>& idxs, size_t& numPoints, double& voxelSize)
 {
     // Voxel decimation, growing the voxel size until under the points budget.
-    std::vector<size_t> kept;
+    // The grid is anchored at the minimum corner, so all points end up in one
+    // voxel once it is larger than the cloud.
+    std::vector<size_t>   kept;
+    mrpt::math::TPoint3Df minPt = cloud.pts[idxs.front()];
+    for (const size_t i : idxs)
+    {
+        minPt.x = std::min(minPt.x, cloud.pts[i].x);
+        minPt.y = std::min(minPt.y, cloud.pts[i].y);
+        minPt.z = std::min(minPt.z, cloud.pts[i].z);
+    }
     voxelSize = 0.05;
     for (;;)
     {
         kept.clear();
-        std::unordered_set<uint64_t> occupied;
+        std::unordered_set<VoxelIdx, VoxelIdxHash> occupied;
         for (const size_t i : idxs)
         {
             const auto& p = cloud.pts[i];
             if (!occupied
-                     .insert(voxel_key(
-                         cell_idx(p.x, voxelSize), cell_idx(p.y, voxelSize),
-                         cell_idx(p.z, voxelSize)))
+                     .insert(
+                         {cell_idx(p.x - minPt.x, voxelSize), cell_idx(p.y - minPt.y, voxelSize),
+                          cell_idx(p.z - minPt.z, voxelSize)})
                      .second)
             {
                 continue;
@@ -456,8 +468,8 @@ std::string make_model_dae(
     {
         const auto& p = cloud.pts[i];
         ss << mrpt::format(
-            "%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f "
-            "%.2f ",
+            "%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f "
+            "%.3f ",
             p.x + r, p.y, p.z, p.x - r, p.y, p.z, p.x, p.y + r, p.z, p.x, p.y - r, p.z, p.x, p.y,
             p.z + r, p.x, p.y, p.z - r);
     }
@@ -532,7 +544,11 @@ void run_mm2kml()
 
     std::cout << "[mm2kml] Reading input map from: '" << argMapFile << "'..." << std::endl;
     mp2p_icp::metric_map_t mm;
-    mm.load_from_file(argMapFile);
+    std::string            loadErr;
+    if (!mm.load_from_file(argMapFile, loadErr))
+    {
+        THROW_EXCEPTION("Error loading input map: " + loadErr);
+    }
     std::cout << "[mm2kml] Map contents: " << mm.contents_summary() << "\n";
 
     ASSERTMSG_(
@@ -896,6 +912,7 @@ int main(int argc, char** argv)
     cmd.add_option(
            "--model-max-points", argModelMaxPoints,
            "Maximum number of points in the 3D model. The cloud is voxel-decimated to fit.")
+        ->check(CLI::PositiveNumber)
         ->capture_default_str();
     cmd.add_option(
         "--model-point-size", argModelPointSize,

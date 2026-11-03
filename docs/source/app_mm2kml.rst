@@ -45,7 +45,9 @@ Point colors (``--color-by``) represent:
   large areas with changing elevation (e.g. objects at the height of the road are always
   blue), and it does not depend on observing the ground.
 - ``ground`` (default without a trajectory): the height above the local ground, estimated as
-  the lowest point in each cell of a ``--ground-cell`` grid.
+  the lowest point in each cell of a ``--ground-cell`` grid (and its 8 neighbors, to handle
+  cells without ground returns). On steep slopes this underestimates the ground of the
+  higher cells, so some ground points may remain (increase ``--min-height-above-ground``).
 - ``z``: the ENU z coordinate, only useful for small, flat areas.
 
 The color scale spans the 2% to 98% percentiles of these values, or ``--color-range``.
