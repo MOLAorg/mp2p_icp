@@ -585,6 +585,10 @@ void run_mm2kml()
             const auto& zs = pts->getPointsBufferRef_z();
             for (size_t i = 0; i < xs.size(); i++)
             {
+                if (!std::isfinite(xs[i]) || !std::isfinite(ys[i]) || !std::isfinite(zs[i]))
+                {
+                    continue;
+                }
                 double ex = 0;
                 double ey = 0;
                 double ez = 0;

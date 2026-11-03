@@ -332,7 +332,16 @@ void run_mm2txt()
                          "which the map class may have subsampled.\n";
         }
 
-        if (auto* genxyz = dynamic_cast<const mrpt::maps::CGenericPointsMap*>(pts); genxyz)
+        const auto* genxyz = dynamic_cast<const mrpt::maps::CGenericPointsMap*>(pts);
+        if (T_enu_to_map.has_value() && !genxyz)
+        {
+            THROW_EXCEPTION_FMT(
+                "--frame enu is only supported for layers of type CGenericPointsMap, but layer "
+                "'%s' is of type '%s'.",
+                name.c_str(), mm.layers.at(name)->GetRuntimeClass()->className);
+        }
+
+        if (genxyz)
         {
             // Validate selected fields exist in this point cloud
             std::vector<std::string> validFields;
