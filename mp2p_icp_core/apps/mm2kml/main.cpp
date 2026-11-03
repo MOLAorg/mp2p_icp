@@ -224,11 +224,12 @@ class GroundGrid
     std::unordered_map<uint64_t, float> ground_;
 };
 
-// Height of the nearest trajectory point for each cell of a dense 2D grid, so
-// points can be colored by their height relative to the vehicle path, which
-// keeps colors meaningful over large areas with changing terrain elevation.
-// Cells are filled with a multi-source BFS from the cells with trajectory
-// points (similar to the ground fill in FilterTraversability).
+// Trajectory height for each cell of a dense 2D grid, so points can be colored
+// by their height relative to the vehicle path, which keeps colors meaningful
+// over large areas with changing terrain elevation. Cells with trajectory
+// samples hold their mean height; the rest take the value of the closest such
+// cell in 8-neighbor grid steps (multi-source BFS, similar to the ground fill
+// in FilterTraversability), a good enough approximation of the nearest one.
 class TrajectoryHeightGrid
 {
    public:
@@ -540,6 +541,9 @@ void run_mm2kml()
 
     ASSERT_FILE_EXISTS_(argMapFile);
     ASSERTMSG_(
+        argModelPointSize == 0 || argModelPointSize >= 0.001,
+        "--model-point-size must be 0 (automatic) or at least 0.001 m.");
+    ASSERTMSG_(
         argCloud == "both" || argCloud == "overlay" || argCloud == "model" || argCloud == "none",
         "--cloud must be one of: both, overlay, model, none");
 
@@ -740,6 +744,9 @@ void run_mm2kml()
         {
             colorMin = argColorRange[0];
             colorMax = argColorRange[1];
+            ASSERTMSG_(
+                std::isfinite(colorMin) && std::isfinite(colorMax) && colorMax > colorMin,
+                "--color-range: values must be finite, with MAX greater than MIN.");
         }
         else
         {
@@ -757,9 +764,8 @@ void run_mm2kml()
                 return static_cast<double>(*it);
             };
             colorMin = pct(2);
-            colorMax = pct(98);
+            colorMax = std::max(pct(98), colorMin + 1.0);
         }
-        colorMax = std::max(colorMax, colorMin + 1.0);
 
         cloud.color.assign(cloud.pts.size(), 0.0f);
         for (const size_t i : idxs)
