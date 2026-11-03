@@ -104,7 +104,11 @@ Notes
 
 - The input map must contain georeferencing information (see :ref:`mm-georef <app_mm-georef>`).
 - Open the KMZ in Google Earth Pro (desktop) or Google Earth Web. Google Earth's own
-  "3D Buildings" layer may hide the exported point cloud; disable it if needed.
+  "3D Buildings" layer (which also includes 3D trees) may hide the 2D overlay and parts of
+  the 3D model. If it is disabled, keep in mind that the satellite imagery is flat: in tilted
+  views, elevated points (e.g. tree canopies) appear shifted with respect to the objects in the
+  imagery because of parallax. Enable "3D Buildings" to compare heights against Google 3D
+  geometry.
 - The 3D model is placed so the ground below the map origin lies on Google Earth terrain.
   Use ``--model-altitude-offset`` to correct it if the model floats or sinks.
 - Google Earth does not accept ground overlay images larger than 2048 pixels, hence the
