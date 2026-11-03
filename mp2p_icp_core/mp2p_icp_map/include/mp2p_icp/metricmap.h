@@ -299,8 +299,8 @@ mrpt::maps::CPointsMap* MapToPointsMap(mrpt::maps::CMetricMap& map);
 
 /** Like MapToPointsMap(), but it also returns a read-only point cloud view for
  * map classes that are not point clouds themselves but can provide one (e.g.
- * keyframe-based maps), via mrpt::maps::asPointsMap() (MRPT >=3) or
- * mrpt::maps::CMetricMap::getAsSimplePointsMap() (MRPT 2).
+ * keyframe-based maps), via mrpt::maps::asPointsMap(). With MRPT < 3, which
+ * has no such generic view, it is equivalent to MapToPointsMap().
  *
  * Intended for read-only uses, like exporting map layers. Registration code
  * should keep using MapToPointsMap().

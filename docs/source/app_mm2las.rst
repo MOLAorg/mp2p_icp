@@ -152,7 +152,7 @@ Limitations
 
 - **Waveform Data**: Not supported in the current export logic.
 - **Direct LAZ**: Compressed LAZ files are not written directly; use ``laszip`` or ``pdal`` for post-compression.
-- **Non point cloud layers**: Layers that are not point clouds but can provide a point cloud view (e.g. keyframe-based maps from ``mola_metric_maps``, loaded with ``--load-plugins``) are exported through that view, which the map class may subsample (a notice is printed in that case).
+- **Non point cloud layers**: Layers that are not point clouds but can provide a point cloud view (e.g. keyframe-based maps from ``mola_metric_maps``, loaded with ``--load-plugins``) are exported through that view (MRPT >=3 only), which the map class may subsample (a notice is printed in that case).
 - **Coordinate Systems**: CRS WKT embedding is only available with ``--frame geodetic`` (EPSG:4979). Other projected CRS (e.g., UTM) are not currently supported.
 
 

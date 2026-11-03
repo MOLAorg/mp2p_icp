@@ -23,7 +23,6 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/format.h>
 #include <mrpt/maps/CGenericPointsMap.h>
-#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/maps/CVoxelMapRGB.h>
 #include <mrpt/obs/customizable_obs_viz.h>
@@ -999,7 +998,8 @@ const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMapView(const mrpt::maps::CMe
 #if defined(MRPT_HAS_METRIC_MAP_POINTS_VIEW)
     return mrpt::maps::asPointsMap(map);
 #else
-    return map.getAsSimplePointsMap();
+    // No generic point cloud view in MRPT < 3.
+    return nullptr;
 #endif
 }
 

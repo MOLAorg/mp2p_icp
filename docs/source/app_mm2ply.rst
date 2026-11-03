@@ -148,4 +148,4 @@ By default, points are exported in the **map** local frame (the native coordinat
 Non point cloud layers
 ----------------------
 
-Map layers that are not point clouds but can provide a point cloud view (e.g. keyframe-based maps from ``mola_metric_maps``, loaded with ``--load-plugins``) are exported through that view. Note that the map class may subsample it (e.g. ``KeyframePointCloudMap`` limits the points per keyframe according to its render options); a notice is printed in that case.
+Map layers that are not point clouds but can provide a point cloud view (e.g. keyframe-based maps from ``mola_metric_maps``, loaded with ``--load-plugins``) are exported through that view (MRPT >=3 only). Note that the map class may subsample it (e.g. ``KeyframePointCloudMap`` limits the points per keyframe according to its render options); a notice is printed in that case.
