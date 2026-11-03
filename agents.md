@@ -43,7 +43,7 @@ Build via colcon only. Each library exports its own CMake target (e.g.
 
 ## CLI applications
 
-Argument parsing uses CLI11. Core: `mm2las`, `mm2ply`, `mm2txt`, `mm2grid`, `mm-filter`,
+Argument parsing uses CLI11. Core: `mm2kml`, `mm2las`, `mm2ply`, `mm2txt`, `mm2grid`, `mm-filter`,
 `mm-info`, `mm-georef`, `mm-merge`, `sm2mm`, `sm-cli`, `icp-run`, `kitti2mm`, `txt2mm`,
 `rawlog-filter`. Viz: `mm-viewer`, `icp-log-viewer`.
 
