@@ -1303,10 +1303,16 @@ int main(int argc, char** argv)
 
         for (const auto& [name, layer] : mm.layers)
         {
-            auto* pts = mp2p_icp::MapToPointsMap(*layer);
+            const auto* pts = mp2p_icp::MapToPointsMapView(*layer);
             if (!pts)
             {
                 continue;
+            }
+            if (!mp2p_icp::MapToPointsMap(*layer))
+            {
+                std::cout << "Note: layer '" << name
+                          << "' is exported through its point cloud view, "
+                             "which the map class may have subsampled.\n";
             }
 
             std::string out = prefix + "_" + name + ".las";

@@ -317,13 +317,19 @@ void run_mm2txt()
 
         ASSERTMSG_(mm.layers.count(name) == 1, "Layer not found in metric map!");
 
-        auto* pts = mp2p_icp::MapToPointsMap(*mm.layers.at(name));
+        const auto* pts = mp2p_icp::MapToPointsMapView(*mm.layers.at(name));
         if (!pts)
         {
             THROW_EXCEPTION_FMT(
                 "Layer '%s' is of type '%s' which cannot be converted into a "
                 "point cloud for exporting in TXT format.",
                 name.c_str(), mm.layers.at(name)->GetRuntimeClass()->className);
+        }
+        if (!mp2p_icp::MapToPointsMap(*mm.layers.at(name)))
+        {
+            std::cout << "Note: layer '" << name
+                      << "' is exported through its point cloud view, "
+                         "which the map class may have subsampled.\n";
         }
 
         if (auto* genxyz = dynamic_cast<const mrpt::maps::CGenericPointsMap*>(pts); genxyz)

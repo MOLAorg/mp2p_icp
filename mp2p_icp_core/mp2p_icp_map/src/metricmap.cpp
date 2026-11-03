@@ -23,6 +23,7 @@
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/format.h>
 #include <mrpt/maps/CGenericPointsMap.h>
+#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/maps/CVoxelMapRGB.h>
 #include <mrpt/obs/customizable_obs_viz.h>
@@ -987,6 +988,19 @@ mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(mrpt::maps::CMetricMap& map)
         return voxelRGBMap->getOccupiedVoxels().get();
     }
     return {};
+}
+
+const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMapView(const mrpt::maps::CMetricMap& map)
+{
+    if (const auto* pts = MapToPointsMap(map); pts)
+    {
+        return pts;
+    }
+#if defined(MRPT_HAS_METRIC_MAP_POINTS_VIEW)
+    return mrpt::maps::asPointsMap(map);
+#else
+    return map.getAsSimplePointsMap();
+#endif
 }
 
 const mrpt::maps::NearestNeighborsCapable* mp2p_icp::MapToNN(
