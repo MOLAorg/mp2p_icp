@@ -56,6 +56,8 @@ The full repository also includes these applications (see [mp2p_icp_core/apps/](
  
  * **[mm2txt](https://docs.mola-slam.org/latest/app_mm2txt.html)**: Exports metric map layers as space-delimited CSV/TXT files with header rows. Ideal for data analysis in spreadsheet applications or custom processing pipelines. Supports selective layer and field export.
  
+ * **[mm2kml](https://docs.mola-slam.org/latest/app_mm2kml.html)**: Exports georeferenced metric maps (and optionally trajectories) as Google Earth KMZ files, with the point cloud as a ground overlay and/or a 3D model, plus an optional fly-by tour.
+ 
  * **[mm2las](https://docs.mola-slam.org/latest/app_mm2las.html)**: Exports metric maps to industry-standard LAS 1.4 format with Point Format 8 support. Includes automatic color mapping, extra dimensions for custom fields. Compatible with CloudCompare, QGIS, and ArcGIS.
 
 ### Map Processing & Analysis Tools
