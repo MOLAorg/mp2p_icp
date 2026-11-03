@@ -317,7 +317,7 @@ void run_mm2txt()
 
         ASSERTMSG_(mm.layers.count(name) == 1, "Layer not found in metric map!");
 
-        auto* pts = mp2p_icp::MapToPointsMap(*mm.layers.at(name));
+        const auto* pts = mp2p_icp::MapToPointsMapView(*mm.layers.at(name));
         if (!pts)
         {
             THROW_EXCEPTION_FMT(
@@ -325,8 +325,23 @@ void run_mm2txt()
                 "point cloud for exporting in TXT format.",
                 name.c_str(), mm.layers.at(name)->GetRuntimeClass()->className);
         }
+        if (!mp2p_icp::MapToPointsMap(*mm.layers.at(name)))
+        {
+            std::cout << "Note: layer '" << name
+                      << "' is exported through its point cloud view, "
+                         "which the map class may have subsampled.\n";
+        }
 
-        if (auto* genxyz = dynamic_cast<const mrpt::maps::CGenericPointsMap*>(pts); genxyz)
+        const auto* genxyz = dynamic_cast<const mrpt::maps::CGenericPointsMap*>(pts);
+        if (T_enu_to_map.has_value() && !genxyz)
+        {
+            THROW_EXCEPTION_FMT(
+                "--frame enu is only supported for layers of type CGenericPointsMap, but layer "
+                "'%s' is of type '%s'.",
+                name.c_str(), mm.layers.at(name)->GetRuntimeClass()->className);
+        }
+
+        if (genxyz)
         {
             // Validate selected fields exist in this point cloud
             std::vector<std::string> validFields;

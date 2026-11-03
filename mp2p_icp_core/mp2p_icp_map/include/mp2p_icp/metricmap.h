@@ -297,6 +297,24 @@ const mrpt::maps::CPointsMap* MapToPointsMap(const mrpt::maps::CMetricMap& map);
 /// \overload for non-const input maps.
 mrpt::maps::CPointsMap* MapToPointsMap(mrpt::maps::CMetricMap& map);
 
+/** Like MapToPointsMap(), but it also returns a read-only point cloud view for
+ * map classes that are not point clouds themselves but can provide one (e.g.
+ * keyframe-based maps), via mrpt::maps::asPointsMap(). With MRPT < 3.5.3, which
+ * has no such generic view, it is equivalent to MapToPointsMap().
+ *
+ * Intended for read-only uses, like exporting map layers. Registration code
+ * should keep using MapToPointsMap().
+ *
+ * Returns nullptr if no point cloud is available.
+ *
+ * \note The view is whatever the map class provides: some classes return a
+ *       subsampled cloud (e.g. mola::KeyframePointCloudMap, according to its
+ *       render options).
+ * \note The returned pointer is a non-owning observer, valid as long as `map`
+ *       is alive and not modified.
+ */
+const mrpt::maps::CPointsMap* MapToPointsMapView(const mrpt::maps::CMetricMap& map);
+
 /** Returns the dynamic_cast<> of the metric map as a
  * mrpt::maps::NearestNeighborsCapable.
  * If the interface is not implemented it returns nullptr, or throws

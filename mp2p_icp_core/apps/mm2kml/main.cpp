@@ -22,8 +22,6 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/core/format.h>
-#include <mrpt/maps/CPointsMap.h>
-#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
@@ -316,22 +314,6 @@ class TrajectoryHeightGrid
     }
 };
 
-// Point cloud view of a map layer, also for map classes that are not point
-// clouds but can provide one (e.g. keyframe-based maps).
-const mrpt::maps::CPointsMap* layer_as_points(const mrpt::maps::CMetricMap& m)
-{
-    if (const auto* pts = mp2p_icp::MapToPointsMap(m); pts)
-    {
-        return pts;
-    }
-#if defined(MRPT_HAS_METRIC_MAP_POINTS_VIEW)
-    return mrpt::maps::asPointsMap(m);
-#else
-    // No generic point cloud view in MRPT < 3.
-    return nullptr;
-#endif
-}
-
 std::string fmt_lonlat(const GeoPoint& g) { return mrpt::format("%.9f,%.9f", g.lon, g.lat); }
 
 std::string make_overlay_png(
@@ -581,7 +563,7 @@ void run_mm2kml()
         for (const auto& name : layers)
         {
             ASSERTMSG_(mm.layers.count(name) == 1, "Layer not found in metric map: " + name);
-            const auto* pts = layer_as_points(*mm.layers.at(name));
+            const auto* pts = mp2p_icp::MapToPointsMapView(*mm.layers.at(name));
             if (!pts)
             {
                 if (!argLayers.empty())
@@ -592,11 +574,21 @@ void run_mm2kml()
                 std::cout << "[mm2kml] Skipping non point-cloud layer: '" << name << "'\n";
                 continue;
             }
+            if (!mp2p_icp::MapToPointsMap(*mm.layers.at(name)))
+            {
+                std::cout << "[mm2kml] Note: layer '" << name
+                          << "' is exported through its point cloud view, which the map class "
+                             "may have subsampled.\n";
+            }
             const auto& xs = pts->getPointsBufferRef_x();
             const auto& ys = pts->getPointsBufferRef_y();
             const auto& zs = pts->getPointsBufferRef_z();
             for (size_t i = 0; i < xs.size(); i++)
             {
+                if (!std::isfinite(xs[i]) || !std::isfinite(ys[i]) || !std::isfinite(zs[i]))
+                {
+                    continue;
+                }
                 double ex = 0;
                 double ey = 0;
                 double ez = 0;

@@ -989,6 +989,20 @@ mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMap(mrpt::maps::CMetricMap& map)
     return {};
 }
 
+const mrpt::maps::CPointsMap* mp2p_icp::MapToPointsMapView(const mrpt::maps::CMetricMap& map)
+{
+    if (const auto* pts = MapToPointsMap(map); pts)
+    {
+        return pts;
+    }
+#if defined(MRPT_HAS_METRIC_MAP_POINTS_VIEW)
+    return mrpt::maps::asPointsMap(map);
+#else
+    // No generic point cloud view in MRPT < 3.5.3.
+    return nullptr;
+#endif
+}
+
 const mrpt::maps::NearestNeighborsCapable* mp2p_icp::MapToNN(
     const mrpt::maps::CMetricMap& map, bool throwIfNotImplemented)
 {

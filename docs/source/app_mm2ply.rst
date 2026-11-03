@@ -144,3 +144,8 @@ Coordinate Frames
 -----------------
 
 By default, points are exported in the **map** local frame (the native coordinate system of the metric map). If the map contains georeferencing metadata (see :ref:`app_mm-georef`), you can use ``--frame enu`` to export all point coordinates transformed to the **ENU (East-North-Up)** frame. The transformation uses the ``T_enu_to_map`` SE(3) pose stored in the map's georeferencing data. Non-coordinate fields (colors, intensity, etc.) are not affected by this transformation.
+
+Non point cloud layers
+----------------------
+
+Map layers that are not point clouds but can provide a point cloud view (e.g. keyframe-based maps from ``mola_metric_maps``, loaded with ``--load-plugins``) are exported through that view (MRPT >= 3.5.3). Note that the map class may subsample it (e.g. ``KeyframePointCloudMap`` limits the points per keyframe according to its render options); a notice is printed in that case.
