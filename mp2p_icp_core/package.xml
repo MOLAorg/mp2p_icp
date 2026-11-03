@@ -34,6 +34,7 @@
   <depend>mrpt_topography</depend>
   <depend>eigen</depend>
   <depend>cli11</depend>
+  <depend>zlib</depend>
 
   <depend>tbb</depend>  <!-- Required to exploit parallelization in many ICP algorithms -->
 
