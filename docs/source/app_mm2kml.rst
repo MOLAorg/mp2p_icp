@@ -38,6 +38,21 @@ The KMZ file contains:
 Points close to the ground (``--min-height-above-ground``) are removed by default, so the
 satellite imagery remains visible below walls, trees, poles, etc.
 
+Point colors (``--color-by``) represent:
+
+- ``trajectory`` (default if a trajectory is given): the height relative to the nearest point
+  of the trajectory. Since the reference follows the vehicle, colors keep the same meaning over
+  large areas with changing elevation (e.g. objects at the height of the road are always
+  blue), and it does not depend on observing the ground.
+- ``ground`` (default without a trajectory): the height above the local ground, estimated as
+  the lowest point in each cell of a ``--ground-cell`` grid.
+- ``z``: the ENU z coordinate, only useful for small, flat areas.
+
+The color scale spans the 2% to 98% percentiles of these values, or ``--color-range``.
+
+Map layers whose classes are not point clouds but can provide one (e.g. keyframe-based maps
+from ``mola_metric_maps``, with ``--load-plugins``) are also supported.
+
 Usage
 -----
 
@@ -60,7 +75,9 @@ Usage
       --min-height-above-ground FLOAT [0.35]
                                   Points lower than this height [m] above the local ground are not exported, so the satellite imagery remains visible. Use 0 to keep all points.
       --ground-cell FLOAT [1]     Cell size [m] of the grid used to estimate the local ground height.
-      --color-max-height FLOAT    Height above ground [m] mapped to the top of the color scale. Default (0): the 98% percentile of point heights.
+      --color-by TEXT:{auto,ground,trajectory,z} [auto]
+                                  What the point colors represent: 'ground' (height above the local ground), 'trajectory' (height relative to the nearest trajectory point, best for large areas with changing elevation), 'z' (ENU z coordinate), or 'auto' ('trajectory' if a trajectory is given, 'ground' otherwise).
+      --color-range FLOAT x 2     Values [m] mapped to the bottom and top of the color scale, e.g. '--color-range -2 10'. Default: the 2% and 98% percentiles of the point values.
       --overlay-resolution FLOAT  Ground overlay resolution [m/pixel]. Default (0): automatic, the finest one (>=5 cm) keeping the image under 2048 pixels.
       --model-max-points UINT [100000]
                                   Maximum number of points in the 3D model. The cloud is voxel-decimated to fit.

@@ -22,6 +22,8 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/core/format.h>
+#include <mrpt/maps/CPointsMap.h>
+#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/math/TPoint3D.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPose3DInterpolator.h>
@@ -34,6 +36,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <deque>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -56,14 +59,15 @@ std::string              argTrajectoryFrame      = "map";
 std::string              argCloud                = "both";
 double                   argMinHeightAboveGround = 0.35;
 double                   argGroundCell           = 1.0;
-double                   argColorMaxHeight       = 0;
-double                   argOverlayResolution    = 0;
-size_t                   argModelMaxPoints       = 100000;
-double                   argModelPointSize       = 0;
-double                   argModelAltitudeOffset  = 0;
-double                   argHeading              = 0;
-double                   argTourDuration         = 0;
-double                   argTourTilt             = 60;
+std::string              argColorBy              = "auto";
+std::vector<double>      argColorRange;
+double                   argOverlayResolution   = 0;
+size_t                   argModelMaxPoints      = 100000;
+double                   argModelPointSize      = 0;
+double                   argModelAltitudeOffset = 0;
+double                   argHeading             = 0;
+double                   argTourDuration        = 0;
+double                   argTourTilt            = 60;
 std::string              arg_plugins;
 
 // Google Earth refuses ground overlay textures larger than this:
@@ -133,6 +137,7 @@ struct EnuCloud
 {
     std::vector<mrpt::math::TPoint3Df> pts;
     std::vector<float>                 heightAboveGround;
+    std::vector<float>                 color;  //!< Color scale value in [0,1]
     double                             minX = 0;
     double                             maxX = 0;
     double                             minY = 0;
@@ -216,11 +221,116 @@ class GroundGrid
     std::unordered_map<uint64_t, float> ground_;
 };
 
+// Height of the nearest trajectory point for each cell of a dense 2D grid, so
+// points can be colored by their height relative to the vehicle path, which
+// keeps colors meaningful over large areas with changing terrain elevation.
+// Cells are filled with a multi-source BFS from the cells with trajectory
+// points (similar to the ground fill in FilterTraversability).
+class TrajectoryHeightGrid
+{
+   public:
+    TrajectoryHeightGrid(const std::vector<mrpt::math::TPoint3D>& traj, const EnuCloud& bbox)
+    {
+        constexpr double maxCells = 2e7;
+        const double     w        = bbox.maxX - bbox.minX;
+        const double     h        = bbox.maxY - bbox.minY;
+        cell_                     = std::max(1.0, std::sqrt(w * h / maxCells));
+        x0_                       = bbox.minX;
+        y0_                       = bbox.minY;
+        nx_                       = static_cast<int>(std::ceil(w / cell_)) + 1;
+        ny_                       = static_cast<int>(std::ceil(h / cell_)) + 1;
+
+        const size_t        n = static_cast<size_t>(nx_) * static_cast<size_t>(ny_);
+        std::vector<double> sumZ(n, 0.0);
+        std::vector<int>    count(n, 0);
+        for (const auto& p : traj)
+        {
+            const size_t c = idx(cx(p.x), cy(p.y));
+            sumZ[c] += p.z;
+            count[c]++;
+        }
+
+        z_.assign(n, 0.0f);
+        std::vector<uint8_t>            done(n, 0);
+        std::deque<std::pair<int, int>> q;
+        for (int j = 0; j < ny_; j++)
+        {
+            for (int i = 0; i < nx_; i++)
+            {
+                const size_t c = idx(i, j);
+                if (count[c] > 0)
+                {
+                    z_[c]   = static_cast<float>(sumZ[c] / count[c]);
+                    done[c] = 1;
+                    q.emplace_back(i, j);
+                }
+            }
+        }
+        while (!q.empty())
+        {
+            const auto [i, j] = q.front();
+            q.pop_front();
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    const int ii = i + dx;
+                    const int jj = j + dy;
+                    if (ii < 0 || jj < 0 || ii >= nx_ || jj >= ny_ || done[idx(ii, jj)])
+                    {
+                        continue;
+                    }
+                    done[idx(ii, jj)] = 1;
+                    z_[idx(ii, jj)]   = z_[idx(i, j)];
+                    q.emplace_back(ii, jj);
+                }
+            }
+        }
+    }
+
+    [[nodiscard]] float z_at(double x, double y) const { return z_[idx(cx(x), cy(y))]; }
+
+   private:
+    double             cell_ = 1;
+    double             x0_   = 0;
+    double             y0_   = 0;
+    int                nx_   = 0;
+    int                ny_   = 0;
+    std::vector<float> z_;
+
+    [[nodiscard]] int cx(double x) const
+    {
+        return std::clamp(static_cast<int>((x - x0_) / cell_), 0, nx_ - 1);
+    }
+    [[nodiscard]] int cy(double y) const
+    {
+        return std::clamp(static_cast<int>((y - y0_) / cell_), 0, ny_ - 1);
+    }
+    [[nodiscard]] size_t idx(int i, int j) const
+    {
+        return static_cast<size_t>(j) * static_cast<size_t>(nx_) + static_cast<size_t>(i);
+    }
+};
+
+// Point cloud view of a map layer, also for map classes that are not point
+// clouds but can provide one (e.g. keyframe-based maps).
+const mrpt::maps::CPointsMap* layer_as_points(const mrpt::maps::CMetricMap& m)
+{
+    if (const auto* pts = mp2p_icp::MapToPointsMap(m); pts)
+    {
+        return pts;
+    }
+#if defined(MRPT_HAS_METRIC_MAP_POINTS_VIEW)
+    return mrpt::maps::asPointsMap(m);
+#else
+    return m.getAsSimplePointsMap();
+#endif
+}
+
 std::string fmt_lonlat(const GeoPoint& g) { return mrpt::format("%.9f,%.9f", g.lon, g.lat); }
 
 std::string make_overlay_png(
-    const EnuCloud& cloud, const std::vector<size_t>& idxs, double colorMaxHeight, double& res,
-    int& width, int& height)
+    const EnuCloud& cloud, const std::vector<size_t>& idxs, double& res, int& width, int& height)
 {
     const double ext = std::max(cloud.maxX - cloud.minX, cloud.maxY - cloud.minY);
     res              = argOverlayResolution > 0 ? argOverlayResolution
@@ -237,11 +347,11 @@ std::string make_overlay_png(
 
     std::vector<uint8_t> rgba(static_cast<size_t>(width) * height * 4, 0);
 
-    // Draw lower points first, so the highest ones (e.g. tree canopies) end on top:
+    // idxs is sorted by z: the highest points (e.g. tree canopies) end on top:
     for (const size_t i : idxs)
     {
         const auto& p   = cloud.pts[i];
-        const auto  col = turbo_color(cloud.heightAboveGround[i] / colorMaxHeight);
+        const auto  col = turbo_color(cloud.color[i]);
         const int   px  = static_cast<int>((p.x - cloud.minX) / res);
         const int   py  = height - 1 - static_cast<int>((p.y - cloud.minY) / res);
         for (int dx = 0; dx <= 1; dx++)
@@ -266,8 +376,7 @@ std::string make_overlay_png(
 // color bins (one material each). Coordinates are ENU, relative to the
 // georeferencing origin.
 std::string make_model_dae(
-    const EnuCloud& cloud, const std::vector<size_t>& idxs, double colorMaxHeight,
-    size_t& numPoints, double& voxelSize)
+    const EnuCloud& cloud, const std::vector<size_t>& idxs, size_t& numPoints, double& voxelSize)
 {
     // Voxel decimation, growing the voxel size until under the points budget.
     std::vector<size_t> kept;
@@ -310,7 +419,7 @@ std::string make_model_dae(
     std::array<std::vector<size_t>, MODEL_COLOR_BINS> bins;
     for (size_t k = 0; k < kept.size(); k++)
     {
-        const double h = cloud.heightAboveGround[kept[k]] / colorMaxHeight;
+        const double h = cloud.color[kept[k]];
         const int bin = std::clamp(static_cast<int>(h * MODEL_COLOR_BINS), 0, MODEL_COLOR_BINS - 1);
         bins[bin].push_back(k);
     }
@@ -451,7 +560,7 @@ void run_mm2kml()
         for (const auto& name : layers)
         {
             ASSERTMSG_(mm.layers.count(name) == 1, "Layer not found in metric map: " + name);
-            const auto* pts = mp2p_icp::MapToPointsMap(*mm.layers.at(name));
+            const auto* pts = layer_as_points(*mm.layers.at(name));
             if (!pts)
             {
                 if (!argLayers.empty())
@@ -578,25 +687,77 @@ void run_mm2kml()
         ASSERTMSG_(!idxs.empty(), "No points left after removing the ground.");
         std::sort(
             idxs.begin(), idxs.end(),
-            [&](size_t a, size_t b)
-            { return cloud.heightAboveGround[a] < cloud.heightAboveGround[b]; });
+            [&](size_t a, size_t b) { return cloud.pts[a].z < cloud.pts[b].z; });
 
-        double colorMaxHeight = argColorMaxHeight;
-        if (colorMaxHeight <= 0)
+        // Color scale:
+        std::string colorBy = argColorBy;
+        if (colorBy == "auto")
         {
-            // 98% percentile of heights (idxs is sorted by height):
-            colorMaxHeight =
-                std::max(1.0, double(cloud.heightAboveGround[idxs[(idxs.size() * 98) / 100]]));
+            colorBy = trajEnu.empty() ? "ground" : "trajectory";
         }
-        std::cout << "[mm2kml] " << idxs.size() << " points above ground, color scale: 0-"
-                  << colorMaxHeight << " m\n";
+        ASSERTMSG_(
+            colorBy != "trajectory" || !trajEnu.empty(),
+            "--color-by trajectory requires a trajectory (--trajectory)");
+
+        std::vector<float> colorValue(cloud.pts.size(), 0.0f);
+        if (colorBy == "trajectory")
+        {
+            const TrajectoryHeightGrid trajZ(trajEnu, cloud);
+            for (const size_t i : idxs)
+            {
+                const auto& p = cloud.pts[i];
+                colorValue[i] = p.z - trajZ.z_at(p.x, p.y);
+            }
+        }
+        else
+        {
+            for (const size_t i : idxs)
+            {
+                colorValue[i] = colorBy == "z" ? cloud.pts[i].z : cloud.heightAboveGround[i];
+            }
+        }
+
+        double colorMin = 0;
+        double colorMax = 0;
+        if (argColorRange.size() == 2)
+        {
+            colorMin = argColorRange[0];
+            colorMax = argColorRange[1];
+        }
+        else
+        {
+            // Robust automatic range: 2% and 98% percentiles.
+            std::vector<float> vals;
+            vals.reserve(idxs.size());
+            for (const size_t i : idxs)
+            {
+                vals.push_back(colorValue[i]);
+            }
+            const auto pct = [&vals](size_t p)
+            {
+                auto it = vals.begin() + static_cast<std::ptrdiff_t>((vals.size() - 1) * p / 100);
+                std::nth_element(vals.begin(), it, vals.end());
+                return static_cast<double>(*it);
+            };
+            colorMin = pct(2);
+            colorMax = pct(98);
+        }
+        colorMax = std::max(colorMax, colorMin + 1.0);
+
+        cloud.color.assign(cloud.pts.size(), 0.0f);
+        for (const size_t i : idxs)
+        {
+            cloud.color[i] = static_cast<float>((colorValue[i] - colorMin) / (colorMax - colorMin));
+        }
+        std::cout << "[mm2kml] " << idxs.size() << " points above ground. Color by '" << colorBy
+                  << "', scale: " << colorMin << " to " << colorMax << " m\n";
 
         if (wantOverly)
         {
             double res    = 0;
             int    width  = 0;
             int    height = 0;
-            pngData       = make_overlay_png(cloud, idxs, colorMaxHeight, res, width, height);
+            pngData       = make_overlay_png(cloud, idxs, res, width, height);
             const auto nw = enu_to_geodetic({cloud.minX, cloud.maxY, 0}, geoOrigin);
             const auto se = enu_to_geodetic({cloud.maxX, cloud.minY, 0}, geoOrigin);
             kml << "  <GroundOverlay>\n    <name>Point cloud (2D overlay)</name>\n"
@@ -613,7 +774,7 @@ void run_mm2kml()
         {
             size_t numPts    = 0;
             double voxelSize = 0;
-            daeData          = make_model_dae(cloud, idxs, colorMaxHeight, numPts, voxelSize);
+            daeData          = make_model_dae(cloud, idxs, numPts, voxelSize);
 
             // Place the model so the ground under the map origin lies on the terrain:
             const double alt = -ground.ground_near(0, 0) + argModelAltitudeOffset;
@@ -716,9 +877,18 @@ int main(int argc, char** argv)
            "Cell size [m] of the grid used to estimate the local ground height.")
         ->capture_default_str();
     cmd.add_option(
-        "--color-max-height", argColorMaxHeight,
-        "Height above ground [m] mapped to the top of the color scale. Default (0): the 98% "
-        "percentile of point heights.");
+           "--color-by", argColorBy,
+           "What the point colors represent: 'ground' (height above the local ground), "
+           "'trajectory' (height relative to the nearest trajectory point, best for large areas "
+           "with changing elevation), 'z' (ENU z coordinate), or 'auto' ('trajectory' if a "
+           "trajectory is given, 'ground' otherwise).")
+        ->check(CLI::IsMember({"auto", "ground", "trajectory", "z"}))
+        ->capture_default_str();
+    cmd.add_option(
+           "--color-range", argColorRange,
+           "Values [m] mapped to the bottom and top of the color scale, e.g. '--color-range -2 "
+           "10'. Default: the 2% and 98% percentiles of the point values.")
+        ->expected(2);
     cmd.add_option(
         "--overlay-resolution", argOverlayResolution,
         "Ground overlay resolution [m/pixel]. Default (0): automatic, the finest one (>=5 cm) "
