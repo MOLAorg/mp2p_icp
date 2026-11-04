@@ -1,7 +1,7 @@
 /* -------------------------------------------------------------------------
  *  A repertory of multi primitive-to-primitive (MP2P) ICP algorithms in C++
  * Copyright (C) 2018-2026 Jose Luis Blanco, University of Almeria
- * See LICENSE for license information.
+ * See COPYING for license information.
  * ------------------------------------------------------------------------- */
 
 #include "CameraTravelling.h"

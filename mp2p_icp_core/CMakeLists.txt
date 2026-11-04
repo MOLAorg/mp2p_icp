@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 #        Multi primitive-to-primitive (MP2P) ICP C++ library
 #
-# Copyright (C) 2018-2020, Jose Luis Blanco-Claraco, contributors (AUTHORS.md)
+# Copyright (C) 2018-2020, Jose Luis Blanco-Claraco, contributors (AUTHORS)
 # All rights reserved.
 # Released under BSD 3-Clause License. See COPYING.
 # ------------------------------------------------------------------------------

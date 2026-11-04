@@ -1,7 +1,7 @@
 /* -------------------------------------------------------------------------
  *   A Modular Optimization framework for Localization and mApping  (MOLA)
  * Copyright (C) 2018-2026 Jose Luis Blanco, University of Almeria
- * See LICENSE for license information.
+ * See COPYING for license information.
  * ------------------------------------------------------------------------- */
 
 #include <mp2p_icp/PointWeightByIncidence.h>

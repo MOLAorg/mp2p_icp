@@ -26,6 +26,7 @@ C++ libraries for multi primitive-to-primitive (MP2P) ICP algorithms and flexibl
 
 - [Main library documentation and C++ API](https://docs.mola-slam.org/latest/module-mp2p-icp.html)
 - License: New BSD 3-Clause (Note that each module of [MOLA](https://github.com/MOLAorg/mola) has its own license)
+- Third-party code: `cfgpath.h` (public domain) and `robin-map` (MIT), see the [AUTHORS](AUTHORS) file.
 
 ## Introduction
 

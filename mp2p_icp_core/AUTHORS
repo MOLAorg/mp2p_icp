@@ -1,0 +1,13 @@
+Copyright holders of mp2p_icp
+=============================
+
+- Jose Luis Blanco-Claraco
+- University of Almeria, Spain
+
+Third-party code included in this repository
+============================================
+
+- cfgpath.h (mp2p_icp_viz/apps/libcfgpath):
+  Copyright (C) 2013 Adam Nielsen <malvineous@shikadi.net>. Public domain.
+- robin-map (mp2p_icp_core/3rdparty/robin-map):
+  Copyright (c) 2017 Thibaut Goetghebuer-Planchon <tessil@gmx.com>. MIT license.
