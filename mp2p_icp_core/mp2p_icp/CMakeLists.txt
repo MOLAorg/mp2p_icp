@@ -9,6 +9,7 @@ set(LIB_SRCS
   src/errorTerms.cpp
   src/GravityPrior.cpp
   src/IcpCovFeatures.cpp
+  src/LearnedCovariance.cpp
   src/icp_pipeline_from_yaml.cpp
   src/ICP.cpp
   src/LogRecord.cpp
