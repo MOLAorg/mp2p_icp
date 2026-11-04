@@ -35,19 +35,33 @@ namespace mp2p_icp
  * network outputs). The ensemble's covariance is the mean of its members',
  * and it also outputs a probability that the registration failed.
  *
- * Inference only, plain Eigen; the model file is produced by the training
- * scripts of the learned-covariance study.
+ * Inference only, plain Eigen. The model is a little-endian binary file
+ * (magic "MP2PLCOV", format version 2) written by the training scripts; see
+ * load() for its layout.
  *
  * \ingroup mp2p_icp_grp
  */
 class LearnedCovariance
 {
    public:
-    /** Loads a model file. Throws on a format error or a feature mismatch
-     *  with CovFeatureEvaluator::featureNames(). */
+    /** Loads a model file. Throws on a format error, or if the model was
+     *  trained on features this CovFeatureEvaluator does not compute.
+     *
+     *  Layout (little-endian; str = u32 length + bytes):
+     *  `char[8] "MP2PLCOV"; u32 format version (2); u32 feature version;
+     *   str note; u32 nf, nf x {str name; f64 median, mean, std};
+     *   u32 nn, nn x str (features with a missing-value indicator);
+     *   u32 nc, nc x {str key; u32 nv; nv x str} (context one-hots);
+     *   f64 clip; f64 layernorm_eps; u32 members, per member u32 layers, per
+     *   layer u8 kind: 0 linear {u32 rows, cols; f32 W[rows*cols] row-major;
+     *   f32 b[rows]}, 1 layernorm + GELU {u32 n; f32 gain[n]; f32 bias[n]}`.
+     */
     void load(const std::string& file);
 
     bool loaded() const { return !members_.empty(); }
+
+    /** Free text stored in the model file (training data, date, ...). */
+    const std::string& note() const { return note_; }
 
     struct Output
     {
@@ -75,6 +89,7 @@ class LearnedCovariance
     };
     using Member = std::vector<Layer>;
 
+    std::string              note_;
     std::vector<std::string> featNames_;
     Eigen::VectorXd          median_;
     Eigen::VectorXd          mean_;

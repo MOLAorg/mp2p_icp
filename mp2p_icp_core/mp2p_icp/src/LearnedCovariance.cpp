@@ -18,41 +18,70 @@
 
 #include <mp2p_icp/LearnedCovariance.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/core/format.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <fstream>
 
 using namespace mp2p_icp;
 
 namespace
 {
-std::string expect_word(std::istream& is, const std::string& word)
-{
-    std::string w;
-    is >> w;
-    ASSERTMSG_(is && w == word, "LearnedCovariance: expected '" + word + "', got '" + w + "'");
-    return w;
-}
+constexpr uint32_t kFormatVersion = 2;
 
-size_t read_count(std::istream& is, const std::string& word)
+/** Reads the little-endian binary model file. */
+class ModelReader
 {
-    expect_word(is, word);
-    size_t n = 0;
-    is >> n;
-    ASSERTMSG_(is, "LearnedCovariance: bad count after '" + word + "'");
-    return n;
-}
+   public:
+    explicit ModelReader(std::istream& is) : is_(is) {}
 
-Eigen::VectorXd read_vector(std::istream& is, size_t n)
-{
-    Eigen::VectorXd v(static_cast<Eigen::Index>(n));
-    for (size_t i = 0; i < n; i++)
+    template <typename T>
+    T pod()
     {
-        is >> v[static_cast<Eigen::Index>(i)];
+        T v{};
+        is_.read(reinterpret_cast<char*>(&v), sizeof(T));
+        ASSERTMSG_(is_.good(), "LearnedCovariance: truncated model file");
+        return v;
     }
-    ASSERTMSG_(is, "LearnedCovariance: truncated vector");
-    return v;
+
+    size_t count(size_t maxValue)
+    {
+        const auto n = static_cast<size_t>(pod<uint32_t>());
+        ASSERTMSG_(n <= maxValue, "LearnedCovariance: corrupt model file (bad count)");
+        return n;
+    }
+
+    std::string str()
+    {
+        std::string s(count(1U << 20), '\0');
+        is_.read(s.data(), static_cast<std::streamsize>(s.size()));
+        ASSERTMSG_(is_.good(), "LearnedCovariance: truncated model file");
+        return s;
+    }
+
+    Eigen::VectorXf floats(size_t n)
+    {
+        Eigen::VectorXf v(static_cast<Eigen::Index>(n));
+        is_.read(
+            reinterpret_cast<char*>(v.data()), static_cast<std::streamsize>(n * sizeof(float)));
+        ASSERTMSG_(is_.good(), "LearnedCovariance: truncated model file");
+        return v;
+    }
+
+   private:
+    std::istream& is_;
+};
+
+bool host_is_little_endian()
+{
+    const uint16_t one   = 1;
+    uint8_t        first = 0;
+    std::memcpy(&first, &one, 1);
+    return first == 1;
 }
 
 double gelu(double x) { return 0.5 * x * (1.0 + std::erf(x / std::sqrt(2.0))); }
@@ -61,91 +90,100 @@ double gelu(double x) { return 0.5 * x * (1.0 + std::erf(x / std::sqrt(2.0))); }
 
 void LearnedCovariance::load(const std::string& file)
 {
-    std::ifstream is(file);
+    ASSERTMSG_(host_is_little_endian(), "LearnedCovariance: big-endian hosts are not supported");
+
+    std::ifstream is(file, std::ios::binary);
     ASSERTMSG_(is.is_open(), "LearnedCovariance: cannot open " + file);
+    ModelReader rd(is);
 
-    expect_word(is, "mp2p_icp_learned_covariance");
-    int version = 0;
-    is >> version;
-    ASSERTMSG_(version == 1, "LearnedCovariance: unsupported format version");
+    std::array<char, 8> magic{};
+    is.read(magic.data(), magic.size());
+    ASSERTMSG_(
+        is.good() && std::string(magic.data(), magic.size()) == "MP2PLCOV",
+        "LearnedCovariance: not a learned-covariance model file: " + file);
+    const auto version = rd.pod<uint32_t>();
+    ASSERTMSG_(
+        version == kFormatVersion,
+        mrpt::format("LearnedCovariance: unsupported format version %u", version));
+    const auto featVersion = rd.pod<uint32_t>();
+    ASSERTMSG_(
+        featVersion == static_cast<uint32_t>(CovFeatureEvaluator::kVersion),
+        mrpt::format(
+            "LearnedCovariance: the model was trained on features version %u, this evaluator "
+            "computes version %d",
+            featVersion, CovFeatureEvaluator::kVersion));
+    note_ = rd.str();
 
-    const size_t nf = read_count(is, "features");
+    const size_t nf = rd.count(100000);
     featNames_.resize(nf);
     median_.resize(static_cast<Eigen::Index>(nf));
     mean_.resize(static_cast<Eigen::Index>(nf));
     std_.resize(static_cast<Eigen::Index>(nf));
     for (size_t i = 0; i < nf; i++)
     {
-        const auto k = static_cast<Eigen::Index>(i);
-        is >> featNames_[i] >> median_[k] >> mean_[k] >> std_[k];
+        const auto k  = static_cast<Eigen::Index>(i);
+        featNames_[i] = rd.str();
+        median_[k]    = rd.pod<double>();
+        mean_[k]      = rd.pod<double>();
+        std_[k]       = rd.pod<double>();
     }
-    ASSERTMSG_(is, "LearnedCovariance: truncated feature table");
 
-    const size_t nn = read_count(is, "nan_indicators");
+    const size_t nn = rd.count(nf);
     nanIdx_.clear();
     for (size_t i = 0; i < nn; i++)
     {
-        std::string n;
-        is >> n;
-        const auto it = std::find(featNames_.begin(), featNames_.end(), n);
+        const std::string n  = rd.str();
+        const auto        it = std::find(featNames_.begin(), featNames_.end(), n);
         ASSERTMSG_(it != featNames_.end(), "LearnedCovariance: unknown indicator " + n);
         nanIdx_.push_back(static_cast<size_t>(it - featNames_.begin()));
     }
 
-    const size_t nc = read_count(is, "context");
+    const size_t nc = rd.count(1000);
     context_.clear();
     for (size_t i = 0; i < nc; i++)
     {
-        std::string key;
-        size_t      nv = 0;
-        is >> key >> nv;
-        std::vector<std::string> vs(nv);
+        std::string              key = rd.str();
+        std::vector<std::string> vs(rd.count(100000));
         for (auto& v : vs)
         {
-            is >> v;
+            v = rd.str();
         }
-        context_.emplace_back(key, vs);
+        context_.emplace_back(std::move(key), std::move(vs));
     }
 
-    expect_word(is, "clip");
-    is >> clip_;
-    expect_word(is, "layernorm_eps");
-    is >> lnEps_;
+    clip_  = rd.pod<double>();
+    lnEps_ = rd.pod<double>();
 
-    const size_t nm = read_count(is, "members");
+    const size_t nm = rd.count(1000);
     members_.clear();
     for (size_t m = 0; m < nm; m++)
     {
-        const size_t nl = read_count(is, "layers");
+        const size_t nl = rd.count(1000);
         Member       mem;
         for (size_t l = 0; l < nl; l++)
         {
-            std::string kind;
-            is >> kind;
-            Layer ly;
-            if (kind == "linear")
+            const auto kind = rd.pod<uint8_t>();
+            Layer      ly;
+            if (kind == 0)
             {
-                size_t rows = 0;
-                size_t cols = 0;
-                is >> rows >> cols;
-                ly.W.resize(static_cast<Eigen::Index>(rows), static_cast<Eigen::Index>(cols));
-                for (size_t r = 0; r < rows; r++)
-                {
-                    for (size_t c = 0; c < cols; c++)
-                    {
-                        is >> ly.W(static_cast<Eigen::Index>(r), static_cast<Eigen::Index>(c));
-                    }
-                }
-                ly.b = read_vector(is, rows);
+                const size_t rows = rd.count(1U << 16);
+                const size_t cols = rd.count(1U << 16);
+                // Row-major on disk:
+                const Eigen::VectorXf w = rd.floats(rows * cols);
+                ly.W =
+                    Eigen::Map<const Eigen::Matrix<
+                        float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+                        w.data(), static_cast<Eigen::Index>(rows), static_cast<Eigen::Index>(cols))
+                        .cast<double>();
+                ly.b = rd.floats(rows).cast<double>();
             }
             else
             {
-                ASSERTMSG_(kind == "layernorm", "LearnedCovariance: unknown layer " + kind);
-                size_t n = 0;
-                is >> n;
-                ly.linear = false;
-                ly.w      = read_vector(is, n);
-                ly.b      = read_vector(is, n);
+                ASSERTMSG_(kind == 1, "LearnedCovariance: unknown layer kind");
+                const size_t n = rd.count(1U << 16);
+                ly.linear      = false;
+                ly.w           = rd.floats(n).cast<double>();
+                ly.b           = rd.floats(n).cast<double>();
             }
             mem.push_back(std::move(ly));
         }
@@ -154,6 +192,7 @@ void LearnedCovariance::load(const std::string& file)
             "LearnedCovariance: the last layer must be a 22-output linear head");
         members_.push_back(std::move(mem));
     }
+    ASSERTMSG_(!members_.empty(), "LearnedCovariance: the model has no members");
 
     // Map the model's features onto the evaluator's, by name.
     const auto& evNames = CovFeatureEvaluator::featureNames();
@@ -164,6 +203,20 @@ void LearnedCovariance::load(const std::string& file)
         ASSERTMSG_(
             it != evNames.end(), "LearnedCovariance: the evaluator has no feature named " + n);
         featMap_.push_back(static_cast<int>(it - evNames.begin()));
+    }
+
+    // The input width the first layer expects must match the features plus
+    // the indicators and the context one-hots.
+    size_t nIn = nf + nanIdx_.size();
+    for (const auto& [k, vs] : context_)
+    {
+        nIn += vs.size();
+    }
+    for (const auto& mem : members_)
+    {
+        ASSERTMSG_(
+            mem.front().linear && static_cast<size_t>(mem.front().W.cols()) == nIn,
+            "LearnedCovariance: the first layer does not match the model's inputs");
     }
 }
 

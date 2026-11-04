@@ -10,6 +10,7 @@ set(LIB_SRCS
   src/GravityPrior.cpp
   src/IcpCovFeatures.cpp
   src/LearnedCovariance.cpp
+  src/LearnedCovarianceEstimator.cpp
   src/icp_pipeline_from_yaml.cpp
   src/ICP.cpp
   src/LogRecord.cpp
