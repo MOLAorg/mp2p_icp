@@ -27,6 +27,7 @@
 #include <limits>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -126,6 +127,17 @@ class CovFeatureEvaluator
     void setReference(
         const std::vector<std::pair<const mrpt::maps::CPointsMap*, mrpt::poses::CPose3D>>& clouds);
 
+    /** Incremental alternative to setReference(), for a sliding window of
+     *  clouds: adds one cloud's points, or removes them (pass the same cloud
+     *  and pose it was added with). Call finalizeReference() before the next
+     *  evaluate(). Cheaper than setReference() when only the ends of the
+     *  window change; the result is the same up to floating-point rounding
+     *  and the order of the reference points. */
+    void addReferenceCloud(const mrpt::maps::CPointsMap& cloud, const mrpt::poses::CPose3D& pose);
+    void removeReferenceCloud(
+        const mrpt::maps::CPointsMap& cloud, const mrpt::poses::CPose3D& pose);
+    void finalizeReference();
+
     /** Sets the query scan, in the vehicle frame. */
     void setScan(const mrpt::maps::CPointsMap& scan);
 
@@ -146,6 +158,18 @@ class CovFeatureEvaluator
 
    private:
     CovFeatureParameters params_;
+
+    struct RefVoxel
+    {
+        double   x = 0;
+        double   y = 0;
+        double   z = 0;
+        uint32_t n = 0;
+    };
+    std::unordered_map<uint64_t, RefVoxel> refGrid_;  //!< reference voxel sums
+
+    void accumulateReference(
+        const mrpt::maps::CPointsMap& cloud, const mrpt::poses::CPose3D& pose, bool add);
 
     mrpt::maps::CSimplePointsMap::Ptr ref_;
     std::vector<Eigen::Vector3f>      normals_;

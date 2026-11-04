@@ -136,39 +136,79 @@ size_t CovFeatureEvaluator::referenceSize() const { return ref_ ? ref_->size() :
 void CovFeatureEvaluator::setReference(
     const std::vector<std::pair<const mrpt::maps::CPointsMap*, mrpt::poses::CPose3D>>& clouds)
 {
-    const double                           invVoxel = 1.0 / params_.map_voxel;
-    std::unordered_map<uint64_t, VoxelAcc> grid;
-
+    // A fresh grid, so the order of the reference points depends only on
+    // these clouds.
+    refGrid_ = std::unordered_map<uint64_t, RefVoxel>();
     for (const auto& [cloud, pose] : clouds)
     {
-        if (cloud == nullptr)
+        if (cloud != nullptr)
+        {
+            accumulateReference(*cloud, pose, true);
+        }
+    }
+    finalizeReference();
+}
+
+void CovFeatureEvaluator::addReferenceCloud(
+    const mrpt::maps::CPointsMap& cloud, const mrpt::poses::CPose3D& pose)
+{
+    accumulateReference(cloud, pose, true);
+}
+
+void CovFeatureEvaluator::removeReferenceCloud(
+    const mrpt::maps::CPointsMap& cloud, const mrpt::poses::CPose3D& pose)
+{
+    accumulateReference(cloud, pose, false);
+}
+
+void CovFeatureEvaluator::accumulateReference(
+    const mrpt::maps::CPointsMap& cloud, const mrpt::poses::CPose3D& pose, bool add)
+{
+    const double    invVoxel = 1.0 / params_.map_voxel;
+    Eigen::Matrix3d R;
+    Eigen::Vector3d t;
+    rotation_and_translation(pose, R, t);
+    const auto& xs = cloud.getPointsBufferRef_x();
+    const auto& ys = cloud.getPointsBufferRef_y();
+    const auto& zs = cloud.getPointsBufferRef_z();
+    for (size_t i = 0; i < xs.size(); i++)
+    {
+        const Eigen::Vector3d q = R * Eigen::Vector3d(xs[i], ys[i], zs[i]) + t;
+        if (!q.allFinite())
         {
             continue;
         }
-        Eigen::Matrix3d R;
-        Eigen::Vector3d t;
-        rotation_and_translation(pose, R, t);
-        const auto& xs = cloud->getPointsBufferRef_x();
-        const auto& ys = cloud->getPointsBufferRef_y();
-        const auto& zs = cloud->getPointsBufferRef_z();
-        for (size_t i = 0; i < xs.size(); i++)
+        const uint64_t key = voxel_key(q.x(), q.y(), q.z(), invVoxel);
+        if (add)
         {
-            const Eigen::Vector3d q = R * Eigen::Vector3d(xs[i], ys[i], zs[i]) + t;
-            if (!q.allFinite())
-            {
-                continue;
-            }
-            auto& a = grid[voxel_key(q.x(), q.y(), q.z(), invVoxel)];
+            auto& a = refGrid_[key];
             a.x += q.x();
             a.y += q.y();
             a.z += q.z();
             a.n++;
+            continue;
+        }
+        const auto it = refGrid_.find(key);
+        if (it == refGrid_.end())
+        {
+            continue;
+        }
+        auto& a = it->second;
+        a.x -= q.x();
+        a.y -= q.y();
+        a.z -= q.z();
+        if (--a.n == 0)
+        {
+            refGrid_.erase(it);
         }
     }
+}
 
+void CovFeatureEvaluator::finalizeReference()
+{
     ref_ = mrpt::maps::CSimplePointsMap::Create();
-    ref_->reserve(grid.size());
-    for (const auto& [key, a] : grid)
+    ref_->reserve(refGrid_.size());
+    for (const auto& [key, a] : refGrid_)
     {
         const double inv = 1.0 / static_cast<double>(a.n);
         ref_->insertPointFast(

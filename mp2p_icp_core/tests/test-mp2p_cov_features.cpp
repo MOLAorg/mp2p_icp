@@ -19,11 +19,13 @@
 
 #include <mp2p_icp/IcpCovFeatures.h>
 #include <mrpt/core/exceptions.h>
+#include <mrpt/core/format.h>
 #include <mrpt/poses/Lie/SE.h>
 #include <mrpt/random/RandomGenerators.h>
 
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 namespace
 {
@@ -172,6 +174,66 @@ void test_corridor_degeneracy()
     std::cout << "[Test Passed] corridor degeneracy shows in the analytic covariance\n";
 }
 
+// A sliding window maintained with addReferenceCloud() and
+// removeReferenceCloud() must give the features of setReference() on the
+// same clouds.
+void test_incremental_reference()
+{
+    const auto truth = mrpt::poses::CPose3D::FromXYZYawPitchRoll(0.5, -0.3, 0.1, 0.2, 0.0, 0.0);
+    std::vector<mrpt::maps::CSimplePointsMap::Ptr> clouds;
+    std::vector<mrpt::poses::CPose3D>              poses;
+    for (uint32_t k = 0; k < 5; k++)
+    {
+        const auto p =
+            mrpt::poses::CPose3D::FromXYZYawPitchRoll(0.2 * k, 0.05 * k, 0.0, 0.03 * k, 0.0, 0.0);
+        clouds.push_back(to_vehicle(*box_scene(6.0, 4.0, 2.0, false, 0.1, 10 + k), p));
+        poses.push_back(p);
+    }
+    const auto scan = to_vehicle(*box_scene(6.0, 4.0, 2.0, false, 0.1, 99), truth);
+
+    mp2p_icp::CovFeatureEvaluator batch;
+    batch.setReference(
+        {{clouds[1].get(), poses[1]},
+         {clouds[2].get(), poses[2]},
+         {clouds[3].get(), poses[3]},
+         {clouds[4].get(), poses[4]}});
+    batch.setScan(*scan);
+
+    mp2p_icp::CovFeatureEvaluator inc;
+    for (size_t k = 0; k < 4; k++)
+    {
+        inc.addReferenceCloud(*clouds[k], poses[k]);
+    }
+    inc.finalizeReference();
+    inc.addReferenceCloud(*clouds[4], poses[4]);
+    inc.removeReferenceCloud(*clouds[0], poses[0]);
+    inc.finalizeReference();
+    inc.setScan(*scan);
+
+    ASSERT_EQUAL_(inc.referenceSize(), batch.referenceSize());
+
+    mp2p_icp::CovFeatureContext ctx;
+    ctx.initialGuess = truth;
+    const auto rb    = batch.evaluate(truth, ctx);
+    const auto ri    = inc.evaluate(truth, ctx);
+    ASSERT_(rb.ok && ri.ok);
+    for (size_t i = 0; i < rb.features.size(); i++)
+    {
+        const double a = rb.features[i];
+        const double b = ri.features[i];
+        if (std::isnan(a) && std::isnan(b))
+        {
+            continue;
+        }
+        ASSERTMSG_(
+            std::abs(a - b) <= 1e-4 * (1.0 + std::abs(a)),
+            mrpt::format(
+                "feature %s: batch %g, incremental %g",
+                mp2p_icp::CovFeatureEvaluator::featureNames().at(i).c_str(), a, b));
+    }
+    std::cout << "[Test Passed] incremental reference matches the batch one\n";
+}
+
 }  // namespace
 
 int main()
@@ -180,6 +242,7 @@ int main()
     {
         test_at_truth_and_offset();
         test_corridor_degeneracy();
+        test_incremental_reference();
         return 0;
     }
     catch (const std::exception& e)
