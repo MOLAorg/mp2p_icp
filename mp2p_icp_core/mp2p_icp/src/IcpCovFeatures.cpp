@@ -45,15 +45,24 @@ struct VoxelAcc
     uint32_t n = 0;
 };
 
-uint64_t voxel_key(double x, double y, double z, double invVoxel)
+// 21 bits per axis around the origin: +-1048576 voxels. Returns false for a
+// point out of that range, which callers skip, so distinct voxels never share
+// a key.
+bool voxel_key(double x, double y, double z, double invVoxel, uint64_t& key)
 {
-    // 21 bits per axis around the origin: +-1048576 voxels.
-    const auto     ix   = static_cast<int64_t>(std::floor(x * invVoxel)) + (1LL << 20);
-    const auto     iy   = static_cast<int64_t>(std::floor(y * invVoxel)) + (1LL << 20);
-    const auto     iz   = static_cast<int64_t>(std::floor(z * invVoxel)) + (1LL << 20);
-    const uint64_t mask = (1ULL << 21) - 1;
-    return (static_cast<uint64_t>(ix) & mask) | ((static_cast<uint64_t>(iy) & mask) << 21) |
-           ((static_cast<uint64_t>(iz) & mask) << 42);
+    constexpr double kHalf = static_cast<double>(1LL << 20);
+    const double     fx    = std::floor(x * invVoxel);
+    const double     fy    = std::floor(y * invVoxel);
+    const double     fz    = std::floor(z * invVoxel);
+    if (!(fx >= -kHalf && fx < kHalf && fy >= -kHalf && fy < kHalf && fz >= -kHalf && fz < kHalf))
+    {
+        return false;
+    }
+    const auto ix = static_cast<uint64_t>(static_cast<int64_t>(fx) + (1LL << 20));
+    const auto iy = static_cast<uint64_t>(static_cast<int64_t>(fy) + (1LL << 20));
+    const auto iz = static_cast<uint64_t>(static_cast<int64_t>(fz) + (1LL << 20));
+    key           = ix | (iy << 21) | (iz << 42);
+    return true;
 }
 
 double quantile(std::vector<double>& v, double q)
@@ -178,7 +187,11 @@ void CovFeatureEvaluator::accumulateReference(
         {
             continue;
         }
-        const uint64_t key = voxel_key(q.x(), q.y(), q.z(), invVoxel);
+        uint64_t key = 0;
+        if (!voxel_key(q.x(), q.y(), q.z(), invVoxel, key))
+        {
+            continue;
+        }
         if (add)
         {
             auto& a = refGrid_[key];
@@ -236,7 +249,12 @@ void CovFeatureEvaluator::setScan(const mrpt::maps::CPointsMap& scan)
         {
             continue;
         }
-        auto& a = grid[voxel_key(xs[i], ys[i], zs[i], invVoxel)];
+        uint64_t key = 0;
+        if (!voxel_key(xs[i], ys[i], zs[i], invVoxel, key))
+        {
+            continue;
+        }
+        auto& a = grid[key];
         a.x += xs[i];
         a.y += ys[i];
         a.z += zs[i];
@@ -700,6 +718,8 @@ CovFeatureResult CovFeatureEvaluator::evaluate(
     const Vec6 move = log_of(solution - ctx.initialGuess);  // initialGuess^-1 * solution
     if (ctx.priorCovariance && out.ok)
     {
+        // Whitened as given, in the initial guess's tangent: not transported to
+        // the solution's (a small offset). Trained models use this definition.
         const Mat6 Li = out.L_a.triangularView<Eigen::Lower>().solve(Mat6::Identity());
         const Mat6 P  = Li * (*ctx.priorCovariance) * Li.transpose();
         for (int i = 0; i < 6; i++)

@@ -79,8 +79,10 @@ struct CovFeatureContext
 struct CovFeatureResult
 {
     /** False when the solution has too few associations to define the cost
-     *  locally; then only the residual, scene and context features are
-     *  meaningful and the analytic covariance is undefined. */
+     *  locally, or when the analytic covariance is not positive definite
+     *  (e.g. every matched residual is exactly zero, so sigma2 is zero); then
+     *  only the residual, scene and context features are meaningful and the
+     *  analytic covariance is undefined. */
     bool ok = false;
 
     /** Gauss-Newton Hessian and gradient of the common cost at the solution,
