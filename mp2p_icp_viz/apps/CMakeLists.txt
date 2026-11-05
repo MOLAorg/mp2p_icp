@@ -3,4 +3,5 @@ add_subdirectory(imgui_app_common)
 
 # Apps:
 add_subdirectory(icp-log-viewer)
+add_subdirectory(mm-render)
 add_subdirectory(mm-viewer)

@@ -25,7 +25,7 @@ mp2p_icp/                    (repo root)
 │   ├── mp2p_icp/              # ICP: Matchers, Solvers, QualityEvaluators
 │   ├── mp2p_icp_filters/      # filters, generators, voxel grid utilities
 │   ├── apps/ tests/ demos/ 3rdparty/ scripts/
-├── mp2p_icp_viz/             # GUI apps (mm-viewer, icp-log-viewer)
+├── mp2p_icp_viz/             # GUI apps (mm-viewer, icp-log-viewer) and mm-render
 ├── mp2p_icp/                 # metapackage (backward compat, no code)
 └── docs/                     # Sphinx sources
 ```
@@ -45,7 +45,7 @@ Build via colcon only. Each library exports its own CMake target (e.g.
 
 Argument parsing uses CLI11. Core: `mm2kml`, `mm2las`, `mm2ply`, `mm2txt`, `mm2grid`, `mm-filter`,
 `mm-info`, `mm-georef`, `mm-merge`, `sm2mm`, `sm-cli`, `icp-run`, `kitti2mm`, `txt2mm`,
-`rawlog-filter`. Viz: `mm-viewer`, `icp-log-viewer`.
+`rawlog-filter`. Viz: `mm-viewer`, `mm-render` (off-screen, no GUI), `icp-log-viewer`.
 
 ## GUI apps (mp2p_icp_viz)
 
