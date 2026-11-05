@@ -53,8 +53,10 @@ namespace mp2p_icp
  * \endcode
  *
  * If the worker falls behind, the oldest evaluations still waiting are
- * answered without a learned covariance (Result::ok false), which bounds
- * the latency instead of letting the queue grow.
+ * answered without a learned covariance (Result::ok false), and queued scans
+ * that would leave the window before any evaluation sees them are dropped,
+ * which bounds the latency and the queue. If a window update fails, the
+ * window restarts empty.
  *
  * \ingroup mp2p_icp_grp
  */
@@ -70,13 +72,15 @@ class LearnedCovarianceEstimator
          *  {"framework_name": "mp2p_gicp", "sensor": "...", "mode": "s2m"}. */
         std::map<std::string, std::string> context;
 
-        /** Evaluations allowed to wait for the worker, besides the running one. */
+        /** Evaluations allowed to wait for the worker, besides the running
+         *  one. At least 1. */
         size_t max_waiting = 1;
     };
 
     struct Request
     {
-        /** Query scan in the vehicle frame: full resolution, de-skewed. */
+        /** Query scan in the vehicle frame: full resolution, de-skewed.
+         *  Shared, not copied: do not modify it before the result is ready. */
         mrpt::maps::CPointsMap::Ptr scan;
 
         /** Registration result: vehicle pose in the map frame. */
@@ -110,7 +114,9 @@ class LearnedCovarianceEstimator
     /** Queues the evaluation of one registration against the current window. */
     std::shared_future<Result> submit(Request r);
 
-    /** Appends an accepted scan (vehicle frame) at its estimated pose. */
+    /** Appends an accepted scan (vehicle frame) at its estimated pose. The
+     *  scan is shared, not copied, until it leaves the window: do not modify
+     *  it after this call. */
     void pushToWindow(mrpt::maps::CPointsMap::Ptr scan, const mrpt::poses::CPose3D& pose);
 
     /** Empties the window, e.g. after the odometry restarts. */
@@ -150,6 +156,7 @@ class LearnedCovarianceEstimator
     std::thread worker_;
 
     void   enqueue(Task t);
+    void   dropRedundantPushes();  //!< With mtx_ held
     void   run();
     Result evaluate(const Request& r);
 };

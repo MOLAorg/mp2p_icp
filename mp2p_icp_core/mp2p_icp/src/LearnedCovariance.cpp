@@ -90,6 +90,14 @@ double gelu(double x) { return 0.5 * x * (1.0 + std::erf(x / std::sqrt(2.0))); }
 
 void LearnedCovariance::load(const std::string& file)
 {
+    // Parse into a fresh object, so a failed load leaves this one unchanged.
+    LearnedCovariance m;
+    m.parse(file);
+    *this = std::move(m);
+}
+
+void LearnedCovariance::parse(const std::string& file)
+{
     ASSERTMSG_(host_is_little_endian(), "LearnedCovariance: big-endian hosts are not supported");
 
     std::ifstream is(file, std::ios::binary);
@@ -126,6 +134,10 @@ void LearnedCovariance::load(const std::string& file)
         median_[k]    = rd.pod<double>();
         mean_[k]      = rd.pod<double>();
         std_[k]       = rd.pod<double>();
+        ASSERTMSG_(
+            std::isfinite(median_[k]) && std::isfinite(mean_[k]) && std::isfinite(std_[k]) &&
+                std_[k] > 0,
+            "LearnedCovariance: invalid statistics of feature " + featNames_[i]);
     }
 
     const size_t nn = rd.count(nf);
@@ -153,6 +165,9 @@ void LearnedCovariance::load(const std::string& file)
 
     clip_  = rd.pod<double>();
     lnEps_ = rd.pod<double>();
+    ASSERTMSG_(
+        std::isfinite(clip_) && clip_ > 0 && std::isfinite(lnEps_) && lnEps_ > 0,
+        "LearnedCovariance: invalid clip or layernorm epsilon");
 
     const size_t nm = rd.count(1000);
     members_.clear();
@@ -185,6 +200,9 @@ void LearnedCovariance::load(const std::string& file)
                 ly.w           = rd.floats(n).cast<double>();
                 ly.b           = rd.floats(n).cast<double>();
             }
+            ASSERTMSG_(
+                ly.W.allFinite() && ly.w.allFinite() && ly.b.allFinite(),
+                "LearnedCovariance: non-finite weights");
             mem.push_back(std::move(ly));
         }
         ASSERTMSG_(
@@ -205,8 +223,8 @@ void LearnedCovariance::load(const std::string& file)
         featMap_.push_back(static_cast<int>(it - evNames.begin()));
     }
 
-    // The input width the first layer expects must match the features plus
-    // the indicators and the context one-hots.
+    // Each layer's width must match its input: the first one, the features
+    // plus the indicators and the context one-hots.
     size_t nIn = nf + nanIdx_.size();
     for (const auto& [k, vs] : context_)
     {
@@ -214,9 +232,23 @@ void LearnedCovariance::load(const std::string& file)
     }
     for (const auto& mem : members_)
     {
-        ASSERTMSG_(
-            mem.front().linear && static_cast<size_t>(mem.front().W.cols()) == nIn,
-            "LearnedCovariance: the first layer does not match the model's inputs");
+        auto width = static_cast<Eigen::Index>(nIn);
+        for (const auto& ly : mem)
+        {
+            if (ly.linear)
+            {
+                ASSERTMSG_(
+                    ly.W.cols() == width,
+                    "LearnedCovariance: a linear layer does not match its input width");
+                width = ly.W.rows();
+            }
+            else
+            {
+                ASSERTMSG_(
+                    ly.w.size() == width,
+                    "LearnedCovariance: a layernorm does not match its input width");
+            }
+        }
     }
 }
 
@@ -311,5 +343,8 @@ LearnedCovariance::Output LearnedCovariance::predict(
     const auto n = static_cast<double>(members_.size());
     out.Sigma /= n;
     out.pFail /= n;
+    ASSERTMSG_(
+        out.Sigma.allFinite() && std::isfinite(out.pFail),
+        "LearnedCovariance: non-finite prediction");
     return out;
 }

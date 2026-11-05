@@ -45,7 +45,11 @@ class LearnedCovariance
 {
    public:
     /** Loads a model file. Throws on a format error, or if the model was
-     *  trained on features this CovFeatureEvaluator does not compute.
+     *  trained on features this CovFeatureEvaluator does not compute; then
+     *  the previously loaded model, if any, is kept.
+     *
+     *  The file records the feature version, not the CovFeatureParameters:
+     *  use the evaluator with the parameters the model was trained with.
      *
      *  Layout (little-endian; str = u32 length + bytes):
      *  `char[8] "MP2PLCOV"; u32 format version (2); u32 feature version;
@@ -73,7 +77,7 @@ class LearnedCovariance
      *  result and the context labels the model was trained with (e.g.
      *  {"framework_name": "mp2p_gicp", "sensor": "...", "mode": "s2m"}).
      *  Unknown context values contribute all-zero one-hots. Requires
-     *  `r.ok`. */
+     *  `r.ok`. Throws if the prediction is not finite. */
     Output predict(
         const CovFeatureResult& r, const std::map<std::string, std::string>& context) const;
 
@@ -100,6 +104,8 @@ class LearnedCovariance
     double                                                        lnEps_ = 1e-5;
     std::vector<Member>                                           members_;
     std::vector<int> featMap_;  //!< model feature -> evaluator feature index
+
+    void parse(const std::string& file);
 
     Eigen::VectorXd input(
         const CovFeatureResult& r, const std::map<std::string, std::string>& context) const;

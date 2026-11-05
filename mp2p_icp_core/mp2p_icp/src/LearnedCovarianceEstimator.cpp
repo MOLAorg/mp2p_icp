@@ -25,6 +25,7 @@ using namespace mp2p_icp;
 LearnedCovarianceEstimator::LearnedCovarianceEstimator(const Parameters& p) : params_(p)
 {
     ASSERTMSG_(params_.window_scans > 0, "LearnedCovarianceEstimator: window_scans must be > 0");
+    ASSERTMSG_(params_.max_waiting > 0, "LearnedCovarianceEstimator: max_waiting must be > 0");
     model_.load(params_.model_file);
     evaluator_ = std::make_unique<CovFeatureEvaluator>();
     worker_    = std::thread([this]() { run(); });
@@ -105,11 +106,43 @@ void LearnedCovarianceEstimator::enqueue(Task t)
             }
         }
         queue_.push_back(std::move(t));
+        dropRedundantPushes();
     }
     cv_.notify_one();
     if (dropped)
     {
         dropped->set_value(Result{});
+    }
+}
+
+void LearnedCovarianceEstimator::dropRedundantPushes()
+{
+    // A queued scan followed by window_scans newer ones (or by a clear) before
+    // the next evaluation leaves the window before any evaluation sees it.
+    // Dropping it bounds the queue when the worker falls behind, and changes
+    // no result beyond rounding.
+    size_t newer = 0;
+    for (size_t i = queue_.size(); i-- > 0;)
+    {
+        switch (queue_[i].kind)
+        {
+            case Task::Kind::Evaluate:
+                newer = 0;
+                break;
+            case Task::Kind::Clear:
+                newer = params_.window_scans;
+                break;
+            case Task::Kind::Push:
+                if (newer >= params_.window_scans)
+                {
+                    queue_.erase(queue_.begin() + static_cast<std::ptrdiff_t>(i));
+                }
+                else
+                {
+                    newer++;
+                }
+                break;
+        }
     }
 }
 
@@ -166,6 +199,13 @@ void LearnedCovarianceEstimator::run()
             if (t.promise)
             {
                 t.promise->set_value(Result{});
+            }
+            if (t.kind != Task::Kind::Evaluate)
+            {
+                // A failed window update leaves the reference inconsistent.
+                window_.clear();
+                evaluator_ = std::make_unique<CovFeatureEvaluator>();
+                dirty_     = false;
             }
         }
     }
