@@ -39,7 +39,8 @@ Usage
       --elevation FLOAT [35]      Camera elevation, in degrees
       --distance FLOAT            Camera distance to the target point, in meters (default: fit the layers bounding box)
       --target FLOAT x 3          Camera target point 'x,y,z', in meters (default: center of the layers bounding box)
-      --fov FLOAT [45]            Vertical field of view, in degrees. Use 0 for orthographic
+      --fov FLOAT:FLOAT in [0 - 179] [45] 
+                                  Vertical field of view, in degrees (up to 179). Use 0 for orthographic
       --background TEXT [FFFFFF]  Background color, as a hex RRGGBB string
       --colormap TEXT:{jet,hot,gray}
                                   Recolor points and voxels by height with this colormap (default: keep the layer colors; voxel maps use 'jet')

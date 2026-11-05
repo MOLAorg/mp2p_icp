@@ -85,6 +85,10 @@ void load_plugins()
 
 mrpt::img::TColorf parse_hex_color(const std::string& hex)
 {
+    if (hex.size() != 6 || hex.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
+    {
+        throw std::invalid_argument("Invalid color, expected 6 hex digits 'RRGGBB': " + hex);
+    }
     const unsigned long c = std::stoul(hex, nullptr, 16);
     return mrpt::img::TColorf(
         static_cast<float>((c >> 16) & 0xff) / 255.f, static_cast<float>((c >> 8) & 0xff) / 255.f,
@@ -128,6 +132,8 @@ mrpt::viz::CSetOfObjects::Ptr render_layer(const mrpt::maps::CMetricMap::Ptr& la
 
 void run_mm_render()
 {
+    const auto bgColor = parse_hex_color(argBackground);
+
     load_plugins();
 
     ASSERT_FILE_EXISTS_(argMapFile);
@@ -159,6 +165,11 @@ void run_mm_render()
         }
         scene.insert(render_layer(it->second));
 
+        // Empty layers report a degenerate box at the origin: keep them out of the framing.
+        if (it->second->isEmpty())
+        {
+            continue;
+        }
         const auto lyBox = it->second->boundingBox();
         bbox             = bbox ? bbox->unionWith(lyBox) : lyBox;
     }
@@ -183,22 +194,29 @@ void run_mm_render()
     cam.setAzimuthDegrees(static_cast<float>(argAzimuth));
     cam.setElevationDegrees(static_cast<float>(argElevation));
     cam.setPointingAt(target.x, target.y, target.z);
+    // Default distance: fit the sphere enclosing the bounding box to the
+    // narrower of the two image dimensions.
+    const double aspect = static_cast<double>(argWidth) / static_cast<double>(argHeight);
+    const double radius = 0.5 * diag;
     if (argFov <= 0)
     {
         cam.setOrthogonal(true);
         // The orthographic view height is half the zoom distance:
-        cam.setZoomDistance(static_cast<float>(argDistance.value_or(2.0 * diag)));
+        const double defaultDist = 4.0 * radius / std::min(1.0, aspect);
+        cam.setZoomDistance(static_cast<float>(argDistance.value_or(defaultDist)));
     }
     else
     {
         cam.setProjectiveFOVdeg(static_cast<float>(argFov));
-        const double halfFov = 0.5 * mrpt::DEG2RAD(argFov);
-        cam.setZoomDistance(
-            static_cast<float>(argDistance.value_or(0.4 * diag / std::tan(halfFov))));
+        const double halfFovV      = 0.5 * mrpt::DEG2RAD(argFov);
+        const double halfFovH      = std::atan(std::tan(halfFovV) * aspect);
+        const double halfFovNarrow = std::min(halfFovV, halfFovH);
+        const double defaultDist   = radius / std::sin(halfFovNarrow);
+        cam.setZoomDistance(static_cast<float>(argDistance.value_or(defaultDist)));
     }
 
     auto vp = scene.getViewport();
-    vp->setCustomBackgroundColor(parse_hex_color(argBackground));
+    vp->setCustomBackgroundColor(bgColor);
     vp->setViewportClipDistances(0.1f, 10.0f * diag + cam.getZoomDistance());
     if (argSSAO)
     {
@@ -245,7 +263,10 @@ int main(int argc, char** argv)
            "box)")
         ->delimiter(',')
         ->expected(3);
-    cmd.add_option("--fov", argFov, "Vertical field of view, in degrees. Use 0 for orthographic")
+    cmd.add_option(
+           "--fov", argFov,
+           "Vertical field of view, in degrees (up to 179). Use 0 for orthographic")
+        ->check(CLI::Range(0.0, 179.0))
         ->capture_default_str();
     cmd.add_option("--background", argBackground, "Background color, as a hex RRGGBB string")
         ->capture_default_str();
