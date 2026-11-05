@@ -24,6 +24,7 @@ Applications
   app_mm-filter
   app_mm-georef
   app_mm-merge
+  app_mm-render
   app_mm-viewer
   app_mm2grid
   app_mm2kml
