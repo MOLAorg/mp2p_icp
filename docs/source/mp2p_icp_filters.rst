@@ -95,8 +95,9 @@ Filter: `FilterAdjustTimestamps`
 * **silently\_ignore\_no\_timestamps** (``bool``, default: `false`): If `true`, no exception is thrown if the input layer does not contain timestamps;
   an empty output is produced instead.
 
-* **time\_offset** (``double``, default: `0.0`): An optional time offset to be added on top of the adjustment.
-  Useful for synchronizing multiple sensors.
+* **time\_offset** (``double``, default: `0.0`): A time offset [s] added on top of the adjustment.
+  When merging clouds from several sensors, set it to this cloud's timestamp minus the common
+  reference timestamp (e.g. that of the first sensor), so all points share one time reference.
 
 * **method** (:cpp:enum:`TimestampAdjustMethod`, default: `MiddleIsZero`): The criterion for adjusting timestamps:
 
