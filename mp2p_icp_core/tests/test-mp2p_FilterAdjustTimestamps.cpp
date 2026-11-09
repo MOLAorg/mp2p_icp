@@ -128,6 +128,29 @@ void test_two_sensors(TimestampAdjustMethod method)
 #endif
 }
 
+void test_two_sensors_normalize()
+{
+    const double tA    = 1000.0;
+    const double delta = 0.074;
+    const auto   a     = adjust(TimestampAdjustMethod::Normalize, tA, 0.0);
+    const auto   b     = adjust(TimestampAdjustMethod::Normalize, tA + delta, delta);
+
+    ASSERT_EQUAL_(a.t.size(), kRawTimes.size());
+    ASSERT_EQUAL_(b.t.size(), kRawTimes.size());
+
+    // Times are in units of the scan span, offset included:
+    const double span = kRawTimes.back() - kRawTimes.front();
+    for (size_t i = 0; i < kRawTimes.size(); i++)
+    {
+        ASSERT_NEAR_(a.t[i], kRawTimes[i] / span, 1e-5);
+        ASSERT_NEAR_(b.t[i], (kRawTimes[i] + delta) / span, 1e-5);
+    }
+
+    // The reference time is not modified:
+    ASSERT_NEAR_(a.refTime, tA, 1e-9);
+    ASSERT_NEAR_(b.refTime, tA + delta, 1e-9);
+}
+
 void test_single_sensor_middle_is_zero()
 {
     const auto a = adjust(TimestampAdjustMethod::MiddleIsZero, 0.0, 0.0);
@@ -147,6 +170,7 @@ int main()
         test_single_sensor_middle_is_zero();
         test_two_sensors(TimestampAdjustMethod::MiddleIsZero);
         test_two_sensors(TimestampAdjustMethod::EarliestIsZero);
+        test_two_sensors_normalize();
         std::cout << "All tests passed.\n";
         return 0;
     }

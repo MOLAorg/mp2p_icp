@@ -98,12 +98,16 @@ Filter: `FilterAdjustTimestamps`
 * **time\_offset** (``double``, default: `0.0`): A time offset [s] added on top of the adjustment.
   When merging clouds from several sensors, set it to this cloud's timestamp minus the common
   reference timestamp (e.g. that of the first sensor), so all points share one time reference.
+  This requires the clouds to share the same earliest (`EarliestIsZero`) or middle (`MiddleIsZero`)
+  raw per-point time, e.g. sensors with the same scan rate.
+  With `Normalize`, the offset is scaled by :math:`1/\mathrm{span}` like the timestamps.
 
 * **method** (:cpp:enum:`TimestampAdjustMethod`, default: `MiddleIsZero`): The criterion for adjusting timestamps:
 
   * **EarliestIsZero**: Adjusts such that the earliest timestamp is 0. Successive ones represent real elapsed seconds.
   * **MiddleIsZero**: Adjusts such that the middle timestamp is 0. The rest are positive/negative elapsed seconds.
-  * **Normalize**: Normalizes all timestamps to the range :math:`[0, 1]`.
+  * **Normalize**: Normalizes all timestamps to the range :math:`[0, 1]`. These are not elapsed seconds
+    and the reference time is not modified, so do not use them for deskewing or with `FilterAbsoluteTimestamp`.
 
 .. code-block:: yaml
 
