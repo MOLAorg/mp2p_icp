@@ -124,11 +124,17 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
     auto  ps = this->attachedSource();
     float dt = 0;
 
+    // time_offset is the delay of this cloud's own reference time with respect
+    // to the common one (e.g. another sensor's): it is added to the adjusted
+    // timestamps, so the reference zero time moves by the adjustment minus it.
+    // Normalize output is in units of the scan span, so the offset is scaled too.
+    const auto timeOffset = static_cast<float>(params.time_offset);
+
     switch (params.method)
     {
         case TimestampAdjustMethod::MiddleIsZero:
         {
-            dt = 0.5f * (*maxT + *minT) + static_cast<float>(params.time_offset);
+            dt = 0.5f * (*maxT + *minT) - timeOffset;
             for (auto& t : Ts)
             {
                 t -= dt;
@@ -137,7 +143,7 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
         break;
         case TimestampAdjustMethod::EarliestIsZero:
         {
-            dt = *minT + static_cast<float>(params.time_offset);
+            dt = *minT - timeOffset;
             for (auto& t : Ts)
             {
                 t -= dt;
@@ -150,7 +156,7 @@ void FilterAdjustTimestamps::filter(mp2p_icp::metric_map_t& inOut) const
             const float k = *maxT != *minT ? 1.0f / (*maxT - *minT) : 1.0f;
             for (auto& t : Ts)
             {
-                t = (t - m) * k + static_cast<float>(params.time_offset);
+                t = (t - m + timeOffset) * k;
             }
         }
         break;

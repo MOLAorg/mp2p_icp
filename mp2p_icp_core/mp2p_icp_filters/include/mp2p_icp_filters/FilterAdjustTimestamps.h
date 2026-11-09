@@ -73,7 +73,16 @@ class FilterAdjustTimestamps : public mp2p_icp_filters::FilterBase
          */
         bool silently_ignore_no_timestamps = false;
 
-        /** Additional time offset, useful when synchronizing several sensors */
+        /** Time offset [s] added to the adjusted timestamps, useful when
+         * merging several sensors: set it to this cloud's timestamp minus the
+         * common reference timestamp (e.g. that of the first sensor), so all
+         * points end up relative to one reference time. This requires the
+         * clouds to share the same earliest (EarliestIsZero) or middle
+         * (MiddleIsZero) raw per-point time, e.g. sensors with the same scan
+         * rate. With Normalize, the offset is scaled by 1/(scan span) like
+         * the timestamps, which are then not elapsed seconds and the
+         * reference time is not modified: do not use them for deskewing or
+         * FilterAbsoluteTimestamp. */
         double time_offset = .0;
 
         /** The criterion to adjust timestamps. */
