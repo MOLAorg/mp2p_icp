@@ -608,7 +608,7 @@ class Parameters(mrpt.serialization.CSerializable):
     @staticmethod
     def from_dict(d: typing.Any) -> Parameters:
         """
-        Builds parameters from a dict, with the format of the `params` block of ICP YAML files.
+        Builds parameters from a dict, with the format of the `params` block of ICP YAML files, or of as_dict(). `quality_checkpoints` may be a dict {iteration: minimum quality} or a list of {'iteration': N, 'minimum_quality': Q}.
         """
     def __copy__(self) -> Parameters:
         ...
@@ -620,9 +620,9 @@ class Parameters(mrpt.serialization.CSerializable):
         """
     def __repr__(self) -> str:
         ...
-    def as_dict(self) -> typing.Any:
+    def as_dict(self) -> dict:
         """
-        Returns the parameters as a dict.
+        Returns the parameters as a dict, with the format of the `params` block of ICP YAML files, except `quality_checkpoints`: a dict {iteration: minimum quality}.
         """
     @property
     def debugFileNameFormat(self) -> str:
@@ -707,7 +707,7 @@ class Parameters(mrpt.serialization.CSerializable):
     @property
     def quality_checkpoints(self) -> dict[int, float]:
         """
-        dict {iteration: minimum quality}: abort if the quality is lower at that iteration
+        dict {iteration: minimum quality}: abort if the quality is lower at that iteration (QualityCheckpointFailed). Default: {50: 0.05, 100: 0.1}; {} disables them. It returns a copy: assign a new dict to change it.
         """
     @quality_checkpoints.setter
     def quality_checkpoints(self, arg0: collections.abc.Mapping[typing.SupportsInt | typing.SupportsIndex, typing.SupportsFloat | typing.SupportsIndex]) -> None:
@@ -818,7 +818,7 @@ class Results:
     @property
     def nIterations(self) -> int:
         """
-        Number of executed iterations
+        Number of executed iterations (those that updated the pose, including the last one)
         """
     @nIterations.setter
     def nIterations(self, arg0: typing.SupportsInt | typing.SupportsIndex) -> None:
@@ -1158,7 +1158,7 @@ def layer_visualization(layer: mrpt.maps.CMetricMap, params: RenderParamsPointLa
     """
 def load_plugins(modules: str = 'libmola_metric_maps.so') -> None:
     """
-    Loads one or more (comma separated) shared libraries with additional MRPT classes, e.g. map layer types or ICP pipeline modules. Default: libmola_metric_maps.so, needed to load maps built with MOLA.
+    Loads one or more (comma separated) shared libraries with additional MRPT classes, e.g. map layer types or ICP pipeline modules. Default: libmola_metric_maps.so. For the MOLA map classes, the mola_metric_maps Python module is imported automatically when needed, if installed.
     """
 def load_xyz_file(path: typing.Any) -> mrpt.maps.CSimplePointsMap:
     """
