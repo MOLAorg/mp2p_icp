@@ -144,6 +144,22 @@ and ``laspy`` objects:
     pcd = interop.to_open3d(layer)
     layer2 = interop.from_laspy("cloud.laz")
 
+C++ extensions
+==============
+
+The pip wheel also ships the C++ SDK of these libraries (``mp2p_icp.sdk``: headers, shared
+libraries, CMake configs, and the ``mola_common`` CMake functions), as the ``mrpt3`` wheel does
+for MRPT (``mrpt.sdk``), so other wheels can build C++ code and Python modules on top of them.
+With scikit-build-core, ``find_package(mp2p_icp_map)`` (or ``mp2p_icp``, ``mp2p_icp_filters``,
+``mola_common``...) just works, since both SDKs are ``cmake.prefix`` entry points. Other build
+systems add ``mp2p_icp.sdk.get_cmake_prefix_path()`` and ``mrpt.sdk.get_cmake_prefix_path()``
+to ``CMAKE_PREFIX_PATH``.
+
+pybind11 modules built this way can return and accept the types bound here
+(``mp2p_icp.MetricMap``...) if they use the same pybind11 version
+(``mp2p_icp.sdk.PYBIND11_VERSION``) and ``import mp2p_icp`` first. See
+``packaging/pip/README-dev.md`` in the repository for the details.
+
 Notes
 =====
 

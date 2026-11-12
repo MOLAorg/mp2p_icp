@@ -6,8 +6,10 @@
 #
 # Options:
 #  - MP2P_ICP_PYTHON_INSTALL_DIR: install dir of the `mp2p_icp` package,
-#    relative to CMAKE_INSTALL_PREFIX. Default: lib/pythonX.Y/site-packages,
-#    as colcon expects.
+#    relative to CMAKE_INSTALL_PREFIX (or absolute). Default:
+#    lib/pythonX.Y/site-packages, as colcon expects.
+#  - MP2P_ICP_PYTHON_INSTALL_RPATH: install RPATH of the extension module, if
+#    it must differ from CMAKE_INSTALL_RPATH (as in the pip wheel).
 # ------------------------------------------------------------------------------
 
 set(PYBIND11_FINDPYTHON ON)
@@ -37,6 +39,9 @@ pybind11_add_module(_core MODULE
 mola_set_target_build_options(_core)
 target_compile_definitions(_core PRIVATE MP2P_ICP_VERSION_STRING="${MP2P_ICP_VERSION}")
 target_link_libraries(_core PRIVATE mp2p_icp_filters mp2p_icp mp2p_icp_map mp2p_icp_common)
+if (MP2P_ICP_PYTHON_INSTALL_RPATH)
+  set_target_properties(_core PROPERTIES INSTALL_RPATH "${MP2P_ICP_PYTHON_INSTALL_RPATH}")
+endif()
 
 # Stage the package (Python sources plus the extension) in the build tree, so
 # it can be imported and tested before installing:

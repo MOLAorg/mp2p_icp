@@ -1,5 +1,6 @@
 # Python wheel for mp2p_icp: the `mp2p_icp` package (bindings of the
-# mp2p_icp_core C++ libraries), built on top of the `mrpt3` wheel.
+# mp2p_icp_core C++ libraries) and their C++ SDK (mp2p_icp/sdk), built on top
+# of the `mrpt3` wheel.
 # See README-dev.md for how to build it.
 
 [build-system]
@@ -46,6 +47,11 @@ Documentation = "https://docs.mola-slam.org/latest/module-mp2p-icp.html"
 Source = "https://github.com/MOLAorg/mp2p_icp"
 Issues = "https://github.com/MOLAorg/mp2p_icp/issues"
 
+# Lets scikit-build-core based wheels find the mp2p_icp and mola_common CMake
+# packages of the C++ SDK (mp2p_icp/sdk):
+[project.entry-points."cmake.prefix"]
+mp2p_icp = "mp2p_icp.sdk"
+
 [tool.scikit-build]
 minimum-version = "build-system.requires"
 cmake.version = ">=3.24"
@@ -77,7 +83,8 @@ requires = ["numpy"]
 build = "cp311-* cp312-* cp313-* cp314-*"
 skip = "*-musllinux_* *_i686"
 build-verbosity = 1
-test-requires = ["pytest"]
+# cmake, ninja and pybind11: for the C++ SDK consumer test
+test-requires = ["pytest", "cmake", "ninja", "pybind11==3.1.0"]
 test-command = "python {package}/tests/test_wheel.py"
 
 [tool.cibuildwheel.linux]

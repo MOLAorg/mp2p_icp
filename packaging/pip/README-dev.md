@@ -11,22 +11,26 @@ ExternalProjects:
 
 Both are built against the C++ SDK of the [`mrpt3`](https://pypi.org/project/mrpt3/)
 wheel (`site-packages/mrpt/sdk`: MRPT headers, `libmrpt_*.so`, CMake configs,
-Eigen and oneTBB), which is a build requirement. The wheel contains:
+Eigen and oneTBB), which is a build requirement, and installed into a staging
+tree with the layout of the wheel:
 
 ```
 site-packages/
-  mp2p_icp/        Python package, .pyi stubs, configs/, _core.*.so,
-                   libmp2p_icp{,_common,_map,_filters}.so
+  mp2p_icp/        Python package, .pyi stubs, configs/, _core.*.so
+  mp2p_icp/sdk/    C++ SDK: include/, lib/libmp2p_icp{,_common,_map,_filters}.so,
+                   lib/<library>/cmake/ (CMake configs), share/mola_common/
+                   (mola_common CMake functions) and __init__.py
   mp2p_icp.libs/   other third-party libs bundled by auditwheel (if any)
 ```
 
 * **MRPT and oneTBB are never bundled.** MRPT keeps a single class registry per
   process (used, e.g., to deserialize `.mm` files), and Python types are shared
   with the `mrpt` Python modules, so the wheel must load the very same
-  `libmrpt_*.so` and `libtbb.so.12` as the installed `mrpt3` wheel. The RPATH of
-  all binaries is `$ORIGIN:$ORIGIN/../mrpt/sdk/lib`, and auditwheel is told to
-  exclude `libmrpt_*`, `libtbb*` and the OpenGL (libglvnd) libraries
-  (`repair-wheel-command` in `pyproject.toml`).
+  `libmrpt_*.so` and `libtbb.so.12` as the installed `mrpt3` wheel. RPATHs
+  point there (`$ORIGIN/../../../mrpt/sdk/lib` for the libraries in
+  `mp2p_icp/sdk/lib`, `$ORIGIN/sdk/lib:$ORIGIN/../mrpt/sdk/lib` for the
+  extension), and auditwheel is told to exclude `libmrpt_*`, `libtbb*` and the
+  OpenGL (libglvnd) libraries (`repair-wheel-command` in `pyproject.toml`).
 * pybind11 is pinned to the version of the mrpt3 wheel
   (`mrpt.sdk.PYBIND11_VERSION`), or Python types would not be shared; the
   superbuild checks it.
@@ -35,6 +39,44 @@ site-packages/
   branch of mola_common for now (MOLAorg/mola_common#1): `CMakeLists.txt` pins a
   commit of it; switch to a release once merged (see the TODO there).
 * The version comes from `mp2p_icp_core/package.xml` (as `mp2p_icp.__version__`).
+* The CMake files of the SDK must be relocatable: the superbuild fails if they
+  hold absolute paths of the build machine. `build_helpers/relocate_mola_common.cmake`
+  fixes those of mola_common (an absolute module path and an empty version).
+
+## The C++ SDK, for downstream wheels
+
+Other wheels with C++ code using mp2p_icp (e.g. `mola-metric-maps`) build
+against `mp2p_icp/sdk`, as this one builds against `mrpt/sdk`. `mp2p_icp.sdk`
+is a `cmake.prefix` entry point, so with scikit-build-core, and `mp2p-icp`,
+`mrpt3` and `pybind11` (the version in `mp2p_icp.sdk.PYBIND11_VERSION`) in
+`[build-system] requires`, this just works:
+
+```cmake
+find_package(mola_common REQUIRED)   # mola_add_library() & co.
+find_package(mp2p_icp_map REQUIRED)  # it also finds the MRPT modules it needs
+target_link_libraries(my_lib PUBLIC mola::mp2p_icp_map)
+```
+
+Other build systems pass `mp2p_icp.sdk.get_cmake_prefix_path()` and
+`mrpt.sdk.get_cmake_prefix_path()` in `CMAKE_PREFIX_PATH` (see also
+`get_include()` and `get_library_dir()`). Downstream wheels must:
+
+* Build their libraries with `-DMOLA_NO_SOVERSION=ON` (if they use
+  `mola_add_library()`), and set an RPATH to the SDK libraries, e.g.
+  `$ORIGIN/../mp2p_icp/sdk/lib` and `$ORIGIN/../mrpt/sdk/lib` for files in
+  `site-packages/<package>/`.
+* Tell auditwheel not to bundle `libmp2p_icp*.so`, `libmrpt_*.so` nor
+  `libtbb*.so*`, for the same reason as above.
+* Require `mp2p-icp>=X.Y.Z,<X.(Y+1)` and the mrpt3 range of the mp2p-icp wheel
+  they build against (no SOVERSION here either, see below).
+* To return or accept the Python types bound here (`mp2p_icp.MetricMap`...) in
+  pybind11 functions, build with the same pybind11 version, and `import
+  mp2p_icp` before (e.g. `py::module_::import("mp2p_icp")` in their module
+  init).
+
+`tests/sdk_consumer` is such a downstream project: a library defined with
+`mola_add_library()`, a program, and a pybind11 module that returns a
+`mp2p_icp.MetricMap`. `tests/test_wheel.py` builds and runs it.
 
 ## The mrpt3 requirement and its ABI
 
@@ -68,7 +110,9 @@ That builds, repairs and tests the wheel. To test it again in a clean system:
 
 ```bash
 docker run --rm -v $PWD:/src:ro -v /tmp/wheelhouse:/wh:ro python:3.12-slim bash -c \
-  "pip install pytest /wh/mp2p_icp-*-cp312-*.whl && python /src/packaging/pip/tests/test_wheel.py"
+  "apt-get update -qq && apt-get install -y -qq g++ > /dev/null && \
+   pip install pytest cmake ninja pybind11==3.1.0 /wh/mp2p_icp-*-cp312-*.whl && \
+   python /src/packaging/pip/tests/test_wheel.py"
 ```
 
 Building outside the manylinux images (`python -m build --wheel packaging/pip`)
@@ -79,7 +123,9 @@ wheel, but do not source a ROS environment first: the superbuild ignores
 
 `tests/test_wheel.py` (run by cibuildwheel) checks that the libraries come from
 the mrpt3 wheel and are not bundled, a `.mm` round trip, ICP between the demo
-maps and NumPy conversions, and then runs the pytest suite of
+maps, NumPy conversions and the SDK files, builds and runs the SDK consumer
+(if cmake and a C++ compiler are found; also install `pybind11==3.1.0` for its
+Python module), and then runs the pytest suite of
 `mp2p_icp_core/python/tests`. Both use the example data in
 `mp2p_icp_core/demos`, so they need the source tree.
 
@@ -87,7 +133,7 @@ To check the binaries of a wheel:
 
 ```bash
 auditwheel show mp2p_icp-*.whl   # libmrpt_*, libtbb: "not found" here is expected
-unzip -o -d /tmp/w mp2p_icp-*.whl && readelf -d /tmp/w/mp2p_icp/*.so | grep -E "NEEDED|RUNPATH"
+unzip -o -d /tmp/w mp2p_icp-*.whl && readelf -d /tmp/w/mp2p_icp/*.so /tmp/w/mp2p_icp/sdk/lib/*.so | grep -E "NEEDED|RUNPATH"
 ```
 
 ## Type stubs

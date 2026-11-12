@@ -118,7 +118,11 @@ the pure Python package `mp2p_icp` (`mp2p_icp/`: re-exports, `align()` and its b
   `scripts/generate_stubs.py`. Docs: `docs/source/mp2p_icp_python.rst`.
 - pip wheel `mp2p-icp` (`packaging/pip/`, read its `README-dev.md`): a scikit-build-core
   superbuild against the C++ SDK of the `mrpt3` wheel, whose `libmrpt_*.so` and oneTBB it
-  links via RPATH and must never bundle. CI: `.github/workflows/python-wheels.yml`.
+  links via RPATH and must never bundle. It ships its own C++ SDK (`mp2p_icp/sdk`: the four
+  libraries, headers, relocatable CMake configs and the mola_common CMake functions; a
+  `cmake.prefix` entry point) for downstream wheels such as `mola-metric-maps`, checked by
+  `tests/sdk_consumer`. CI: `.github/workflows/python-wheels.yml`. `packaging/COLCON_IGNORE`
+  keeps colcon away from it.
 
 ## Build and test
 

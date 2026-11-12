@@ -9,21 +9,25 @@
 # Superbuild for the mp2p-icp Python wheel, driven by scikit-build-core (see
 # pyproject.toml). It builds, as ExternalProjects, mola_common (CMake scripts)
 # and then mp2p_icp_core (C++ libraries and Python bindings, no apps nor
-# tests), against the MRPT C++ SDK of the mrpt3 wheel (mrpt/sdk), and puts
-# into the wheel:
+# tests), against the MRPT C++ SDK of the mrpt3 wheel (mrpt/sdk), all
+# installed into one staging tree with the layout of the wheel contents:
 #
-#   mp2p_icp/     Python package, the _core extension and libmp2p_icp*.so
+#   mp2p_icp/       Python package and the _core extension
+#   mp2p_icp/sdk/   C++ SDK: include/, lib/ (libmp2p_icp*.so and CMake
+#                   configs), share/mola_common/ (CMake functions)
 #
 # The MRPT and oneTBB libraries are never bundled: they are loaded from the
 # installed mrpt3 wheel (RPATH), since there must be only one MRPT class
-# registry per process.
+# registry per process. Downstream wheels with C++ code build against both
+# SDKs (see mp2p_icp_sdk/__init__.py).
 
 cmake_minimum_required(VERSION 3.24)
 project(mp2p_icp_wheel LANGUAGES C CXX)
 
 include(ExternalProject)
 
-set(MP2P_ICP_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../mp2p_icp_core")
+get_filename_component(MP2P_REPO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+set(MP2P_ICP_CORE_DIR "${MP2P_REPO_DIR}/mp2p_icp_core")
 
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
@@ -51,20 +55,23 @@ if (NOT pybind11_VERSION VERSION_EQUAL MRPT_SDK_PYBIND11_VERSION)
     "update the pybind11 pin in pyproject.toml")
 endif()
 
-# Install prefix of the ExternalProjects. The Python package goes to
-# ${MP2P_PREFIX}/mp2p_icp, the C++ libraries to ${MP2P_PREFIX}/lib.
-set(MP2P_PREFIX "${CMAKE_BINARY_DIR}/prefix")
+# Staging tree (site-packages layout); the SDK is the install prefix of the
+# ExternalProjects:
+set(MP2P_STAGE_DIR "${CMAKE_BINARY_DIR}/stage")
+set(MP2P_SDK_DIR "${MP2P_STAGE_DIR}/mp2p_icp/sdk")
 
-# The C++ libraries end up next to the extension, in site-packages/mp2p_icp/,
-# and the MRPT ones are in site-packages/mrpt/sdk/lib/:
-set(_rpath "\$ORIGIN;\$ORIGIN/../mrpt/sdk/lib")
+# RPATHs: the C++ libraries are in site-packages/mp2p_icp/sdk/lib/, the
+# extension in site-packages/mp2p_icp/, and the MRPT libraries in
+# site-packages/mrpt/sdk/lib/:
+set(_lib_rpath "\$ORIGIN;\$ORIGIN/../../../mrpt/sdk/lib")
+set(_ext_rpath "\$ORIGIN/sdk/lib;\$ORIGIN/../mrpt/sdk/lib")
 
 set(_cache_args
   -DCMAKE_BUILD_TYPE:STRING=Release
-  -DCMAKE_INSTALL_PREFIX:PATH=${MP2P_PREFIX}
+  -DCMAKE_INSTALL_PREFIX:PATH=${MP2P_SDK_DIR}
   -DCMAKE_INSTALL_LIBDIR:STRING=lib
-  -DCMAKE_PREFIX_PATH:STRING=${MP2P_PREFIX};${MRPT_SDK_DIR}
-  -DCMAKE_INSTALL_RPATH:STRING=${_rpath}
+  -DCMAKE_PREFIX_PATH:STRING=${MP2P_SDK_DIR};${MRPT_SDK_DIR}
+  -DCMAKE_INSTALL_RPATH:STRING=${_lib_rpath}
   # Wheels cannot hold the libfoo.so -> libfoo.so.X.Y symlinks:
   -DMOLA_NO_SOVERSION:BOOL=ON
   # No C++20 modules are used, and the module scanning of C++20 targets
@@ -105,6 +112,13 @@ ExternalProject_Add(ep_mola_common
   USES_TERMINAL_BUILD ON
   USES_TERMINAL_INSTALL ON
 )
+# Downstream projects use its CMake functions from the SDK: make them
+# relocatable.
+ExternalProject_Add_Step(ep_mola_common relocate
+  COMMAND ${CMAKE_COMMAND} -DSDK_DIR=${MP2P_SDK_DIR} -DSOURCE_DIR=<SOURCE_DIR>
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/build_helpers/relocate_mola_common.cmake
+  DEPENDEES install
+)
 
 # mp2p_icp_core: the C++ libraries and the Python bindings, with oneTBB from
 # the MRPT SDK, and without mola_imu_preintegration (advanced FilterDeskew
@@ -113,14 +127,15 @@ ExternalProject_Add(ep_mp2p_icp_core
   SOURCE_DIR "${MP2P_ICP_CORE_DIR}"
   BINARY_DIR "${CMAKE_BINARY_DIR}/mp2p_icp_core"
   CMAKE_CACHE_ARGS ${_cache_args}
+    # The Python package goes to ${MP2P_STAGE_DIR}/mp2p_icp:
+    -DMP2P_ICP_PYTHON_INSTALL_DIR:PATH=${MP2P_STAGE_DIR}
+    -DMP2P_ICP_PYTHON_INSTALL_RPATH:STRING=${_ext_rpath}
   CMAKE_ARGS
     -DMP2PICP_BUILD_APPLICATIONS=OFF
     -DMP2PICP_BUILD_TESTING=OFF
     -DMP2PICP_BUILD_PYTHON=ON
     -DMP2PICP_USE_TBB=ON
     -DCMAKE_DISABLE_FIND_PACKAGE_mola_imu_preintegration=ON
-    # The package goes to ${MP2P_PREFIX}/mp2p_icp:
-    -DMP2P_ICP_PYTHON_INSTALL_DIR=.
   DEPENDS ep_mola_common
   # Always re-run the build tool, so source edits are picked up:
   BUILD_ALWAYS ON
@@ -129,18 +144,37 @@ ExternalProject_Add(ep_mp2p_icp_core
   USES_TERMINAL_INSTALL ON
 )
 
-# Into the wheel: the Python package, plus the C++ libraries next to the
-# extension (headers and CMake configs are left out). The bindings are skipped
-# without error if pybind11 or Python are not found: make sure they are there.
+# Versions downstream C++ extensions must match:
+file(READ "${MP2P_ICP_CORE_DIR}/package.xml" _xml)
+string(REGEX MATCH "<version>([0-9.]+)</version>" _ "${_xml}")
+file(WRITE "${CMAKE_BINARY_DIR}/_build_info.py"
+  "MP2P_ICP_VERSION = \"${CMAKE_MATCH_1}\"\nPYBIND11_VERSION = \"${pybind11_VERSION}\"\n")
+
+# Into the wheel: the staging tree. The bindings are skipped without error if
+# pybind11 or Python are not found: make sure they are there. The CMake files
+# must not hold absolute paths of the build machine (they would not be
+# relocatable).
 install(CODE "
-  file(GLOB _ext \"${MP2P_PREFIX}/mp2p_icp/_core*.so\")
+  file(GLOB _ext \"${MP2P_STAGE_DIR}/mp2p_icp/_core*.so\")
   if (NOT _ext)
     message(FATAL_ERROR \"The mp2p_icp._core extension was not built\")
   endif()
-  file(GLOB _libs \"${MP2P_PREFIX}/lib/libmp2p_icp*.so\")
-  file(INSTALL \${_libs} DESTINATION \"\${CMAKE_INSTALL_PREFIX}/mp2p_icp\" USE_SOURCE_PERMISSIONS)
+  file(GLOB_RECURSE _cmake_files \"${MP2P_SDK_DIR}/*.cmake\")
+  foreach(_f \${_cmake_files})
+    file(READ \"\${_f}\" _txt)
+    foreach(_path \"${CMAKE_BINARY_DIR}\" \"${MP2P_REPO_DIR}\" \"${MRPT_SDK_DIR}\")
+      string(FIND \"\${_txt}\" \"\${_path}\" _pos)
+      if (NOT _pos EQUAL -1)
+        message(FATAL_ERROR \"\${_f} holds an absolute build path: \${_path}\")
+      endif()
+    endforeach()
+  endforeach()
 ")
-install(DIRECTORY "${MP2P_PREFIX}/mp2p_icp" DESTINATION .
+install(DIRECTORY "${MP2P_STAGE_DIR}/" DESTINATION .
   USE_SOURCE_PERMISSIONS
   PATTERN "__pycache__" EXCLUDE
 )
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/mp2p_icp_sdk/__init__.py"
+  "${CMAKE_BINARY_DIR}/_build_info.py"
+  DESTINATION mp2p_icp/sdk)
