@@ -13,6 +13,9 @@ Main entry points:
   building pipelines.
 - Point cloud files: ``load_ply()`` / ``save_ply()``, ``load_pcd()`` /
   ``save_pcd()``, ``save_las()``, ``save_txt()``, ``load_xyz_file()``.
+- ``render()``: off-screen rendering of maps into images.
+- ``mp2p_icp.interop``: conversions to and from pandas, Open3D, PyVista,
+  laspy and Parquet (optional dependencies).
 
 Point clouds are MRPT objects (``mrpt.maps.CGenericPointsMap``...) and poses
 are ``mrpt.poses`` / ``mrpt.math`` types, from the ``mrpt`` Python package.
@@ -75,6 +78,8 @@ from ._core import (
 from .align import align, config_path, list_configs, to_metric_map
 from .pcd import load_pcd, save_pcd
 from .ply import load_ply
+from .render import render
+from . import interop
 
 __all__ = [
     "PT_LAYER_PLANE_CENTROIDS",
@@ -108,6 +113,7 @@ __all__ = [
     "filter_pipeline_from_yaml",
     "generators_from_yaml",
     "icp_pipeline_from_yaml",
+    "interop",
     "layer_from_numpy",
     "layer_points_view",
     "layer_to_numpy",
@@ -118,6 +124,7 @@ __all__ = [
     "load_plugins",
     "load_xyz_file",
     "load_yaml",
+    "render",
     "save_las",
     "save_pcd",
     "save_ply",
