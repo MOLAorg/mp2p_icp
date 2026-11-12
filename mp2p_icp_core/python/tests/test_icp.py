@@ -113,7 +113,8 @@ def test_bundled_3d_quality_is_the_overlap(bunny_xyz, config):
         },
     )
     assert r.terminationReason == mp2p_icp.IterTermReason.Stalled
-    assert np.abs(r.optimal_pose_matrix[:3, 3]).max() < 1e-3
+    # Within one decimation voxel: the exact value depends on the build (e.g. with or without TBB).
+    assert np.abs(r.optimal_pose_matrix[:3, 3]).max() < 2e-3
     assert r.quality == pytest.approx(np.mean(in_global), abs=0.03)
 
 
