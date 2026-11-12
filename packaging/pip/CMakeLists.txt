@@ -101,23 +101,16 @@ endforeach()
 # TODO: switch to a mola_common release once MOLA_NO_SOVERSION is merged
 # (https://github.com/MOLAorg/mola_common/pull/1). Until then, this is a commit
 # of its branch "feat/no-soversion-option".
-set(MP2P_WHEEL_MOLA_COMMON_COMMIT 3e95c2bccf064506994ab2e6b0ed1c466c442ae8)
+set(MP2P_WHEEL_MOLA_COMMON_COMMIT 04162aafaf34b49b435007f1e294ceb38b1d6dc2)
 ExternalProject_Add(ep_mola_common
   URL "https://github.com/MOLAorg/mola_common/archive/${MP2P_WHEEL_MOLA_COMMON_COMMIT}.tar.gz"
-  URL_HASH SHA256=b9be16cbffe28772ec2e0aed41c94827dc02b72a6a50d525358e5ac7920fb802
+  URL_HASH SHA256=fa419fe5c6d6c3df29d401b079712f07c1a881aa28acba68512ec42f61a5e6b9
   DOWNLOAD_EXTRACT_TIMESTAMP ON
   BINARY_DIR "${CMAKE_BINARY_DIR}/mola_common"
   CMAKE_CACHE_ARGS ${_cache_args}
   USES_TERMINAL_CONFIGURE ON
   USES_TERMINAL_BUILD ON
   USES_TERMINAL_INSTALL ON
-)
-# Downstream projects use its CMake functions from the SDK: make them
-# relocatable.
-ExternalProject_Add_Step(ep_mola_common relocate
-  COMMAND ${CMAKE_COMMAND} -DSDK_DIR=${MP2P_SDK_DIR} -DSOURCE_DIR=<SOURCE_DIR>
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/build_helpers/relocate_mola_common.cmake
-  DEPENDEES install
 )
 
 # mp2p_icp_core: the C++ libraries and the Python bindings, with oneTBB from

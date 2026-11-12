@@ -40,8 +40,7 @@ site-packages/
   commit of it; switch to a release once merged (see the TODO there).
 * The version comes from `mp2p_icp_core/package.xml` (as `mp2p_icp.__version__`).
 * The CMake files of the SDK must be relocatable: the superbuild fails if they
-  hold absolute paths of the build machine. `build_helpers/relocate_mola_common.cmake`
-  fixes those of mola_common (an absolute module path and an empty version).
+  hold absolute paths of the build machine.
 
 ## The C++ SDK, for downstream wheels
 
