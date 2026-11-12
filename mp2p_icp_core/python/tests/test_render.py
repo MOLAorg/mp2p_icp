@@ -9,7 +9,12 @@ import mp2p_icp
 
 
 def _render_or_skip(*args, **kwargs) -> np.ndarray:
-    pytest.importorskip("mrpt.opengl")
+    # Not pytest.importorskip(): it only skips if the module is missing, not if
+    # it fails to load the system OpenGL libraries.
+    try:
+        import mrpt.opengl  # noqa: F401
+    except ImportError as e:
+        pytest.skip(f"mrpt.opengl not available: {e}")
     try:
         return mp2p_icp.render(*args, **kwargs)
     except RuntimeError as e:
