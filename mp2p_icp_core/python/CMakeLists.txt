@@ -11,7 +11,9 @@
 # ------------------------------------------------------------------------------
 
 set(PYBIND11_FINDPYTHON ON)
-find_package(Python3 QUIET COMPONENTS Interpreter Development)
+# Development.Module: extension modules do not need libpython, which some
+# Python builds (e.g. the manylinux images) do not ship.
+find_package(Python3 QUIET COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG QUIET)
 if (NOT pybind11_FOUND OR NOT Python3_FOUND)
   return()
