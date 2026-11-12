@@ -15,7 +15,7 @@ types, so both APIs can be mixed freely.
 Install
 =======
 
-**pip** (Linux x86_64 and aarch64, Python 3.11 to 3.14): ``pip install mp2p-icp``. It also
+**pip** (Linux x86_64 and aarch64, Python 3.10 to 3.14): ``pip install mp2p-icp``. It also
 installs the ``mrpt3`` wheel, whose MRPT libraries it uses.
 
 **ROS 2**: the bindings are built with ``mp2p_icp_core`` whenever ``pybind11`` is found

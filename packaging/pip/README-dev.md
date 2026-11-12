@@ -157,7 +157,7 @@ runners:
 
 * Pull requests touching the bindings, the packaging or the workflow: one
   Python version per platform.
-* Weekly, on release tags and by hand: Python 3.11 to 3.14.
+* Weekly, on release tags and by hand: Python 3.10 to 3.14.
 * Release tags (`X.Y.Z`, as the rest of the release process) upload the wheels
   to PyPI. A manual run can also upload to TestPyPI or PyPI (`publish` input).
   The tag must match the version in `mp2p_icp_core/package.xml`.
