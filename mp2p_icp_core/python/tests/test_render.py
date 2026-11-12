@@ -8,25 +8,10 @@ import pytest
 import mp2p_icp
 
 
-def _render_or_skip(*args, **kwargs) -> np.ndarray:
-    # Not pytest.importorskip(): it only skips if the module is missing, not if
-    # it fails to load the system OpenGL libraries.
-    try:
-        import mrpt.opengl  # noqa: F401
-    except ImportError as e:
-        pytest.skip(f"mrpt.opengl not available: {e}")
-    try:
-        return mp2p_icp.render(*args, **kwargs)
-    except RuntimeError as e:
-        if "EGL" in str(e) or "OpenGL" in str(e) or "context" in str(e):
-            pytest.skip(f"Off-screen OpenGL rendering not available: {e}")
-        raise
-
-
-def test_render_map(demos_dir, tmp_path):
+def test_render_map(demos_dir, tmp_path, render_or_skip):
     m = mp2p_icp.MetricMap.from_file(demos_dir / "global_001.mm")
     out = tmp_path / "map.png"
-    img = _render_or_skip(m, 320, 240, point_size=3.0, background=(1, 1, 1), output=out)
+    img = render_or_skip(m, 320, 240, point_size=3.0, background=(1, 1, 1), output=out)
     assert img.shape == (240, 320, 3) and img.dtype == np.uint8
     assert out.is_file()
     # Mostly white background, with some non-white (point) pixels:
@@ -34,8 +19,8 @@ def test_render_map(demos_dir, tmp_path):
     assert 0 < nonwhite.mean() < 0.5
 
 
-def test_render_colormap_and_points(bunny_xyz):
-    img = _render_or_skip(
+def test_render_colormap_and_points(bunny_xyz, render_or_skip):
+    img = render_or_skip(
         bunny_xyz,
         200,
         200,
@@ -47,6 +32,6 @@ def test_render_colormap_and_points(bunny_xyz):
     )
     assert np.any(img > 50)
     with pytest.raises(ValueError):
-        _render_or_skip(bunny_xyz, 10, 10, colormap="nope")
+        render_or_skip(bunny_xyz, 10, 10, colormap="nope")
     with pytest.raises(KeyError):
-        _render_or_skip(bunny_xyz, 10, 10, layers=["nope"])
+        render_or_skip(bunny_xyz, 10, 10, layers=["nope"])

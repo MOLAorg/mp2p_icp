@@ -16,8 +16,9 @@ DEMOS_DIR = Path(__file__).resolve().parents[2] / "demos"
 
 
 def _mola_test_datasets_dir() -> Optional[Path]:
-    """Datasets of the optional `mola_test_datasets` package, if available."""
-    env = os.environ.get("MOLA_TEST_DATASETS_DIR")
+    """Datasets of the optional `mola_test_datasets` package, if available.
+    MOLA_TEST_DATASET_DIR is the name used by the C++ tests."""
+    env = os.environ.get("MOLA_TEST_DATASETS_DIR") or os.environ.get("MOLA_TEST_DATASET_DIR")
     if env:
         return Path(env)
     try:
@@ -39,6 +40,27 @@ def datasets_dir() -> Path:
     if d is None or not d.is_dir():
         pytest.skip("mola_test_datasets not found (set MOLA_TEST_DATASETS_DIR)")
     return d
+
+
+@pytest.fixture(scope="session")
+def render_or_skip():
+    """mp2p_icp.render(), skipping the test if off-screen OpenGL is not available."""
+
+    def render(*args, **kwargs) -> np.ndarray:
+        # Not pytest.importorskip(): it only skips if the module is missing, not
+        # if it fails to load the system OpenGL libraries.
+        try:
+            import mrpt.opengl  # noqa: F401
+        except ImportError as e:
+            pytest.skip(f"mrpt.opengl not available: {e}")
+        try:
+            return mp2p_icp.render(*args, **kwargs)
+        except RuntimeError as e:
+            if "EGL" in str(e) or "OpenGL" in str(e) or "context" in str(e):
+                pytest.skip(f"Off-screen OpenGL rendering not available: {e}")
+            raise
+
+    return render
 
 
 @pytest.fixture(scope="session")
