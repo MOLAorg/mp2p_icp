@@ -89,6 +89,12 @@ clouds, or ``MetricMap`` objects:
 The bundled configurations are YAML files (``mp2p_icp.config_path(name)``) with
 ``${VARIABLES}`` for their main thresholds: copy and modify one for custom pipelines.
 
+The ``quality`` of the 3D configurations is the overlap between both clouds at the final pose:
+the fraction of decimated local points with a global point closer than ``ICP_QUALITY_THRESHOLD``
+(default: 0.5 m). Partial overlaps give low values for correct alignments too, so compare the
+quality of candidate alignments of the same pair rather than against a fixed value. The bundled
+configurations never abort early for a low quality (no ``Parameters.quality_checkpoints``).
+
 Full control, with any ICP YAML configuration file (or a dict):
 
 .. code-block:: python

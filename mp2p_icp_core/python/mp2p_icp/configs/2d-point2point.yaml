@@ -14,6 +14,8 @@ params:
   maxIterations: ${ICP_MAX_ITERATIONS|100}
   minAbsStep_trans: 1e-4
   minAbsStep_rot: 1e-4
+  # No early abort for low quality: partial overlaps also have it.
+  quality_checkpoints: []
 
 solvers:
   - class: mp2p_icp::Solver_Horn

@@ -92,6 +92,31 @@ def test_bunny_synthetic_transform(bunny_xyz, config):
     assert r.quality > 0.95
 
 
+@pytest.mark.parametrize("config", ["3d-point2point", "3d-point2plane"])
+def test_bundled_3d_quality_is_the_overlap(bunny_xyz, config):
+    # A small overlap: the global cloud only has the 10% of the points with
+    # the smallest x. The quality is that overlap (it was 0, below the
+    # default minimum pairing ratio of 0.2).
+    rng = np.random.default_rng(1)
+    local = bunny_xyz + rng.normal(0, 2e-4, bunny_xyz.shape)
+    in_global = bunny_xyz[:, 0] < np.quantile(bunny_xyz[:, 0], 0.1)
+    glob = bunny_xyz[in_global]
+    r = mp2p_icp.align(
+        local,
+        glob,
+        config,
+        variables={
+            "ICP_THRESHOLD": 0.01,
+            "ICP_DECIMATION": 0.002,
+            "ICP_PLANE_MAX_DEVIATION": 0.002,
+            "ICP_QUALITY_THRESHOLD": 0.002,
+        },
+    )
+    assert r.terminationReason == mp2p_icp.IterTermReason.Stalled
+    assert np.abs(r.optimal_pose_matrix[:3, 3]).max() < 1e-3
+    assert r.quality == pytest.approx(np.mean(in_global), abs=0.03)
+
+
 def test_align_inputs_unchanged(bunny_xyz):
     local = mp2p_icp.to_metric_map(bunny_xyz)
     glob = mp2p_icp.to_metric_map(bunny_xyz + [0.01, 0, 0])
@@ -119,6 +144,8 @@ def test_bundled_configs():
         assert mp2p_icp.config_path(name).is_file()
         icp, params = mp2p_icp.icp_pipeline_from_yaml(mp2p_icp.config_path(name))
         assert params.maxIterations > 0
+        # No early abort for low quality (partial overlaps also have it):
+        assert params.quality_checkpoints == {}
     with pytest.raises(ValueError):
         mp2p_icp.config_path("nope")
 

@@ -11,7 +11,16 @@
 # Variables (override them with `variables={...}`):
 #  - ICP_THRESHOLD: maximum distance between paired points [m] (default: 2.0)
 #  - ICP_DECIMATION: voxel size to decimate the local cloud [m] (default: 0.5)
+#  - ICP_QUALITY_THRESHOLD: distance for a point to count as overlapping in the
+#    quality [m] (default: 0.5)
 #  - ICP_MAX_ITERATIONS: maximum number of ICP iterations (default: 200)
+#
+# Quality (Results.quality): the fraction of the decimated local points with a
+# global point closer than ICP_QUALITY_THRESHOLD at the final pose, i.e. the
+# overlap of both clouds, in [0,1]. Partial overlaps give lower values for
+# correct alignments too (e.g. from 0.2 to 0.9 for correct loop closures
+# between LiDAR scans or submaps, depending on their overlap): compare qualities
+# of candidate alignments of the same pair, rather than against a fixed value.
 #
 class_name: mp2p_icp::ICP
 
@@ -19,6 +28,8 @@ params:
   maxIterations: ${ICP_MAX_ITERATIONS|200}
   minAbsStep_trans: 1e-4
   minAbsStep_rot: 1e-4
+  # No early abort for low quality: partial overlaps also have it.
+  quality_checkpoints: []
 
 solvers:
   - class: mp2p_icp::Solver_Horn
@@ -55,10 +66,17 @@ matchers:
       pointLayerMatches:
         - {global: "raw", local: "decimated"}
 
+# Its own matching, not the ICP pairings (whose ratio depends on the
+# matchers, e.g. the planarity checks of the point-to-plane one):
 quality:
   - class: mp2p_icp::QualityEvaluator_PairedRatio
     params:
-      reuse_icp_pairings: true
+      reuse_icp_pairings: false
+      threshold: ${ICP_QUALITY_THRESHOLD|0.5}
+      thresholdAngularDeg: 0
+      absolute_minimum_pairing_ratio: 0.0
+      pointLayerMatches:
+        - {global: "raw", local: "decimated"}
 
 # Applied to both maps before ICP:
 filters:
