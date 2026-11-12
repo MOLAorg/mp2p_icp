@@ -81,6 +81,7 @@ std::shared_ptr<PyFilterPipeline> make_filters(
     const py::object& config, const py::object& variables, const std::string& verbosity)
 {
     const auto cfg = get_sequence(load_config(config, variables), "filters");
+    validate_pipeline_list(cfg, "filter pipeline");
     require_registered_classes(cfg);
     auto ret     = std::make_shared<PyFilterPipeline>();
     ret->filters = mp2p_icp_filters::filter_pipeline_from_yaml(cfg, to_verbosity(verbosity));
@@ -92,6 +93,7 @@ std::shared_ptr<PyGenerators> make_generators(
     const py::object& config, const py::object& variables, const std::string& verbosity)
 {
     const auto cfg = get_sequence(load_config(config, variables), "generators");
+    validate_pipeline_list(cfg, "generators");
     require_registered_classes(cfg);
     auto ret        = std::make_shared<PyGenerators>();
     ret->generators = mp2p_icp_filters::generators_from_yaml(cfg, to_verbosity(verbosity));
@@ -295,6 +297,7 @@ void init_filters(py::module_& m)
 
             const mrpt::containers::yaml cfg =
                 pipeline.is_none() ? mrpt::containers::yaml() : load_config(pipeline, variables);
+            validate_sm2mm_pipeline(cfg);
             require_registered_classes(cfg);
 
             mp2p_icp_filters::sm2mm_options_t opts;

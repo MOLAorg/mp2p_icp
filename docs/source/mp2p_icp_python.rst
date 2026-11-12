@@ -177,5 +177,8 @@ Notes
 - Calls into the C++ libraries (ICP, filters, file I/O...) release the Python GIL, so
   they can run in parallel from several Python threads, on different objects.
 - Functions raise Python exceptions on errors (``FileNotFoundError``, ``RuntimeError``...).
+  Errors from the C++ libraries are ``RuntimeError`` with a short message, and the full C++
+  text (source location and call stack) in their ``cpp_traceback`` attribute. Malformed pipeline
+  configurations (filters, generators, ICP, sm2mm) raise ``ValueError``.
 - ``MetricMap.metadata``, ``georeferencing``, ``lines`` and ``planes`` return copies:
   assign them to change them. ``MetricMap.layers`` returns the layer objects themselves.

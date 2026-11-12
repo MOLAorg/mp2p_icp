@@ -37,6 +37,29 @@ namespace py = pybind11;
 /** Raises a Python FileNotFoundError with the given message */
 [[noreturn]] void raise_file_not_found(const std::string& msg);
 
+/** The message of an error without the decorations of MRPT exceptions (the
+ *  "==== MRPT exception ====" header, location and call stack), also for
+ *  MRPT exception texts embedded in other messages. */
+std::string clean_error_message(const std::string& what);
+
+/** Registers the translator of the C++ exceptions with MRPT decorations
+ *  raised from the module functions: into RuntimeError, with the clean
+ *  message, and the full text in its `cpp_traceback` attribute. */
+void register_exception_translator();
+
+/** Checks the structure of an ICP pipeline configuration (the input of
+ *  icp_pipeline_from_yaml()), raising a ValueError with a clear message. */
+void validate_icp_pipeline(const mrpt::containers::yaml& cfg);
+
+/** Checks the structure of a list of filters or generators (`what`): a
+ *  sequence (or null) of maps with `class_name` and `params`. Raises a
+ *  ValueError with a clear message. */
+void validate_pipeline_list(const mrpt::containers::yaml& list, const std::string& what);
+
+/** Checks the structure of a simplemap_to_metricmap() pipeline: a map (or
+ *  null) with optional `generators`, `filters` and `final_filters` lists. */
+void validate_sm2mm_pipeline(const mrpt::containers::yaml& cfg);
+
 /** Imports the Python module `mola_metric_maps` (the bindings of the MOLA
  *  metric maps, whose import registers their C++ classes, `mola::...`), if it
  *  is installed and this was not tried before in this process. Returns true if

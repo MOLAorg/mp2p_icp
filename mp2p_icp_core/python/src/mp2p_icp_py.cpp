@@ -47,6 +47,8 @@ PYBIND11_MODULE(_core, m)
         py::module_::import(mod);
     }
 
+    mp2p_icp_py::register_exception_translator();
+
     m.def(
         "load_yaml",
         [](const py::object& config, const py::object& variables)

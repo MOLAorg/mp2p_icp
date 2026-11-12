@@ -43,6 +43,249 @@ void raise_file_not_found(const std::string& msg)
 
 namespace
 {
+bool is_backtrace_frame(const std::string& line)
+{
+    // e.g. "[3 ]     0x7c6c88d2e81e " or "[12] file.cpp:10 func()"
+    const auto close = line.find(']');
+    if (line.empty() || line[0] != '[' || close == std::string::npos || close < 2)
+    {
+        return false;
+    }
+    for (size_t i = 1; i < close; i++)
+    {
+        if (!std::isdigit(static_cast<unsigned char>(line[i])) && line[i] != ' ')
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::string trim(const std::string& s)
+{
+    const auto b = s.find_first_not_of(" \t\n");
+    if (b == std::string::npos)
+    {
+        return {};
+    }
+    return s.substr(b, s.find_last_not_of(" \t\n") - b + 1);
+}
+
+bool is_mrpt_exception_text(const std::string& s)
+{
+    return s.find("==== MRPT exception ====") != std::string::npos;
+}
+}  // namespace
+
+std::string clean_error_message(const std::string& what)
+{
+    if (!is_mrpt_exception_text(what))
+    {
+        return what;
+    }
+    std::string        out;
+    std::istringstream ss(what);
+    std::string        line;
+    bool               inBacktrace = false;
+    while (std::getline(ss, line))
+    {
+        if (inBacktrace && is_backtrace_frame(line))
+        {
+            continue;
+        }
+        inBacktrace = false;
+        if (line == "==== MRPT exception ====" || line == "==== non-MRPT exception ====" ||
+            line.rfind("Location: ", 0) == 0)
+        {
+            continue;
+        }
+        if (line == "Call stack backtrace:")
+        {
+            inBacktrace = true;
+            continue;
+        }
+        if (line.rfind("Message: ", 0) == 0)
+        {
+            line = line.substr(std::string("Message: ").size());
+        }
+        line = trim(line);
+        if (!line.empty())
+        {
+            out += (out.empty() ? "" : "\n") + line;
+        }
+    }
+    return out.empty() ? what : out;
+}
+
+void register_exception_translator()
+{
+    py::register_local_exception_translator(
+        [](std::exception_ptr p)
+        {
+            try
+            {
+                if (p)
+                {
+                    std::rethrow_exception(p);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                const std::string full = e.what();
+                if (!is_mrpt_exception_text(full))
+                {
+                    throw;  // to the default translators
+                }
+                const std::string msg = clean_error_message(full);
+                // (no exception may escape from here: use the C API)
+                PyObject* txt = PyUnicode_DecodeUTF8(
+                    msg.data(), static_cast<Py_ssize_t>(msg.size()), "replace");
+                PyObject* det = PyUnicode_DecodeUTF8(
+                    full.data(), static_cast<Py_ssize_t>(full.size()), "replace");
+                PyObject* exc = txt ? PyObject_CallOneArg(PyExc_RuntimeError, txt) : nullptr;
+                if (exc && det && PyObject_SetAttrString(exc, "cpp_traceback", det) == 0)
+                {
+                    PyErr_SetObject(PyExc_RuntimeError, exc);
+                }
+                else
+                {
+                    PyErr_Clear();
+                    PyErr_SetString(PyExc_RuntimeError, msg.c_str());
+                }
+                Py_XDECREF(exc);
+                Py_XDECREF(txt);
+                Py_XDECREF(det);
+            }
+        });
+}
+
+namespace
+{
+/** Short description of a YAML node, for error messages */
+std::string describe(const mrpt::containers::yaml& y)
+{
+    if (y.isNullNode())
+    {
+        return "null";
+    }
+    if (y.isScalar())
+    {
+        return "'" + y.as<std::string>() + "'";
+    }
+    return y.isMap() ? "a map" : "a list";
+}
+
+[[noreturn]] void invalid_config(const std::string& what, const std::string& msg)
+{
+    throw py::value_error("Invalid " + what + " configuration: " + msg);
+}
+
+/** Checks a list of pipeline modules (maps with `classKey` and `params`) */
+void validate_module_list(
+    const mrpt::containers::yaml& list, const std::string& what, const std::string& classKey,
+    bool allowNull)
+{
+    if (list.isNullNode() && allowNull)
+    {
+        return;
+    }
+    if (!list.isSequence())
+    {
+        invalid_config(what, "expected a list of entries, got " + describe(list));
+    }
+    size_t i = 0;
+    for (const auto& node : list.asSequence())
+    {
+        const mrpt::containers::yaml e(node);
+        const std::string            entry = "entry #" + std::to_string(++i);
+        if (!e.isMap())
+        {
+            invalid_config(
+                what,
+                entry + " must be a map with '" + classKey + "' and 'params', got " + describe(e));
+        }
+        if (e.has("enabled") && e["enabled"].isScalar() && !e["enabled"].as<bool>())
+        {
+            continue;  // (ignored, as in C++)
+        }
+        if (!e.has(classKey) || !e[classKey].isScalar())
+        {
+            invalid_config(what, entry + " has no '" + classKey + "' (its C++ class name)");
+        }
+        if (!e.has("params"))
+        {
+            invalid_config(what, entry + " has no 'params' (use null or {} for the defaults)");
+        }
+        if (!e["params"].isMap() && !e["params"].isNullNode())
+        {
+            invalid_config(
+                what, "'params' of " + entry + " must be a map, got " + describe(e["params"]));
+        }
+    }
+}
+}  // namespace
+
+void validate_pipeline_list(const mrpt::containers::yaml& list, const std::string& what)
+{
+    validate_module_list(list, what, "class_name", true);
+}
+
+void validate_icp_pipeline(const mrpt::containers::yaml& cfg)
+{
+    const std::string what = "ICP pipeline";
+    if (!cfg.isMap())
+    {
+        invalid_config(
+            what,
+            "expected a map with 'class_name', 'params', 'solvers', 'matchers' and "
+            "'quality', got " +
+                describe(cfg));
+    }
+    if (!cfg.has("class_name") || !cfg["class_name"].isScalar())
+    {
+        invalid_config(what, "missing 'class_name' (e.g. 'mp2p_icp::ICP')");
+    }
+    if (!cfg.has("derived") && (!cfg.has("params") || !cfg["params"].isMap()))
+    {
+        invalid_config(what, "missing the 'params' map (see mp2p_icp::Parameters)");
+    }
+    for (const char* key : {"solvers", "matchers", "quality"})
+    {
+        if (cfg.has(key))
+        {
+            validate_module_list(cfg[key], what + " '" + key + "'", "class", false);
+        }
+        else if (std::string(key) == "quality")
+        {
+            invalid_config(what, "missing the 'quality' list (quality evaluators)");
+        }
+    }
+}
+
+void validate_sm2mm_pipeline(const mrpt::containers::yaml& cfg)
+{
+    if (cfg.isNullNode())
+    {
+        return;
+    }
+    if (!cfg.isMap())
+    {
+        invalid_config(
+            "sm2mm pipeline",
+            "expected a map with 'generators', 'filters' and 'final_filters', got " +
+                describe(cfg));
+    }
+    for (const char* key : {"generators", "filters", "final_filters"})
+    {
+        if (cfg.has(key))
+        {
+            validate_pipeline_list(cfg[key], std::string("sm2mm pipeline '") + key + "'");
+        }
+    }
+}
+
+namespace
+{
 // Python module whose import registers the `mola::` classes:
 constexpr const char* CLASS_PLUGINS_MODULE = "mola_metric_maps";
 

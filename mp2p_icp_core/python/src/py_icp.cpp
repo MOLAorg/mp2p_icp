@@ -107,6 +107,7 @@ std::shared_ptr<PyICP> make_icp(
     const py::object& config, const py::object& variables, const std::string& verbosity)
 {
     const auto cfg = load_config(config, variables);
+    validate_icp_pipeline(cfg);
     require_registered_classes(cfg);
 
     auto ret           = std::make_shared<PyICP>();
