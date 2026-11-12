@@ -40,6 +40,12 @@
 
   <depend>mola_imu_preintegration</depend>
 
+  <!-- Python bindings (skipped if pybind11 is not found) -->
+  <build_depend>pybind11-dev</build_depend>
+  <build_depend>python3-dev</build_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <test_depend>python3-pytest</test_depend>
+
   <!-- optional for part of the tests -->
   <!-- depend>mola_test_datasets</depend>  -->
 
