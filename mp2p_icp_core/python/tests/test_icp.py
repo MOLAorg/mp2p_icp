@@ -194,6 +194,29 @@ def test_iteration_hook(demos_dir):
         icp.set_iteration_hook(42)
 
 
+def test_iteration_hook_sees_every_iteration(demos_dir):
+    # The hook runs once per iteration that updates the pose, including the
+    # last one, as the recorded iteration details:
+    icp, params, local, glob = _demo_2d(demos_dir)
+    params.saveIterationDetails = True
+    params.decimationIterationDetails = 1
+    seen = []
+    icp.set_iteration_hook(lambda info: seen.append((info.iteration, info.pose)))
+    log = mp2p_icp.LogRecord()
+    r = icp.align(local, glob, log=log)
+    assert r.terminationReason == mp2p_icp.IterTermReason.Stalled
+    assert [s[0] for s in seen] == sorted(log.iterationsDetails) == list(range(len(seen)))
+    last, result = seen[-1][1], r.optimal_tf.mean
+    assert [last.x, last.y, last.z, last.yaw, last.pitch, last.roll] == [
+        result.x,
+        result.y,
+        result.z,
+        result.yaw,
+        result.pitch,
+        result.roll,
+    ]
+
+
 def test_log_record(demos_dir, tmp_path):
     icp, params, local, glob = _demo_2d(demos_dir)
     params.saveIterationDetails = True
