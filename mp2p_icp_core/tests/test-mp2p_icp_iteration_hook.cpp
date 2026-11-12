@@ -14,8 +14,9 @@
 
 /**
  * @file   test-mp2p_icp_iteration_hook.cpp
- * @brief  The ICP iteration hook sees every iteration that updates the pose,
- *         including the one that ends ICP, whatever the termination reason.
+ * @brief  The ICP iteration hook sees every executed iteration, including the
+ *         one that ends ICP, and Results::nIterations counts them, whatever
+ *         the termination reason.
  */
 
 #include <mp2p_icp/LogRecord.h>
@@ -111,12 +112,13 @@ void run_case(
         "Expected termination: "s + reasons::value2name(expectedReason));
     if (expectedIterations)
     {
-        ASSERT_EQUAL_(calls.size(), *expectedIterations);
+        ASSERT_EQUAL_(result.nIterations, *expectedIterations);
     }
 
     // One hook call per executed iteration, in order, as the recorded details:
+    ASSERT_EQUAL_(calls.size(), result.nIterations);
     ASSERT_(log.iterationsDetails.has_value());
-    ASSERT_EQUAL_(log.iterationsDetails->size(), calls.size());
+    ASSERT_EQUAL_(log.iterationsDetails->size(), result.nIterations);
     for (size_t i = 0; i < calls.size(); i++)
     {
         ASSERT_EQUAL_(calls[i].iteration, i);
@@ -142,7 +144,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         // Converges after 3 iterations:
         run_case("converged", offset, noChange, IterTermReason::Stalled, 3U);
 
-        // Already aligned: stalls in its first iteration:
+        // Already aligned: stalls in its first iteration, which counts:
         run_case("already aligned", {}, noChange, IterTermReason::Stalled, 1U);
 
         run_case(

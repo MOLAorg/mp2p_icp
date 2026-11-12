@@ -372,7 +372,9 @@ void init_icp(py::module_& m)
             [](const Results& r) { return pose_to_matrix(r.optimal_tf.mean); },
             "The mean of optimal_tf as a 4x4 homogeneous matrix (NumPy array)")
         .def_readwrite("optimalScale", &Results::optimalScale, "Scale, if estimated")
-        .def_readwrite("nIterations", &Results::nIterations, "Number of executed iterations")
+        .def_readwrite(
+            "nIterations", &Results::nIterations,
+            "Number of executed iterations (those that updated the pose, including the last one)")
         .def_readwrite("terminationReason", &Results::terminationReason, "Why iterations ended")
         .def_readwrite("quality", &Results::quality, "Registration quality, in [0,1]")
         .def_readwrite("finalPairings", &Results::finalPairings, "Pairings of the last iteration")

@@ -132,9 +132,8 @@ void test_save_iteration_details()
     // With a record requested, the details of every iteration are there:
     mp2p_icp::LogRecord log;
     icp->align(local, global, initialGuess, params, result, std::nullopt, log);
-    // (the iteration that ends the loop is recorded too, but not counted in
-    // nIterations when it ends it by convergence)
     ASSERT_(log.iterationsDetails.has_value());
+    ASSERT_EQUAL_(log.iterationsDetails->size(), result.nIterations);
     for (size_t i = 0; i < result.nIterations; i++)
     {
         ASSERT_EQUAL_(log.iterationsDetails->count(i), 1UL);

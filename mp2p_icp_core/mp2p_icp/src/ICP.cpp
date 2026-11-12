@@ -89,6 +89,11 @@ void ICP::align(
     // ------------------------------------------------------
     std::set<ParameterSource*> activeParamSouces;
 
+    // Index of the current iteration (the ICP_ITERATION formula variable).
+    // After the loop: the index of the last one, or maxIterations if all of
+    // them ran.
+    size_t iteration = 0;
+
     auto lambdaAddOwnParams = [&](Parameterizable& obj)
     {
         ParameterSource* ps = obj.attachedSource();
@@ -97,7 +102,7 @@ void ICP::align(
             obj.attachToParameterSource(ownParamSource_);
             ps = &ownParamSource_;
         }
-        ps->updateVariable("ICP_ITERATION", static_cast<double>(result.nIterations));
+        ps->updateVariable("ICP_ITERATION", static_cast<double>(iteration));
         activeParamSouces.insert(ps);
     };
     auto lambdaRealizeParamSources = [&]()
@@ -170,12 +175,12 @@ void ICP::align(
     sc.prior        = prior;
     sc.gravityPrior = gravityPrior;
 
-    for (result.nIterations = 0; result.nIterations < p.maxIterations; result.nIterations++)
+    for (iteration = 0; iteration < p.maxIterations; iteration++)
     {
         mrpt::system::CTimeLoggerEntry tle3(profiler_, "align.4");
 
         // Update iteration count, both in direct C++ structure...
-        state.currentIteration = result.nIterations;
+        state.currentIteration = static_cast<uint32_t>(iteration);
 
         // ...and via programmable formulas:
         for (auto& obj : matchers_)
@@ -252,7 +257,10 @@ void ICP::align(
             break;
         }
 
-        // Updated solution is already in "state.currentSolution".
+        // Updated solution is already in "state.currentSolution". Executed
+        // iterations are those that update it:
+        result.nIterations = iteration + 1;
+
         mrpt::system::CTimeLoggerEntry tle6(profiler_, "align.4.3_end_criterions");
 
         // Termination criterion: small delta:
@@ -387,7 +395,7 @@ void ICP::align(
     // ----------------------------
     // Fill in "result"
     // ----------------------------
-    if (result.nIterations >= p.maxIterations)
+    if (iteration >= p.maxIterations)
     {
         result.terminationReason = IterTermReason::MaxIterations;
     }

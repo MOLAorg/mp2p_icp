@@ -206,7 +206,7 @@ def check_icp(failed: list) -> None:
         abs(p.x - 0.1285) < 1e-4
         and abs(p.y - 0.0472) < 1e-4
         and abs(math.degrees(p.yaw) - 5.69) < 0.01
-        and r.nIterations == 25
+        and r.nIterations == 26
     )
     if not ok:
         failed.append(f"ICP on the demo maps: unexpected result {p}, {r.nIterations} iterations")
