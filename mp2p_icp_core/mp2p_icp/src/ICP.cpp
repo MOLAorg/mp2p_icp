@@ -89,6 +89,11 @@ void ICP::align(
     // ------------------------------------------------------
     std::set<ParameterSource*> activeParamSouces;
 
+    // Index of the current iteration (the ICP_ITERATION formula variable).
+    // After the loop: the index of the last one, or maxIterations if all of
+    // them ran.
+    size_t iteration = 0;
+
     auto lambdaAddOwnParams = [&](Parameterizable& obj)
     {
         ParameterSource* ps = obj.attachedSource();
@@ -97,7 +102,7 @@ void ICP::align(
             obj.attachToParameterSource(ownParamSource_);
             ps = &ownParamSource_;
         }
-        ps->updateVariable("ICP_ITERATION", static_cast<double>(result.nIterations));
+        ps->updateVariable("ICP_ITERATION", static_cast<double>(iteration));
         activeParamSouces.insert(ps);
     };
     auto lambdaRealizeParamSources = [&]()
@@ -170,12 +175,12 @@ void ICP::align(
     sc.prior        = prior;
     sc.gravityPrior = gravityPrior;
 
-    for (result.nIterations = 0; result.nIterations < p.maxIterations; result.nIterations++)
+    for (iteration = 0; iteration < p.maxIterations; iteration++)
     {
         mrpt::system::CTimeLoggerEntry tle3(profiler_, "align.4");
 
         // Update iteration count, both in direct C++ structure...
-        state.currentIteration = result.nIterations;
+        state.currentIteration = static_cast<uint32_t>(iteration);
 
         // ...and via programmable formulas:
         for (auto& obj : matchers_)
@@ -252,7 +257,10 @@ void ICP::align(
             break;
         }
 
-        // Updated solution is already in "state.currentSolution".
+        // Updated solution is already in "state.currentSolution". Executed
+        // iterations are those that update it:
+        result.nIterations = iteration + 1;
+
         mrpt::system::CTimeLoggerEntry tle6(profiler_, "align.4.3_end_criterions");
 
         // Termination criterion: small delta:
@@ -313,24 +321,10 @@ void ICP::align(
             id.pairings    = state.currentPairings;
         }
 
-        // End criteria?
-        if (stalled)
-        {
-            result.terminationReason = IterTermReason::Stalled;
-
-            if (p.debugPrintIterationProgress)
-            {
-                printf(
-                    "[ICP] Iter=%3u Solver stalled.\n",
-                    static_cast<unsigned int>(state.currentIteration));
-            }
-
-            break;
-        }
-
         // Quality checkpoints to abort ICP iterations as useless?
+        bool qualityCheckpointFailed = false;
         if (auto itQ = p.quality_checkpoints.find(state.currentIteration);
-            itQ != p.quality_checkpoints.end())
+            !stalled && itQ != p.quality_checkpoints.end())
         {
             const double minQuality = itQ->second;
 
@@ -344,21 +338,19 @@ void ICP::align(
                 quality_evaluators_, pcGlobal, pcLocal, state.currentSolution.optimalPose,
                 state.currentPairings);
 
-            if (quality < minQuality)
+            qualityCheckpointFailed = quality < minQuality;
+            if (qualityCheckpointFailed && p.debugPrintIterationProgress)
             {
-                result.terminationReason = IterTermReason::QualityCheckpointFailed;
-                if (p.debugPrintIterationProgress)
-                {
-                    printf(
-                        "[ICP] Iter=%3u quality checkpoint did not pass: %f < "
-                        "%f\n",
-                        static_cast<unsigned int>(state.currentIteration), quality, minQuality);
-                }
-                break;  // abort ICP
+                printf(
+                    "[ICP] Iter=%3u quality checkpoint did not pass: %f < "
+                    "%f\n",
+                    static_cast<unsigned int>(state.currentIteration), quality, minQuality);
             }
         }
 
-        // Process user hooks:
+        // Process user hooks, for every executed iteration (including the last
+        // one):
+        bool hookRequestedStop = false;
         if (iteration_hook_)
         {
             IterationHook_Input hi;
@@ -368,14 +360,31 @@ void ICP::align(
             hi.pcGlobal         = &state.pcGlobal;
             hi.pcLocal          = &state.pcLocal;
 
-            const auto ho = iteration_hook_(hi);
+            hookRequestedStop = iteration_hook_(hi).request_stop;
+        }
 
-            if (ho.request_stop)
+        // End criteria?
+        if (stalled)
+        {
+            result.terminationReason = IterTermReason::Stalled;
+
+            if (p.debugPrintIterationProgress)
             {
-                // abort ICP
-                result.terminationReason = IterTermReason::HookRequest;
-                break;
+                printf(
+                    "[ICP] Iter=%3u Solver stalled.\n",
+                    static_cast<unsigned int>(state.currentIteration));
             }
+            break;
+        }
+        if (qualityCheckpointFailed)
+        {
+            result.terminationReason = IterTermReason::QualityCheckpointFailed;
+            break;  // abort ICP
+        }
+        if (hookRequestedStop)
+        {
+            result.terminationReason = IterTermReason::HookRequest;
+            break;  // abort ICP
         }
 
         // roll values back:
@@ -386,7 +395,7 @@ void ICP::align(
     // ----------------------------
     // Fill in "result"
     // ----------------------------
-    if (result.nIterations >= p.maxIterations)
+    if (iteration >= p.maxIterations)
     {
         result.terminationReason = IterTermReason::MaxIterations;
     }

@@ -10,6 +10,7 @@ set(LIB_SRCS
   src/MetricMapMergeCapable.cpp
   src/NearestPlaneCapable.cpp
   src/NearestPointWithCovCapable.cpp
+  src/point_cloud_export.cpp
   src/point_with_cov_pair_t.cpp
   src/pointcloud_field_utils.cpp
   src/pointcloud_sanity_check.cpp
@@ -28,6 +29,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp/NearestPlaneCapable.h
   include/mp2p_icp/NearestPointWithCovCapable.h
   include/mp2p_icp/plane_patch.h
+  include/mp2p_icp/point_cloud_export.h
   include/mp2p_icp/point_plane_pair_t.h
   include/mp2p_icp/point_with_cov_pair_t.h
   include/mp2p_icp/pointcloud_bitfield.h

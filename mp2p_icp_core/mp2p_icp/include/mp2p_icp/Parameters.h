@@ -115,8 +115,10 @@ struct Parameters : public mrpt::serialization::CSerializable
 
     bool debugPrintIterationProgress = false;
 
-    /** Quality checkpoints: if the quality is smaller than the given threshold
-     * at the prescribed iteration, ICP will be aborted. */
+    /** Quality checkpoints {iteration index: minimum quality}: if the quality
+     * is smaller than the given threshold at that iteration, ICP is aborted
+     * (IterTermReason::QualityCheckpointFailed). In YAML, a sequence of
+     * `{iteration: N, minimum_quality: Q}` maps; an empty one disables them. */
     std::map<uint32_t, double> quality_checkpoints = {{50U, 0.05}, {100U, 0.10}};
 
     /** If true (default=false), a final matcher pass is run with ICP_ITERATION set to

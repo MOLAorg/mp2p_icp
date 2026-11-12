@@ -37,7 +37,8 @@ struct Results
     /** Found scale (if supported by the underlying algorithm) for optimal_tf */
     double optimalScale = 1.0;
 
-    /** The number of executed iterations until convergence */
+    /** The number of executed iterations, i.e. those that updated the pose
+     *  estimate (including the one that ended ICP, e.g. by convergence) */
     size_t nIterations = 0;
 
     IterTermReason terminationReason{IterTermReason::Undefined};

@@ -40,8 +40,12 @@ class QualityEvaluator_PairedRatio : public QualityEvaluator
      *
      * \code
      * reuse_icp_pairings: true # Default=true (no more params then required)
-     * #thresholdDistance: 0.10
+     * # Quality below this ratio is a hard discard (overall quality 0):
+     * #absolute_minimum_pairing_ratio: 0.20
+     * # If reuse_icp_pairings=false, Matcher_Points_DistanceThreshold params:
+     * #threshold: 0.10
      * #thresholdAngularDeg: 0
+     * #pointLayerMatches: ...
      * \endcode
      */
     void initialize(const mrpt::containers::yaml& params) override;

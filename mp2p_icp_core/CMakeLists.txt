@@ -120,6 +120,14 @@ if(MP2PICP_BUILD_TESTING)
 endif()
 
 # -----------------------
+# Python bindings (skipped if pybind11 is not found):
+# -----------------------
+option(MP2PICP_BUILD_PYTHON "Build the Python bindings, if pybind11 is found" ON)
+if(MP2PICP_BUILD_PYTHON)
+  add_subdirectory(python)
+endif()
+
+# -----------------------
 # define apps:
 # -----------------------
 option(MP2PICP_BUILD_APPLICATIONS "Build mp2p_icp applications" ON)

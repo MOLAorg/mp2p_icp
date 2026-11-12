@@ -20,6 +20,7 @@
  */
 
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp/point_cloud_export.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/maps/CGenericPointsMap.h>
@@ -49,150 +50,6 @@ bool                     argIgnoreMissingFields = false;
 bool                     argNoHeader            = false;
 std::string              argFrame               = "map";
 std::string              arg_plugins;
-
-bool saveToTxt(
-    const mrpt::maps::CGenericPointsMap& pts, const std::string& fileName, bool printHeader,
-    const std::vector<std::string>&            selectedFields = {},
-    const std::optional<mrpt::poses::CPose3D>& T_enu_to_map   = std::nullopt)
-{
-    FILE* f = mrpt::system::os::fopen(fileName.c_str(), "wt");
-    if (!f)
-    {
-        return false;
-    }
-
-    // Data:
-    const auto& floatFields  = pts.float_fields();
-    const auto& uint16Fields = pts.uint16_fields();
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
-    const auto& doubleFields = pts.double_fields();
-    const auto& uint8Fields  = pts.uint8_fields();
-#endif
-
-    // Determine which fields to export and in what order
-    std::vector<std::string> fieldsToExport;
-
-    if (selectedFields.empty())
-    {
-        // Export all fields in default order
-        fieldsToExport.push_back("x");
-        fieldsToExport.push_back("y");
-        fieldsToExport.push_back("z");
-
-        for (const auto& [name, _] : floatFields)
-        {
-            fieldsToExport.push_back(std::string(name));
-        }
-        for (const auto& [name, _] : uint16Fields)
-        {
-            fieldsToExport.push_back(std::string(name));
-        }
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
-        for (const auto& [name, _] : doubleFields)
-        {
-            fieldsToExport.push_back(std::string(name));
-        }
-        for (const auto& [name, _] : uint8Fields)
-        {
-            fieldsToExport.push_back(std::string(name));
-        }
-#endif
-    }
-    else
-    {
-        // Use selected fields in specified order
-        fieldsToExport = selectedFields;
-    }
-
-    // header?
-    if (printHeader)
-    {
-        for (size_t i = 0; i < fieldsToExport.size(); i++)
-        {
-            const auto& fieldName = fieldsToExport[i];
-            mrpt::system::os::fprintf(
-                f, "%.*s%s", static_cast<int>(fieldName.length()), fieldName.data(),
-                (i + 1 < fieldsToExport.size()) ? " " : "");
-        }
-        mrpt::system::os::fprintf(f, "\n");
-    }
-
-    // print fields:
-    const auto& xs = pts.getPointsBufferRef_x();
-    const auto& ys = pts.getPointsBufferRef_y();
-    const auto& zs = pts.getPointsBufferRef_z();
-    if (xs.empty())
-    {
-        mrpt::system::os::fclose(f);
-        return true;
-    }
-
-    const std::size_t n = xs.size();
-
-    for (size_t i = 0; i < n; i++)
-    {
-        // On-the-fly coordinate transform if exporting in ENU frame
-        double tx = xs.at(i), ty = ys.at(i), tz = zs.at(i);
-        if (T_enu_to_map.has_value())
-        {
-            T_enu_to_map->composePoint(xs.at(i), ys.at(i), zs.at(i), tx, ty, tz);
-        }
-
-        for (size_t fieldIdx = 0; fieldIdx < fieldsToExport.size(); fieldIdx++)
-        {
-            const auto& fieldName = fieldsToExport[fieldIdx];
-
-            // Check coordinate fields
-            if (fieldName == "x")
-            {
-                mrpt::system::os::fprintf(f, "%.8f", tx);
-            }
-            else if (fieldName == "y")
-            {
-                mrpt::system::os::fprintf(f, "%.8f", ty);
-            }
-            else if (fieldName == "z")
-            {
-                mrpt::system::os::fprintf(f, "%.8f", tz);
-            }
-            // Check float fields
-            else if (floatFields.count(fieldName))
-            {
-                mrpt::system::os::fprintf(f, "%.8e", floatFields.at(fieldName).at(i));
-            }
-            // Check uint16 fields
-            else if (uint16Fields.count(fieldName))
-            {
-                mrpt::system::os::fprintf(f, "%u", uint16Fields.at(fieldName).at(i));
-            }
-#if MRPT_VERSION >= 0x020f03  // 2.15.3
-            // Check double fields
-            else if (doubleFields.count(fieldName))
-            {
-                mrpt::system::os::fprintf(f, "%.16le", doubleFields.at(fieldName).at(i));
-            }
-            // Check uint8 fields
-            else if (uint8Fields.count(fieldName))
-            {
-                mrpt::system::os::fprintf(
-                    f, "%i", static_cast<int>(uint8Fields.at(fieldName).at(i)));
-            }
-#endif
-            else
-            {
-                // Field not found - this should have been caught earlier
-                mrpt::system::os::fprintf(f, "0");
-            }
-
-            // Add separator or newline
-            mrpt::system::os::fprintf(f, "%s", (fieldIdx + 1 < fieldsToExport.size()) ? " " : "");
-        }
-        mrpt::system::os::fprintf(f, "\n");
-    }
-
-    mrpt::system::os::fclose(f);
-    return true;
-}
 
 }  // namespace
 
@@ -410,8 +267,11 @@ void run_mm2txt()
                 validFields = selectedFields;
             }
 
-            const bool printHeader = !argNoHeader;
-            saveToTxt(*genxyz, filName, printHeader, validFields, T_enu_to_map);
+            mp2p_icp::txt_export_options_t opts;
+            opts.header    = !argNoHeader;
+            opts.fields    = validFields;
+            opts.transform = T_enu_to_map;
+            mp2p_icp::save_point_cloud_to_txt(*genxyz, filName, opts);
         }
 #if MRPT_VERSION < 0x030000  // <3.0.0
         else

@@ -20,3 +20,7 @@ install_manifest.txt
 
 # Dear ImGui per-app docking layout, written next to the CWD the GUI apps are launched from
 *.imgui.ini
+
+# Python
+__pycache__/
+*.pyc

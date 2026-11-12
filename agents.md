@@ -24,13 +24,15 @@ mp2p_icp/                    (repo root)
 │   ├── mp2p_icp_map/          # metric_map_t, .mm I/O, georeferencing
 │   ├── mp2p_icp/              # ICP: Matchers, Solvers, QualityEvaluators
 │   ├── mp2p_icp_filters/      # filters, generators, voxel grid utilities
+│   ├── python/                # Python bindings (see below)
 │   ├── apps/ tests/ demos/ 3rdparty/ scripts/
 ├── mp2p_icp_viz/             # GUI apps (mm-viewer, icp-log-viewer) and mm-render
 ├── mp2p_icp/                 # metapackage (backward compat, no code)
+├── packaging/pip/            # Python wheel (mp2p-icp on PyPI)
 └── docs/                     # Sphinx sources
 ```
 
-Build via colcon only. Each library exports its own CMake target (e.g.
+Build via colcon only (except the Python wheel). Each library exports its own CMake target (e.g.
 `mola::mp2p_icp_map`). Headless consumers depend on `mp2p_icp_core`.
 
 ## Core data structure: `metric_map_t`
@@ -46,6 +48,8 @@ Build via colcon only. Each library exports its own CMake target (e.g.
 Argument parsing uses CLI11. Core: `mm2kml`, `mm2las`, `mm2ply`, `mm2txt`, `mm2grid`, `mm-filter`,
 `mm-info`, `mm-georef`, `mm-merge`, `sm2mm`, `sm-cli`, `icp-run`, `kitti2mm`, `txt2mm`,
 `rawlog-filter`. Viz: `mm-viewer`, `mm-render` (off-screen, no GUI), `icp-log-viewer`.
+The PLY, LAS and TXT writers of `mm2ply`, `mm2las` and `mm2txt` live in `mp2p_icp_map`
+(`point_cloud_export.h`), shared with the Python API.
 
 ## GUI apps (mp2p_icp_viz)
 
@@ -92,6 +96,38 @@ Filters are chained and applied in-place to `metric_map_t`, configured via YAML
   `insertPointFrom()`, or field vectors fall out of sync with x/y/z.
 - Load YAML files with `mp2p_icp::load_yaml_file()` (`yaml_variables.h`), never
   `yaml::FromFile()`, so `${VAR|default}` variables get expanded.
+
+## Python bindings (`mp2p_icp_core/python/`)
+
+One pybind11 extension module, `mp2p_icp._core` (`src/`), wrapping the four libraries, plus
+the pure Python package `mp2p_icp` (`mp2p_icp/`: re-exports, `align()` and its bundled
+`configs/`, PLY/PCD readers, `interop`, `render`). Tests: `tests/` (pytest, ctest
+`python_mp2p_icp`). Built only if pybind11 is found, installed into
+`lib/pythonX.Y/site-packages` (override: `MP2P_ICP_PYTHON_INSTALL_DIR`).
+
+- It shares types and the MRPT class registry with the `mrpt` Python package: use the same
+  libmrpt_*.so and the same pybind11 version as MRPT's bindings, never bundled copies. Return
+  and accept MRPT types (`mrpt.maps`, `mrpt.poses`...) instead of re-binding them, and import
+  their Python modules first (done in `_core` and `__init__.py`).
+- `Parameterizable` objects and their `ParameterSource` hold raw pointers to each other: the
+  Python `ICP`, `FilterPipeline` and `Generators` are holder structs owning both, never copied
+  nor exposing the pipeline modules.
+- Release the GIL around long C++ calls (ICP, filters, I/O); acquire it in callbacks (the ICP
+  iteration hook), whose Python exceptions are re-raised after `align()`.
+- Loaders of maps, ICP logs and pipelines import the `mola_metric_maps` Python module (once,
+  if installed) when a `mola::` class is not registered (`load_with_class_plugins()`,
+  `require_registered_classes()` in `py_common.h`). Pipeline loaders validate the YAML
+  structure first (ValueError); MRPT exceptions become RuntimeError with the clean message and
+  the full text in `cpp_traceback` (module-local translator).
+- After changing bindings, regenerate the committed `mp2p_icp/_core.pyi` with
+  `scripts/generate_stubs.py`. Docs: `docs/source/mp2p_icp_python.rst`.
+- pip wheel `mp2p-icp` (`packaging/pip/`, read its `README-dev.md`): a scikit-build-core
+  superbuild against the C++ SDK of the `mrpt3` wheel, whose `libmrpt_*.so` and oneTBB it
+  links via RPATH and must never bundle. It ships its own C++ SDK (`mp2p_icp/sdk`: the four
+  libraries, headers, relocatable CMake configs and the mola_common CMake functions; a
+  `cmake.prefix` entry point) for downstream wheels such as `mola-metric-maps`, checked by
+  `tests/sdk_consumer`. CI: `.github/workflows/python-wheels.yml`. `packaging/COLCON_IGNORE`
+  keeps colcon away from it.
 
 ## Build and test
 

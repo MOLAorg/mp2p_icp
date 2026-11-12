@@ -84,7 +84,17 @@ void ParameterSource::realize()
         }
 
         auto& expr = p->compiled.emplace();
-        expr.compile(p->expression, variables_);
+        try
+        {
+            expr.compile(p->expression, variables_);
+        }
+        catch (...)
+        {
+            // Do not keep a non-compiled expression: retry in the next call,
+            // e.g. once the missing variables are defined.
+            p->compiled.reset();
+            throw;
+        }
     }
 
     // 2) Evaluate and store:

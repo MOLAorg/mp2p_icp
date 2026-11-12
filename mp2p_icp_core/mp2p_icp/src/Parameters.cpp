@@ -101,9 +101,10 @@ void Parameters::load_from(const mrpt::containers::yaml& p)
 
     if (p.has("quality_checkpoints"))
     {
-        ASSERT_(
-            p["quality_checkpoints"].isSequence() &&
-            !p["quality_checkpoints"].asSequenceRange().empty());
+        // (An empty sequence disables them)
+        ASSERTMSG_(
+            p["quality_checkpoints"].isSequence(),
+            "'quality_checkpoints' must be a sequence. See mp2p_icp::Parameters docs.");
 
         quality_checkpoints.clear();
         for (const auto& e : p["quality_checkpoints"].asSequenceRange())
@@ -140,6 +141,16 @@ void Parameters::save_to(mrpt::containers::yaml& p) const
     MCP_SAVE(p, saveIterationDetails);
     MCP_SAVE(p, decimationIterationDetails);
     MCP_SAVE(p, force_final_pairings_for_quality);
+
+    mrpt::containers::yaml checkpoints = mrpt::containers::yaml::Sequence();
+    for (const auto& [iteration, minQuality] : quality_checkpoints)
+    {
+        mrpt::containers::yaml e = mrpt::containers::yaml::Map();
+        e["iteration"]           = static_cast<uint64_t>(iteration);
+        e["minimum_quality"]     = minQuality;
+        checkpoints.push_back(e);
+    }
+    p["quality_checkpoints"] = checkpoints;
 
     mrpt::containers::yaml covYaml = mrpt::containers::yaml::Map();
     covariance_params.save_to(covYaml);

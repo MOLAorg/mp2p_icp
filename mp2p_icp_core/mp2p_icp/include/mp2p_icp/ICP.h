@@ -233,6 +233,10 @@ class ICP : public mrpt::system::COutputLogger, public mrpt::rtti::CObject
 
     using iteration_hook_t = std::function<IterationHook_Output(const IterationHook_Input&)>;
 
+    /** Sets a function called after each iteration that updates the pose
+     *  estimate, including the one that ends ICP. Its `request_stop` output
+     *  ends ICP with IterTermReason::HookRequest, unless it ends for another
+     *  reason in that same iteration. */
     void setIterationHook(const iteration_hook_t& ih) { iteration_hook_ = ih; }
 
     const mrpt::system::CTimeLogger& profiler() const { return profiler_; }

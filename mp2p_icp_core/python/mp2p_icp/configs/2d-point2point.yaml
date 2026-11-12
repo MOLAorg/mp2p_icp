@@ -1,0 +1,48 @@
+# ICP pipeline for 2D point clouds (e.g. 2D LiDAR scans): point-to-point
+# pairings and Horn's closed-form solver. Each local layer is matched against
+# the global layer with the same name.
+#
+# Based on the mp2p_icp demo "icp-settings-2d-lidar-example-point2point.yaml".
+#
+# Variables (override them with `variables={...}`):
+#  - ICP_THRESHOLD: maximum distance between paired points [m] (default: 0.5)
+#  - ICP_QUALITY_THRESHOLD: distance for a point to count as overlapping in the
+#    quality [m] (default: 0.1)
+#  - ICP_MAX_ITERATIONS: maximum number of ICP iterations (default: 100)
+#
+# Quality (Results.quality): the fraction of local points with a global point
+# closer than ICP_QUALITY_THRESHOLD at the final pose, i.e. the overlap of
+# both clouds, in [0,1] (1 for a perfect alignment of the same cloud, even if
+# noisy or with different densities). Set ICP_QUALITY_THRESHOLD to about the
+# point spacing and noise of the data. Partial overlaps give lower values for
+# correct alignments too: compare qualities of candidate alignments of the
+# same pair, rather than against a fixed value.
+#
+class_name: mp2p_icp::ICP
+
+params:
+  maxIterations: ${ICP_MAX_ITERATIONS|100}
+  minAbsStep_trans: 1e-4
+  minAbsStep_rot: 1e-4
+  # No early abort for low quality: partial overlaps also have it.
+  quality_checkpoints: []
+
+solvers:
+  - class: mp2p_icp::Solver_Horn
+    params: ~
+
+matchers:
+  - class: mp2p_icp::Matcher_Points_DistanceThreshold
+    params:
+      threshold: ${ICP_THRESHOLD|0.5}
+      thresholdAngularDeg: 0
+
+# Its own matching, not the ICP pairings: they pair each global point only
+# once, so they would give a lower quality for denser or noisy local clouds.
+quality:
+  - class: mp2p_icp::QualityEvaluator_PairedRatio
+    params:
+      reuse_icp_pairings: false
+      threshold: ${ICP_QUALITY_THRESHOLD|0.1}
+      thresholdAngularDeg: 0
+      absolute_minimum_pairing_ratio: 0.0

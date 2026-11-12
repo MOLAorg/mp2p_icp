@@ -235,6 +235,35 @@ void test_uint32_parameter_range()
 }
 }  // namespace
 
+// realize() with an undefined variable throws, and works once it is defined:
+void test_realize_after_undefined_variable()
+{
+    mp2p_icp::Matcher_Points_DistanceThreshold m;
+    mrpt::containers::yaml                     p;
+    p["threshold"]           = "MATCH_THRESHOLD*2.0";
+    p["thresholdAngularDeg"] = .0;
+
+    m.initialize(p);
+
+    mp2p_icp::ParameterSource globalParams;
+    globalParams.attach(m);
+
+    bool thrown = false;
+    try
+    {
+        globalParams.realize();
+    }
+    catch (const std::exception&)
+    {
+        thrown = true;
+    }
+    ASSERT_(thrown);
+
+    globalParams.updateVariable("MATCH_THRESHOLD", 1.5);
+    globalParams.realize();
+    ASSERT_NEAR_(m.threshold, 3.0, 1e-4);
+}
+
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
     try
@@ -245,6 +274,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_adaptive_distances();
         test_parameter_source_variable_lookup();
         test_uint32_parameter_range();
+        test_realize_after_undefined_variable();
     }
     catch (std::exception& e)
     {

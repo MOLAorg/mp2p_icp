@@ -1,0 +1,88 @@
+# ICP pipeline for 3D point clouds (e.g. 3D LiDAR scans or maps): point-to-point
+# pairings, first with a fixed distance threshold and Horn's solver, then with
+# adaptive thresholds and a robust Gauss-Newton solver.
+#
+# Input: the point cloud layer "raw" of both maps. The `filters` below
+# decimate it into the layer "decimated", which is matched against the full
+# global "raw" layer.
+#
+# Based on the mp2p_icp demo "icp-settings-kitti.yaml".
+#
+# Variables (override them with `variables={...}`):
+#  - ICP_THRESHOLD: maximum distance between paired points [m] (default: 2.0)
+#  - ICP_DECIMATION: voxel size to decimate the local cloud [m] (default: 0.5)
+#  - ICP_QUALITY_THRESHOLD: distance for a point to count as overlapping in the
+#    quality [m] (default: 0.5)
+#  - ICP_MAX_ITERATIONS: maximum number of ICP iterations (default: 200)
+#
+# Quality (Results.quality): the fraction of the decimated local points with a
+# global point closer than ICP_QUALITY_THRESHOLD at the final pose, i.e. the
+# overlap of both clouds, in [0,1]. Partial overlaps give lower values for
+# correct alignments too (e.g. from 0.2 to 0.9 for correct loop closures
+# between LiDAR scans or submaps, depending on their overlap): compare qualities
+# of candidate alignments of the same pair, rather than against a fixed value.
+#
+class_name: mp2p_icp::ICP
+
+params:
+  maxIterations: ${ICP_MAX_ITERATIONS|200}
+  minAbsStep_trans: 1e-4
+  minAbsStep_rot: 1e-4
+  # No early abort for low quality: partial overlaps also have it.
+  quality_checkpoints: []
+
+solvers:
+  - class: mp2p_icp::Solver_Horn
+    params:
+      runFromIteration: 0
+      runUpToIteration: 5
+
+  - class: mp2p_icp::Solver_GaussNewton
+    params:
+      runFromIteration: 6
+      runUpToIteration: 0
+      maxIterations: 3
+      robustKernel: "RobustKernel::GemanMcClure"
+      robustKernelScale: "0.2*${ICP_THRESHOLD|2.0}"
+
+matchers:
+  - class: mp2p_icp::Matcher_Points_DistanceThreshold
+    params:
+      threshold: ${ICP_THRESHOLD|2.0}
+      thresholdAngularDeg: 0
+      runFromIteration: 0
+      runUpToIteration: 5
+      pointLayerMatches:
+        - {global: "raw", local: "decimated"}
+
+  - class: mp2p_icp::Matcher_Adaptive
+    params:
+      confidenceInterval: 0.75
+      firstToSecondDistanceMax: 1.2
+      absoluteMaxSearchDistance: ${ICP_THRESHOLD|2.0}
+      enableDetectPlanes: false
+      runFromIteration: 6
+      runUpToIteration: 0
+      pointLayerMatches:
+        - {global: "raw", local: "decimated"}
+
+# Its own matching, not the ICP pairings (whose ratio depends on the
+# matchers, e.g. the planarity checks of the point-to-plane one):
+quality:
+  - class: mp2p_icp::QualityEvaluator_PairedRatio
+    params:
+      reuse_icp_pairings: false
+      threshold: ${ICP_QUALITY_THRESHOLD|0.5}
+      thresholdAngularDeg: 0
+      absolute_minimum_pairing_ratio: 0.0
+      pointLayerMatches:
+        - {global: "raw", local: "decimated"}
+
+# Applied to both maps before ICP:
+filters:
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      input_pointcloud_layer: "raw"
+      output_pointcloud_layer: "decimated"
+      voxel_filter_resolution: ${ICP_DECIMATION|0.5}
+      decimate_method: DecimateMethod::FirstPoint
