@@ -117,6 +117,21 @@ def test_bundled_3d_quality_is_the_overlap(bunny_xyz, config):
     assert r.quality == pytest.approx(np.mean(in_global), abs=0.03)
 
 
+def test_bundled_2d_quality_dense_clouds(bunny_xyz):
+    # A perfect alignment of the same (noisy) cloud has quality 1, even if the
+    # ICP pairings pair each global point only once:
+    rng = np.random.default_rng(2)
+    noisy = bunny_xyz + rng.normal(0, 1e-3, bunny_xyz.shape)
+    for local, glob in [(noisy, bunny_xyz), (bunny_xyz, bunny_xyz[::2])]:
+        r = mp2p_icp.align(
+            local,
+            glob,
+            "2d-point2point",
+            variables={"ICP_THRESHOLD": 0.02, "ICP_QUALITY_THRESHOLD": 0.01},
+        )
+        assert r.quality > 0.99
+
+
 def test_align_inputs_unchanged(bunny_xyz):
     local = mp2p_icp.to_metric_map(bunny_xyz)
     glob = mp2p_icp.to_metric_map(bunny_xyz + [0.01, 0, 0])

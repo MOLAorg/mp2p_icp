@@ -99,8 +99,8 @@ def align(
     Returns:
         The ICP :class:`Results`; ``results.optimal_tf.mean`` is the pose of
         the local map in the global frame, and ``results.quality`` a value in
-        [0,1] defined by the configuration (for the bundled 3D ones, the
-        overlap: the fraction of local points with a global point closer than
+        [0,1] defined by the configuration (for the bundled ones, the overlap:
+        the fraction of local points with a global point closer than
         ``ICP_QUALITY_THRESHOLD``).
     """
     cfg = _core.load_yaml(_resolve_config(config), variables)
