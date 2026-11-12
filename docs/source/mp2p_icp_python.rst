@@ -129,6 +129,12 @@ Filters, generators and simple-maps
 
 ``Generators`` convert MRPT observations (``mrpt.obs``) into map layers.
 
+Filters that create output layers give them the class of their input layer (e.g.
+``FilterDecimateVoxels`` on a ``CSimplePointsMap`` creates another ``CSimplePointsMap``), and
+filters that add per-point fields, such as ``FilterNormals`` (``normal_x``...), need a layer class
+that can hold them: ``mrpt.maps.CGenericPointsMap``, which is what ``layer_from_numpy()`` and NumPy
+inputs create, not ``CSimplePointsMap`` (only x, y, z).
+
 Rendering
 =========
 
