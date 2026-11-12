@@ -1,0 +1,72 @@
+# ICP pipeline for 3D point clouds (e.g. 3D LiDAR scans or maps): point-to-point
+# pairings for a coarse alignment, then point-to-plane pairings (planes fitted
+# to the nearest global points) with a robust Gauss-Newton solver.
+#
+# Input: the point cloud layer "raw" of both maps. The `filters` below
+# decimate it into the layer "decimated", which is matched against the full
+# global "raw" layer.
+#
+# Variables (override them with `variables={...}`):
+#  - ICP_THRESHOLD: maximum distance between paired points [m] (default: 2.0)
+#  - ICP_DECIMATION: voxel size to decimate the local cloud [m] (default: 0.5)
+#  - ICP_PLANE_MAX_DEVIATION: maximum distance of the global points to their
+#    fitted plane [m] (default: 0.1)
+#  - ICP_MAX_ITERATIONS: maximum number of ICP iterations (default: 200)
+#
+class_name: mp2p_icp::ICP
+
+params:
+  maxIterations: ${ICP_MAX_ITERATIONS|200}
+  minAbsStep_trans: 1e-4
+  minAbsStep_rot: 1e-4
+
+solvers:
+  - class: mp2p_icp::Solver_Horn
+    params:
+      runFromIteration: 0
+      runUpToIteration: 5
+
+  - class: mp2p_icp::Solver_GaussNewton
+    params:
+      runFromIteration: 6
+      runUpToIteration: 0
+      maxIterations: 3
+      robustKernel: "RobustKernel::GemanMcClure"
+      robustKernelScale: "0.2*${ICP_THRESHOLD|2.0}"
+
+matchers:
+  - class: mp2p_icp::Matcher_Points_DistanceThreshold
+    params:
+      threshold: ${ICP_THRESHOLD|2.0}
+      thresholdAngularDeg: 0
+      runFromIteration: 0
+      runUpToIteration: 5
+      pointLayerMatches:
+        - {global: "raw", local: "decimated"}
+
+  - class: mp2p_icp::Matcher_Points_KnnPlane
+    params:
+      knn: 5
+      maxNeighborDistance: ${ICP_THRESHOLD|2.0}
+      planeFitMaxDeviation: ${ICP_PLANE_MAX_DEVIATION|0.1}
+      rangeNormalized: false
+      residualGateScale: "1.0/${ICP_THRESHOLD|2.0}"
+      residualGateAccept: 0.0
+      runFromIteration: 6
+      runUpToIteration: 0
+      pointLayerMatches:
+        - {global: "raw", local: "decimated"}
+
+quality:
+  - class: mp2p_icp::QualityEvaluator_PairedRatio
+    params:
+      reuse_icp_pairings: true
+
+# Applied to both maps before ICP:
+filters:
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      input_pointcloud_layer: "raw"
+      output_pointcloud_layer: "decimated"
+      voxel_filter_resolution: ${ICP_DECIMATION|0.5}
+      decimate_method: DecimateMethod::FirstPoint

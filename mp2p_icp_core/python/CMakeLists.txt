@@ -28,6 +28,8 @@ pybind11_add_module(_core MODULE
   src/mp2p_icp_py.cpp
   src/py_common.cpp
   src/py_common.h
+  src/py_filters.cpp
+  src/py_icp.cpp
   src/py_map.cpp
 )
 mola_set_target_build_options(_core)

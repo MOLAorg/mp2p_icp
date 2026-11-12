@@ -7,6 +7,10 @@ Main entry points:
   voxel maps...), metadata and georeferencing.
 - ``layer_to_numpy()`` / ``layer_from_numpy()``: point cloud fields to and
   from NumPy arrays.
+- ``align()``: one-call point cloud registration with bundled configurations;
+  ``ICP`` / ``icp_pipeline_from_yaml()`` for full control.
+- ``FilterPipeline``, ``Generators``, ``simplemap_to_metricmap()``: map
+  building pipelines.
 - Point cloud files: ``load_ply()`` / ``save_ply()``, ``load_pcd()`` /
   ``save_pcd()``, ``save_las()``, ``save_txt()``, ``load_xyz_file()``.
 
@@ -30,16 +34,32 @@ from ._core import (
     PT_LAYER_PLANE_CENTROIDS,
     PT_LAYER_RAW,
     ColorMode,
+    FilterPipeline,
+    Generators,
     Georeferencing,
+    GravityPrior,
+    ICP,
+    IterationDetails,
+    IterationInfo,
+    IterTermReason,
     LayersView,
+    LogRecord,
     MetricMap,
+    Pairings,
+    Parameters,
     PlanePatch,
     RenderParams,
     RenderParamsLines,
     RenderParamsPlanes,
     RenderParamsPointLayer,
     RenderParamsPoints,
+    Results,
     __version__,
+    apply_filter_pipeline,
+    apply_generators,
+    filter_pipeline_from_yaml,
+    generators_from_yaml,
+    icp_pipeline_from_yaml,
     layer_from_numpy,
     layer_points_view,
     layer_to_numpy,
@@ -50,7 +70,9 @@ from ._core import (
     save_las,
     save_ply,
     save_txt,
+    simplemap_to_metricmap,
 )
+from .align import align, config_path, list_configs, to_metric_map
 from .pcd import load_pcd, save_pcd
 from .ply import load_ply
 
@@ -58,20 +80,39 @@ __all__ = [
     "PT_LAYER_PLANE_CENTROIDS",
     "PT_LAYER_RAW",
     "ColorMode",
+    "FilterPipeline",
+    "Generators",
     "Georeferencing",
+    "GravityPrior",
+    "ICP",
+    "IterationDetails",
+    "IterationInfo",
+    "IterTermReason",
     "LayersView",
+    "LogRecord",
     "MetricMap",
+    "Pairings",
+    "Parameters",
     "PlanePatch",
     "RenderParams",
     "RenderParamsLines",
     "RenderParamsPlanes",
     "RenderParamsPointLayer",
     "RenderParamsPoints",
+    "Results",
     "__version__",
+    "align",
+    "apply_filter_pipeline",
+    "apply_generators",
+    "config_path",
+    "filter_pipeline_from_yaml",
+    "generators_from_yaml",
+    "icp_pipeline_from_yaml",
     "layer_from_numpy",
     "layer_points_view",
     "layer_to_numpy",
     "layer_visualization",
+    "list_configs",
     "load_pcd",
     "load_ply",
     "load_plugins",
@@ -81,4 +122,6 @@ __all__ = [
     "save_pcd",
     "save_ply",
     "save_txt",
+    "simplemap_to_metricmap",
+    "to_metric_map",
 ]

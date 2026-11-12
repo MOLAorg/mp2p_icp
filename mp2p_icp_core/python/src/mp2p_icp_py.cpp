@@ -28,6 +28,8 @@ using namespace pybind11::literals;
 namespace mp2p_icp_py
 {
 void init_map(py::module_& m);
+void init_icp(py::module_& m);
+void init_filters(py::module_& m);
 }  // namespace mp2p_icp_py
 
 PYBIND11_MODULE(_core, m)
@@ -55,4 +57,6 @@ PYBIND11_MODULE(_core, m)
         "and the environment, as all mp2p_icp configuration loaders do.");
 
     mp2p_icp_py::init_map(m);
+    mp2p_icp_py::init_icp(m);
+    mp2p_icp_py::init_filters(m);
 }

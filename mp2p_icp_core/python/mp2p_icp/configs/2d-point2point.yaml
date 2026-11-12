@@ -1,0 +1,30 @@
+# ICP pipeline for 2D point clouds (e.g. 2D LiDAR scans): point-to-point
+# pairings and Horn's closed-form solver. Each local layer is matched against
+# the global layer with the same name.
+#
+# Based on the mp2p_icp demo "icp-settings-2d-lidar-example-point2point.yaml".
+#
+# Variables (override them with `variables={...}`):
+#  - ICP_THRESHOLD: maximum distance between paired points [m] (default: 0.5)
+#  - ICP_MAX_ITERATIONS: maximum number of ICP iterations (default: 100)
+#
+class_name: mp2p_icp::ICP
+
+params:
+  maxIterations: ${ICP_MAX_ITERATIONS|100}
+  minAbsStep_trans: 1e-4
+  minAbsStep_rot: 1e-4
+
+solvers:
+  - class: mp2p_icp::Solver_Horn
+    params: ~
+
+matchers:
+  - class: mp2p_icp::Matcher_Points_DistanceThreshold
+    params:
+      threshold: ${ICP_THRESHOLD|0.5}
+      thresholdAngularDeg: 0
+
+quality:
+  - class: mp2p_icp::QualityEvaluator_PairedRatio
+    params: ~
