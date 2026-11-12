@@ -116,7 +116,9 @@ the pure Python package `mp2p_icp` (`mp2p_icp/`: re-exports, `align()` and its b
   iteration hook), whose Python exceptions are re-raised after `align()`.
 - Loaders of maps, ICP logs and pipelines import the `mola_metric_maps` Python module (once,
   if installed) when a `mola::` class is not registered (`load_with_class_plugins()`,
-  `require_registered_classes()` in `py_common.h`).
+  `require_registered_classes()` in `py_common.h`). Pipeline loaders validate the YAML
+  structure first (ValueError); MRPT exceptions become RuntimeError with the clean message and
+  the full text in `cpp_traceback` (module-local translator).
 - After changing bindings, regenerate the committed `mp2p_icp/_core.pyi` with
   `scripts/generate_stubs.py`. Docs: `docs/source/mp2p_icp_python.rst`.
 - pip wheel `mp2p-icp` (`packaging/pip/`, read its `README-dev.md`): a scikit-build-core
