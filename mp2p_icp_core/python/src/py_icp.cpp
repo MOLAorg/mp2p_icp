@@ -77,6 +77,7 @@ std::shared_ptr<PyICP> make_icp(
     const py::object& config, const py::object& variables, const std::string& verbosity)
 {
     const auto cfg = load_config(config, variables);
+    require_registered_classes(cfg);
 
     auto ret           = std::make_shared<PyICP>();
     auto [icp, params] = mp2p_icp::icp_pipeline_from_yaml(cfg, to_verbosity(verbosity));
@@ -221,18 +222,20 @@ std::shared_ptr<mp2p_icp::LogRecord> load_log(const std::string& path)
     {
         raise_file_not_found("ICP log file not found: '" + path + "'");
     }
-    auto ret = std::make_shared<mp2p_icp::LogRecord>();
-    {
-        py::gil_scoped_release           nogil;
-        mrpt::io::CCompressedInputStream f(path);
-        if (!f.is_open())
+    return load_with_class_plugins(
+        [&]()
         {
-            throw std::runtime_error("Cannot open file: '" + path + "'");
-        }
-        auto arch = mrpt::serialization::archiveFrom(f);
-        arch >> *ret;
-    }
-    return ret;
+            auto                             ret = std::make_shared<mp2p_icp::LogRecord>();
+            py::gil_scoped_release           nogil;
+            mrpt::io::CCompressedInputStream f(path);
+            if (!f.is_open())
+            {
+                throw std::runtime_error("Cannot open file: '" + path + "'");
+            }
+            auto arch = mrpt::serialization::archiveFrom(f);
+            arch >> *ret;
+            return ret;
+        });
 }
 
 }  // namespace

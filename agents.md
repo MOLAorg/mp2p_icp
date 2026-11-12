@@ -114,6 +114,9 @@ the pure Python package `mp2p_icp` (`mp2p_icp/`: re-exports, `align()` and its b
   nor exposing the pipeline modules.
 - Release the GIL around long C++ calls (ICP, filters, I/O); acquire it in callbacks (the ICP
   iteration hook), whose Python exceptions are re-raised after `align()`.
+- Loaders of maps, ICP logs and pipelines import the `mola_metric_maps` Python module (once,
+  if installed) when a `mola::` class is not registered (`load_with_class_plugins()`,
+  `require_registered_classes()` in `py_common.h`).
 - After changing bindings, regenerate the committed `mp2p_icp/_core.pyi` with
   `scripts/generate_stubs.py`. Docs: `docs/source/mp2p_icp_python.rst`.
 - pip wheel `mp2p-icp` (`packaging/pip/`, read its `README-dev.md`): a scikit-build-core

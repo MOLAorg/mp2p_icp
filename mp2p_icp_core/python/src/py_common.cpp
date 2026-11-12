@@ -24,10 +24,12 @@
 #include <mrpt/math/CMatrixFixed.h>
 #include <mrpt/math/TPose2D.h>
 #include <mrpt/poses/CPose2D.h>
+#include <mrpt/rtti/CObject.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/string_utils.h>
 #include <pybind11/numpy.h>
 
+#include <cctype>
 #include <sstream>
 #include <typeinfo>
 
@@ -37,6 +39,120 @@ void raise_file_not_found(const std::string& msg)
 {
     PyErr_SetString(PyExc_FileNotFoundError, msg.c_str());
     throw py::error_already_set();
+}
+
+namespace
+{
+// Python module whose import registers the `mola::` classes:
+constexpr const char* CLASS_PLUGINS_MODULE = "mola_metric_maps";
+
+// Only tried once per process (protected by the GIL):
+bool classPluginsImportTried = false;
+
+/** True for "mola::Name" or "mola::ns::Name" */
+bool is_mola_class_name(const std::string& s)
+{
+    const std::string prefix = "mola::";
+    if (s.rfind(prefix, 0) != 0 || s.size() == prefix.size() || s.back() == ':')
+    {
+        return false;
+    }
+    for (const char c : s.substr(prefix.size()))
+    {
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != ':')
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/** Returns the first `mola::` class name in the YAML tree that is not
+ *  registered, or an empty string */
+std::string find_unregistered_class(const mrpt::containers::yaml& y)
+{
+    if (y.isScalar())
+    {
+        if (y.scalarType() == typeid(std::string))
+        {
+            const auto s = y.as<std::string>();
+            if (is_mola_class_name(s) && !mrpt::rtti::findRegisteredClass(s))
+            {
+                return s;
+            }
+        }
+        return {};
+    }
+    if (y.isMap())
+    {
+        for (const auto& kv : y.asMap())
+        {
+            if (auto s = find_unregistered_class(mrpt::containers::yaml(kv.second)); !s.empty())
+            {
+                return s;
+            }
+        }
+    }
+    else if (y.isSequence())
+    {
+        for (const auto& e : y.asSequence())
+        {
+            if (auto s = find_unregistered_class(mrpt::containers::yaml(e)); !s.empty())
+            {
+                return s;
+            }
+        }
+    }
+    return {};
+}
+}  // namespace
+
+bool import_class_plugins()
+{
+    if (classPluginsImportTried)
+    {
+        return false;
+    }
+    classPluginsImportTried = true;
+    const auto util         = py::module_::import("importlib.util");
+    if (util.attr("find_spec")(CLASS_PLUGINS_MODULE).is_none())
+    {
+        return false;
+    }
+    py::module_::import(CLASS_PLUGINS_MODULE);
+    return true;
+}
+
+std::string class_plugins_hint()
+{
+    return "\nHint: maps and pipelines with classes from other libraries need them to be "
+           "registered first. For MOLA classes (mola::...), install the mola_metric_maps Python "
+           "module (pip install mola-metric-maps, imported automatically when needed), or, with "
+           "the ROS package mola_metric_maps, call "
+           "mp2p_icp.load_plugins('libmola_metric_maps.so').";
+}
+
+bool is_unregistered_class_error(const std::string& msg)
+{
+    return msg.find("is not registered") != std::string::npos;
+}
+
+void require_registered_classes(const mrpt::containers::yaml& cfg)
+{
+    auto missing = find_unregistered_class(cfg);
+    if (missing.empty())
+    {
+        return;
+    }
+    if (import_class_plugins())
+    {
+        missing = find_unregistered_class(cfg);
+    }
+    if (!missing.empty())
+    {
+        throw std::runtime_error(
+            "Class '" + missing + "' is not registered." + class_plugins_hint());
+    }
 }
 
 py::object yaml_to_python(const mrpt::containers::yaml& y)

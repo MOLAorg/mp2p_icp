@@ -27,6 +27,7 @@
 
 #include <map>
 #include <optional>
+#include <stdexcept>
 #include <string>
 
 namespace mp2p_icp_py
@@ -35,6 +36,49 @@ namespace py = pybind11;
 
 /** Raises a Python FileNotFoundError with the given message */
 [[noreturn]] void raise_file_not_found(const std::string& msg);
+
+/** Imports the Python module `mola_metric_maps` (the bindings of the MOLA
+ *  metric maps, whose import registers their C++ classes, `mola::...`), if it
+ *  is installed and this was not tried before in this process. Returns true if
+ *  it was imported now. Requires the GIL. */
+bool import_class_plugins();
+
+/** Hint for errors about classes that are not registered */
+std::string class_plugins_hint();
+
+/** True if the error message is about a class that is not registered */
+bool is_unregistered_class_error(const std::string& msg);
+
+/** If the configuration names `mola::` classes that are not registered,
+ *  imports the class plugins (see import_class_plugins()), and raises an error
+ *  with a hint if they are still missing. */
+void require_registered_classes(const mrpt::containers::yaml& cfg);
+
+/** Runs `load`, which deserializes MRPT objects. If it fails because a class
+ *  is not registered, imports the class plugins (see import_class_plugins())
+ *  and runs it again. If it still fails, the error includes a hint. */
+template <typename F>
+auto load_with_class_plugins(F&& load) -> decltype(load())
+{
+    for (bool retry = true;; retry = false)
+    {
+        try
+        {
+            return load();
+        }
+        catch (const std::exception& e)
+        {
+            if (!is_unregistered_class_error(e.what()))
+            {
+                throw;
+            }
+            if (!retry || !import_class_plugins())
+            {
+                throw std::runtime_error(std::string(e.what()) + class_plugins_hint());
+            }
+        }
+    }
+}
 
 /** Converts a YAML node into Python dicts, lists and scalars */
 py::object yaml_to_python(const mrpt::containers::yaml& y);

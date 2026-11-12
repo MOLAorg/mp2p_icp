@@ -351,22 +351,20 @@ void load_map(metric_map_t& m, const std::string& path)
     {
         raise_file_not_found("Metric map file not found: '" + path + "'");
     }
-    std::string errMsg;
-    bool        ok = false;
-    {
-        py::gil_scoped_release nogil;
-        ok = m.load_from_file(path, errMsg);
-    }
-    if (!ok)
-    {
-        if (errMsg.find("is not registered") != std::string::npos)
+    load_with_class_plugins(
+        [&]()
         {
-            errMsg +=
-                "\nHint: maps with layers from other libraries need their plugin to be loaded "
-                "first, e.g. mp2p_icp.load_plugins('libmola_metric_maps.so')";
-        }
-        throw std::runtime_error(errMsg);
-    }
+            std::string errMsg;
+            bool        ok = false;
+            {
+                py::gil_scoped_release nogil;
+                ok = m.load_from_file(path, errMsg);
+            }
+            if (!ok)
+            {
+                throw std::runtime_error(errMsg);
+            }
+        });
 }
 
 py::bytes serialize(const mrpt::serialization::CSerializable& o)
@@ -381,11 +379,15 @@ py::bytes serialize(const mrpt::serialization::CSerializable& o)
 
 void deserialize(mrpt::serialization::CSerializable& o, const py::bytes& data)
 {
-    const std::string_view  sv = data;
-    mrpt::io::CMemoryStream buf;
-    buf.assignMemoryNotOwn(sv.data(), sv.size());
-    auto arch = mrpt::serialization::archiveFrom(buf);
-    arch >> o;
+    const std::string_view sv = data;
+    load_with_class_plugins(
+        [&]()
+        {
+            mrpt::io::CMemoryStream buf;
+            buf.assignMemoryNotOwn(sv.data(), sv.size());
+            auto arch = mrpt::serialization::archiveFrom(buf);
+            arch >> o;
+        });
 }
 
 std::shared_ptr<metric_map_t> deep_copy(const metric_map_t& m)

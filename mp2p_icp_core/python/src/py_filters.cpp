@@ -81,8 +81,9 @@ std::shared_ptr<PyFilterPipeline> make_filters(
     const py::object& config, const py::object& variables, const std::string& verbosity)
 {
     const auto cfg = get_sequence(load_config(config, variables), "filters");
-    auto       ret = std::make_shared<PyFilterPipeline>();
-    ret->filters   = mp2p_icp_filters::filter_pipeline_from_yaml(cfg, to_verbosity(verbosity));
+    require_registered_classes(cfg);
+    auto ret     = std::make_shared<PyFilterPipeline>();
+    ret->filters = mp2p_icp_filters::filter_pipeline_from_yaml(cfg, to_verbosity(verbosity));
     mp2p_icp::AttachToParameterSource(ret->filters, ret->paramSource);
     return ret;
 }
@@ -90,8 +91,9 @@ std::shared_ptr<PyFilterPipeline> make_filters(
 std::shared_ptr<PyGenerators> make_generators(
     const py::object& config, const py::object& variables, const std::string& verbosity)
 {
-    const auto cfg  = get_sequence(load_config(config, variables), "generators");
-    auto       ret  = std::make_shared<PyGenerators>();
+    const auto cfg = get_sequence(load_config(config, variables), "generators");
+    require_registered_classes(cfg);
+    auto ret        = std::make_shared<PyGenerators>();
     ret->generators = mp2p_icp_filters::generators_from_yaml(cfg, to_verbosity(verbosity));
     mp2p_icp::AttachToParameterSource(ret->generators, ret->paramSource);
     return ret;
@@ -293,6 +295,7 @@ void init_filters(py::module_& m)
 
             const mrpt::containers::yaml cfg =
                 pipeline.is_none() ? mrpt::containers::yaml() : load_config(pipeline, variables);
+            require_registered_classes(cfg);
 
             mp2p_icp_filters::sm2mm_options_t opts;
             opts.verbosity                       = to_verbosity(verbosity);
