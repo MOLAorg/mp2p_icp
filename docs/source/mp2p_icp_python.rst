@@ -56,11 +56,12 @@ Metric maps and point clouds
     m.metadata = {"note": "points above 0.5 m"}
     m.save("out.mm")
 
-Maps built with MOLA may have layers of classes from other libraries (``mola::...``). If the
-``mola_metric_maps`` Python module is installed (``pip install mola-metric-maps``), it is
-imported automatically the first time a map, an ICP log or a pipeline needs one of its classes.
-With the ROS packages, load the library instead, before reading such maps:
-``mp2p_icp.load_plugins("libmola_metric_maps.so")``.
+Maps built with MOLA may have layers of classes from other libraries (``mola::...``). For them,
+install the ``mola_metric_maps`` Python module (``pip install mola-metric-maps``, or the ROS
+package ``mola_metric_maps``): it is imported automatically the first time a map, an ICP log or a
+pipeline needs one of its classes (or ``import mola_metric_maps`` explicitly). Other shared
+libraries with additional classes (map layers, pipeline modules) can be loaded with
+``mp2p_icp.load_plugins("libfoo.so")``.
 
 Point cloud files:
 

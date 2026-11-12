@@ -370,9 +370,9 @@ std::string class_plugins_hint()
 {
     return "\nHint: maps and pipelines with classes from other libraries need them to be "
            "registered first. For MOLA classes (mola::...), install the mola_metric_maps Python "
-           "module (pip install mola-metric-maps, imported automatically when needed), or, with "
-           "the ROS package mola_metric_maps, call "
-           "mp2p_icp.load_plugins('libmola_metric_maps.so').";
+           "module (pip install mola-metric-maps, or the ROS package mola_metric_maps), which is "
+           "imported automatically when needed. Other libraries can be loaded with "
+           "mp2p_icp.load_plugins(), e.g. mp2p_icp.load_plugins('libmola_metric_maps.so').";
 }
 
 bool is_unregistered_class_error(const std::string& msg)

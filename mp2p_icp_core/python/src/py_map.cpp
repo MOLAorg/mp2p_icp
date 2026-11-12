@@ -971,8 +971,9 @@ void init_map(py::module_& m)
         },
         "modules"_a = "libmola_metric_maps.so",
         "Loads one or more (comma separated) shared libraries with additional MRPT classes, "
-        "e.g. map layer types or ICP pipeline modules. Default: libmola_metric_maps.so, needed "
-        "to load maps built with MOLA.");
+        "e.g. map layer types or ICP pipeline modules. Default: libmola_metric_maps.so. For the "
+        "MOLA map classes, the mola_metric_maps Python module is imported automatically when "
+        "needed, if installed.");
 
     m.def(
         "layer_visualization",
