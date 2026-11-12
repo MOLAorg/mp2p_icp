@@ -66,11 +66,41 @@ struct IterationInfo
     uint64_t             potential_pairings = 0;
 };
 
-py::object parameters_as_dict(const mp2p_icp::Parameters& p)
+/** The parameters in the format of the `params` block of ICP YAML files,
+ *  except `quality_checkpoints`: a dict {iteration: minimum quality} */
+py::dict parameters_as_dict(const mp2p_icp::Parameters& p)
 {
     mrpt::containers::yaml y = mrpt::containers::yaml::Map();
     p.save_to(y);
-    return yaml_to_python(y);
+    py::dict d               = yaml_to_python(y);
+    d["quality_checkpoints"] = py::cast(p.quality_checkpoints);
+    return d;
+}
+
+/** Inverse of parameters_as_dict(). `quality_checkpoints` may be a dict
+ *  {iteration: minimum quality} or, as in YAML files, a list of
+ *  {iteration: N, minimum_quality: Q}. */
+std::shared_ptr<mp2p_icp::Parameters> parameters_from_dict(const py::object& d)
+{
+    py::object cfg = d;
+    if (py::isinstance<py::dict>(d) && d.contains("quality_checkpoints") &&
+        py::isinstance<py::dict>(d["quality_checkpoints"]))
+    {
+        py::list seq;
+        for (const auto& [iteration, minQuality] : d["quality_checkpoints"].cast<py::dict>())
+        {
+            py::dict e;
+            e["iteration"]       = iteration;
+            e["minimum_quality"] = minQuality;
+            seq.append(e);
+        }
+        py::dict copy               = d.attr("copy")();
+        copy["quality_checkpoints"] = seq;
+        cfg                         = copy;
+    }
+    auto p = std::make_shared<mp2p_icp::Parameters>();
+    p->load_from(python_to_yaml(cfg));
+    return p;
 }
 
 std::shared_ptr<PyICP> make_icp(
@@ -260,17 +290,14 @@ void init_icp(py::module_& m)
         m, "Parameters", "ICP parameters: termination criteria, debug files, quality checkpoints")
         .def(py::init<>(), "Default parameters.")
         .def_static(
-            "from_dict",
-            [](const py::object& d)
-            {
-                auto p = std::make_shared<Parameters>();
-                p->load_from(python_to_yaml(d));
-                return p;
-            },
-            "d"_a,
+            "from_dict", &parameters_from_dict, "d"_a,
             "Builds parameters from a dict, with the format of the `params` block of ICP YAML "
-            "files.")
-        .def("as_dict", &parameters_as_dict, "Returns the parameters as a dict.")
+            "files, or of as_dict(). `quality_checkpoints` may be a dict {iteration: minimum "
+            "quality} or a list of {'iteration': N, 'minimum_quality': Q}.")
+        .def(
+            "as_dict", &parameters_as_dict,
+            "Returns the parameters as a dict, with the format of the `params` block of ICP "
+            "YAML files, except `quality_checkpoints`: a dict {iteration: minimum quality}.")
         .def_readwrite(
             "maxIterations", &Parameters::maxIterations, "Maximum number of ICP iterations")
         .def_readwrite(
@@ -302,7 +329,9 @@ void init_icp(py::module_& m)
             "Print the progress of each iteration")
         .def_readwrite(
             "quality_checkpoints", &Parameters::quality_checkpoints,
-            "dict {iteration: minimum quality}: abort if the quality is lower at that iteration")
+            "dict {iteration: minimum quality}: abort if the quality is lower at that iteration "
+            "(QualityCheckpointFailed). Default: {50: 0.05, 100: 0.1}; {} disables them. It "
+            "returns a copy: assign a new dict to change it.")
         .def_readwrite(
             "force_final_pairings_for_quality", &Parameters::force_final_pairings_for_quality,
             "Run a last matching pass at the final thresholds before evaluating quality")

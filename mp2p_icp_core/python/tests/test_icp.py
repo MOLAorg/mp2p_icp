@@ -157,10 +157,20 @@ def test_formula_variables(demos_dir):
 
 def test_parameters():
     p = mp2p_icp.Parameters()
+    assert p.as_dict()["quality_checkpoints"] == {50: 0.05, 100: 0.1}
     p.maxIterations = 12
     p.quality_checkpoints = {10: 0.2}
     d = p.as_dict()
     assert d["maxIterations"] == 12
+    assert d["quality_checkpoints"] == {10: 0.2}
+    # Round trip, and the YAML format of the checkpoints:
+    assert mp2p_icp.Parameters.from_dict(d).as_dict() == d
+    p3 = mp2p_icp.Parameters.from_dict(
+        {"maxIterations": 5, "quality_checkpoints": [{"iteration": 3, "minimum_quality": 0.5}]}
+    )
+    assert p3.quality_checkpoints == {3: 0.5}
+    no_checkpoints = mp2p_icp.Parameters.from_dict({"maxIterations": 5, "quality_checkpoints": {}})
+    assert no_checkpoints.quality_checkpoints == {}
     p2 = mp2p_icp.Parameters.from_dict({"maxIterations": 5, "minAbsStep_trans": 1e-3})
     assert p2.maxIterations == 5 and p2.minAbsStep_trans == pytest.approx(1e-3)
     assert "maxIterations" in repr(p2)
