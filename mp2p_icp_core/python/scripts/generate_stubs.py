@@ -7,8 +7,9 @@ the `mrpt` Python modules importable (e.g. after `source install/setup.bash`):
     pip install pybind11-stubgen==3.0.0
     python3 mp2p_icp_core/python/scripts/generate_stubs.py
 
-Stubs depend on the pybind11 version: generate them with the one used to
-build the MRPT Python modules.
+Stubs depend on the pybind11 version: generate them with the one of the
+mrpt3 wheel (mrpt.sdk.PYBIND11_VERSION), e.g. with the mp2p-icp wheel
+installed (see packaging/pip/README-dev.md), not with an older system one.
 """
 
 import importlib

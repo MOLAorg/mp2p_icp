@@ -2,6 +2,7 @@
 Python bindings of the mp2p_icp C++ libraries (use the `mp2p_icp` package)
 """
 from __future__ import annotations
+import collections.abc
 import mrpt.img
 import mrpt.maps
 import mrpt.math
@@ -74,7 +75,7 @@ class PlanePatch:
         Surface area [m2], 0 if unknown
         """
     @area.setter
-    def area(self, arg0: float) -> None:
+    def area(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def centroid(self) -> mrpt.math.TPoint3D:
@@ -90,7 +91,7 @@ class PlanePatch:
         Number of points the patch was fitted from, 0 if unknown
         """
     @num_points.setter
-    def num_points(self, arg0: int) -> None:
+    def num_points(self, arg0: typing.SupportsInt | typing.SupportsIndex) -> None:
         ...
     @property
     def plane(self) -> mrpt.math.TPlane:
@@ -114,7 +115,7 @@ class ColorMode:
         Optional percentile of outliers ignored to compute the field limits
         """
     @autoBoundingBoxOutliersPercentile.setter
-    def autoBoundingBoxOutliersPercentile(self, arg0: float | None) -> None:
+    def autoBoundingBoxOutliersPercentile(self, arg0: typing.SupportsFloat | typing.SupportsIndex | None) -> None:
         ...
     @property
     def colorMap(self) -> mrpt.img.TColormap:
@@ -130,7 +131,7 @@ class ColorMode:
         Optional fixed field value mapped to the color map end
         """
     @colorMapMaxCoord.setter
-    def colorMapMaxCoord(self, arg0: float | None) -> None:
+    def colorMapMaxCoord(self, arg0: typing.SupportsFloat | typing.SupportsIndex | None) -> None:
         ...
     @property
     def colorMapMinCoord(self) -> float | None:
@@ -138,7 +139,7 @@ class ColorMode:
         Optional fixed field value mapped to the color map start
         """
     @colorMapMinCoord.setter
-    def colorMapMinCoord(self, arg0: float | None) -> None:
+    def colorMapMinCoord(self, arg0: typing.SupportsFloat | typing.SupportsIndex | None) -> None:
         ...
     @property
     def keep_original_cloud_color(self) -> bool:
@@ -170,7 +171,7 @@ class RenderParamsPointLayer:
         For hideBackFacing, with normals [deg]
         """
     @backFacingMaxAngleNormals_deg.setter
-    def backFacingMaxAngleNormals_deg(self, arg0: float) -> None:
+    def backFacingMaxAngleNormals_deg(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def backFacingMaxAngleView_deg(self) -> float:
@@ -178,7 +179,7 @@ class RenderParamsPointLayer:
         For hideBackFacing, with view vectors [deg]
         """
     @backFacingMaxAngleView_deg.setter
-    def backFacingMaxAngleView_deg(self, arg0: float) -> None:
+    def backFacingMaxAngleView_deg(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def color(self) -> mrpt.img.TColor:
@@ -218,7 +219,7 @@ class RenderParamsPointLayer:
         Point size, in pixels
         """
     @pointSize.setter
-    def pointSize(self, arg0: float) -> None:
+    def pointSize(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def render_voxelmaps_as_points(self) -> bool:
@@ -258,7 +259,7 @@ class RenderParamsPoints:
         If not empty, only these layers are rendered, each with its options. It is returned as a copy: assign a whole dict to change it.
         """
     @perLayer.setter
-    def perLayer(self, arg0: dict[str, RenderParamsPointLayer]) -> None:
+    def perLayer(self, arg0: collections.abc.Mapping[str, RenderParamsPointLayer]) -> None:
         ...
     @property
     def visible(self) -> bool:
@@ -290,7 +291,7 @@ class RenderParamsPlanes:
         Grid spacing [m]
         """
     @gridSpacing.setter
-    def gridSpacing(self, arg0: float) -> None:
+    def gridSpacing(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def halfWidth(self) -> float:
@@ -298,7 +299,7 @@ class RenderParamsPlanes:
         Half width [m]
         """
     @halfWidth.setter
-    def halfWidth(self, arg0: float) -> None:
+    def halfWidth(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def visible(self) -> bool:
@@ -330,7 +331,7 @@ class RenderParamsLines:
         Length of all lines [m]
         """
     @length.setter
-    def length(self, arg0: float) -> None:
+    def length(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def lengths(self) -> list[float] | None:
@@ -338,7 +339,7 @@ class RenderParamsLines:
         Optional individual lengths [m]
         """
     @lengths.setter
-    def lengths(self, arg0: list[float] | None) -> None:
+    def lengths(self, arg0: collections.abc.Sequence[typing.SupportsFloat | typing.SupportsIndex] | None) -> None:
         ...
     @property
     def visible(self) -> bool:
@@ -465,7 +466,7 @@ class MetricMap(mrpt.serialization.CSerializable):
         Optional numeric ID (int or None)
         """
     @id.setter
-    def id(self, arg0: int | None) -> None:
+    def id(self, arg0: typing.SupportsInt | typing.SupportsIndex | None) -> None:
         ...
     @property
     def label(self) -> str | None:
@@ -486,7 +487,7 @@ class MetricMap(mrpt.serialization.CSerializable):
         3D lines, as a list of mrpt.math.TLine3D. It is returned as a copy: assign a whole list to change it.
         """
     @lines.setter
-    def lines(self, arg0: list[mrpt.math.TLine3D]) -> None:
+    def lines(self, arg0: collections.abc.Sequence[mrpt.math.TLine3D]) -> None:
         ...
     @property
     def metadata(self) -> typing.Any:
@@ -502,7 +503,7 @@ class MetricMap(mrpt.serialization.CSerializable):
         Plane patches, as a list of PlanePatch. It is returned as a copy: assign a whole list to change it.
         """
     @planes.setter
-    def planes(self, arg0: list[PlanePatch]) -> None:
+    def planes(self, arg0: collections.abc.Sequence[PlanePatch]) -> None:
         ...
 class LayersView:
     """
@@ -566,6 +567,10 @@ class IterTermReason:
     Stalled: typing.ClassVar[IterTermReason]
     Undefined: typing.ClassVar[IterTermReason]
     __members__: typing.ClassVar[dict[str, IterTermReason]]
+    @typing.overload
+    def __eq__(self, other: IterTermReason) -> bool:
+        ...
+    @typing.overload
     def __eq__(self, other: typing.Any) -> bool:
         ...
     def __getstate__(self) -> int:
@@ -574,15 +579,19 @@ class IterTermReason:
         ...
     def __index__(self) -> int:
         ...
-    def __init__(self, value: int) -> None:
+    def __init__(self, value: typing.SupportsInt | typing.SupportsIndex) -> None:
         ...
     def __int__(self) -> int:
         ...
+    @typing.overload
+    def __ne__(self, other: IterTermReason) -> bool:
+        ...
+    @typing.overload
     def __ne__(self, other: typing.Any) -> bool:
         ...
     def __repr__(self) -> str:
         ...
-    def __setstate__(self, state: int) -> None:
+    def __setstate__(self, state: typing.SupportsInt | typing.SupportsIndex) -> None:
         ...
     def __str__(self) -> str:
         ...
@@ -637,7 +646,7 @@ class Parameters(mrpt.serialization.CSerializable):
         With generateDebugFiles, save 1 out of N log files
         """
     @decimationDebugFiles.setter
-    def decimationDebugFiles(self, arg0: int) -> None:
+    def decimationDebugFiles(self, arg0: typing.SupportsInt | typing.SupportsIndex) -> None:
         ...
     @property
     def decimationIterationDetails(self) -> int:
@@ -645,7 +654,7 @@ class Parameters(mrpt.serialization.CSerializable):
         With saveIterationDetails, keep 1 out of N iterations
         """
     @decimationIterationDetails.setter
-    def decimationIterationDetails(self, arg0: int) -> None:
+    def decimationIterationDetails(self, arg0: typing.SupportsInt | typing.SupportsIndex) -> None:
         ...
     @property
     def force_final_pairings_for_quality(self) -> bool:
@@ -661,7 +670,7 @@ class Parameters(mrpt.serialization.CSerializable):
         If >0, pairings are not recomputed after this iteration
         """
     @freezePairingsAfterIteration.setter
-    def freezePairingsAfterIteration(self, arg0: int) -> None:
+    def freezePairingsAfterIteration(self, arg0: typing.SupportsInt | typing.SupportsIndex) -> None:
         ...
     @property
     def generateDebugFiles(self) -> bool:
@@ -677,7 +686,7 @@ class Parameters(mrpt.serialization.CSerializable):
         Maximum number of ICP iterations
         """
     @maxIterations.setter
-    def maxIterations(self, arg0: int) -> None:
+    def maxIterations(self, arg0: typing.SupportsInt | typing.SupportsIndex) -> None:
         ...
     @property
     def minAbsStep_rot(self) -> float:
@@ -685,7 +694,7 @@ class Parameters(mrpt.serialization.CSerializable):
         Stop when all rotation corrections are below this [rad]
         """
     @minAbsStep_rot.setter
-    def minAbsStep_rot(self, arg0: float) -> None:
+    def minAbsStep_rot(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def minAbsStep_trans(self) -> float:
@@ -693,7 +702,7 @@ class Parameters(mrpt.serialization.CSerializable):
         Stop when all translation corrections are below this [m]
         """
     @minAbsStep_trans.setter
-    def minAbsStep_trans(self, arg0: float) -> None:
+    def minAbsStep_trans(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def quality_checkpoints(self) -> dict[int, float]:
@@ -701,7 +710,7 @@ class Parameters(mrpt.serialization.CSerializable):
         dict {iteration: minimum quality}: abort if the quality is lower at that iteration
         """
     @quality_checkpoints.setter
-    def quality_checkpoints(self, arg0: dict[int, float]) -> None:
+    def quality_checkpoints(self, arg0: collections.abc.Mapping[typing.SupportsInt | typing.SupportsIndex, typing.SupportsFloat | typing.SupportsIndex]) -> None:
         ...
     @property
     def saveIterationDetails(self) -> bool:
@@ -804,7 +813,7 @@ class Results:
         Share of the rotational information from the gravity prior, <0 if none
         """
     @gravity_information_share.setter
-    def gravity_information_share(self, arg0: float) -> None:
+    def gravity_information_share(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def nIterations(self) -> int:
@@ -812,7 +821,7 @@ class Results:
         Number of executed iterations
         """
     @nIterations.setter
-    def nIterations(self, arg0: int) -> None:
+    def nIterations(self, arg0: typing.SupportsInt | typing.SupportsIndex) -> None:
         ...
     @property
     def optimalScale(self) -> float:
@@ -820,7 +829,7 @@ class Results:
         Scale, if estimated
         """
     @optimalScale.setter
-    def optimalScale(self, arg0: float) -> None:
+    def optimalScale(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def optimal_pose_matrix(self) -> typing.Any:
@@ -841,7 +850,7 @@ class Results:
         Registration quality, in [0,1]
         """
     @quality.setter
-    def quality(self, arg0: float) -> None:
+    def quality(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def terminationReason(self) -> IterTermReason:
@@ -865,7 +874,7 @@ class GravityPrior:
         Tilt standard deviation [rad]
         """
     @sigma_rad.setter
-    def sigma_rad(self, arg0: float) -> None:
+    def sigma_rad(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
         ...
     @property
     def up_body(self) -> mrpt.math.TPoint3D:
@@ -954,7 +963,7 @@ class LogRecord(mrpt.serialization.CSerializable):
         Values of the dynamic variables (dict)
         """
     @dynamicVariables.setter
-    def dynamicVariables(self, arg0: dict[str, float]) -> None:
+    def dynamicVariables(self, arg0: collections.abc.Mapping[str, typing.SupportsFloat | typing.SupportsIndex]) -> None:
         ...
     @property
     def gravityPrior(self) -> GravityPrior | None:
@@ -994,7 +1003,7 @@ class LogRecord(mrpt.serialization.CSerializable):
         Optional dict {iteration: IterationDetails}, if Parameters.saveIterationDetails
         """
     @iterationsDetails.setter
-    def iterationsDetails(self, arg0: dict[int, IterationDetails] | None) -> None:
+    def iterationsDetails(self, arg0: collections.abc.Mapping[typing.SupportsInt | typing.SupportsIndex, IterationDetails] | None) -> None:
         ...
     @property
     def pcGlobal(self) -> MetricMap:
@@ -1039,7 +1048,7 @@ class ICP:
         """
         Sets a function called at each ICP iteration with an IterationInfo; if it returns True, iterations stop (terminationReason=HookRequest). Exceptions raised in it stop align() and are re-raised. Pass None to remove it.
         """
-    def update_variables(self, variables: dict[str, float]) -> None:
+    def update_variables(self, variables: collections.abc.Mapping[str, typing.SupportsFloat | typing.SupportsIndex]) -> None:
         """
         Sets the values of variables used in parameter formulas of the pipeline modules (e.g. `threshold: '2.0*SCALE'`). ICP_ITERATION is always defined by align().
         """
@@ -1078,7 +1087,7 @@ class FilterPipeline:
         """
         Applies all filters, in order, to the map (in place).
         """
-    def update_variables(self, variables: dict[str, float]) -> None:
+    def update_variables(self, variables: collections.abc.Mapping[str, typing.SupportsFloat | typing.SupportsIndex]) -> None:
         """
         Sets the values of variables used in parameter formulas of the filters, e.g. `max_range: '2*RANGE'`.
         """
@@ -1107,7 +1116,7 @@ class Generators:
         """
         Converts an mrpt.obs.CObservation or CSensoryFrame into map layers, with an optional robot pose. The layers are added to `output` if given, or to a new MetricMap. Returns the map.
         """
-    def update_variables(self, variables: dict[str, float]) -> None:
+    def update_variables(self, variables: collections.abc.Mapping[str, typing.SupportsFloat | typing.SupportsIndex]) -> None:
         """
         Sets the values of variables used in parameter formulas.
         """
@@ -1127,7 +1136,7 @@ def generators_from_yaml(config: typing.Any, variables: typing.Any = None, verbo
     """
     Creates Generators, see Generators.from_yaml().
     """
-def icp_pipeline_from_yaml(config: typing.Any, variables: typing.Any = None, verbosity: str = 'INFO') -> tuple:
+def icp_pipeline_from_yaml(config: typing.Any, variables: typing.Any = None, verbosity: str = 'INFO') -> tuple[ICP, Parameters]:
     """
     Creates an ICP pipeline from a configuration (see ICP.from_yaml()). Returns a tuple (ICP, Parameters), where Parameters is the same object as ICP.parameters.
     """
@@ -1171,7 +1180,7 @@ def save_txt(layer: mrpt.maps.CMetricMap, path: typing.Any, header: bool = True,
     """
     Saves a point cloud layer as a space-separated text file, one point per row, with an optional header line with the field names.
     """
-def simplemap_to_metricmap(simplemap: typing.Any, pipeline: typing.Any = None, *, variables: typing.Any = None, custom_variables: dict[str, float] = {}, verbosity: str = 'INFO', show_progress_bar: bool = False, start_index: int | None = None, end_index: int | None = None, decimate_every_nth_frame: int | None = None, decimate_maximum_frame_count: int | None = None, throw_on_missing_external_files: bool = True, georeferencing: Georeferencing | None = None, lazy_load_base_dir: typing.Any = None) -> MetricMap:
+def simplemap_to_metricmap(simplemap: typing.Any, pipeline: typing.Any = None, *, variables: typing.Any = None, custom_variables: collections.abc.Mapping[str, typing.SupportsFloat | typing.SupportsIndex] = {}, verbosity: str = 'INFO', show_progress_bar: bool = False, start_index: typing.SupportsInt | typing.SupportsIndex | None = None, end_index: typing.SupportsInt | typing.SupportsIndex | None = None, decimate_every_nth_frame: typing.SupportsInt | typing.SupportsIndex | None = None, decimate_maximum_frame_count: typing.SupportsInt | typing.SupportsIndex | None = None, throw_on_missing_external_files: bool = True, georeferencing: Georeferencing | None = None, lazy_load_base_dir: typing.Any = None) -> MetricMap:
     """
     Builds a MetricMap from a simplemap (keyframes with poses and raw observations), as the `sm2mm` tool does. `simplemap` is an mrpt.maps.CSimpleMap or a file path; `pipeline` is an sm2mm YAML file path, dict or YAML node, with `generators`, `filters` and `final_filters` (default: one generator, no filters). `variables` expands `${VAR}` tokens in the pipeline; `custom_variables` defines extra numeric variables for parameter formulas. `lazy_load_base_dir` is the directory of externally stored observations (default: `<simplemap name>_Images`, if it exists).
     """
