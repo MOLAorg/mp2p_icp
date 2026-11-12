@@ -15,12 +15,19 @@ types, so both APIs can be mixed freely.
 Install
 =======
 
+**pip** (Linux x86_64 and aarch64, Python 3.11 to 3.14): ``pip install mp2p-icp``. It also
+installs the ``mrpt3`` wheel, whose MRPT libraries it uses.
+
 **ROS 2**: the bindings are built with ``mp2p_icp_core`` whenever ``pybind11`` is found
 (``pybind11-dev`` on Debian/Ubuntu). After ``source install/setup.bash`` (or the ROS
 distribution setup file), ``import mp2p_icp`` just works.
 
+Do not mix both in the same Python environment.
+
 Optional dependencies, imported only by the functions that need them: ``pandas``,
-``pyarrow`` (Parquet), ``open3d``, ``pyvista``, ``laspy``.
+``pyarrow`` (Parquet), ``open3d``, ``pyvista``, ``laspy``. With pip, install them with the
+extras ``mp2p-icp[pandas]`` (pandas and pyarrow), ``[open3d]``, ``[pyvista]``, ``[las]``, or
+``[all]``.
 
 Metric maps and point clouds
 ============================

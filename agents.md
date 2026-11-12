@@ -28,10 +28,11 @@ mp2p_icp/                    (repo root)
 │   ├── apps/ tests/ demos/ 3rdparty/ scripts/
 ├── mp2p_icp_viz/             # GUI apps (mm-viewer, icp-log-viewer) and mm-render
 ├── mp2p_icp/                 # metapackage (backward compat, no code)
+├── packaging/pip/            # Python wheel (mp2p-icp on PyPI)
 └── docs/                     # Sphinx sources
 ```
 
-Build via colcon only. Each library exports its own CMake target (e.g.
+Build via colcon only (except the Python wheel). Each library exports its own CMake target (e.g.
 `mola::mp2p_icp_map`). Headless consumers depend on `mp2p_icp_core`.
 
 ## Core data structure: `metric_map_t`
@@ -115,6 +116,9 @@ the pure Python package `mp2p_icp` (`mp2p_icp/`: re-exports, `align()` and its b
   iteration hook), whose Python exceptions are re-raised after `align()`.
 - After changing bindings, regenerate the committed `mp2p_icp/_core.pyi` with
   `scripts/generate_stubs.py`. Docs: `docs/source/mp2p_icp_python.rst`.
+- pip wheel `mp2p-icp` (`packaging/pip/`, read its `README-dev.md`): a scikit-build-core
+  superbuild against the C++ SDK of the `mrpt3` wheel, whose `libmrpt_*.so` and oneTBB it
+  links via RPATH and must never bundle. CI: `.github/workflows/python-wheels.yml`.
 
 ## Build and test
 
