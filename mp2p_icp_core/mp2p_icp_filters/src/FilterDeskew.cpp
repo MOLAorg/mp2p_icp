@@ -59,6 +59,7 @@ void FilterDeskew::initialize_filter(const mrpt::containers::yaml& c)
 
     MCP_LOAD_OPT(c, points_already_global);
     MCP_LOAD_OPT(c, ignore_accelerometer);
+    MCP_LOAD_OPT(c, use_twist_with_imu_methods);
 
     auto handleVectorParam = [&](const std::string& key, auto& vec, const std::size_t dim)
     {
@@ -545,8 +546,17 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
             if (!sample_history.by_time.empty())
             {
                 // A defined `twist` provides the velocity at t=0, replacing whatever
-                // velocity samples the buffer holds:
-                if (twist.has_value())
+                // velocity samples the buffer holds. If that is disabled, it is still
+                // the fallback when no velocity sample falls within the window:
+                const bool windowHasVelocity = !sample_history.by_type.v_b.empty();
+                if (twist.has_value() && !use_twist_with_imu_methods && !windowHasVelocity)
+                {
+                    MRPT_LOG_THROTTLE_WARN(
+                        5.0,
+                        "No velocity sample within the de-skew window: using `twist` at t=0 "
+                        "instead (use_twist_with_imu_methods=false).");
+                }
+                if (twist.has_value() && (use_twist_with_imu_methods || !windowHasVelocity))
                 {
                     const mrpt::math::TVector3D v0(twist->vx, twist->vy, twist->vz);
                     sample_history.by_type.v_b.clear();

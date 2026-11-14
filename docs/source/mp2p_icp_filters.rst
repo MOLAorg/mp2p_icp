@@ -651,8 +651,20 @@ Filter: `FilterDeskew`
 
 * **twist** (:cpp:type:`std::optional<mrpt::math::TTwist3D>`):
   The velocity (linear and angular) of the vehicle in the local frame.
-  Only used when `method=Linear`.
+  Required by `method=Linear`. With the IMU methods, if defined, its linear part is the velocity at the
+  scan reference time (t=0), unless `use_twist_with_imu_methods=false`.
   May be dynamically bound via the `mp2p_icp::Parameterizable` API.
+
+* **use\_twist\_with\_imu\_methods** (``bool``, default: `true`):
+  If `false`, the IMU methods use `twist` only as a fallback, and take the velocity sample of the
+  `LocalVelocityBuffer` at its own stamp, integrating the IMU from there (e.g. a state estimator's velocity at the
+  previous scan, carried to this one with the IMU). If no velocity sample falls within the sample
+  window (twice the scan time span around t=0), a defined `twist` is used at t=0 as with `true`.
+  Requires `mola_imu_preintegration` newer than 3.0.1 to rotate that sample into the frame of t=0.
+
+* **ignore\_accelerometer** (``bool``, default: `false`):
+  If `true`, the IMU methods integrate only the gyroscope: the velocity at t=0 (or that of the
+  buffer's sample) is held constant over the scan.
 
 * **points\_already\_global** (``bool``, default: `false`):
   If `true`, the input points are already expressed in global coordinates (e.g. in sm2mm pipelines).

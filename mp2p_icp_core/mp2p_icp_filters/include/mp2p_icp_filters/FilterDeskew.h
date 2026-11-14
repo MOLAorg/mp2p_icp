@@ -90,6 +90,8 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      *   # These (vx,...,wz) are variable names that must be defined via the
      *   # mp2p_icp::Parameterizable API to update them dynamically.
      *   twist: [vx,vy,vz,wx,wy,wz]
+     *   # IMU methods: false to use the buffer's velocity sample at its own stamp
+     *   # use_twist_with_imu_methods: true
      * \endcode
      *
      */
@@ -128,7 +130,8 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      * vehicle frame. See FilterDeskew::initialize for an example of how
      * to define it via dynamic variables.
      * Required for `method=MotionCompensationMethod::Linear`. For the IMU-based methods it is
-     * optional: if defined, its linear part is the vehicle velocity at the scan reference time
+     * optional: if defined (and `use_twist_with_imu_methods` is true, or as a fallback, see
+     * there), its linear part is the vehicle velocity at the scan reference time
      * (t=0), from which the IMU readings are integrated, instead of the most recent velocity
      * sample in the LocalVelocityBuffer. Its angular part is not used by those methods (the
      * gyroscope is).
@@ -161,6 +164,25 @@ class FilterDeskew : public mp2p_icp_filters::FilterBase
      * Has no effect when `method` is `Linear` or `None`.
      */
     bool ignore_accelerometer = false;
+
+    /** Whether the IMU-based methods take the linear part of `twist` as the
+     * velocity at the scan reference time (t=0), replacing the velocity samples
+     * of the LocalVelocityBuffer. This is the default, for compatibility.
+     *
+     * If `false`, the IMU-based methods take the velocity sample of the
+     * LocalVelocityBuffer closest to the end of the sample window, at its own
+     * stamp, and the IMU readings are integrated from there. A velocity estimated
+     * some time before the scan (e.g. at the previous scan, by a state estimator)
+     * is then carried to the scan with the IMU, instead of being applied as if it
+     * were current. With `ignore_accelerometer`, that velocity is only rotated
+     * with the gyroscope, not changed. The sample window spans twice the scan
+     * time span around t=0: if it holds no velocity sample, a defined `twist` is
+     * used at t=0 as with `true` (with a throttled warning).
+     *
+     * Carrying the velocity sample into the frame of t=0 requires
+     * mola_imu_preintegration newer than 3.0.1.
+     */
+    bool use_twist_with_imu_methods = true;
 };
 
 /** @} */
