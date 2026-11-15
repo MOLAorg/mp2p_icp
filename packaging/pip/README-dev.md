@@ -81,9 +81,10 @@ Other build systems pass `mp2p_icp.sdk.get_cmake_prefix_path()` and
 
 The wheel requires `mrpt3>=X.Y.Z,<X.(Y+1)`, where `X.Y.Z` is the mrpt3 version
 it was built against (computed at build time by
-`build_helpers/mrpt3_requirement.py`). The build uses the exact mrpt3 version
-pinned in `[build-system] requires`: update it (and the pybind11 pin, if it
-changed) to build against a newer mrpt3.
+`build_helpers/mrpt3_requirement.py`). `[build-system] requires` only sets a
+lower bound, so builds use the newest mrpt3 on PyPI: raise it only when the
+code needs a newer MRPT. If a new mrpt3 changes its pybind11 version, the
+superbuild fails until the pybind11 pin is updated to match.
 
 This assumes that mrpt3 patch releases of one minor series keep the C++ ABI of
 the `libmrpt_*.so` files, which MRPT does not formally guarantee: no
