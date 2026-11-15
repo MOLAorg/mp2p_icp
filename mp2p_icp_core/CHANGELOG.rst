@@ -2,6 +2,19 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Python bindings (metric maps, point layers to and from NumPy, point cloud files, ICP, filter pipelines, generators, simplemap_to_metricmap()), with type stubs, and a pip wheel (mp2p-icp) that also ships the C++ SDK for downstream wheels.
+* New CLI tool mm2kml: export georeferenced metric maps to Google Earth (KMZ), colored by height relative to the trajectory.
+* Export tools support any layer that provides a point cloud view; the PLY, LAS and TXT writers moved into mp2p_icp_map.
+* LearnedCovariance: Eigen-only inference of a learned registration covariance, with CovFeatureEvaluator (matcher-independent evaluation of a registration result).
+* FilterDeskew: option to keep the buffer's velocity sample with IMU methods; ignore_accelerometer also drops the accelerometer bias.
+* FilterAdjustTimestamps: new time_offset parameter.
+* ICP: the iteration that ends ICP is counted in Results::nIterations and passed to the iteration hook; quality_checkpoints are saved with the parameters.
+* ParameterSource: allow realize() again after a failed expression compilation.
+* Requires mola_imu_preintegration >= 3.1.0.
+* Contributors: Jose Luis Blanco-Claraco
+
 3.1.0 (2026-11-01)
 ------------------
 * New filters: FilterTraversability (obstacles over a 2.5D ground model, canopy aware) and FilterInsertPoint (`#135 <https://github.com/MOLAorg/mp2p_icp/issues/135>`_)

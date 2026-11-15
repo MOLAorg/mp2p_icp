@@ -2,6 +2,11 @@
 Changelog for package mp2p_icp_viz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* New app mm-render: off-screen rendering of metric map layers into images.
+* Contributors: Jose Luis Blanco-Claraco
+
 3.1.0 (2026-11-01)
 ------------------
 * Render params: option to hide back-facing points (`#146 <https://github.com/MOLAorg/mp2p_icp/issues/146>`_)
