@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_viz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.2.0 (2026-11-15)
+------------------
 * New app mm-render: off-screen rendering of metric map layers into images.
 * Contributors: Jose Luis Blanco-Claraco
 

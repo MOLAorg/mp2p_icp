@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.2.0 (2026-11-15)
+------------------
 * Python bindings (metric maps, point layers to and from NumPy, point cloud files, ICP, filter pipelines, generators, simplemap_to_metricmap()), with type stubs, and a pip wheel (mp2p-icp) that also ships the C++ SDK for downstream wheels.
 * New CLI tool mm2kml: export georeferenced metric maps to Google Earth (KMZ), colored by height relative to the trajectory.
 * Export tools support any layer that provides a point cloud view; the PLY, LAS and TXT writers moved into mp2p_icp_map.
