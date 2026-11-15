@@ -38,7 +38,7 @@
 
   <depend>tbb</depend>  <!-- Required to exploit parallelization in many ICP algorithms -->
 
-  <depend>mola_imu_preintegration</depend>
+  <depend version_gte="3.1.0">mola_imu_preintegration</depend> <!-- ImuTransformer with accel_scale and rate-aware filters -->
 
   <!-- Python bindings (skipped if pybind11 is not found) -->
   <build_depend>pybind11-dev</build_depend>
