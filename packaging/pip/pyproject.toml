@@ -8,7 +8,9 @@
 #   to share Python types with it.
 # - mrpt3: its C++ SDK is what the wheel is built against, and its version sets
 #   the mrpt3 requirement of the wheel (see build_helpers/mrpt3_requirement.py).
-requires = ["scikit-build-core>=0.11", "pybind11==3.1.0", "mrpt3==3.6.2"]
+#   Only a lower bound: builds use the newest mrpt3 on PyPI. Raise it only when
+#   the code needs a newer MRPT.
+requires = ["scikit-build-core>=0.11", "pybind11==3.1.0", "mrpt3>=3.6.2"]
 build-backend = "scikit_build_core.build"
 
 [project]
