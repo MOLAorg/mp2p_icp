@@ -54,13 +54,15 @@ mrpt::maps::CGenericPointsMap::Ptr make_scan()
 struct Case
 {
     std::string name;
-    bool        use_twist = true;
-    double      twist_vx  = 0;  // [m/s]
-    double      buffer_vx = 0;  // [m/s] velocity sample in the buffer
-    double      buffer_vt = 0;  // [s] its stamp, relative to REF_TIME
-    double      ax        = 0;  // [m/s^2] constant coordinate acceleration along +x
-    double      vx0       = 0;  // [m/s] expected velocity at t=0
-    double      tol       = 0;  // [m]
+    bool        use_twist  = true;
+    double      twist_vx   = 0;  // [m/s]
+    double      buffer_vx  = 0;  // [m/s] velocity sample in the buffer
+    double      buffer_vt  = 0;  // [s] its stamp, relative to REF_TIME
+    double      ax         = 0;  // [m/s^2] constant coordinate acceleration along +x
+    double      vx0        = 0;  // [m/s] expected velocity at t=0
+    double      tol        = 0;  // [m]
+    bool        ignore_acc = false;
+    double      bias_ax    = 0;  // [m/s^2] accelerometer bias given to the filter
 };
 
 // A vehicle with a fixed attitude, accelerating along +x: the IMU measures
@@ -94,6 +96,8 @@ double run_case(const Case& c)
     deskew.method                     = MotionCompensationMethod::IMU;
     deskew.twist                      = mrpt::math::TTwist3D(c.twist_vx, 0, 0, 0, 0, 0);
     deskew.use_twist_with_imu_methods = c.use_twist;
+    deskew.ignore_accelerometer       = c.ignore_acc;
+    deskew.bias_acc                   = {c.bias_ax, 0, 0};
     deskew.attachToParameterSource(ps);
 
     const auto  scan = make_scan();
@@ -116,6 +120,10 @@ double run_case(const Case& c)
         mrpt::math::TPoint3Df p;
         scan->getPoint(i, in.x, in.y, in.z);
         out->getPoint(i, p.x, p.y, p.z);
+        if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z))
+        {
+            return -1;
+        }
 
         const double t          = (*Ts)[i];
         const double expected_x = in.x + c.vx0 * t + 0.5 * c.ax * t * t;
@@ -158,6 +166,9 @@ int main()
             // The only velocity sample is in the buffer but outside the window
             // (twice the scan span around t=0): falls back to the twist.
             {"no sample in window", false, 1.5, 2.0, -0.25, 0.0, 1.5, 1e-4},
+            // Accelerometer ignored, with a bias configured: the buffer velocity
+            // must be held constant, not decelerated by the bias.
+            {"ignore accelerometer, biased", false, 0.0, 2.0, -0.1, 0.0, 2.0, 1e-4, true, 0.5},
         };
 
         for (const auto& c : cases)

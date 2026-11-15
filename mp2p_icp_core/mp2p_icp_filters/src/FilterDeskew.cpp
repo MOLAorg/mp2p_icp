@@ -578,6 +578,9 @@ void FilterDeskew::filter(mp2p_icp::metric_map_t& inOut) const
                 if (ignore_accelerometer)
                 {
                     imu_params.gravity_vector = {0, 0, 0};
+                    // A bias subtracted from the zeroed readings would act as an
+                    // acceleration of its own:
+                    imu_params.bias_acc = {0, 0, 0};
 
                     // Zero every a_b in by_type (used by find_closest fallback in
                     // trajectory_from_buffer) — do NOT clear the map, as find_closest
