@@ -104,13 +104,13 @@ The initial-guess pose and the final ICP pose can be toggled independently.
 
 Numerical outputs shown for each selected log entry:
 
-- **Quality** — the ICP quality score in [0, 1] produced by the configured
+- **Quality**: the ICP quality score in [0, 1] produced by the configured
   ``QualityEvaluator`` (e.g. ``QualityEvaluator_PairedRatio``).
-- **Log pose** — the final estimated SE(3) pose of the local map.
-- **Initial guess** — the pose used to seed the ICP iteration.
-- **Init→Final** — the correction applied by ICP on top of the initial guess.
-- **Covariance / condition number** — uncertainty of the result.
-- **Pairings** — number of point correspondences in the last ICP iteration.
+- **Log pose**: the final estimated SE(3) pose of the local map.
+- **Initial guess**: the pose used to seed the ICP iteration.
+- **Init→Final**: the correction applied by ICP on top of the initial guess.
+- **Covariance / condition number**: uncertainty of the result.
+- **Pairings**: number of point correspondences in the last ICP iteration.
 
 **Pairings visualisation**
 
@@ -129,6 +129,6 @@ useful to inspect only the low-quality registrations that may have caused drift.
     # Inspect only high-quality (≥ 80 %) registrations
     icp-log-viewer -d logs/ --min-quality 0.8
 
-    # Inspect only low-quality (< 20 %) registrations — invert by running with 0
+    # Inspect only low-quality (< 20 %) registrations: invert by running with 0
     # and then sorting/filtering externally, or set a low threshold and browse manually
     icp-log-viewer -d logs/ --min-quality 0.0
