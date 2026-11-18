@@ -162,6 +162,41 @@ Filter: `FilterBoundingBox`
 
 ---
 
+Filter: `FilterByExpression`
+----------------------------
+
+**Description**: Evaluates a mathematical or logical expression for each point, and moves the points
+for which it is positive to one output layer, and the rest to another one. Expressions use the
+`ExprTk <https://github.com/ArashPartow/exprtk>`_ syntax, and may use as variables the coordinates
+``x``, ``y``, ``z`` and any other point field of the input cloud (e.g. ``intensity``, ``ring``).
+
+**Parameters**:
+
+* **input\_pointcloud\_layer** (:cpp:type:`std::string`): The input point cloud layer name.
+
+* **expression** (:cpp:type:`std::string`): The expression to evaluate per point, e.g. ``"ring > 10"``
+  or ``"x^2 + y^2 < 4.0"``.
+
+* **output\_layer\_passed** (:cpp:type:`std::string`, optional): Output layer for points where the expression is :math:`> 0`.
+
+* **output\_layer\_not\_passed** (:cpp:type:`std::string`, optional): Output layer for points where the expression is :math:`\leq 0`.
+
+At least one of the two output layers must be given.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterByExpression
+        params:
+          input_pointcloud_layer: 'raw'
+          expression: 'x^2 + y^2 < 25.0 and intensity > 0.2'
+          output_layer_passed: 'near_bright'
+
+|
+
+---
+
 Filter: `FilterByIntensity`
 ---------------------------
 
@@ -1561,3 +1596,82 @@ This localized approach dramatically reduces computational cost by limiting KD-t
 **Performance notes:** The voxel-based approach provides substantial speedup over global SOR, especially for large point clouds (>1M points).
 Typical speedup factors range from 5-20× depending on point cloud density and voxel size. The ``use_tsl_robin_map`` option enables
 further optimization using a high-performance hash map implementation.
+
+|
+
+---
+
+Generators
+----------
+
+**Generators** are the first stage of a pipeline: they convert each raw sensor observation into
+one or more map layers, on which the filters above then operate. They are listed in the
+``generators:`` section of :ref:`sm2mm pipelines <sm2mm_pipelines>` and of MOLA-LO pipelines.
+If none is given, a default ``mp2p_icp_filters::Generator`` is used.
+
+``mp2p_icp_filters::Generator``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Description**: Inserts each observation into a map layer: by default a point cloud of class
+``default_pointcloud_class``, or any other metric map class given in ``metric_map_definition``.
+
+**Parameters**:
+
+* **target\_layer** (:cpp:type:`std::string`, default: ``raw``): The layer to insert the observation into.
+
+* **metric\_map\_definition** (YAML map, optional): The class and parameters of a custom metric map
+  layer (e.g. a voxel map or an occupancy grid). Numeric values may be formulas written as ``$f{expr}``.
+  Alternatively, **metric\_map\_definition\_ini\_file** points to an external ``.ini`` file.
+
+* **process\_class\_names\_regex** (:cpp:type:`std::string`, default: ``.*``): Only observations of matching
+  C++ classes are processed, e.g. ``mrpt::obs::CObservation2DRangeScan``.
+
+* **process\_sensor\_labels\_regex** (:cpp:type:`std::string`, default: ``.*``): Only observations with matching
+  sensor labels are processed, e.g. ``lidar_.*``.
+
+* **throw\_on\_unhandled\_observation\_class** (``bool``, default: ``false``): Throw instead of ignoring
+  observations that cannot be converted.
+
+* **generate\_view\_vector** (``bool``, default: ``true``): Add the ``view_x``, ``view_y``, ``view_z`` fields
+  (unit vector from each point towards the sensor) to generic point cloud layers.
+
+* **default\_pointcloud\_class** (:cpp:type:`std::string`, default: ``mrpt::maps::CGenericPointsMap``): Class of
+  the layer generated from point cloud observations. Empty means the class of the observation's own cloud.
+
+* **filterOutPointsAtZero** (``bool``, default: ``false``): Discard points at :math:`(0,0,0)`, typical of
+  invalid returns in organized LiDAR clouds.
+
+.. code-block:: yaml
+
+    generators:
+      - class_name: mp2p_icp_filters::Generator
+        params:
+          target_layer: 'raw'
+          process_sensor_labels_regex: 'lidar'
+          filterOutPointsAtZero: true
+
+``mp2p_icp_filters::GeneratorEdgesFromCurvature``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Description**: Extracts edge points from organized LiDAR scans (``mrpt::obs::CObservationRotatingScan``):
+points whose two neighbors along the same ring are far from forming a straight line. Accepts all the
+parameters of ``Generator``, plus:
+
+* **max\_cosine** (``float``): A point is an edge if :math:`|\cos \theta| <` ``max_cosine``, with :math:`\theta`
+  the angle between the vectors from the point to its two ring neighbors.
+
+* **min\_point\_clearance** (``float``, default: ``0.10``): Points closer than this distance [m] to either
+  neighbor are not evaluated.
+
+``mp2p_icp_filters::GeneratorEdgesFromRangeImage``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Description**: Extracts edge points from range images (organized LiDAR scans and 3D range cameras):
+points whose range departs from the local trend of range differences along the row. Accepts all the
+parameters of ``Generator``, plus:
+
+* **score\_threshold** (``int``): Minimum score (squared deviation from the local range trend, normalized by
+  its variance) for a point to be an edge.
+
+* **planes\_target\_layer** (:cpp:type:`std::string`): Layer for the plane points, for 3D range cameras.
+  May be empty.
