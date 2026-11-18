@@ -7,7 +7,7 @@ Optimal transformations
 
 Gauss-Newton solver
 --------------------
-``mp2p_icp::optimal_gauss_newton()``: A non-linear iterative solver to find the SE(3)
+``mp2p_icp::optimal_tf_gauss_newton()``: A non-linear iterative solver to find the SE(3)
 optimal transformation given a set of pairings. 
 
 Key features: 
@@ -21,7 +21,7 @@ TO-DO: Write a proper paper with the details!
 Horn's quaternion solver
 ---------------------------
 ``mp2p_icp::optimal_tf_horn()``: The classic Horn's closed-form optimal quaternion solution.
-Relies on the implementation in `<mrpt/tfest/se3.h> <http://mrpt.ual.es/reference/devel/group__mrpt__tfest__grp.html>`_.
+Relies on the implementation in `<mrpt/tfest/se3.h> <https://docs.mrpt.org/reference/latest/group_mrpt_tfest_grp.html>`_.
 
 OLAE solver
 -----------------
