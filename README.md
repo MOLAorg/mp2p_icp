@@ -12,11 +12,6 @@
 | ROS 2 Lyrical (u26.04) | [![Build Status](https://build.ros2.org/job/Ldev__mp2p_icp__ubuntu_resolute_amd64/badge/icon)](https://build.ros2.org/job/Ldev__mp2p_icp__ubuntu_resolute_amd64/) | [![Version](https://img.shields.io/ros/v/lyrical/mp2p_icp)](https://index.ros.org/?pkgs=mp2p_icp&search_packages=true#lyrical) |
 | ROS 2 Rolling (u26.04) | [![Build Status](https://build.ros2.org/job/Rdev__mp2p_icp__ubuntu_resolute_amd64/badge/icon)](https://build.ros2.org/job/Rdev__mp2p_icp__ubuntu_resolute_amd64/) | [![Version](https://img.shields.io/ros/v/rolling/mp2p_icp)](https://index.ros.org/?pkgs=mp2p_icp&search_packages=true#rolling) |
 
-| EOL Distro | Last release |
-| ---    | ---       |
-| ROS1 Noetic (u20.04) | [![Version](https://img.shields.io/ros/v/noetic/mp2p_icp)](https://index.ros.org/?search_packages=true&pkgs=mp2p_icp) |
-| ROS 2 Iron (u22.04) | [![Version](https://img.shields.io/ros/v/iron/mp2p_icp)](https://index.ros.org/?search_packages=true&pkgs=mp2p_icp) |
-
 
 # mp2p_icp
 C++ libraries for multi primitive-to-primitive (MP2P) ICP algorithms and flexible point cloud processing pipelines. `mp2p_icp` is used in the [mola_lidar_odometry](https://github.com/MOLAorg/mola_lidar_odometry) framework:
