@@ -2,7 +2,7 @@
 
 A CLI tool to apply a pipeline to an input metric map (`*.mm`), saving the result as another metric map file.
 
-Refer to [mp2p_icp docs online](https://docs.mola-slam.org/latest/module-mp2p-icp.html) for the list of possible filters and their parameters.
+Refer to [mp2p_icp docs online](https://docs.mola-slam.org/latest/mp2p_icp_filters.html) for the list of possible filters and their parameters.
 
 # Examples
 

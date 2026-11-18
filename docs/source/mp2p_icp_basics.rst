@@ -61,7 +61,7 @@ At the end, **quality evaluators** score the result in [0,1], e.g. ``QualityEval
 (ratio of paired points), ``QualityEvaluator_Voxels`` or ``QualityEvaluator_RangeImageSimilarity``.
 With several of them, their weighted mean is reported.
 
-Before ICP, :ref:`filters <mp2p_icp_filters>` prepare the layers to match (decimation, de-skew,
+Before ICP, :doc:`filters <mp2p_icp_filters>` prepare the layers to match (decimation, de-skew,
 range limits, ...). Run ``mola-cli --rtti-children-of mp2p_icp::Matcher`` (or ``Solver``,
 ``QualityEvaluator``) to list the classes available in your installation.
 
@@ -111,7 +111,7 @@ An ICP pipeline is defined in a YAML file, loaded with ``mp2p_icp::icp_pipeline_
           voxel_filter_resolution: 0.10  # [m]
 
 The parameters of each class are listed in its :doc:`C++ API reference <doxygen-index>`, and the
-filters in :ref:`mp2p_icp_filters`. Complete examples are the ``icp-settings-*.yaml`` files in the
+filters in :doc:`mp2p_icp_filters`. Complete examples are the ``icp-settings-*.yaml`` files in the
 `demos directory <https://github.com/MOLAorg/mp2p_icp/tree/develop/mp2p_icp_core/demos>`_, and the
 ICP blocks of the :ref:`MOLA-LO pipelines <mola_lo_pipelines>`. Numeric parameters may be given as
 formulas of variables provided at run time (e.g. ``"max(0.2, 2*ICP_ITERATION)"``), and the files are

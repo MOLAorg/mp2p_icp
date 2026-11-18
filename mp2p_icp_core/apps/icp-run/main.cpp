@@ -74,7 +74,7 @@ static void defineCliArgs()
            "-c,--config", argYamlConfigFile,
            "YAML config file describing the ICP pipeline. See docs:\n"
            " https://docs.mola-slam.org/latest/"
-           "module-mp2p-icp.html#yaml-pipeline-definition-files")
+           "mp2p_icp_basics.html#yaml-pipeline-definition-files")
         ->required();
 
     cmd.add_option(
