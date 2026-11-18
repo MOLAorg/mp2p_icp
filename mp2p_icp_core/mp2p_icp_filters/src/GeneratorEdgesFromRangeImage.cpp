@@ -155,7 +155,7 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
 {
     constexpr int FIXED_POINT_BITS = 8;
 
-    // Optional output layer for deleted points:
+    // Output layers for edge and plane points (either one may be disabled):
     mrpt::maps::CPointsMap::Ptr outEdges = GetOrCreatePointLayer(
         out, params.target_layer, true /*allow empty for nullptr*/,
         /* create cloud of the same type */
@@ -172,7 +172,7 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
     }
     if (outPlanes)
     {
-        out.layers[paramsEdges_.planes_target_layer] = outEdges;
+        out.layers[paramsEdges_.planes_target_layer] = outPlanes;
     }
     ASSERT_(outEdges || outPlanes);
 
@@ -304,7 +304,10 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
                 // it's an edge:
                 currentPlaneStart.reset();
 
-                outEdges->insertPoint(lambdaUnprojectPoint(rd, cd));
+                if (outEdges)
+                {
+                    outEdges->insertPoint(lambdaUnprojectPoint(rd, cd));
+                }
             }
             else
             {
@@ -317,7 +320,10 @@ bool GeneratorEdgesFromRangeImage::filterScan3D(
                 if (cd - *currentPlaneStart > MIN_SPACE_BETWEEN_PLANE_POINTS)
                 {
                     // create a plane point:
-                    outPlanes->insertPoint(lambdaUnprojectPoint(rd, cd));
+                    if (outPlanes)
+                    {
+                        outPlanes->insertPoint(lambdaUnprojectPoint(rd, cd));
+                    }
                     currentPlaneStart.reset();
                 }
             }
