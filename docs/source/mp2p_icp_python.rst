@@ -1,7 +1,7 @@
 .. _mp2p_icp_python:
 
 ======================
-Python API
+Python API: mp2p_icp
 ======================
 
 The ``mp2p_icp`` Python package wraps the ``mp2p_icp_core`` C++ libraries: metric maps
