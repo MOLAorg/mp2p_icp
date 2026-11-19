@@ -25,7 +25,8 @@ static const uint8_t SERIALIZATION_VERSION = 1;
 void Results::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out.WriteAs<uint8_t>(SERIALIZATION_VERSION);
-    out << optimal_tf << optimalScale << nIterations;
+    out << optimal_tf << optimalScale;
+    out.WriteAs<uint64_t>(nIterations);
     out << static_cast<uint8_t>(terminationReason);
     out << quality;
     finalPairings.serializeTo(out);
@@ -37,7 +38,8 @@ void Results::serializeFrom(mrpt::serialization::CArchive& in)
 
     ASSERT_LE_(readVersion, SERIALIZATION_VERSION);
 
-    in >> optimal_tf >> optimalScale >> nIterations;
+    in >> optimal_tf >> optimalScale;
+    nIterations       = in.ReadAs<uint64_t>();
     terminationReason = static_cast<IterTermReason>(in.ReadAs<uint8_t>());
     in >> quality;
     finalPairings.serializeFrom(in);
