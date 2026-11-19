@@ -439,6 +439,7 @@ void ICP::align(
     // Store output:
     result.optimal_tf.mean           = state.currentSolution.optimalPose;
     result.gravity_information_share = state.currentSolution.gravity_information_share;
+    result.measurement_information   = state.currentSolution.measurement_information;
     result.optimalScale              = state.currentSolution.optimalScale;
     result.finalPairings             = std::move(state.currentPairings);
 

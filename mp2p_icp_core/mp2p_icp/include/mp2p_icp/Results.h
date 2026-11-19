@@ -14,12 +14,17 @@
 #pragma once
 
 #include <mp2p_icp/Pairings.h>
+#include <mrpt/math/CMatrixFixed.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 
 #include <cstdint>
 #include <iosfwd>
 
 #include "IterTermReason.h"
+
+/** Feature-detection macro for downstream packages: defined by mp2p_icp
+ * releases whose Results and OptimalTF_Result carry measurement_information. */
+#define MP2P_ICP_HAS_MEASUREMENT_INFORMATION 1
 
 namespace mp2p_icp
 {
@@ -57,6 +62,13 @@ struct Results
      *  actual influence depends on the pair count and lever arms, not on its
      *  sigma alone, and this is the only place it can be read off. */
     double gravity_information_share = -1.0;
+
+    /** Information of the final pairings alone, as seen by the solver (robust
+     *  weights included, priors excluded), in the SE(3) right tangent of
+     *  `optimal_tf.mean`, translation first. See
+     *  OptimalTF_Result::measurement_information. All zeros if the solver
+     *  does not compute it. */
+    mrpt::math::CMatrixDouble66 measurement_information;
 
     void serializeTo(mrpt::serialization::CArchive& out) const;
     void serializeFrom(mrpt::serialization::CArchive& in);

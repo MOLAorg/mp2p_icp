@@ -244,6 +244,7 @@ bool mp2p_icp::optimal_tf_gauss_newton(
     // between calls, so a reused instance would otherwise report the share of an
     // earlier solve that did have a gravity prior.
     result.gravity_information_share = -1.0;
+    result.measurement_information.setZero();
 
     MRPT_START
 
@@ -709,9 +710,11 @@ bool mp2p_icp::optimal_tf_gauss_newton(
             H.noalias() += weight * Ji.transpose() * Ji;
         }
 
-        // Kept for the optional H-spectrum diagnostic only: how much of the
-        // information is in the measurements, before the prior is added.
+        // How much of the information is in the measurements, before the
+        // priors are added (reported in the result, and to the optional
+        // H-spectrum diagnostic):
         const Eigen::Matrix<double, 6, 6> H_meas = H;
+        result.measurement_information           = mrpt::math::CMatrixDouble66(H_meas);
 
         // Prior guess term:
         if (gnParams.prior.has_value())
