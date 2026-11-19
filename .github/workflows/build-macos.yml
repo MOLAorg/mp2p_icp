@@ -49,7 +49,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install cmake ninja eigen assimp tinyxml2 zstd glfw googletest cli11 tbb
+          brew install cmake eigen assimp tinyxml2 zstd glfw googletest cli11 tbb
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
 
@@ -60,19 +60,18 @@ jobs:
           pip install colcon-common-extensions numpy
           echo "${{ github.workspace }}/ws/.ci-venv/bin" >> $GITHUB_PATH
 
-      # Only the MRPT packages that mp2p_icp needs:
+      # Only the MRPT packages that mp2p_icp needs. Default generator (Makefiles):
+      # the *_build steps of the tests build in their own subdirectory.
       - name: Colcon build
         run: |
           colcon build \
             --packages-up-to mp2p_icp \
             --event-handlers console_cohesion+ \
             --cmake-args \
-              -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
               -DBUILD_TESTING=ON \
               -DDISABLE_WXWIDGETS=ON \
               -DMRPT_WITH_QT=OFF \
-              -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
