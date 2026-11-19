@@ -27,7 +27,7 @@
 #include <string>
 namespace fs = std::filesystem;
 
-#if defined(__unix__)
+#if (defined(__unix__) || defined(__APPLE__))
 #include <dlfcn.h>
 #endif
 
@@ -101,7 +101,7 @@ void mp2p_icp::load_plugin(
         }
     }
 
-#if defined(__unix__)
+#if (defined(__unix__) || defined(__APPLE__))
     // Check if already loaded?
     {
         void* handle = dlopen(absPath.c_str(), RTLD_NOLOAD);
