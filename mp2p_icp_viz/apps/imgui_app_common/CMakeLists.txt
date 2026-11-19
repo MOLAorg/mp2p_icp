@@ -20,4 +20,9 @@ find_package(Threads REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC imgui::imgui Threads::Threads)
 
+# libcfgpath (user config folders, also used by the apps) needs it on macOS:
+if(APPLE)
+  target_link_libraries(${PROJECT_NAME} PUBLIC "-framework CoreServices")
+endif()
+
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)

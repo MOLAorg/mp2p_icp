@@ -1,0 +1,84 @@
+# Builds mp2p_icp on macOS (Apple clang, no ROS) with its dependencies built
+# from source (MRPT 3, mola_common, mola_imu_preintegration), and runs its tests.
+name: CI macOS
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: macos-15-xcode-16
+    runs-on: macos-15
+    timeout-minutes: 120
+
+    env:
+      CTEST_OUTPUT_ON_FAILURE: ON
+      COLCON_HOME: ${{ github.workspace }}/.colcon
+      SCCACHE_GHA_ENABLED: "true"
+
+    defaults:
+      run:
+        working-directory: ws
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          path: ws/src/mp2p_icp
+          submodules: recursive
+
+      - name: Clone dependencies
+        run: |
+          cd src
+          git clone --depth 1 -b develop --recurse-submodules --shallow-submodules \
+            https://github.com/MRPT/mrpt.git
+          git clone --depth 1 -b develop https://github.com/MOLAorg/mola_common.git
+          git clone --depth 1 -b develop https://github.com/MOLAorg/mola_imu_preintegration.git
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -switch /Applications/Xcode_16.app
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.11
+
+      - name: Cache Homebrew downloads
+        uses: actions/cache@v6
+        with:
+          path: ~/Library/Caches/Homebrew/downloads
+          key: brew-macos-15-${{ hashFiles('ws/src/mp2p_icp/.github/workflows/build-macos.yml') }}
+          restore-keys: brew-macos-15-
+
+      - name: Install dependencies
+        run: |
+          brew install cmake eigen assimp tinyxml2 zstd glfw googletest cli11 tbb
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+
+      - name: Install colcon
+        run: |
+          python3 -m venv .ci-venv
+          source .ci-venv/bin/activate
+          pip install colcon-common-extensions numpy
+          echo "${{ github.workspace }}/ws/.ci-venv/bin" >> $GITHUB_PATH
+
+      # Only the MRPT packages that mp2p_icp needs. Default generator (Makefiles):
+      # the *_build steps of the tests build in their own subdirectory.
+      - name: Colcon build
+        run: |
+          colcon build \
+            --packages-up-to mp2p_icp \
+            --event-handlers console_cohesion+ \
+            --cmake-args \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_TESTING=ON \
+              -DDISABLE_WXWIDGETS=ON \
+              -DMRPT_WITH_QT=OFF \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+
+      - name: Colcon test
+        run: |
+          colcon test \
+            --packages-select mp2p_icp_core mp2p_icp_viz mp2p_icp \
+            --event-handlers console_cohesion+ \
+            --return-code-on-test-failure
+          colcon test-result --verbose
