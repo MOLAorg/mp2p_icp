@@ -59,6 +59,10 @@ std::string              argBackground{"FFFFFF"};
 std::string              argColormap;
 float                    argPointSize = 1.0f;
 bool                     argSSAO      = false;
+// A few stray points must not squeeze the whole map into one color. Lower than
+// mm-viewer's default: most points of a map are near the ground, so cutting
+// more would saturate everything above the walls.
+float argColormapOutliers = 0.005f;
 
 const std::map<std::string, mrpt::img::TColormap> kColormaps = {
     {"jet", mrpt::img::cmJET},
@@ -125,6 +129,10 @@ mrpt::viz::CSetOfObjects::Ptr render_layer(const mrpt::maps::CMetricMap::Ptr& la
     {
         rp.colorMode->colorMap          = kColormaps.at(argColormap);
         rp.colorMode->recolorizeByField = "z";
+        if (argColormapOutliers > 0)
+        {
+            rp.colorMode->autoBoundingBoxOutliersPercentile = argColormapOutliers;
+        }
     }
     mp2p_icp::metric_map_t::get_visualization_map_layer(*glObj, rp, layer);
     return glObj;
@@ -275,6 +283,13 @@ int main(int argc, char** argv)
            "Recolor points and voxels by height with this colormap (default: keep the "
            "layer colors; voxel maps use 'jet')")
         ->check(CLI::IsMember({"jet", "hot", "gray"}));
+    cmd.add_option(
+           "--colormap-outliers", argColormapOutliers,
+           "With --colormap, fraction of the lowest and of the highest points left out when "
+           "fitting the colormap to the point heights, so a few stray points do not squeeze "
+           "the rest into one color (0: use the full range)")
+        ->check(CLI::Range(0.0f, 0.25f))
+        ->capture_default_str();
     cmd.add_option("--point-size", argPointSize, "Point size, in pixels")->capture_default_str();
     cmd.add_flag("--ssao", argSSAO, "Enable screen-space ambient occlusion");
 
