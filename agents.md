@@ -81,6 +81,14 @@ frame. The solvers linearize in the right SE(3) tangent `pose·exp([rho, omega])
 GN `prior` information is applied in that tangent of the prior mean. Convert between the
 two only with the helpers in `covariance.h`. Guarded by `test-mp2p_covariance_conventions`.
 
+**Learned increment covariance:** `IncrementCovarianceModel` predicts the covariance of an
+odometry increment (right SE(3) tangent, translation first) from
+`Results::measurement_information` and the increment; features, normalization and layers come
+from a YAML model file at runtime. Models live in `mp2p_icp_core/models/` (installed to
+`share/mp2p_icp_core/models/`) and are valid only for the platform, sensor and pipeline they were
+trained on. `test-mp2p_increment_covariance` checks the C++ against golden vectors written by the
+training scripts (`tests/data/`): regenerate both together when a model changes.
+
 ## Filter pipeline
 
 Filters are chained and applied in-place to `metric_map_t`, configured via YAML
