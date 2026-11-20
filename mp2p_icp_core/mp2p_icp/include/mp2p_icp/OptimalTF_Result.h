@@ -20,6 +20,7 @@
 #pragma once
 
 #include <mp2p_icp/Pairings.h>
+#include <mrpt/math/CMatrixFixed.h>
 #include <mrpt/poses/CPose3D.h>
 
 namespace mp2p_icp
@@ -47,6 +48,20 @@ struct OptimalTF_Result
      *  readable from `sigma_rad` alone. This reports what it actually was.
      */
     double gravity_information_share = -1.0;
+
+    /** Information (Gauss-Newton Hessian) of the pairings alone, on the last
+     *  iteration: robust-kernel weights and the cov2cov scaling included, the
+     *  pose and gravity priors excluded. In the SE(3) right tangent of
+     *  `optimalPose`, translation first (the layout of
+     *  OptimalTF_GN_Parameters::prior). All zeros if the method does not
+     *  compute it.
+     *
+     *  Its inverse is the registration uncertainty the geometry supports. Kept
+     *  apart from the priors, since a direction the pairings do not constrain
+     *  (e.g. along a corridor) looks well constrained once a prior is added,
+     *  and as information rather than covariance, which is ill-conditioned in
+     *  exactly those directions. */
+    mrpt::math::CMatrixDouble66 measurement_information;
 };
 
 /** @} */
