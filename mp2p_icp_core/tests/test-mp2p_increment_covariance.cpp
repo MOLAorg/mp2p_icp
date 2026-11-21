@@ -36,7 +36,7 @@ const std::string kSourceDir = MP2P_SOURCE_DIR;
 void test_golden_vectors()
 {
     mp2p_icp::IncrementCovarianceModel model;
-    model.load(kSourceDir + "/models/husky_ouster_gicp_se3_v1.yaml");
+    model.load(kSourceDir + "/models/husky_ouster_gicp_se3_v2.yaml");
     ASSERT_(model.loaded());
 
     std::ifstream f(kSourceDir + "/tests/data/increment_covariance_golden.txt");
@@ -104,7 +104,7 @@ void test_golden_vectors()
 void test_rejects_bad_files()
 {
     mp2p_icp::IncrementCovarianceModel model;
-    model.load(kSourceDir + "/models/husky_ouster_gicp_se3_v1.yaml");
+    model.load(kSourceDir + "/models/husky_ouster_gicp_se3_v2.yaml");
     const std::string desc = model.description();
 
     bool threw = false;
