@@ -149,7 +149,7 @@ void test_Pairings_BackwardCompatDeserialization()
     MatchedLineList       ln2ln;
     MatchedPlaneList      pl2pl;
     // Old-format per-point weights block, no longer used by current code:
-    std::vector<std::pair<std::size_t, double>> point_weights;
+    std::vector<std::pair<uint64_t, double>> point_weights;
     point_weights.emplace_back(1, 2.5);
     const uint64_t          potential_pairings = 42;
     MatchedPointWithCovList cov2cov;

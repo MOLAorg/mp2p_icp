@@ -119,17 +119,22 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
     const auto& ys = pc.getPointsBufferRef_y();
     const auto& zs = pc.getPointsBufferRef_z();
 
-    const auto* ptrRings = pc.getPointsBufferRef_float_field("ring");
-    if (!ptrRings || ptrRings->empty())
+    // The ring id is a uint16 point field in LiDAR clouds; a float one is
+    // accepted too:
+    const auto* ringsU16 = pc.getPointsBufferRef_uint16_field("ring");
+    const auto* ringsF   = pc.getPointsBufferRef_float_field("ring");
+    const bool  useU16   = ringsU16 && !ringsU16->empty();
+    if (!useU16 && (!ringsF || ringsF->empty()))
     {
         THROW_EXCEPTION_FMT(
-            "Error: this filter needs the input layer '%s' to has a 'ring' "
+            "Error: this filter needs the input layer '%s' to have a 'ring' "
             "point channel.",
             params.input_pointcloud_layer.c_str());
     }
+    ASSERT_EQUAL_(useU16 ? ringsU16->size() : ringsF->size(), xs.size());
 
-    const auto& ringPerPt = *ptrRings;
-    ASSERT_EQUAL_(ringPerPt.size(), xs.size());
+    const auto ringOf = [&](size_t i) -> std::size_t
+    { return useU16 ? (*ringsU16)[i] : static_cast<std::size_t>((*ringsF)[i]); };
 
     const size_t N = xs.size();
 
@@ -152,7 +157,12 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
         ctxOther = outPcOther->prepareForInsertPointsFrom(pc);
     }
 
-    const uint16_t nRings = 1 + *std::max_element(ringPerPt.begin(), ringPerPt.end());
+    std::size_t maxRing = 0;
+    for (size_t i = 0; i < N; i++)
+    {
+        maxRing = std::max(maxRing, ringOf(i));
+    }
+    const std::size_t nRings = 1 + maxRing;
 
     const auto estimPtsPerRing = N / nRings;
 
@@ -172,10 +182,10 @@ void FilterCurvature::filter(mp2p_icp::metric_map_t& inOut) const
 
     for (size_t i = 0; i < N; i++)
     {
-        auto& trg = idxPerRing.at(static_cast<std::size_t>(ringPerPt[i]));
+        auto& trg = idxPerRing.at(ringOf(i));
 
 #ifdef DEBUG_GL
-        auto ringId = ringPerPt[i];
+        auto ringId = ringOf(i);
         auto col    = mrpt::img::colormap(mrpt::img::cmJET, static_cast<double>(ringId) / nRings);
         glRawPts->insertPoint({xs[i], ys[i], zs[i], col.R, col.G, col.B});
 #endif

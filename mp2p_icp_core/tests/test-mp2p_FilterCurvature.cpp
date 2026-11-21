@@ -28,17 +28,32 @@
 
 namespace
 {
-mp2p_icp::metric_map_t makeInputMap()
+// This filter works per LiDAR "ring", a uint16 point field in LiDAR clouds,
+// or a float one:
+mp2p_icp::metric_map_t makeInputMap(bool ringAsUint16 = false)
 {
     auto pc = mrpt::maps::CGenericPointsMap::Create();
 
-    // This filter works per LiDAR "ring", read as a float point field:
-    pc->registerField_float(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID);
+    if (ringAsUint16)
+    {
+        pc->registerField_uint16(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID);
+    }
+    else
+    {
+        pc->registerField_float(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID);
+    }
 
     const auto lambdaAddPoint = [&](const float x, const float y)
     {
         pc->insertPoint(x, y, 0.0f);
-        pc->insertPointField_float(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID, 0.0f);
+        if (ringAsUint16)
+        {
+            pc->insertPointField_uint16(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID, 0);
+        }
+        else
+        {
+            pc->insertPointField_float(mrpt::maps::CPointsMap::POINT_FIELD_RING_ID, 0.0f);
+        }
     };
 
     // A straight scan line plus a corner, so that both the "larger" and the
@@ -76,6 +91,13 @@ void test_basic_filtering()
 
     ASSERT_(m.layers.count("edges") == 1);
     ASSERT_(m.layers.count("planes") == 1);
+
+    // The same result with the ring as a uint16 field, as in LiDAR clouds:
+    auto m16 = makeInputMap(true);
+    filter.filter(m16);
+    ASSERT_EQUAL_(m16.point_layer("edges")->size(), m.point_layer("edges")->size());
+    ASSERT_EQUAL_(m16.point_layer("planes")->size(), m.point_layer("planes")->size());
+    ASSERT_(!m16.point_layer("edges")->empty());
 }
 
 // The three numeric parameters must accept formulas that are re-evaluated on

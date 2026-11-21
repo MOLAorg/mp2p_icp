@@ -30,6 +30,7 @@
 #include <mrpt/io/compression_options.h>
 #endif
 
+#include <cstdint>
 #include <optional>
 
 namespace mp2p_icp
@@ -80,7 +81,9 @@ class LogRecord : public mrpt::serialization::CSerializable
 
         DECLARE_TTYPENAME_CLASSNAME(mp2p_icp::LogRecord::DebugInfoPerIteration)
     };
-    using iteration_idx_t   = std::size_t;
+    // Fixed width, so it can be serialized everywhere (on macOS, size_t is not
+    // the same type as uint64_t):
+    using iteration_idx_t   = uint64_t;
     using IterationsDetails = std::map<iteration_idx_t, DebugInfoPerIteration>;
 
     std::optional<IterationsDetails> iterationsDetails;

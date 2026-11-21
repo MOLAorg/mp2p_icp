@@ -16,8 +16,6 @@ Key features:
 - Robust kernels.
 - Optional a priori term.
 
-TO-DO: Write a proper paper with the details!
-
 Horn's quaternion solver
 ---------------------------
 ``mp2p_icp::optimal_tf_horn()``: The classic Horn's closed-form optimal quaternion solution.

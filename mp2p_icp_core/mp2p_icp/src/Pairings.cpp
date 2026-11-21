@@ -57,7 +57,7 @@ void Pairings::serializeFrom(mrpt::serialization::CArchive& in)
     {
         // Removed in v3: per-point weights. Read and discard, for backward
         // compatibility with older serialized icplog files.
-        std::vector<std::pair<std::size_t, double>> unusedPointWeights;
+        std::vector<std::pair<uint64_t, double>> unusedPointWeights;
         in >> unusedPointWeights;
     }
     if (readVersion >= 1)

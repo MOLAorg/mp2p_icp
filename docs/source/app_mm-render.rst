@@ -44,6 +44,8 @@ Usage
       --background TEXT [FFFFFF]  Background color, as a hex RRGGBB string
       --colormap TEXT:{jet,hot,gray}
                                   Recolor points and voxels by height with this colormap (default: keep the layer colors; voxel maps use 'jet')
+      --colormap-outliers FLOAT:FLOAT in [0 - 0.25] [0.005]
+                                  With --colormap, fraction of the lowest and of the highest points left out when fitting the colormap to the point heights, so a few stray points do not squeeze the rest into one color (0: use the full range)
       --point-size FLOAT [1]      Point size, in pixels
       --ssao                      Enable screen-space ambient occlusion
 

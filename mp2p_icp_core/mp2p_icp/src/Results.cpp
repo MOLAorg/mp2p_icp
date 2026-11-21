@@ -13,6 +13,7 @@
 */
 
 #include <mp2p_icp/Results.h>
+#include <mrpt/math/matrix_serialization.h>
 #include <mrpt/serialization/CArchive.h>
 
 #include <ostream>
@@ -20,16 +21,19 @@
 using namespace mp2p_icp;
 
 // v1: added gravity_information_share
-static const uint8_t SERIALIZATION_VERSION = 1;
+// v2: added measurement_information
+static const uint8_t SERIALIZATION_VERSION = 2;
 
 void Results::serializeTo(mrpt::serialization::CArchive& out) const
 {
     out.WriteAs<uint8_t>(SERIALIZATION_VERSION);
-    out << optimal_tf << optimalScale << nIterations;
+    out << optimal_tf << optimalScale;
+    out.WriteAs<uint64_t>(nIterations);
     out << static_cast<uint8_t>(terminationReason);
     out << quality;
     finalPairings.serializeTo(out);
     out << gravity_information_share;  // v1
+    out << measurement_information;  // v2
 }
 void Results::serializeFrom(mrpt::serialization::CArchive& in)
 {
@@ -37,7 +41,8 @@ void Results::serializeFrom(mrpt::serialization::CArchive& in)
 
     ASSERT_LE_(readVersion, SERIALIZATION_VERSION);
 
-    in >> optimal_tf >> optimalScale >> nIterations;
+    in >> optimal_tf >> optimalScale;
+    nIterations       = in.ReadAs<uint64_t>();
     terminationReason = static_cast<IterTermReason>(in.ReadAs<uint8_t>());
     in >> quality;
     finalPairings.serializeFrom(in);
@@ -48,6 +53,11 @@ void Results::serializeFrom(mrpt::serialization::CArchive& in)
     if (readVersion >= 1)
     {
         in >> gravity_information_share;
+    }
+    measurement_information.setZero();
+    if (readVersion >= 2)
+    {
+        in >> measurement_information;
     }
 }
 
