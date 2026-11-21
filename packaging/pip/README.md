@@ -55,8 +55,8 @@ Point clouds are [`mrpt3`](https://pypi.org/project/mrpt3/) objects
 types, so both packages work together. This wheel uses the MRPT libraries of
 the installed `mrpt3` wheel, which is a dependency.
 
-Requirements: Linux (glibc 2.28 or newer), x86_64 or aarch64, Python 3.10 to
-3.14. `render()` also needs the system OpenGL libraries (see the `mrpt3`
+Requirements: Linux (glibc 2.28 or newer), x86_64 or aarch64, Python 3.10 or
+newer. `render()` also needs the system OpenGL libraries (see the `mrpt3`
 package description).
 
 See the [documentation](https://docs.mola-slam.org/latest/module-mp2p-icp.html)
