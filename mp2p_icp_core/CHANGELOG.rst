@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.2.1 (2026-11-22)
+------------------
 * ICP results: new measurement_information field, the pairing Hessian as the solver saw it, without priors (Results serialization v2).
 * macOS support: dlopen path in load_plugin, fixed-width size_t serialization (format unchanged), CI build and test on macOS.
 * FilterCurvature: accept the ring id as a uint16 point field too.

@@ -2,8 +2,8 @@
 Changelog for package mp2p_icp_viz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.2.1 (2026-11-22)
+------------------
 * mm-render: leave height outliers out of the colormap range (--colormap-outliers, 0.5% by default).
 * Link CoreServices on macOS.
 * Contributors: Jose Luis Blanco-Claraco
