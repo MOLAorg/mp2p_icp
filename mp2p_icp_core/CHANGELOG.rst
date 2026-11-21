@@ -2,6 +2,15 @@
 Changelog for package mp2p_icp_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* ICP results: new measurement_information field, the pairing Hessian as the solver saw it, without priors (Results serialization v2).
+* macOS support: dlopen path in load_plugin, fixed-width size_t serialization (format unchanged), CI build and test on macOS.
+* FilterCurvature: accept the ring id as a uint16 point field too.
+* GeneratorEdgesFromRangeImage: fix the planes layer of 3D range images, and a null dereference when an output layer is disabled.
+* Docs: fix links of icp-run and the filter apps.
+* Contributors: Dhruv Patel, Jose Luis Blanco-Claraco
+
 3.2.0 (2026-11-15)
 ------------------
 * Python bindings (metric maps, point layers to and from NumPy, point cloud files, ICP, filter pipelines, generators, simplemap_to_metricmap()), with type stubs, and a pip wheel (mp2p-icp) that also ships the C++ SDK for downstream wheels.

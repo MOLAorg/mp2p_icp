@@ -2,6 +2,12 @@
 Changelog for package mp2p_icp_viz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mm-render: leave height outliers out of the colormap range (--colormap-outliers, 0.5% by default).
+* Link CoreServices on macOS.
+* Contributors: Jose Luis Blanco-Claraco
+
 3.2.0 (2026-11-15)
 ------------------
 * New app mm-render: off-screen rendering of metric map layers into images.
