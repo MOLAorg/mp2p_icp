@@ -170,6 +170,13 @@ guarded (feature macros such as `MRPT_HAS_METRIC_MAP_POINTS_VIEW`, or `MRPT_VERS
   also needs its `.. include::` stub in the MOLAorg/mola repo (`docs/source/`, plus its
   listings in `map-tools.rst` / `why-mola.rst`), or the docs CI fails
 
+- **ABI and versions**: shared libraries get the SOVERSION `MAJOR.MINOR` of `package.xml`, so a
+  patch release must keep the ABI. Changing the layout of a public type (data members added,
+  removed or reordered, virtual functions) or an exported signature needs a minor bump
+  (`catkin_prepare_release --bump minor`): otherwise packages built against the previous patch
+  release load the new library and silently corrupt memory (e.g. a struct grown by the library
+  overruns the caller's stack copy).
+
 ## MRPT3 to-do
 
 Once ported to MRPT 3, drop the glut/freeglut3-dev dependency and delete this section.
