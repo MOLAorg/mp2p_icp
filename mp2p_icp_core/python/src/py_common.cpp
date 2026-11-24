@@ -472,7 +472,8 @@ std::string python_to_json(const py::object& obj)
                 return o.attr("__fspath__")();
             }
             throw py::type_error(
-                "Object of type '" + py::str(o.get_type().attr("__name__")).cast<std::string>() +
+                "Object of type '" +
+                py::str(py::type::handle_of(o).attr("__name__")).cast<std::string>() +
                 "' cannot be converted to YAML");
         });
     return json.attr("dumps")(obj, py::arg("default") = fallback).cast<std::string>();
