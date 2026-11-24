@@ -30,12 +30,17 @@
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
+#include <mrpt/system/string_utils.h>
 #include <mrpt/viz/CSetOfObjects.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
 #include <cstring>
 #include <sstream>
+
+#if !defined(_WIN32)
+#include <dlfcn.h>
+#endif
 
 #include "py_common.h"
 
@@ -968,6 +973,17 @@ void init_map(py::module_& m)
             {
                 throw std::runtime_error(errMsg);
             }
+#if !defined(_WIN32)
+            // Keep the plugins mapped until exit: some MRPT versions unload
+            // them at exit before destroying the class registries that still
+            // point to their code, which then crashes.
+            std::vector<std::string> names;
+            mrpt::system::tokenize(modules, ",", names);
+            for (const auto& name : names)
+            {
+                dlopen(name.c_str(), RTLD_LAZY | RTLD_NOLOAD | RTLD_NODELETE);
+            }
+#endif
         },
         "modules"_a = "libmola_metric_maps.so",
         "Loads one or more (comma separated) shared libraries with additional MRPT classes, "

@@ -95,7 +95,9 @@ def test_simplemap_to_metricmap(demos_dir, datasets_dir):
     assert isinstance(m, mp2p_icp.MetricMap)
     assert m.size_points_only() > 1000
     layer = next(iter(m.layers.values()))
-    assert "intensity" in mp2p_icp.layer_to_numpy(layer)
+    # Per-point fields of the input scans survive the pipeline (this dataset
+    # has "ring", but no "intensity"):
+    assert "ring" in mp2p_icp.layer_to_numpy(layer)
 
     with pytest.raises(FileNotFoundError):
         mp2p_icp.simplemap_to_metricmap(datasets_dir / "missing.simplemap")

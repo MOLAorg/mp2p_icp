@@ -2,6 +2,9 @@
 Changelog for package mp2p_icp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.2.1 (2026-11-22)
+------------------
+
 3.2.0 (2026-11-15)
 ------------------
 * Add AUTHORS file; unify license headers and SPDX tags.

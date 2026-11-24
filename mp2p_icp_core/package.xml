@@ -5,7 +5,7 @@
 -->
 <package format="3">
   <name>mp2p_icp_core</name>
-  <version>3.2.0</version>
+  <version>3.2.1</version>
   <description>C++ libraries for multi primitive-to-primitive (MP2P) ICP algorithms and point cloud processing pipelines, plus headless CLI applications. No GUI/display dependencies; see mp2p_icp_viz for the GUI apps.</description>
 
   <maintainer email="joseluisblancoc@gmail.com">Jose-Luis Blanco-Claraco</maintainer>
@@ -46,8 +46,8 @@
   <exec_depend>python3-numpy</exec_depend>
   <test_depend>python3-pytest</test_depend>
 
-  <!-- optional for part of the tests -->
-  <!-- depend>mola_test_datasets</depend>  -->
+  <!-- Datasets for part of the tests, which are skipped without it -->
+  <test_depend>mola_test_datasets</test_depend>
 
   <test_depend condition="$ROS_VERSION == 1">catkin</test_depend>
   <!-- Optional test dependency for the end-to-end GICP pipeline benchmark
