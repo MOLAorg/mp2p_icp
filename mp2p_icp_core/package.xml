@@ -46,8 +46,8 @@
   <exec_depend>python3-numpy</exec_depend>
   <test_depend>python3-pytest</test_depend>
 
-  <!-- optional for part of the tests -->
-  <!-- depend>mola_test_datasets</depend>  -->
+  <!-- Datasets for part of the tests, which are skipped without it -->
+  <test_depend>mola_test_datasets</test_depend>
 
   <test_depend condition="$ROS_VERSION == 1">catkin</test_depend>
   <!-- Optional test dependency for the end-to-end GICP pipeline benchmark
