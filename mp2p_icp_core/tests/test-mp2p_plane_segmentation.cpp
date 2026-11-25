@@ -726,6 +726,42 @@ void test_filter_rejects_bad_outputs_without_changes()
         ASSERT_EQUAL_(m.layers.count("others"), 0UL);
         ASSERT_EQUAL_(m.point_layer("voxels")->size(), 0UL);
     }
+    {
+        // An existing output layer with a field of another type, and a field
+        // that it lacks: it must not be changed.
+        auto input = mrpt::maps::CGenericPointsMap::Create();
+        input->registerField_float("intensity");
+        input->registerField_uint8("label");
+        input->resize(pc->size());
+        for (std::size_t i = 0; i < pc->size(); i++)
+        {
+            float x = 0;
+            float y = 0;
+            float z = 0;
+            pc->getPoint(i, x, y, z);
+            input->setPoint(i, x, y, z);
+        }
+        input->mark_as_modified();
+
+        auto existing = mrpt::maps::CGenericPointsMap::Create();
+        existing->registerField_double("intensity");
+
+        mp2p_icp::metric_map_t m;
+        m.layers["raw"]    = input;
+        m.layers["planes"] = existing;
+        m.planes.emplace_back();
+        ASSERT_(tryFilter(
+            R"(
+          input_pointcloud_layer: 'raw'
+          output_layer_planes: 'planes'
+          plane_id_field: 'plane_id'
+        )",
+            m));
+        ASSERT_EQUAL_(m.planes.size(), 1UL);
+        ASSERT_(!existing->hasPointField("label"));
+        ASSERT_(!existing->hasPointField("plane_id"));
+        ASSERT_(!input->hasPointField("plane_id"));
+    }
 }
 
 void test_empty_and_tiny()

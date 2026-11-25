@@ -24,11 +24,92 @@
 
 #include <cstdint>
 #include <limits>
+#include <map>
+#include <string>
 #include <vector>
 
 IMPLEMENTS_MRPT_OBJECT(FilterPlaneSegmentation, mp2p_icp_filters::FilterBase, mp2p_icp_filters)
 
 using namespace mp2p_icp_filters;
+
+namespace
+{
+/// Point fields of a layer and their types.
+std::map<std::string, std::string> field_types(const mrpt::maps::CPointsMap& pc)
+{
+    std::map<std::string, std::string> t;
+    for (const auto& f : pc.getPointFieldNames_float())
+    {
+        t[f] = "float";
+    }
+    for (const auto& f : pc.getPointFieldNames_double())
+    {
+        t[f] = "double";
+    }
+    for (const auto& f : pc.getPointFieldNames_uint16())
+    {
+        t[f] = "uint16";
+    }
+    for (const auto& f : pc.getPointFieldNames_uint8())
+    {
+        t[f] = "uint8";
+    }
+    for (const auto& f : pc.getPointFieldNames_uint32())
+    {
+        t[f] = "uint32";
+    }
+    return t;
+}
+
+/** Checks, without changing `dst`, that it can receive the points of `src`
+ *  (if given) with all their fields, and a uint16 field `idField` (if not
+ *  empty). Fields in both layers must have the same type. Fields that `dst`
+ *  lacks are registered on an empty layer of the same class instead, to see
+ *  whether the class accepts them. */
+void check_can_hold(
+    const mrpt::maps::CPointsMap& dst, const mrpt::maps::CPointsMap* src,
+    const std::string& idField, const std::string& layerName)
+{
+    std::map<std::string, std::string> required;
+    if (src)
+    {
+        required = field_types(*src);
+    }
+    if (!idField.empty())
+    {
+        const auto it = required.find(idField);
+        ASSERTMSG_(
+            it == required.end() || it->second == "uint16",
+            mrpt::format("The input layer has a field '%s' that is not uint16.", idField.c_str()));
+        required[idField] = "uint16";
+    }
+
+    const auto have = field_types(dst);
+    for (const auto& [field, type] : required)
+    {
+        const auto it = have.find(field);
+        ASSERTMSG_(
+            it == have.end() || it->second == type,
+            mrpt::format(
+                "Layer '%s' has a field '%s' of type %s, but %s is required.", layerName.c_str(),
+                field.c_str(), it->second.c_str(), type.c_str()));
+    }
+
+    const std::string cls = dst.GetRuntimeClass()->className;
+    auto staging = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(mrpt::rtti::classFactory(cls));
+    ASSERTMSG_(staging, mrpt::format("Could not create a layer of class '%s'.", cls.c_str()));
+    bool ok = !src || staging->registerPointFieldsFrom(*src);
+    if (ok && !idField.empty() && !staging->hasPointField(idField))
+    {
+        ok = staging->registerField_uint16(idField);
+    }
+    ASSERTMSG_(
+        ok,
+        mrpt::format(
+            "Layer '%s' (class '%s') cannot hold the required point fields%s.", layerName.c_str(),
+            cls.c_str(), src ? "" : ": set 'output_layer_planes' to hold the plane id field"));
+}
+}  // namespace
 
 void FilterPlaneSegmentation::Parameters::load_from_yaml(
     const mrpt::containers::yaml& c, FilterPlaneSegmentation& parent)
@@ -157,52 +238,54 @@ void FilterPlaneSegmentation::filter(mp2p_icp::metric_map_t& inOut) const
         }
     }
 
-    // Output layers: the existing ones, or new ones, added to the map only
-    // once everything has been checked.
-    const std::string inputClass   = pc.GetRuntimeClass()->className;
-    const auto        prepareLayer = [&](const std::string&                 layerName,
-                                  const mrpt::maps::CPointsMap::Ptr& existing,
-                                  const std::string& cls) -> mrpt::maps::CPointsMap::Ptr
+    // Output layers: the existing ones, or new ones added to the map only at
+    // the end. Every layer that will be written is checked first.
+    const std::string inputClass = pc.GetRuntimeClass()->className;
+    const auto        newLayer   = [](const std::string& cls)
     {
-        if (layerName.empty())
-        {
-            return {};
-        }
-        mrpt::maps::CPointsMap::Ptr out = existing;
-        if (!out)
-        {
-            out = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(mrpt::rtti::classFactory(cls));
-            ASSERTMSG_(out, mrpt::format("Could not create a layer of class '%s'.", cls.c_str()));
-        }
-        ASSERTMSG_(
-            out->registerPointFieldsFrom(pc),
-            mrpt::format(
-                "Output layer '%s' (class '%s') cannot hold all the fields of the input layer.",
-                layerName.c_str(), out->GetRuntimeClass()->className));
+        auto out = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(mrpt::rtti::classFactory(cls));
+        ASSERTMSG_(out, mrpt::format("Could not create a layer of class '%s'.", cls.c_str()));
         return out;
     };
-    const auto outPlanes = prepareLayer(
-        params.output_layer_planes, exPlanes,
-        wantIds ? std::string("mrpt::maps::CGenericPointsMap") : inputClass);
-    const auto outOthers = prepareLayer(params.output_layer_others, exOthers, inputClass);
+    const std::string planesClass =
+        wantIds ? std::string("mrpt::maps::CGenericPointsMap") : inputClass;
+    const auto outPlanes = params.output_layer_planes.empty()
+                               ? mrpt::maps::CPointsMap::Ptr()
+                               : (exPlanes ? exPlanes : newLayer(planesClass));
+    const auto outOthers = params.output_layer_others.empty()
+                               ? mrpt::maps::CPointsMap::Ptr()
+                               : (exOthers ? exOthers : newLayer(inputClass));
 
-    // Where the plane ids go: the planes layer, or the input layer itself.
-    mrpt::maps::CPointsMap* idTarget = nullptr;
+    if (outPlanes)
+    {
+        check_can_hold(
+            *outPlanes, &pc, wantIds ? params.plane_id_field : std::string(),
+            params.output_layer_planes);
+    }
+    if (outOthers)
+    {
+        check_can_hold(*outOthers, &pc, std::string(), params.output_layer_others);
+    }
+    if (wantIds && !outPlanes)
+    {
+        check_can_hold(pc, nullptr, params.plane_id_field, params.input_pointcloud_layer);
+    }
+
+    // From here on, the checks have passed:
+    for (const auto& out : {outPlanes, outOthers})
+    {
+        if (out)
+        {
+            ASSERT_(out->registerPointFieldsFrom(pc));
+        }
+    }
     if (wantIds)
     {
-        idTarget = outPlanes ? outPlanes.get() : &pc;
-        if (!idTarget->hasPointField(params.plane_id_field))
+        auto& idTarget = outPlanes ? *outPlanes : pc;
+        if (!idTarget.hasPointField(params.plane_id_field))
         {
-            ASSERTMSG_(
-                idTarget->registerField_uint16(params.plane_id_field),
-                mrpt::format(
-                    "Layer of class '%s' does not support extra fields: set "
-                    "'output_layer_planes' to hold the plane id field instead.",
-                    idTarget->GetRuntimeClass()->className));
+            ASSERT_(idTarget.registerField_uint16(params.plane_id_field));
         }
-        ASSERTMSG_(
-            idTarget->getPointsBufferRef_uint16_field(params.plane_id_field) != nullptr,
-            mrpt::format("Field '%s' is not a uint16 field.", params.plane_id_field.c_str()));
     }
 
     // Plane ids are 1-based, in the order of this call's planes; 0 is none.
