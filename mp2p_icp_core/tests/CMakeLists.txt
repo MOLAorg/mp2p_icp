@@ -139,6 +139,14 @@ mp2p_add_test(mp2p_FilterVoxelSOR EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_voxel_grid_indexing EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_generator EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_PointCloudRobustRange EXTRA_LIBS mp2p_icp_filters)
+
+# Also checks that the result does not depend on the number of TBB workers,
+# so it links TBB directly (the library links it privately).
+mp2p_add_test(mp2p_plane_segmentation EXTRA_LIBS mp2p_icp_filters)
+if (TBB_FOUND AND MP2PICP_USE_TBB)
+  target_compile_definitions(test-mp2p_plane_segmentation PRIVATE MP2P_HAS_TBB)
+  target_link_libraries(test-mp2p_plane_segmentation TBB::tbb)
+endif()
 mp2p_add_test(mp2p_generator_view_vector EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(sm2mm_georef EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(sm2mm_imu_obs EXTRA_LIBS mp2p_icp_filters)

@@ -1108,6 +1108,90 @@ thread count.
 
 ---
 
+Filter: `FilterPlaneSegmentation`
+---------------------------------
+
+**Description**: Segments the large planar surfaces (ground, walls, facades, ceilings...) of a point
+layer, meant for whole maps of 1e6 to 1e7 points as well as single scans. It is a thin wrapper of the
+library function :cpp:func:`mp2p_icp_filters::segment_planes` (``mp2p_icp_filters/plane_segmentation.h``),
+which also returns, for every plane, its unit normal and offset (``n.p = d``), centroid, sorted inlier
+indices, covered area, thickness (RMS and 95th percentile of the point-to-plane distances), oriented
+extent in the plane, and the covariance of the plane parameters. Unlike `FilterPlanePatches` (a greedy
+extractor of a few patches per scan), it labels every point and keeps close parallel surfaces apart.
+
+The algorithm:
+
+1. The cloud is reduced to one representative per voxel, with a normal from the voxel's own points
+   (robust to a few points of a surface next to it), or from its nearest neighbor representatives,
+   at a wider scale if the map is noisy.
+2. Region growing from the flattest representatives: a neighbor joins a region if it lies close to the
+   region's plane (refitted as it grows, with a tolerance that follows the measured noise) and its normal
+   agrees. Curved surfaces are split into near-planar pieces.
+3. Conservative merging: two segments merge only if their normals agree, the smaller one lies on the plane
+   of the larger one, they are adjacent, and their union is still flat. Two parallel walls 10 cm apart
+   stay separate.
+4. Multi-plane refinement on the original points: each point goes to the closest plane among those of its
+   voxel and of the neighbor voxels, then each plane is refitted by robust total least squares (Cauchy
+   kernel). Planes are rejected by number of points, area, thickness, and normal support: fewer than half
+   of their points in voxels whose normal (from the voxel's own points or from its neighbor representatives)
+   agrees with the plane. This rejects slabs cut through vegetation.
+
+No orientation is assumed (no "walls are vertical" priors). The result is deterministic and does not
+depend on the number of threads.
+
+**Outputs** (all optional):
+
+* **output\_layer\_planes** (:cpp:type:`std::string`): Layer for the points of all planes, with all the input point fields.
+* **output\_layer\_others** (:cpp:type:`std::string`): Layer for the points not on any plane.
+* **plane\_id\_field** (:cpp:type:`std::string`): Name of a ``uint16`` per-point field with the plane of each point:
+  0 for none, ``k`` for the k-th plane found by this call (by decreasing number of points). It is written to
+  ``output_layer_planes`` if set, otherwise to the input layer itself, which must then support extra fields
+  (e.g. ``mrpt::maps::CGenericPointsMap``). Ids restart at each call: they match ``metric_map_t::planes``
+  only with ``clear_previous_planes: true``, and points appended to an existing planes layer by different
+  calls may share ids. Use a fresh output layer per call if that matters.
+* **store\_planes** (``bool``, default: `true`): Append the planes (with area and number of points) to ``metric_map_t::planes``.
+* **clear\_previous\_planes** (``bool``, default: `true`): Empty ``metric_map_t::planes`` first.
+
+**Parameters**:
+
+* **input\_pointcloud\_layer** (:cpp:type:`std::string`): The input point cloud layer name.
+* **voxel\_size** (``double``, default: `0.10`): Sampling resolution (m). Parallel surfaces closer than about this cannot be told apart. Also the cell size of the area estimate.
+* **normal\_knn** (:cpp:type:`uint32\_t`, default: `16`): Neighbors used for normals, and for the region growing graph.
+* **normal\_radius** (``double``, default: `0.50`): Neighbors farther than this are ignored (m). Larger values bridge the rings of sparse scans.
+* **normal\_agreement\_deg** (``double``, default: `10.0`): Region growing: maximum angle between a representative's normal and the region's (deg).
+* **distance\_threshold** (``double``, default: `0.03`): Region growing: minimum tolerance for the distance to the region's plane (m). Keep it below half the gap between parallel surfaces that must stay apart.
+* **inlier\_distance** (``double``, default: `0.08`): Maximum point-to-plane distance of an inlier (m). Wider than any systematic error to be measured against the plane, but narrower than the gap to a parallel surface.
+* **max\_thickness** (``double``, default: `0.04`): Planes with a larger RMS inlier distance are rejected (m).
+* **min\_area** (``double``, default: `2.0`): Minimum covered area of a plane (m2).
+* **min\_points** (:cpp:type:`uint32\_t`, default: `100`): Minimum inliers of a plane.
+* **merge\_normal\_deg** (``double``, default: `3.0`): Merging: maximum angle between the two normals (deg).
+* **merge\_offset** (``double``, default: `0.05`): Merging: maximum distance from the centroid of the smaller segment to the plane of the larger one (m).
+* **merge\_max\_gap** (``double``, default: `0.50`): Merging: segments must be within (roughly) this distance of each other (m).
+* **viewpoint** (``[x, y, z]``, default: `[0, 0, 0]`): Normals are oriented towards this point.
+* **parallelization\_grain\_size** (:cpp:type:`size\_t`, default: `4096`): When TBB is enabled, the grain size of the parallel loops.
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterPlaneSegmentation
+        params:
+          input_pointcloud_layer: 'map'
+          output_layer_planes: 'planes'
+          output_layer_others: 'non_planes'
+          plane_id_field: 'plane_id'
+          min_area: 2.0
+
+**Usage tips**:
+
+* Cost: about 1 s per 1e6 points, 7 s for 1e7, and about 1 GB of memory per 1e7 points (measured with 56 threads).
+* For sparse clouds (a few scans of a 16-ring LiDAR), use a ``voxel_size`` close to the point spacing
+  and a ``normal_radius`` that spans several rings, e.g. 0.2 and 1.5.
+
+|
+
+---
+
 Filter: `FilterPoleDetector`
 ----------------------------
 
