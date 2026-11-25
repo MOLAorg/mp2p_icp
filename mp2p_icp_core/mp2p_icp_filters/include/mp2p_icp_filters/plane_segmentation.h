@@ -141,10 +141,11 @@ struct SegmentedPlane
     /** Variances of the minimal plane parameters `[alpha, beta, gamma]`: the
      *  plane through `centroid + gamma * normal` with normal
      *  `normal + alpha * axis_u + beta * axis_v` (to first order). They are
-     *  uncorrelated in this basis: `thickness_rms^2` divided by the sum of
-     *  squared `u` (resp. `v`) coordinates, and by the number of inliers.
-     *  This assumes independent residuals, which overlapping scans of a map
-     *  are not: treat it as a lower bound.
+     *  uncorrelated in this basis: `max(thickness_rms, 1e-4 m)^2` divided by
+     *  the sum of squared `u` (resp. `v`) coordinates, and by the number of
+     *  inliers. The 0.1 mm floor keeps them positive for exact synthetic
+     *  planes. This assumes independent residuals, which overlapping scans of
+     *  a map are not: treat it as a lower bound.
      */
     std::array<double, 3> tangent_variances = {0, 0, 0};
 

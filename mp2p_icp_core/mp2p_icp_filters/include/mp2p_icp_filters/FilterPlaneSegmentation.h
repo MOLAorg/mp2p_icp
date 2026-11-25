@@ -36,16 +36,17 @@ namespace mp2p_icp_filters
  *   point fields.
  * - `output_layer_others`: the remaining points.
  * - `plane_id_field`: a `uint16` per-point field with the plane of each point:
- *   0 for none, `k` for the k-th plane (by decreasing number of points).
- *   It is written to `output_layer_planes` if that is set, otherwise to the
- *   input layer itself, which must then support extra fields
- *   (e.g. mrpt::maps::CGenericPointsMap).
+ *   0 for none, `k` for the k-th plane found by this call (by decreasing
+ *   number of points). It is written to `output_layer_planes` if that is
+ *   set, otherwise to the input layer itself, which must then support extra
+ *   fields (e.g. mrpt::maps::CGenericPointsMap). Ids restart at each call.
  * - `store_planes`: append each plane, with its area and number of points, to
  *   `metric_map_t::planes`.
  *
  * Output layers are created if they do not exist (as
  * mrpt::maps::CGenericPointsMap when they must hold the plane id field, or as
- * the input class otherwise), or appended to.
+ * the input class otherwise), or appended to. The configuration is checked
+ * before the map is changed.
  *
  * \ingroup mp2p_icp_filters_grp
  */

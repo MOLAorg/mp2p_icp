@@ -32,6 +32,7 @@
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>
+#include <tbb/global_control.h>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_sort.h>
 #include <tbb/task_arena.h>
@@ -122,9 +123,13 @@ using RepTree = nanoflann::KDTreeSingleIndexAdaptor<
 nanoflann::KDTreeSingleIndexAdaptorParams tree_params()
 {
 #if NANOFLANN_VERSION >= 0x150 && defined(MP2P_HAS_TBB)
+    // Same limit as the TBB loops: the arena, and any global_control in force.
+    const std::size_t nThreads = std::min(
+        static_cast<std::size_t>(std::max(1, tbb::this_task_arena::max_concurrency())),
+        tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism));
     return nanoflann::KDTreeSingleIndexAdaptorParams(
         10, nanoflann::KDTreeSingleIndexAdaptorFlags::None,
-        static_cast<unsigned int>(std::max(1, tbb::this_task_arena::max_concurrency())));
+        static_cast<unsigned int>(std::max<std::size_t>(1, nThreads)));
 #else
     return nanoflann::KDTreeSingleIndexAdaptorParams(10);
 #endif
@@ -583,7 +588,7 @@ PlaneSegmentationResult segment_planes(
 
     // Written so that NaN values also fail:
     ASSERT_(p.voxel_size > 0);
-    ASSERT_GE_(p.normal_knn, 3U);
+    ASSERT_GE_(p.normal_knn, static_cast<uint32_t>(kMinNeighbors));
     ASSERT_(p.normal_radius > 0);
     ASSERT_(p.normal_agreement_deg > 0 && p.normal_agreement_deg < 90);
     ASSERT_(p.distance_threshold > 0);
@@ -628,12 +633,14 @@ PlaneSegmentationResult segment_planes(
     const double          vox = p.voxel_size;
     for (int k = 0; k < 3; k++)
     {
-        const double  ext = bbMax[k] - bbMin[k];
-        const int64_t nc  = std::max(cell_index(ext, vox), cell_index(ext, p.merge_max_gap));
+        // Checked as real numbers, before any conversion to integers:
+        const double ext = bbMax[k] - bbMin[k];
+        const double nc  = std::floor(ext / std::min(vox, p.merge_max_gap));
         ASSERTMSG_(
-            nc < kMaxCellsPerAxis,
+            nc < static_cast<double>(kMaxCellsPerAxis),
             mrpt::format(
-                "segment_planes: the cloud spans %.1f m, too many voxels of %g m", ext, vox));
+                "segment_planes: the cloud spans %.1f m, too many cells of %g m", ext,
+                std::min(vox, p.merge_max_gap)));
     }
 
     // 2) Voxels: sort the points by voxel (ties by index, so the order is
@@ -1148,8 +1155,9 @@ PlaneSegmentationResult segment_planes(
     }
 
     // Frozen clusters keep competing for points with their current plane, but
-    // are not refined nor reported. Each voxel covers at most a few cells of
-    // the area grid, so a cluster of too few voxels cannot reach `min_area`.
+    // are not refined in the rounds below (each voxel covers at most a few
+    // cells of the area grid, so they are unlikely to reach `min_area`). They
+    // are still measured at the end, on the points they got.
     std::vector<uint8_t> frozen(C, 0);
     for (std::size_t k = 0; k < C; k++)
     {
@@ -1308,7 +1316,7 @@ PlaneSegmentationResult segment_planes(
                     break;
                 }
                 const uint32_t b = voxCluster[j];
-                if (b != kNone && b != a)
+                if (b != kNone && b != a && (rep[v] - rep[j]).norm() <= p.merge_max_gap)
                 {
                     cPairs.emplace_back(std::min(a, b), std::max(a, b));
                 }
@@ -1390,7 +1398,16 @@ PlaneSegmentationResult segment_planes(
         {
             for (std::size_t k = b; k < e; k++)
             {
-                if (frozen[k])
+                const std::size_t nk = listStart[k + 1] - listStart[k];
+                if (nk < p.min_points || nk < kMinNeighbors)
+                {
+                    continue;
+                }
+                // A frozen cluster was not refitted, but the points it got from
+                // its neighbors may still make a plane:
+                if (frozen[k] && !robust_plane_fit(
+                                     src, list.data() + listStart[k], nk, p.inlier_distance,
+                                     planeN[k], planeC[k]))
                 {
                     continue;
                 }
@@ -1403,16 +1420,15 @@ PlaneSegmentationResult segment_planes(
                         supported++;
                     }
                 }
-                if (static_cast<double>(supported) <
-                    kMinNormalSupport * static_cast<double>(listStart[k + 1] - listStart[k]))
+                if (static_cast<double>(supported) < kMinNormalSupport * static_cast<double>(nk))
                 {
                     continue;
                 }
-                accepted[k] = plane_statistics(
-                                  src, list.data() + listStart[k], listStart[k + 1] - listStart[k],
-                                  planeN[k], planeC[k], p, planes[k])
-                                  ? 1
-                                  : 0;
+                accepted[k] =
+                    plane_statistics(
+                        src, list.data() + listStart[k], nk, planeN[k], planeC[k], p, planes[k])
+                        ? 1
+                        : 0;
             }
         });
 

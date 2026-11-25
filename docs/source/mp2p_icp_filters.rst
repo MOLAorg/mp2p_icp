@@ -1132,8 +1132,9 @@ The algorithm:
    stay separate.
 4. Multi-plane refinement on the original points: each point goes to the closest plane among those of its
    voxel and of the neighbor voxels, then each plane is refitted by robust total least squares (Cauchy
-   kernel). Planes are rejected by number of points, area, thickness, and by how many of their voxels
-   have a normal of their own that agrees (which rejects slabs cut through vegetation).
+   kernel). Planes are rejected by number of points, area, thickness, and normal support: fewer than half
+   of their points in voxels whose normal (from the voxel's own points or from its neighbor representatives)
+   agrees with the plane. This rejects slabs cut through vegetation.
 
 No orientation is assumed (no "walls are vertical" priors). The result is deterministic and does not
 depend on the number of threads.
@@ -1143,8 +1144,11 @@ depend on the number of threads.
 * **output\_layer\_planes** (:cpp:type:`std::string`): Layer for the points of all planes, with all the input point fields.
 * **output\_layer\_others** (:cpp:type:`std::string`): Layer for the points not on any plane.
 * **plane\_id\_field** (:cpp:type:`std::string`): Name of a ``uint16`` per-point field with the plane of each point:
-  0 for none, ``k`` for the k-th plane (by decreasing number of points). It is written to ``output_layer_planes``
-  if set, otherwise to the input layer itself, which must then support extra fields (e.g. ``mrpt::maps::CGenericPointsMap``).
+  0 for none, ``k`` for the k-th plane found by this call (by decreasing number of points). It is written to
+  ``output_layer_planes`` if set, otherwise to the input layer itself, which must then support extra fields
+  (e.g. ``mrpt::maps::CGenericPointsMap``). Ids restart at each call: they match ``metric_map_t::planes``
+  only with ``clear_previous_planes: true``, and points appended to an existing planes layer by different
+  calls may share ids. Use a fresh output layer per call if that matters.
 * **store\_planes** (``bool``, default: `true`): Append the planes (with area and number of points) to ``metric_map_t::planes``.
 * **clear\_previous\_planes** (``bool``, default: `true`): Empty ``metric_map_t::planes`` first.
 

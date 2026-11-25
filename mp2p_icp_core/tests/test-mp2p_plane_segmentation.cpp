@@ -658,6 +658,76 @@ void test_filter()
     }
 }
 
+void test_filter_rejects_bad_outputs_without_changes()
+{
+    // Bad output configurations must throw before the map is changed.
+    SceneBuilder sb(10U);
+    addRoom(sb, 500.0, 0.005);
+    const auto pc = sb.done();
+
+    const auto tryFilter = [&](const std::string& yamlText, mp2p_icp::metric_map_t& m)
+    {
+        mp2p_icp_filters::FilterPlaneSegmentation f;
+        f.initialize(mrpt::containers::yaml::FromText(yamlText));
+        try
+        {
+            f.filter(m);
+        }
+        catch (const std::exception&)
+        {
+            return true;
+        }
+        return false;
+    };
+
+    const auto makeMap = [&]()
+    {
+        mp2p_icp::metric_map_t m;
+        m.layers["raw"]    = pc;
+        m.layers["voxels"] = mrpt::maps::CSimplePointsMap::Create();
+        m.planes.emplace_back();  // a previous patch that must survive
+        return m;
+    };
+
+    {
+        auto m = makeMap();
+        ASSERT_(tryFilter(
+            R"(
+          input_pointcloud_layer: 'raw'
+          output_layer_planes: 'split'
+          output_layer_others: 'split'
+        )",
+            m));
+        ASSERT_EQUAL_(m.planes.size(), 1UL);
+        ASSERT_EQUAL_(m.layers.size(), 2UL);
+    }
+    {
+        auto m = makeMap();
+        ASSERT_(tryFilter(
+            R"(
+          input_pointcloud_layer: 'raw'
+          output_layer_planes: 'raw'
+        )",
+            m));
+        ASSERT_EQUAL_(m.planes.size(), 1UL);
+    }
+    {
+        // An existing planes layer that cannot hold the plane id field:
+        auto m = makeMap();
+        ASSERT_(tryFilter(
+            R"(
+          input_pointcloud_layer: 'raw'
+          output_layer_planes: 'voxels'
+          output_layer_others: 'others'
+          plane_id_field: 'plane_id'
+        )",
+            m));
+        ASSERT_EQUAL_(m.planes.size(), 1UL);
+        ASSERT_EQUAL_(m.layers.count("others"), 0UL);
+        ASSERT_EQUAL_(m.point_layer("voxels")->size(), 0UL);
+    }
+}
+
 void test_empty_and_tiny()
 {
     auto pc = mrpt::maps::CSimplePointsMap::Create();
@@ -687,6 +757,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_sparse_multiring_lidar();
         test_determinism();
         test_filter();
+        test_filter_rejects_bad_outputs_without_changes();
         time_city_block(1'000'000);
         if (mrpt::get_env<bool>("MP2P_PLANE_SEGMENTATION_BENCHMARK", false))
         {
