@@ -96,6 +96,10 @@ Filters are chained and applied in-place to `metric_map_t`, configured via YAML
   `insertPointFrom()`, or field vectors fall out of sync with x/y/z.
 - Load YAML files with `mp2p_icp::load_yaml_file()` (`yaml_variables.h`), never
   `yaml::FromFile()`, so `${VAR|default}` variables get expanded.
+- Large-plane segmentation of clouds and maps is `segment_planes()` (`plane_segmentation.h`),
+  wrapped by `FilterPlaneSegmentation`. Its output must not depend on the thread count: parallel
+  loops write only their own slots, and sorts use total orders. Guarded by
+  `test-mp2p_plane_segmentation`.
 
 ## Python bindings (`mp2p_icp_core/python/`)
 
