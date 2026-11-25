@@ -174,6 +174,8 @@ a calibration file whose ``sensors.<sensor>.intrinsics`` hold ``beams`` (and opt
 
 * **min\_range** (``double``, default: `0.01`): Points closer than this to their beam origin are left untouched [m].
 
+View vectors (``view_x``, ``view_y``, ``view_z`` point fields), if present, are recomputed for the corrected points (unit vectors towards the sensor origin).
+
 .. code-block:: yaml
 
     filters:

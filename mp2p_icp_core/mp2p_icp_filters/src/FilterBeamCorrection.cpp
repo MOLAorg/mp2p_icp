@@ -271,6 +271,14 @@ void FilterBeamCorrection::filter(mp2p_icp::metric_map_t& inOut) const
     const mrpt::poses::CPose3D T_cloud_sensor(params.sensor_pose);
     const mrpt::poses::CPose3D T_sensor_cloud = -T_cloud_sensor;
 
+    // View vectors (unit, from each point towards the sensor), if present,
+    // follow the corrected points.
+    auto*      vxs = pc.getPointsBufferRef_float_field("view_x");
+    auto*      vys = pc.getPointsBufferRef_float_field("view_y");
+    auto*      vzs = pc.getPointsBufferRef_float_field("view_z");
+    const bool hasView =
+        vxs && vys && vzs && vxs->size() == N && vys->size() == N && vzs->size() == N;
+
     // Each point depends only on itself: in place and in parallel.
     auto lambda_process = [&](size_t i)
     {
@@ -287,6 +295,17 @@ void FilterBeamCorrection::filter(mp2p_icp::metric_map_t& inOut) const
         xs[i]                        = static_cast<float>(q.x);
         ys[i]                        = static_cast<float>(q.y);
         zs[i]                        = static_cast<float>(q.z);
+        if (hasView)
+        {
+            const mrpt::math::TVector3D v = T_cloud_sensor.translation() - q;
+            const double                n = v.norm();
+            if (n > 0)
+            {
+                (*vxs)[i] = static_cast<float>(v.x / n);
+                (*vys)[i] = static_cast<float>(v.y / n);
+                (*vzs)[i] = static_cast<float>(v.z / n);
+            }
+        }
     };
 
 #if defined(MP2P_HAS_TBB)

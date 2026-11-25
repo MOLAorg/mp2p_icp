@@ -231,6 +231,34 @@ void test_calibration_file()
     mrpt::system::deleteFile(file);
 }
 
+void test_view_vectors_follow()
+{
+    const mrpt::poses::CPose3D T(0.2, 0.1, 0.5, 0.7, 0, 0);
+    Cloud                      c = makeCloud(T, false, 0.0, {});
+    for (const char* f : {"view_x", "view_y", "view_z"})
+    {
+        ASSERT_(c.pc->registerField_float(f));
+        c.pc->getPointsBufferRef_float_field(f)->assign(c.pc->size(), 0.0f);
+    }
+    runFilter(
+        c, "pointcloud_layer: raw\nsensor_pose: " + poseText(T) + "\nbeams: " + beamsText(false));
+    checkCorrected(c, 2e-4f);
+    const auto& vx = *c.pc->getPointsBufferRef_float_field("view_x");
+    const auto& vy = *c.pc->getPointsBufferRef_float_field("view_y");
+    const auto& vz = *c.pc->getPointsBufferRef_float_field("view_z");
+    for (size_t i = 0; i < c.expected.size(); i++)
+    {
+        if (i % kRings == kRings - 1)
+        {
+            continue;  // no row for this ring: untouched
+        }
+        const mrpt::math::TVector3D v = (T.translation() - c.expected[i]).unitarize();
+        ASSERT_NEAR_(vx[i], static_cast<float>(v.x), 1e-4f);
+        ASSERT_NEAR_(vy[i], static_cast<float>(v.y), 1e-4f);
+        ASSERT_NEAR_(vz[i], static_cast<float>(v.z), 1e-4f);
+    }
+}
+
 void test_missing_ring_field_throws()
 {
     mp2p_icp::metric_map_t map;
@@ -269,6 +297,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_calibration_file();
         std::cout << "test_calibration_file: Success" << std::endl;
+
+        test_view_vectors_follow();
+        std::cout << "test_view_vectors_follow: Success" << std::endl;
 
         test_missing_ring_field_throws();
         std::cout << "test_missing_ring_field_throws: Success" << std::endl;
