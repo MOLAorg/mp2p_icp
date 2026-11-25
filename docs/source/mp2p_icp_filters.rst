@@ -123,6 +123,72 @@ Filter: `FilterAdjustTimestamps`
 
 ---
 
+Filter: `FilterBeamCorrection`
+------------------------------
+
+**Description**: Corrects, in place, the points of a spinning LiDAR with a per-ring table of intrinsic corrections (e.g. the
+result of a calibration). Where :cpp:class:`FilterRangeBiasCorrection` moves points along a surface normal by one model shared by all
+beams, this filter corrects each beam (ring) on its own ray and needs no normals.
+
+Each point of ring :math:`k` is read, in the sensor frame, as a ray from its beam origin :math:`o` with range :math:`\rho`,
+elevation :math:`e` and azimuth :math:`a`, and replaced by
+
+.. math::
+
+    p' = o + v_k \hat{z} + h_k \hat{n}(a') + ((1 + s_k) \rho + r_k) \, \mathrm{dir}(e + \delta e_k, a'), \quad a' = a + \delta a_k
+
+with :math:`\hat{n}(a) = (-\sin a, \cos a, 0)`. Per ring, the corrections to add to the raw values (true minus reported) are
+``d_elevation_deg``, ``d_azimuth_deg``, ``d_range_m`` (the 3-parameter model) and, optionally, ``d_range_scale``,
+``d_vertical_m`` and ``d_horizontal_m`` (the 6-parameter model). Missing values are zero, and points of rings without a row are
+left untouched. The beam origin is the sensor origin unless ``beam_origin_m`` gives the radius of an Ouster-style beam origin
+circle, :math:`o = b (\cos\theta, \sin\theta, 0)` at encoder angle :math:`\theta`.
+
+The table is given inline (``beams``) or in a YAML file (``beams_file``): either a file with a top-level ``beams`` sequence, or
+a calibration file whose ``sensors.<sensor>.intrinsics`` hold ``beams`` (and optionally ``beam_origin_m`` and
+``beam_azimuth_offset_deg``), as written by a sensor calibration. Each row is a map:
+
+.. code-block:: yaml
+
+    beams:
+      - {ring: 0, d_elevation_deg: 0.012, d_azimuth_deg: -0.004, d_range_m: 0.006}
+      - {ring: 1, d_elevation_deg: -0.031, d_azimuth_deg: 0.002, d_range_m: -0.011,
+         d_range_scale: 0.0002, d_vertical_m: 0.001, d_horizontal_m: -0.002}
+
+**Parameters**:
+
+* **pointcloud\_layer** (:cpp:type:`std::string`): The point cloud layer to correct, in place. It must have a per-point ring field.
+
+* **ring\_field** (:cpp:type:`std::string`, default: `ring`): Name of the per-point ring field (``uint16`` or ``float``).
+
+* **sensor\_pose** (``[x, y, z, yaw, pitch, roll]``, meters and radians, default: identity): Pose of the LiDAR in the frame of the cloud. Each entry can be an expression of the pipeline variables.
+
+* **beams** (sequence of maps): The per-ring table, inline. Exactly one of ``beams`` and ``beams_file`` must be given.
+
+* **beams\_file** (:cpp:type:`std::string`): A YAML file with the table, as described above.
+
+* **sensor** (:cpp:type:`std::string`, optional): With a calibration file, the sensor whose table to use (default: the only one with a table).
+
+* **beam\_origin\_m** (``double``, default: `0`): Radius of the beam origin circle [m]; 0 for a single origin.
+
+* **beam\_azimuth\_offsets\_deg** (``double[]``, optional): Nominal azimuth of each ring minus the encoder angle [deg], used with ``beam_origin_m``.
+
+* **min\_range** (``double``, default: `0.01`): Points closer than this to their beam origin are left untouched [m].
+
+.. code-block:: yaml
+
+    filters:
+      #...
+      - class_name: mp2p_icp_filters::FilterBeamCorrection
+        params:
+          pointcloud_layer: 'raw'
+          sensor_pose: [0.0, 0.0, 0.30, 0.0, 0.0, 0.0]
+          beams_file: 'calibration.yaml'
+          sensor: 'lidar0'
+
+|
+
+---
+
 Filter: `FilterBoundingBox`
 ---------------------------
 

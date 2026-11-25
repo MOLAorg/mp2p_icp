@@ -19,6 +19,7 @@ set(LIB_SRCS
   src/FilterAbsoluteTimestamp.cpp
   src/FilterAdjustTimestamps.cpp
   src/FilterBase.cpp
+  src/FilterBeamCorrection.cpp
   src/FilterBoundingBox.cpp
   src/FilterByExpression.cpp
   src/FilterByIntensity.cpp
@@ -74,6 +75,7 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/FilterAbsoluteTimestamp.h
   include/mp2p_icp_filters/FilterAdjustTimestamps.h
   include/mp2p_icp_filters/FilterBase.h
+  include/mp2p_icp_filters/FilterBeamCorrection.h
   include/mp2p_icp_filters/FilterBoundingBox.h
   include/mp2p_icp_filters/FilterByExpression.h
   include/mp2p_icp_filters/FilterByIntensity.h
