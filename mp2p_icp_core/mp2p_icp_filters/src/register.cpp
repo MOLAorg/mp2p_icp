@@ -25,6 +25,7 @@
 
 #include <mp2p_icp_filters/FilterAbsoluteTimestamp.h>
 #include <mp2p_icp_filters/FilterAdjustTimestamps.h>
+#include <mp2p_icp_filters/FilterBeamCorrection.h>
 #include <mp2p_icp_filters/FilterBoundingBox.h>
 #include <mp2p_icp_filters/FilterByExpression.h>
 #include <mp2p_icp_filters/FilterByIntensity.h>
@@ -99,6 +100,7 @@ MRPT_INITIALIZER(register_mola_lidar_segmentation)
     registerClass(CLASS_ID(mp2p_icp_filters::FilterInsertPoint));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterPoleDetector));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterPolygon2D));
+    registerClass(CLASS_ID(mp2p_icp_filters::FilterBeamCorrection));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRangeBiasCorrection));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRemoveByVoxelOccupancy));
     registerClass(CLASS_ID(mp2p_icp_filters::FilterRemovePointCloudField));
