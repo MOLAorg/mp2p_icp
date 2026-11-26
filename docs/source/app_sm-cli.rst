@@ -112,6 +112,11 @@ attitude of a LiDAR-inertial run, estimated from a short accelerometer average.
         [--max-correction-deg 5]            # refuse larger corrections
         [--estimate-only]                   # print the rotation, do not write output
         [--windows N]                       # also estimate on N equal time windows
+        [--piecewise SECONDS]               # level each time window on its own
+        [--walls-only]                      # walls are the only vertical reference
+        [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
+        [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
+        [--windows-out <file.txt>]          # one row per window, machine readable
 
 How it works:
 
@@ -126,7 +131,25 @@ How it works:
 
 The command aborts if :math:`u` is not observable (e.g. one wall direction and no floors), or if the correction
 exceeds ``--max-correction-deg``. ``--windows N`` repeats the estimate on N time windows: similar values mean a
-fixed gauge error that a single rotation removes, while differing values mean drift, which it can not fix.
+fixed gauge error that a single rotation removes, while differing values mean drift, which ``--piecewise`` fixes.
+
+``--piecewise SECONDS`` levels a map whose vertical drifts during the run. :math:`u` is estimated on consecutive
+time windows of that duration, its horizontal components are interpolated linearly in time between the window
+centers (held constant before the first and after the last), and each keyframe :math:`k` is rotated by its own
+minimal rotation :math:`C(t_k)` taking :math:`u(t_k)` to :math:`+Z`. Positions are integrated again from the first
+keyframe, each step rotated by the correction at its mid time, so the trajectory stays continuous:
+:math:`p'_k = p'_{k-1} + C(t_{mid}) (p_k - p_{k-1})`. Windows where :math:`u` is not observable, has no reliable
+sigma (fewer than 8 cells of normals; not checked with ``--cluster-size 0``) or a sigma above ``--max-window-sigma-deg`` are skipped and interpolated
+over, and a last window shorter than half the others joins the previous one. The command aborts if any window
+used needs more than ``--max-correction-deg``.
+Windows of 20 to 30 s worked well on indoor walks; shorter ones follow the drift more closely but are noisier.
+
+``--walls-only`` drops floors and ceilings from the estimate (they are not a vertical reference where a floor
+slopes, e.g. a ramp), so walls with at least two directions are needed. Each estimate also reports the standard
+deviations of :math:`u_x, u_y` from a sandwich covariance, which takes the normals in cells of ``--cluster-size``
+as the independent groups, and ``--windows-out`` writes one row per window
+(``window kf_first kf_last t_start t_end up_x up_y up_z tilt_deg sigma_x_deg sigma_y_deg walls flats groups
+observable usable``) for further processing.
 
 .. note::
 

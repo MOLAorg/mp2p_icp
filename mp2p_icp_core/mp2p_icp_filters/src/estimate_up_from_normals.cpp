@@ -25,7 +25,11 @@
 #include <mrpt/math/geometry.h>
 
 #include <Eigen/Dense>
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <map>
+#include <optional>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>
@@ -35,13 +39,19 @@
 namespace mp2p_icp_filters
 {
 std::vector<mrpt::math::TVector3D> estimate_planar_normals(
-    const mrpt::maps::CPointsMap& pc, const PlanarNormalsParams& params)
+    const mrpt::maps::CPointsMap& pc, const PlanarNormalsParams& params,
+    std::vector<mrpt::math::TPoint3Df>* outPoints)
 {
     MRPT_START
 
     ASSERT_GT_(params.search_radius, 0.0);
     ASSERT_GE_(params.min_neighbors, 3UL);
     ASSERT_GT_(params.parallelization_grain_size, 0UL);
+
+    if (outPoints)
+    {
+        outPoints->clear();
+    }
 
     const size_t N = pc.size();
     if (N == 0)
@@ -116,11 +126,17 @@ std::vector<mrpt::math::TVector3D> estimate_planar_normals(
     // Compact, keeping the point index order:
     std::vector<mrpt::math::TVector3D> out;
     out.reserve(N);
-    for (const auto& n : normals)
+    for (size_t i = 0; i < N; i++)
     {
-        if (n.x != 0 || n.y != 0 || n.z != 0)
+        const auto& n = normals[i];
+        if (n.x == 0 && n.y == 0 && n.z == 0)
         {
-            out.push_back(n);
+            continue;
+        }
+        out.push_back(n);
+        if (outPoints)
+        {
+            outPoints->emplace_back(xs[i], ys[i], zs[i]);
         }
     }
     return out;
@@ -133,8 +149,168 @@ double EstimateUpResult::tilt_deg() const
     return mrpt::RAD2DEG(std::acos(mrpt::saturate_val(up.z / up.norm(), -1.0, 1.0)));
 }
 
+std::array<double, 2> EstimateUpResult::up_sigmas_deg() const
+{
+    return {
+        mrpt::RAD2DEG(std::sqrt(std::max(0.0, up_cov(0, 0)))),
+        mrpt::RAD2DEG(std::sqrt(std::max(0.0, up_cov(1, 1))))};
+}
+
+namespace
+{
+enum class NormalKind : uint8_t
+{
+    Ignored,
+    Wall,
+    Flat
+};
+
+NormalKind classify(
+    const mrpt::math::TVector3D& n, const mrpt::math::TVector3D& u, const EstimateUpParams& params)
+{
+    const double d = std::abs(n.x * u.x + n.y * u.y + n.z * u.z);
+    if (d < params.wall_nz)
+    {
+        return NormalKind::Wall;
+    }
+    if (d > params.flat_nz && params.flats_weight > 0)
+    {
+        return NormalKind::Flat;
+    }
+    return NormalKind::Ignored;
+}
+
+bool fullRank(const Eigen::Matrix2d& G)
+{
+    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> es(G);
+    const auto&                                          ev = es.eigenvalues();
+    return ev[1] > 0 && ev[0] > 1e-9 * ev[1];
+}
+
+// The smallest covariance that is at least A and at least B: B + max(A - B, 0).
+Eigen::Matrix2d atLeast(const Eigen::Matrix2d& A, const Eigen::Matrix2d& B)
+{
+    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> es(A - B);
+    const Eigen::Vector2d                                ev = es.eigenvalues().cwiseMax(0.0);
+    return B + es.eigenvectors() * ev.asDiagonal() * es.eigenvectors().transpose();
+}
+
+// Unbiased for the scores summing to zero: n / (n - 1)
+void scaleForGroups(Eigen::Matrix2d& G, std::size_t n)
+{
+    if (n > 1)
+    {
+        G *= static_cast<double>(n) / static_cast<double>(n - 1);
+    }
+}
+
+using CellKey = std::array<int64_t, 3>;
+
+// Integer cell of a point, or nothing for a point that is not finite or too
+// far away for an exact integer index.
+std::optional<CellKey> cellOf(const mrpt::math::TPoint3Df& p, double size)
+{
+    constexpr double maxIndex = 9.0e15;  // below 2^53: exact as a double, fits in int64
+    CellKey          key{};
+    for (int i = 0; i < 3; i++)
+    {
+        const double q = std::floor(static_cast<double>(p[i]) / size);
+        if (!std::isfinite(q) || std::abs(q) > maxIndex)
+        {
+            return std::nullopt;
+        }
+        key[i] = static_cast<int64_t>(q);
+    }
+    return key;
+}
+
+/* Sandwich covariance of the estimated up. With u(d) = normalize(u + E d), E the
+ * other two eigenvectors of M, the cost u^T M u has the Hessian
+ * H = 2 diag(l1 - l0, l2 - l0) in d, and each normal adds the score
+ * s = 2 w (n.u) E^T n (w > 0 for walls, w < 0 for flats). Then
+ * Cov(d) = H^-1 (sum_g S_g S_g^T) H^-1, with S_g the sum of the scores of group g.
+ * The normals are those of the last fit: classified against `classUp`, the up
+ * that fit started from, with its population weights.
+ */
+void estimateUpCovariance(
+    const std::vector<mrpt::math::TVector3D>& normals,
+    const std::vector<mrpt::math::TPoint3Df>* points, const EstimateUpParams& params,
+    const mrpt::math::CMatrixDouble33& eigVecs, const std::array<double, 3>& eigVals,
+    const mrpt::math::TVector3D& classUp, double wallWeight, double flatWeight, EstimateUpResult& r)
+{
+    const Eigen::Vector3d       u(r.up.x, r.up.y, r.up.z);
+    Eigen::Matrix<double, 3, 2> E;
+    E.col(0) = eigVecs.asEigen().col(1);
+    E.col(1) = eigVecs.asEigen().col(2);
+
+    const bool                         grouped = points && params.cluster_size > 0;
+    std::map<CellKey, Eigen::Vector2d> cellScores;
+    Eigen::Matrix2d                    Gnormals = Eigen::Matrix2d::Zero();
+    std::size_t                        nNormals = 0;
+
+    for (size_t i = 0; i < normals.size(); i++)
+    {
+        const auto&      nn   = normals[i];
+        const NormalKind kind = classify(nn, classUp, params);
+        if (kind == NormalKind::Ignored)
+        {
+            continue;
+        }
+        const double w = kind == NormalKind::Wall ? wallWeight : -flatWeight;
+        if (w == 0)
+        {
+            continue;
+        }
+        const Eigen::Vector3d n(nn.x, nn.y, nn.z);
+        const Eigen::Vector2d score = 2.0 * w * n.dot(u) * (E.transpose() * n);
+
+        Gnormals += score * score.transpose();
+        nNormals++;
+        if (grouped)
+        {
+            // A point without a valid cell only counts in the per-normal covariance
+            if (const auto key = cellOf((*points)[i], params.cluster_size); key)
+            {
+                cellScores.try_emplace(*key, Eigen::Vector2d::Zero()).first->second += score;
+            }
+        }
+    }
+    scaleForGroups(Gnormals, nNormals);
+
+    Eigen::Matrix2d Hinv = Eigen::Matrix2d::Zero();
+    Hinv(0, 0)           = 1.0 / (2.0 * (eigVals[1] - eigVals[0]));
+    Hinv(1, 1)           = 1.0 / (2.0 * (eigVals[2] - eigVals[0]));
+
+    Eigen::Matrix2d covD = Hinv * Gnormals * Hinv;
+    r.cov_groups         = nNormals;
+    r.cov_reliable       = false;  // the per-normal covariance is only a lower bound
+
+    if (grouped)
+    {
+        Eigen::Matrix2d Gcells = Eigen::Matrix2d::Zero();
+        for (const auto& [key, S] : cellScores)
+        {
+            Gcells += S * S.transpose();
+        }
+        scaleForGroups(Gcells, cellScores.size());
+
+        r.cov_groups   = cellScores.size();
+        r.cov_reliable = cellScores.size() >= params.min_cov_groups && fullRank(Gcells);
+        if (r.cov_reliable)
+        {
+            covD = atLeast(Hinv * Gcells * Hinv, covD);
+        }
+    }
+
+    const Eigen::Matrix3d covUp = E * covD * E.transpose();
+    r.up_cov.asEigen()          = covUp.topLeftCorner<2, 2>();
+}
+
+}  // namespace
+
 EstimateUpResult estimate_up_from_normals(
-    const std::vector<mrpt::math::TVector3D>& normals, const EstimateUpParams& params)
+    const std::vector<mrpt::math::TVector3D>& normals, const EstimateUpParams& params,
+    const std::vector<mrpt::math::TPoint3Df>* points)
 {
     MRPT_START
 
@@ -145,12 +321,27 @@ EstimateUpResult estimate_up_from_normals(
         mrpt::format(
             "Thresholds must satisfy 0 < wall_nz < flat_nz < 1 (got wall_nz=%g flat_nz=%g)",
             params.wall_nz, params.flat_nz));
+    ASSERTMSG_(
+        params.flats_weight >= 0,
+        mrpt::format("flats_weight must be >= 0 (got %g)", params.flats_weight));
+    ASSERTMSG_(
+        params.cluster_size >= 0,
+        mrpt::format("cluster_size must be >= 0 (got %g)", params.cluster_size));
+    if (points)
+    {
+        ASSERT_EQUAL_(points->size(), normals.size());
+    }
 
-    EstimateUpResult r;
+    EstimateUpResult            r;
+    mrpt::math::CMatrixDouble33 eigVecs;
+    mrpt::math::TVector3D       classUp    = r.up;  // the up the last fit classified against
+    double                      wallWeight = 0;
+    double                      flatWeight = 0;
 
     for (size_t iter = 0; iter < params.iterations; iter++)
     {
-        const auto& u = r.up;
+        const auto u = r.up;
+        classUp      = u;
 
         mrpt::math::CMatrixDouble33 Mw;
         mrpt::math::CMatrixDouble33 Mf;
@@ -161,14 +352,13 @@ EstimateUpResult estimate_up_from_normals(
 
         for (const auto& n : normals)
         {
-            const double d      = std::abs(n.x * u.x + n.y * u.y + n.z * u.z);
-            const bool   isWall = d < params.wall_nz;
-            const bool   isFlat = d > params.flat_nz;
-            if (!isWall && !isFlat)
+            const NormalKind kind = classify(n, u, params);
+            if (kind == NormalKind::Ignored)
             {
                 continue;
             }
-            auto& M = isWall ? Mw : Mf;
+            const bool isWall = kind == NormalKind::Wall;
+            auto&      M      = isWall ? Mw : Mf;
             if (isWall)
             {
                 nW++;
@@ -208,22 +398,24 @@ EstimateUpResult estimate_up_from_normals(
                 "Not enough wall or floor/ceiling normals (minimum: %zu of either kind).",
                 params.min_population));
 
+        wallWeight = nW > 0 ? 1.0 / static_cast<double>(nW) : 0.0;
+        flatWeight = nF > 0 ? params.flats_weight / static_cast<double>(nF) : 0.0;
+
         mrpt::math::CMatrixDouble33 M;
         M.setZero();
         if (nW > 0)
         {
-            Mw.asEigen() *= 1.0 / static_cast<double>(nW);
+            Mw.asEigen() *= wallWeight;
             M.asEigen() += Mw.asEigen();
         }
         if (nF > 0)
         {
-            // (1/|F|) sum (I - n n^T) = I - (1/|F|) sum n n^T
+            // w_F (1/|F|) sum (I - n n^T) = w_F (I - (1/|F|) sum n n^T)
             Mf.asEigen() *= 1.0 / static_cast<double>(nF);
-            M.asEigen() += Eigen::Matrix3d::Identity() - Mf.asEigen();
+            M.asEigen() += params.flats_weight * (Eigen::Matrix3d::Identity() - Mf.asEigen());
         }
 
-        mrpt::math::CMatrixDouble33 eigVecs;
-        std::vector<double>         eigVals;
+        std::vector<double> eigVals;
         M.eig_symmetric(eigVecs, eigVals, true /*sorted*/);
 
         mrpt::math::TVector3D newUp(eigVecs(0, 0), eigVecs(1, 0), eigVecs(2, 0));
@@ -244,23 +436,29 @@ EstimateUpResult estimate_up_from_normals(
         r.wallEigVals = {0, 0, 0};
         if (nW > 0)
         {
-            std::vector<double> wallEigVals;
-            Mw.eig_symmetric(eigVecs, wallEigVals, true /*sorted*/);
+            mrpt::math::CMatrixDouble33 wallEigVecs;
+            std::vector<double>         wallEigVals;
+            Mw.eig_symmetric(wallEigVecs, wallEigVals, true /*sorted*/);
             for (int k = 0; k < 3; k++)
             {
                 r.wallEigVals[k] = wallEigVals[k];
             }
         }
         r.single_wall_direction = r.wallEigVals[1] - r.wallEigVals[0] < params.min_eigen_gap;
+
+        // Checked on every iteration: an unobservable start lets `up` wander off,
+        // and the normals reclassified against it can then look consistent.
+        ASSERTMSG_(
+            r.eigVals[1] - r.eigVals[0] >= params.min_eigen_gap,
+            mrpt::format(
+                "The up direction is not observable from the normals (eigenvalues: %g %g %g, "
+                "walls: %zu, floors/ceilings: %zu). It needs walls with at least two "
+                "non-parallel directions, or floors/ceilings.",
+                r.eigVals[0], r.eigVals[1], r.eigVals[2], r.wall_count, r.flat_count));
     }
 
-    ASSERTMSG_(
-        r.eigVals[1] - r.eigVals[0] >= params.min_eigen_gap,
-        mrpt::format(
-            "The up direction is not observable from the normals (eigenvalues: %g %g %g, "
-            "walls: %zu, floors/ceilings: %zu). It needs walls with at least two "
-            "non-parallel directions, or floors/ceilings.",
-            r.eigVals[0], r.eigVals[1], r.eigVals[2], r.wall_count, r.flat_count));
+    estimateUpCovariance(
+        normals, points, params, eigVecs, r.eigVals, classUp, wallWeight, flatWeight, r);
 
     return r;
 
@@ -297,6 +495,79 @@ mrpt::poses::CPose3D rotation_aligning_up_to_z(const mrpt::math::TVector3D& up)
     }
 
     return mrpt::poses::CPose3D::FromRotationAndTranslation(R, mrpt::math::TVector3D(0, 0, 0));
+}
+
+mrpt::math::TVector3D interpolate_up(const std::vector<UpSample>& samples, double t)
+{
+    if (samples.empty())
+    {
+        return {0, 0, 1};
+    }
+    const auto byTime = [](const UpSample& s, double tt) { return s.t < tt; };
+    const auto it     = std::lower_bound(samples.begin(), samples.end(), t, byTime);
+
+    double ux = 0;
+    double uy = 0;
+    if (it == samples.begin())
+    {
+        ux = it->up.x;
+        uy = it->up.y;
+    }
+    else if (it == samples.end())
+    {
+        ux = samples.back().up.x;
+        uy = samples.back().up.y;
+    }
+    else
+    {
+        const auto&  a   = *(it - 1);
+        const auto&  b   = *it;
+        const double dt  = b.t - a.t;
+        const double frc = dt > 0 ? (t - a.t) / dt : 1.0;
+        ux               = a.up.x + frc * (b.up.x - a.up.x);
+        uy               = a.up.y + frc * (b.up.y - a.up.y);
+    }
+    const double h2 = ux * ux + uy * uy;
+    ASSERTMSG_(h2 < 1.0, "interpolate_up(): the up samples must point upwards");
+    return {ux, uy, std::sqrt(1.0 - h2)};
+}
+
+std::vector<mrpt::poses::CPose3D> level_poses_from_up(
+    const std::vector<double>& times, const std::vector<mrpt::poses::CPose3D>& poses,
+    const std::vector<UpSample>& samples)
+{
+    MRPT_START
+
+    ASSERT_EQUAL_(times.size(), poses.size());
+    ASSERT_(std::is_sorted(times.begin(), times.end()));
+    ASSERT_(std::is_sorted(
+        samples.begin(), samples.end(),
+        [](const UpSample& a, const UpSample& b) { return a.t < b.t; }));
+
+    std::vector<mrpt::poses::CPose3D> out;
+    out.reserve(poses.size());
+    for (size_t k = 0; k < poses.size(); k++)
+    {
+        const auto Rk = rotation_aligning_up_to_z(interpolate_up(samples, times[k]));
+
+        mrpt::math::TPoint3D p;
+        if (k == 0)
+        {
+            p = poses[0].translation();
+        }
+        else
+        {
+            const double tMid = 0.5 * (times[k - 1] + times[k]);
+            const auto   Rmid = rotation_aligning_up_to_z(interpolate_up(samples, tMid));
+            const auto   step = poses[k].translation() - poses[k - 1].translation();
+            p                 = out.back().translation() + Rmid.rotateVector(step);
+        }
+        out.push_back(mrpt::poses::CPose3D::FromRotationAndTranslation(
+            Rk.getRotationMatrix() * poses[k].getRotationMatrix(), p));
+    }
+    return out;
+
+    MRPT_END
 }
 
 }  // namespace mp2p_icp_filters
