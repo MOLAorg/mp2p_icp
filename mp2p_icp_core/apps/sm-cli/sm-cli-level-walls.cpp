@@ -312,7 +312,8 @@ WindowEstimate estimateWindow(
         printEstimate(*w.est);
 
         const auto sigmas = w.est->up_sigmas_deg();
-        if (!w.est->cov_reliable)
+        // With --cluster-size 0 the sigmas are per-normal: not checked for reliability
+        if (cli->arg_cluster_size > 0 && !w.est->cov_reliable)
         {
             std::cout << "Not usable: too few groups of normals for a reliable sigma.\n";
         }

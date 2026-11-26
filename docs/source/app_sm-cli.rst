@@ -139,7 +139,7 @@ centers (held constant before the first and after the last), and each keyframe :
 minimal rotation :math:`C(t_k)` taking :math:`u(t_k)` to :math:`+Z`. Positions are integrated again from the first
 keyframe, each step rotated by the correction at its mid time, so the trajectory stays continuous:
 :math:`p'_k = p'_{k-1} + C(t_{mid}) (p_k - p_{k-1})`. Windows where :math:`u` is not observable, has no reliable
-sigma (fewer than 8 cells of normals) or a sigma above ``--max-window-sigma-deg`` are skipped and interpolated
+sigma (fewer than 8 cells of normals; not checked with ``--cluster-size 0``) or a sigma above ``--max-window-sigma-deg`` are skipped and interpolated
 over, and a last window shorter than half the others joins the previous one. The command aborts if any window
 used needs more than ``--max-correction-deg``.
 Windows of 20 to 30 s worked well on indoor walks; shorter ones follow the drift more closely but are noisier.

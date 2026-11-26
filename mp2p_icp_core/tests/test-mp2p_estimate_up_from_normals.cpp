@@ -439,6 +439,15 @@ void test_covariance_few_groups()
         ASSERT_GT_(det, 0);
     }
 
+    // Without cells (no points, or cluster_size 0) up_cov is the per-normal one:
+    {
+        const auto       normals = estimate_planar_normals(makeRoom(tiltPose(1.0, 70.0)));
+        EstimateUpParams noCells;
+        noCells.cluster_size = 0;
+        ASSERT_(!estimate_up_from_normals(normals).cov_reliable);
+        ASSERT_(!estimate_up_from_normals(normals, noCells).cov_reliable);
+    }
+
     // Enough cells: grouped, and never below the per-normal covariance
     const auto T = mrpt::poses::CPose3D::FromTranslation(1.0, 1.0, 1.0) + tiltPose(1.0, 70.0);
     std::vector<mrpt::math::TPoint3Df> points;

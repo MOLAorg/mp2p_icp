@@ -283,7 +283,7 @@ void estimateUpCovariance(
 
     Eigen::Matrix2d covD = Hinv * Gnormals * Hinv;
     r.cov_groups         = nNormals;
-    r.cov_reliable       = nNormals >= params.min_cov_groups && fullRank(Gnormals);
+    r.cov_reliable       = false;  // the per-normal covariance is only a lower bound
 
     if (grouped)
     {

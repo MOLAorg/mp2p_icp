@@ -139,10 +139,12 @@ struct EstimateUpResult
     /// points were given, otherwise single normals.
     std::size_t cov_groups = 0;
 
-    /// True if `up_cov` comes from those groups: at least
-    /// EstimateUpParams::min_cov_groups of them, with a full-rank score
-    /// covariance. False means it fell back to the per-normal covariance,
-    /// a lower bound of the real uncertainty: do not use it as a weight.
+    /// True only if `up_cov` is the grouped covariance: points were given,
+    /// EstimateUpParams::cluster_size > 0, and there are at least
+    /// EstimateUpParams::min_cov_groups cells with a full-rank score
+    /// covariance. Whenever `up_cov` is the per-normal covariance (no points,
+    /// cluster_size == 0, or too few cells) this is false: that covariance
+    /// is a lower bound of the real uncertainty, not a weight.
     bool cov_reliable = false;
 
     /// Angle between `up` and +Z [deg]
