@@ -198,3 +198,7 @@ struct UpSample
 /** @} */
 
 }  // namespace mp2p_icp_filters
+
+/** Feature macro: EstimateUpParams::flats_weight, EstimateUpResult::up_cov and
+ *  level_poses_from_up() are available */
+#define MP2P_ICP_HAS_ESTIMATE_UP_COVARIANCE 1
