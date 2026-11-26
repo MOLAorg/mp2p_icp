@@ -452,6 +452,39 @@ void test_covariance_few_groups()
     ASSERT_GE_(est.up_cov(1, 1), ind(1, 1));
 }
 
+void test_covariance_uses_fit_classification()
+{
+    // One iteration classifies against +Z. Normals that +Z ignores but the
+    // returned up would take for walls must not reach the covariance, since
+    // they did not reach the fit either.
+    EstimateUpParams p;
+    p.iterations = 1;
+
+    const auto normals = estimate_planar_normals(makeRoom(tiltPose(3.0, 0.0)));
+    const auto base    = estimate_up_from_normals(normals, p);
+
+    const double h = std::hypot(base.up.x, base.up.y);
+    ASSERT_GT_(h, 0.04);
+    // |n.z| = 0.26 (ignored at +Z), |n.up| ~ 0.21 (a wall against the result)
+    const mrpt::math::TVector3D extra(-0.9656 * base.up.x / h, -0.9656 * base.up.y / h, 0.26);
+    ASSERT_LT_(std::abs(extra.dot(base.up) / extra.norm()), p.wall_nz);
+
+    auto withExtra = normals;
+    for (int i = 0; i < 500; i++)
+    {
+        withExtra.push_back(extra * (1.0 / extra.norm()));
+    }
+    const auto est = estimate_up_from_normals(withExtra, p);
+    ASSERT_(est.up == base.up);
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 2; j++)
+        {
+            ASSERT_EQUAL_(est.up_cov(i, j), base.up_cov(i, j));
+        }
+    }
+}
+
 // A walk at 1 m/s, turning at 1.5 deg/s, whose estimated vertical drifts from
 // 0 to 3 deg in 100 s about a turning axis. The drifted trajectory is the
 // integral of the drifted velocity (fine steps), not the inverse of the
@@ -614,6 +647,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_covariance_few_groups();
         std::cout << "test_covariance_few_groups: Success" << std::endl;
+
+        test_covariance_uses_fit_classification();
+        std::cout << "test_covariance_uses_fit_classification: Success" << std::endl;
 
         test_level_poses_from_up();
         std::cout << "test_level_poses_from_up: Success" << std::endl;

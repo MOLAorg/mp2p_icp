@@ -208,12 +208,14 @@ void scaleForGroups(Eigen::Matrix2d& G, std::size_t n)
  * H = 2 diag(l1 - l0, l2 - l0) in d, and each normal adds the score
  * s = 2 w (n.u) E^T n (w > 0 for walls, w < 0 for flats). Then
  * Cov(d) = H^-1 (sum_g S_g S_g^T) H^-1, with S_g the sum of the scores of group g.
+ * The normals are those of the last fit: classified against `classUp`, the up
+ * that fit started from, with its population weights.
  */
 void estimateUpCovariance(
     const std::vector<mrpt::math::TVector3D>& normals,
     const std::vector<mrpt::math::TPoint3Df>* points, const EstimateUpParams& params,
     const mrpt::math::CMatrixDouble33& eigVecs, const std::array<double, 3>& eigVals,
-    double wallWeight, double flatWeight, EstimateUpResult& r)
+    const mrpt::math::TVector3D& classUp, double wallWeight, double flatWeight, EstimateUpResult& r)
 {
     const Eigen::Vector3d       u(r.up.x, r.up.y, r.up.z);
     Eigen::Matrix<double, 3, 2> E;
@@ -228,7 +230,7 @@ void estimateUpCovariance(
     for (size_t i = 0; i < normals.size(); i++)
     {
         const auto&      nn   = normals[i];
-        const NormalKind kind = classify(nn, r.up, params);
+        const NormalKind kind = classify(nn, classUp, params);
         if (kind == NormalKind::Ignored)
         {
             continue;
@@ -312,12 +314,14 @@ EstimateUpResult estimate_up_from_normals(
 
     EstimateUpResult            r;
     mrpt::math::CMatrixDouble33 eigVecs;
+    mrpt::math::TVector3D       classUp    = r.up;  // the up the last fit classified against
     double                      wallWeight = 0;
     double                      flatWeight = 0;
 
     for (size_t iter = 0; iter < params.iterations; iter++)
     {
         const auto u = r.up;
+        classUp      = u;
 
         mrpt::math::CMatrixDouble33 Mw;
         mrpt::math::CMatrixDouble33 Mf;
@@ -433,7 +437,8 @@ EstimateUpResult estimate_up_from_normals(
                 r.eigVals[0], r.eigVals[1], r.eigVals[2], r.wall_count, r.flat_count));
     }
 
-    estimateUpCovariance(normals, points, params, eigVecs, r.eigVals, wallWeight, flatWeight, r);
+    estimateUpCovariance(
+        normals, points, params, eigVecs, r.eigVals, classUp, wallWeight, flatWeight, r);
 
     return r;
 
