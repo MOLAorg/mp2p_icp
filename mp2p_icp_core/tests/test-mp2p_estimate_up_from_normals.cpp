@@ -222,7 +222,7 @@ void test_walls_only_ignores_sloped_floor()
 
     EstimateUpParams p;
     p.flats_weight = 0;
-    // Wide thresholds would take the sloped floor for neither walls nor flats:
+    // The floor leans 3 deg against the walls: walls only must ignore it.
     const auto est = estimate_up_from_normals(normals, p);
     const auto err = rotationAngleDeg(rotation_aligning_up_to_z(est.up) + T);
     std::cout << "  walls only: error " << err << " deg (flats used: " << est.flat_count << ")\n";
@@ -258,6 +258,10 @@ void test_walls_only_single_direction_rejected()
 // A unit vector at a random angle of `sigma` [rad] per axis from `n`.
 mrpt::math::TVector3D perturb(const mrpt::math::TVector3D& n, double sigma, std::mt19937& rng)
 {
+    if (sigma <= 0)
+    {
+        return n;
+    }
     std::normal_distribution<double> g(0.0, sigma);
     mrpt::math::TVector3D            v(n.x + g(rng), n.y + g(rng), n.z + g(rng));
     return v * (1.0 / v.norm());
@@ -275,7 +279,9 @@ struct CalibrationResult
 // Monte Carlo of the up estimate on synthetic normals of a room tilted by
 // `T`: `clusters` groups of `perCluster` normals per population (walls along
 // X, walls along Y, flats), each group sharing an angular offset of
-// `sigmaShared` [rad] plus `sigmaEach` [rad] per normal.
+// `sigmaShared` [rad] plus `sigmaEach` [rad] per normal. Each group lies in
+// its own cell: this checks the algebra of up_cov on groups that coincide
+// with the cells, not how the normals of real clouds group.
 CalibrationResult monteCarlo(
     const mrpt::poses::CPose3D& T, size_t clusters, size_t perCluster, double sigmaShared,
     double sigmaEach, bool givePoints, const EstimateUpParams& params, size_t trials)
@@ -356,10 +362,11 @@ void checkCalibrated(const CalibrationResult& r, const char* label)
     std::cout << "  " << label << ": sigma x reported " << r.reportedSigmaX << " vs empirical "
               << r.empiricalSigmaX << " deg (" << ratioX << "), y " << r.reportedSigmaY << " vs "
               << r.empiricalSigmaY << " (" << ratioY << ")\n";
-    ASSERT_GT_(ratioX, 0.7);
-    ASSERT_LT_(ratioX, 1.3);
-    ASSERT_GT_(ratioY, 0.7);
-    ASSERT_LT_(ratioY, 1.3);
+    // 400 trials: the standard error of an empirical sigma is ~3.5 %
+    ASSERT_GT_(ratioX, 0.85);
+    ASSERT_LT_(ratioX, 1.15);
+    ASSERT_GT_(ratioY, 0.85);
+    ASSERT_LT_(ratioY, 1.15);
 }
 
 void test_covariance_independent_normals()
@@ -445,83 +452,134 @@ void test_covariance_few_groups()
     ASSERT_GE_(est.up_cov(1, 1), ind(1, 1));
 }
 
-void test_level_poses_from_up()
+// A walk at 1 m/s, turning at 1.5 deg/s, whose estimated vertical drifts from
+// 0 to 3 deg in 100 s about a turning axis. The drifted trajectory is the
+// integral of the drifted velocity (fine steps), not the inverse of the
+// leveling rule. One keyframe per second.
+struct DriftingWalk
 {
-    // A walk at 1 m/s, turning, whose estimated vertical drifts from 0 to 3
-    // deg in 100 s. Each 10 s window sees the room leaning by the drift then.
-    const auto drift = [](double t) { return tiltPose(3.0 * t / 100.0, 30.0 + 0.5 * t); };
-
     std::vector<double>               times;
     std::vector<mrpt::poses::CPose3D> truth;
     std::vector<mrpt::poses::CPose3D> drifted;
-    for (int k = 0; k <= 100; k++)
+
+    static mrpt::poses::CPose3D drift(double t)
     {
-        const double         t   = k;
-        const double         yaw = mrpt::DEG2RAD(1.5 * t);
+        return tiltPose(3.0 * t / 100.0, 30.0 + 0.5 * t);
+    }
+
+    DriftingWalk()
+    {
+        constexpr int        subSteps = 400;
+        constexpr double     dt       = 1.0 / subSteps;
         mrpt::math::TPoint3D p(0, 0, 0);
-        if (k > 0)
-        {
-            const auto& prev = truth.back();
-            p = prev.translation() + mrpt::math::TVector3D(std::cos(yaw), std::sin(yaw), 0);
-        }
-        times.push_back(t);
-        truth.push_back(mrpt::poses::CPose3D::FromXYZYawPitchRoll(p.x, p.y, p.z, yaw, 0, 0));
-
         mrpt::math::TPoint3D q(0, 0, 0);
-        if (k > 0)
+        for (int k = 0; k <= 100; k++)
         {
-            const auto step = truth[k].translation() - truth[k - 1].translation();
-            q               = drifted.back().translation() + drift(t - 0.5).rotateVector(step);
+            const double t = k;
+            if (k > 0)
+            {
+                for (int i = 0; i < subSteps; i++)
+                {
+                    const double ts  = t - 1.0 + (i + 0.5) * dt;
+                    const double yaw = mrpt::DEG2RAD(1.5 * ts);
+                    const auto   v   = mrpt::math::TVector3D(std::cos(yaw), std::sin(yaw), 0);
+                    p                = p + v * dt;
+                    q                = q + drift(ts).rotateVector(v) * dt;
+                }
+            }
+            const double yaw = mrpt::DEG2RAD(1.5 * t);
+            times.push_back(t);
+            truth.push_back(mrpt::poses::CPose3D::FromXYZYawPitchRoll(p.x, p.y, p.z, yaw, 0, 0));
+            drifted.push_back(mrpt::poses::CPose3D::FromRotationAndTranslation(
+                drift(t).getRotationMatrix() * truth.back().getRotationMatrix(), q));
         }
-        drifted.push_back(mrpt::poses::CPose3D::FromRotationAndTranslation(
-            drift(t).getRotationMatrix() * truth[k].getRotationMatrix(), q));
     }
+};
 
-    std::vector<UpSample> samples;
-    for (int w = 0; w < 10; w++)
-    {
-        const double tc  = 10.0 * w + 5.0;
-        const auto   est = estimate_up_from_normals(estimate_planar_normals(makeRoom(drift(tc))));
-        samples.push_back({tc, est.up});
-    }
+struct LevelErrors
+{
+    double maxAttInside = 0;  // between the first and last sample [deg]
+    double maxAtt       = 0;  // [deg]
+    double maxPos       = 0;  // [m]
+};
 
-    const auto leveled = level_poses_from_up(times, drifted, samples);
-    ASSERT_EQUAL_(leveled.size(), truth.size());
-
-    double maxAttErrInside = 0;
-    double maxAttErr       = 0;
-    double maxZ            = 0;
-    for (size_t k = 0; k < truth.size(); k++)
+LevelErrors levelErrors(
+    const DriftingWalk& walk, const std::vector<mrpt::poses::CPose3D>& leveled, double tIn0,
+    double tIn1)
+{
+    ASSERT_EQUAL_(leveled.size(), walk.truth.size());
+    LevelErrors e;
+    for (size_t k = 0; k < walk.truth.size(); k++)
     {
         const auto   up  = leveled[k].rotateVector({0, 0, 1});
-        const auto   tu  = truth[k].rotateVector({0, 0, 1});
+        const auto   tu  = walk.truth[k].rotateVector({0, 0, 1});
         const double err = mrpt::RAD2DEG(std::acos(mrpt::saturate_val(up.dot(tu), -1.0, 1.0)));
-        maxAttErr        = std::max(maxAttErr, err);
-        if (times[k] >= 5.0 && times[k] <= 95.0)
+        e.maxAtt         = std::max(e.maxAtt, err);
+        if (walk.times[k] >= tIn0 && walk.times[k] <= tIn1)
         {
-            maxAttErrInside = std::max(maxAttErrInside, err);
+            e.maxAttInside = std::max(e.maxAttInside, err);
         }
-        maxZ = std::max(maxZ, std::abs(leveled[k].z()));
+        e.maxPos =
+            std::max(e.maxPos, (leveled[k].translation() - walk.truth[k].translation()).norm());
         if (k > 0)
         {
             // Continuous: each step keeps its length
             const double a = (leveled[k].translation() - leveled[k - 1].translation()).norm();
-            const double b = (drifted[k].translation() - drifted[k - 1].translation()).norm();
+            const double b =
+                (walk.drifted[k].translation() - walk.drifted[k - 1].translation()).norm();
             ASSERT_NEAR_(a, b, 1e-9);
         }
     }
+    return e;
+}
+
+void test_level_poses_from_up()
+{
+    const DriftingWalk walk;
+
     double driftedZ = 0;
-    for (const auto& d : drifted)
+    for (const auto& d : walk.drifted)
     {
         driftedZ = std::max(driftedZ, std::abs(d.z()));
     }
-    std::cout << "  leveled: attitude error max " << maxAttErr << " deg (" << maxAttErrInside
-              << " between window centres), |z| max " << maxZ << " m (drifted: " << driftedZ
-              << " m)\n";
-    ASSERT_LT_(maxAttErrInside, 0.1);
-    ASSERT_LT_(maxAttErr, 0.2);
-    ASSERT_LT_(maxZ, 0.05);
     ASSERT_GT_(driftedZ, 1.0);
+
+    // Exact up samples every 0.25 s: only the integration rule is left. The
+    // mid-time rotation of each step is second-order accurate (~0.1 mm here);
+    // the rotation at either end of the step would leave ~4 mm.
+    {
+        std::vector<UpSample> samples;
+        for (int i = 0; i <= 400; i++)
+        {
+            const double t = 0.25 * i;
+            samples.push_back({t, DriftingWalk::drift(t).rotateVector({0, 0, 1})});
+        }
+        const auto e =
+            levelErrors(walk, level_poses_from_up(walk.times, walk.drifted, samples), 0, 100);
+        std::cout << "  exact up: attitude error max " << e.maxAtt << " deg, position error max "
+                  << e.maxPos << " m (drifted |z| " << driftedZ << " m)\n";
+        ASSERT_LT_(e.maxAtt, 0.002);
+        ASSERT_LT_(e.maxPos, 0.001);
+    }
+
+    // Up estimated from a room cloud per 10 s window, leaning by the drift then:
+    {
+        std::vector<UpSample> samples;
+        for (int w = 0; w < 10; w++)
+        {
+            const double tc  = 10.0 * w + 5.0;
+            const auto   est = estimate_up_from_normals(
+                  estimate_planar_normals(makeRoom(DriftingWalk::drift(tc))));
+            samples.push_back({tc, est.up});
+        }
+        const auto e =
+            levelErrors(walk, level_poses_from_up(walk.times, walk.drifted, samples), 5, 95);
+        std::cout << "  windows: attitude error max " << e.maxAtt << " deg (" << e.maxAttInside
+                  << " between window centers), position error max " << e.maxPos << " m\n";
+        ASSERT_LT_(e.maxAttInside, 0.05);
+        ASSERT_LT_(e.maxAtt, 0.2);
+        ASSERT_LT_(e.maxPos, 0.05);
+    }
 }
 
 }  // namespace
