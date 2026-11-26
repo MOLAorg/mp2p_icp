@@ -224,7 +224,16 @@ std::vector<std::pair<size_t, size_t>> durationWindows(
     {
         windowOfKF[i] = static_cast<size_t>((times[i] - times.front()) / duration);
     }
-    return rangesOf(windowOfKF);
+    auto ranges = rangesOf(windowOfKF);
+
+    // A short trailing window would be held to the end on few keyframes: merge it
+    if (ranges.size() > 1 &&
+        times[ranges.back().second] - times[ranges.back().first] < 0.5 * duration)
+    {
+        ranges[ranges.size() - 2].second = ranges.back().second;
+        ranges.pop_back();
+    }
+    return ranges;
 }
 
 // RMS of the angle between wall normals and the horizontal plane [deg]
@@ -267,6 +276,10 @@ struct WindowEstimate
     double                                            t0    = 0;
     double                                            t1    = 0;
     std::optional<mp2p_icp_filters::EstimateUpResult> est;
+
+    /// Observable, with a reliable covariance and sigmas within
+    /// --max-window-sigma-deg: what --piecewise uses.
+    bool usable = false;
 };
 
 WindowEstimate estimateWindow(
@@ -297,6 +310,20 @@ WindowEstimate estimateWindow(
         const auto                         normals = normalsFromCloud(*pc, &points);
         w.est = mp2p_icp_filters::estimate_up_from_normals(normals, estimateParams(), &points);
         printEstimate(*w.est);
+
+        const auto sigmas = w.est->up_sigmas_deg();
+        if (!w.est->cov_reliable)
+        {
+            std::cout << "Not usable: too few groups of normals for a reliable sigma.\n";
+        }
+        else if (std::max(sigmas[0], sigmas[1]) > cli->arg_max_window_sigma)
+        {
+            std::cout << "Not usable: sigma above --max-window-sigma-deg.\n";
+        }
+        else
+        {
+            w.usable = true;
+        }
     }
     catch (const std::exception& e)
     {
@@ -314,7 +341,7 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
     std::ofstream f(cli->arg_windows_out);
     ASSERTMSG_(f.is_open(), "Cannot write --windows-out file: " + cli->arg_windows_out);
     f << "# window kf_first kf_last t_start t_end up_x up_y up_z tilt_deg sigma_x_deg "
-         "sigma_y_deg walls flats groups observable\n";
+         "sigma_y_deg walls flats groups observable usable\n";
     for (size_t i = 0; i < windows.size(); i++)
     {
         const auto& w = windows[i];
@@ -323,13 +350,13 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
         {
             const auto& e = *w.est;
             f << mrpt::format(
-                "%.8f %.8f %.8f %.4f %.4f %.4f %zu %zu %zu 1\n", e.up.x, e.up.y, e.up.z,
+                "%.8f %.8f %.8f %.4f %.4f %.4f %zu %zu %zu 1 %d\n", e.up.x, e.up.y, e.up.z,
                 e.tilt_deg(), e.up_sigmas_deg()[0], e.up_sigmas_deg()[1], e.wall_count,
-                e.flat_count, e.cov_groups);
+                e.flat_count, e.cov_groups, w.usable ? 1 : 0);
         }
         else
         {
-            f << "nan nan nan nan nan nan 0 0 0 0\n";
+            f << "nan nan nan nan nan nan 0 0 0 0 0\n";
         }
     }
     std::cout << "Windows written to: '" << cli->arg_windows_out << "'\n";
@@ -351,7 +378,7 @@ int levelPiecewise(
     {
         auto w = estimateWindow(
             sm, pipeline, times, i, ranges.size(), ranges[i].first, ranges[i].second);
-        if (w.est)
+        if (w.usable)
         {
             samples.push_back({0.5 * (w.t0 + w.t1), w.est->up});
             maxTilt = std::max(maxTilt, w.est->tilt_deg());
@@ -360,9 +387,9 @@ int levelPiecewise(
     }
     writeWindowsOut(windows);
 
-    ASSERTMSG_(!samples.empty(), "No time window had an observable up direction.");
+    ASSERTMSG_(!samples.empty(), "No time window had a usable up direction.");
     std::cout << mrpt::format(
-        "\nPiecewise: %zu of %zu windows observable, largest tilt %.3f deg\n", samples.size(),
+        "\nPiecewise: %zu of %zu windows usable, largest tilt %.3f deg\n", samples.size(),
         windows.size(), maxTilt);
 
     if (maxTilt > cli->arg_max_correction_deg)
@@ -452,6 +479,15 @@ int commandLevelWalls()
         pipeline = defaultPipeline(cli->arg_voxel);
     }
 
+    if (cli->arg_piecewise > 0 && cli->arg_windows > 0)
+    {
+        std::cout << "Warning: --windows is ignored with --piecewise.\n";
+    }
+    if (!cli->arg_windows_out.empty() && cli->arg_piecewise <= 0 && cli->arg_windows == 0)
+    {
+        std::cout << "Warning: --windows-out needs --windows or --piecewise: nothing will be "
+                     "written to it.\n";
+    }
     if (cli->arg_piecewise > 0)
     {
         return levelPiecewise(sm, pipeline, estimateOnly);
@@ -557,6 +593,7 @@ int printCommandsLevelWalls(bool showErrorMsg)
         [--piecewise SECONDS]               # level each time window on its own
         [--walls-only]                      # walls are the only vertical reference
         [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
+        [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
         [--windows-out <file.txt>]          # one row per window, machine readable
 
 Corrects a global pitch/roll error of a map by rotating it (about the map origin)
@@ -567,7 +604,9 @@ buildings); do not use it on outdoor or sloped scenes.
 With --piecewise, the vertical is estimated on consecutive time windows of that
 duration and interpolated in time, and each keyframe is rotated by its own
 correction, with positions integrated again so the trajectory stays continuous.
-This removes a vertical that drifts during the run, which one rotation can not.
+This removes a vertical that drifts during the run, which one rotation cannot.
+Windows without a reliable sigma of up, or with one above --max-window-sigma-deg,
+are skipped and interpolated over, and a short last window joins the previous one.
 
 With --pipeline, all point layers the pipeline outputs are merged and voxel
 decimated with --voxel.

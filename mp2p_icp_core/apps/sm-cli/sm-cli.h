@@ -55,6 +55,7 @@ struct cli_flags
     double      arg_piecewise          = 0;
     bool        arg_walls_only         = false;
     double      arg_cluster_size       = 2.0;
+    double      arg_max_window_sigma   = 1.0;
     std::string arg_windows_out;
 
     // Option handles, kept to reproduce TCLAP's isSet() semantics exactly
@@ -125,6 +126,10 @@ struct cli_flags
         cmd.add_option(
             "--cluster-size", arg_cluster_size,
             "level-walls: cell size grouping the normals for the uncertainty of up [m]");
+        cmd.add_option(
+            "--max-window-sigma-deg", arg_max_window_sigma,
+            "level-walls: with --piecewise, skip windows whose up is less certain than this "
+            "[deg]");
         cmd.add_option(
             "--windows-out", arg_windows_out,
             "level-walls: write one row per time window (--windows or --piecewise) to this "

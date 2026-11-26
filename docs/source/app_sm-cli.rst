@@ -115,6 +115,7 @@ attitude of a LiDAR-inertial run, estimated from a short accelerometer average.
         [--piecewise SECONDS]               # level each time window on its own
         [--walls-only]                      # walls are the only vertical reference
         [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
+        [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
         [--windows-out <file.txt>]          # one row per window, machine readable
 
 How it works:
@@ -137,8 +138,10 @@ time windows of that duration, its horizontal components are interpolated linear
 centres (held constant before the first and after the last), and each keyframe :math:`k` is rotated by its own
 minimal rotation :math:`R(t_k)` taking :math:`u(t_k)` to :math:`+Z`. Positions are integrated again from the first
 keyframe, each step rotated by the correction at its mid time, so the trajectory stays continuous:
-:math:`p'_k = p'_{k-1} + R(t_{mid}) (p_k - p_{k-1})`. Windows where :math:`u` is not observable are skipped and
-interpolated over; the command aborts if any window needs more than ``--max-correction-deg``.
+:math:`p'_k = p'_{k-1} + R(t_{mid}) (p_k - p_{k-1})`. Windows where :math:`u` is not observable, has no reliable
+sigma (fewer than 8 cells of normals) or a sigma above ``--max-window-sigma-deg`` are skipped and interpolated
+over, and a last window shorter than half the others joins the previous one. The command aborts if any window
+used needs more than ``--max-correction-deg``.
 Windows of 20 to 30 s worked well on indoor walks; shorter ones follow the drift more closely but are noisier.
 
 ``--walls-only`` drops floors and ceilings from the estimate (they are not a vertical reference where a floor
@@ -146,7 +149,7 @@ slopes, e.g. a ramp), so walls with at least two directions are needed. Each est
 deviations of :math:`u_x, u_y` from a sandwich covariance, which takes the normals in cells of ``--cluster-size``
 as the independent groups, and ``--windows-out`` writes one row per window
 (``window kf_first kf_last t_start t_end up_x up_y up_z tilt_deg sigma_x_deg sigma_y_deg walls flats groups
-observable``) for further processing.
+observable usable``) for further processing.
 
 .. note::
 
