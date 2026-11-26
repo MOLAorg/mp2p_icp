@@ -360,6 +360,8 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
             f << "nan nan nan nan nan nan 0 0 0 0 0\n";
         }
     }
+    f.close();
+    ASSERTMSG_(!f.fail(), "Error writing --windows-out file: " + cli->arg_windows_out);
     std::cout << "Windows written to: '" << cli->arg_windows_out << "'\n";
 }
 
