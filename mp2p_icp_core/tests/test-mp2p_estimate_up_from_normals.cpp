@@ -23,6 +23,8 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/poses/Lie/SO.h>
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <random>
@@ -200,6 +202,198 @@ void test_deterministic()
     ASSERT_(e1.eigVals == e2.eigVals);
 }
 
+void test_walls_only_ignores_sloped_floor()
+{
+    // Walls tilted 1 deg, the floor and ceiling 3 deg more (a ramp-like floor):
+    const auto T     = tiltPose(1.0, 40.0);
+    const auto Tflat = tiltPose(3.0, 130.0) + T;
+
+    RoomOptions walls;
+    walls.floor   = false;
+    walls.ceiling = false;
+    RoomOptions flats;
+    flats.wallsAlongX = false;
+    flats.wallsAlongY = false;
+
+    auto       normals      = estimate_planar_normals(makeRoom(T, walls));
+    const auto flatsNormals = estimate_planar_normals(makeRoom(Tflat, flats));
+    normals.insert(normals.end(), flatsNormals.begin(), flatsNormals.end());
+
+    EstimateUpParams p;
+    p.flats_weight = 0;
+    // Wide thresholds would take the sloped floor for neither walls nor flats:
+    const auto est = estimate_up_from_normals(normals, p);
+    const auto err = rotationAngleDeg(rotation_aligning_up_to_z(est.up) + T);
+    std::cout << "  walls only: error " << err << " deg (flats used: " << est.flat_count << ")\n";
+    ASSERT_LT_(err, 0.05);
+    ASSERT_EQUAL_(est.flat_count, 0UL);
+
+    // With the flats, the sloped floor pulls the estimate away:
+    const auto mixed = estimate_up_from_normals(normals);
+    ASSERT_GT_(rotationAngleDeg(rotation_aligning_up_to_z(mixed.up) + T), 0.5);
+}
+
+void test_walls_only_single_direction_rejected()
+{
+    RoomOptions o;
+    o.wallsAlongY = false;  // one wall direction, plus floor and ceiling
+
+    const auto       normals = estimate_planar_normals(makeRoom(tiltPose(1.0, 20.0), o));
+    EstimateUpParams p;
+    p.flats_weight = 0;
+
+    bool thrown = false;
+    try
+    {
+        [[maybe_unused]] const auto est = estimate_up_from_normals(normals, p);
+    }
+    catch (const std::exception&)
+    {
+        thrown = true;
+    }
+    ASSERTMSG_(thrown, "Walls only with a single wall direction must be rejected");
+}
+
+// A unit vector at a random angle of `sigma` [rad] per axis from `n`.
+mrpt::math::TVector3D perturb(const mrpt::math::TVector3D& n, double sigma, std::mt19937& rng)
+{
+    std::normal_distribution<double> g(0.0, sigma);
+    mrpt::math::TVector3D            v(n.x + g(rng), n.y + g(rng), n.z + g(rng));
+    return v * (1.0 / v.norm());
+}
+
+struct CalibrationResult
+{
+    double empiricalSigmaX = 0;
+    double empiricalSigmaY = 0;
+    double reportedSigmaX  = 0;
+    double reportedSigmaY  = 0;
+    double meanErrorDeg    = 0;
+};
+
+// Monte Carlo of the up estimate on synthetic normals of a room tilted by
+// `T`: `clusters` groups of `perCluster` normals per population (walls along
+// X, walls along Y, flats), each group sharing an angular offset of
+// `sigmaShared` [rad] plus `sigmaEach` [rad] per normal.
+CalibrationResult monteCarlo(
+    const mrpt::poses::CPose3D& T, size_t clusters, size_t perCluster, double sigmaShared,
+    double sigmaEach, bool givePoints, const EstimateUpParams& params, size_t trials)
+{
+    std::mt19937 rng(42);
+
+    const std::array<mrpt::math::TVector3D, 3> bases = {
+        T.rotateVector({1, 0, 0}), T.rotateVector({0, 1, 0}), T.rotateVector({0, 0, 1})};
+    const auto trueUp = bases[2];
+
+    std::vector<double> ex;
+    std::vector<double> ey;
+    double              repX = 0;
+    double              repY = 0;
+    double              err  = 0;
+
+    for (size_t trial = 0; trial < trials; trial++)
+    {
+        std::vector<mrpt::math::TVector3D> normals;
+        std::vector<mrpt::math::TPoint3Df> points;
+        for (size_t b = 0; b < bases.size(); b++)
+        {
+            if (params.flats_weight == 0 && b == 2)
+            {
+                continue;
+            }
+            for (size_t c = 0; c < clusters; c++)
+            {
+                const auto shared = perturb(bases[b], sigmaShared, rng);
+                const auto cell   = mrpt::math::TPoint3Df(
+                      static_cast<float>(10.0 * c + 1.0), static_cast<float>(10.0 * b + 1.0), 1.0f);
+                for (size_t i = 0; i < perCluster; i++)
+                {
+                    const auto n = perturb(shared, sigmaEach, rng);
+                    normals.push_back((i % 2) ? n : -n);  // arbitrary signs
+                    points.push_back(cell);
+                }
+            }
+        }
+        const auto est = estimate_up_from_normals(normals, params, givePoints ? &points : nullptr);
+        ex.push_back(est.up.x - trueUp.x);
+        ey.push_back(est.up.y - trueUp.y);
+        repX += est.up_cov(0, 0);
+        repY += est.up_cov(1, 1);
+        err += mrpt::RAD2DEG(std::acos(mrpt::saturate_val(est.up.dot(trueUp), -1.0, 1.0)));
+    }
+
+    const auto rms = [](const std::vector<double>& v)
+    {
+        double m = 0;
+        for (const double x : v)
+        {
+            m += x;
+        }
+        m /= static_cast<double>(v.size());
+        double s = 0;
+        for (const double x : v)
+        {
+            s += (x - m) * (x - m);
+        }
+        return std::sqrt(s / static_cast<double>(v.size() - 1));
+    };
+
+    const auto        n = static_cast<double>(trials);
+    CalibrationResult r;
+    r.empiricalSigmaX = mrpt::RAD2DEG(rms(ex));
+    r.empiricalSigmaY = mrpt::RAD2DEG(rms(ey));
+    r.reportedSigmaX  = mrpt::RAD2DEG(std::sqrt(repX / n));
+    r.reportedSigmaY  = mrpt::RAD2DEG(std::sqrt(repY / n));
+    r.meanErrorDeg    = err / n;
+    return r;
+}
+
+void checkCalibrated(const CalibrationResult& r, const char* label)
+{
+    const double ratioX = r.reportedSigmaX / r.empiricalSigmaX;
+    const double ratioY = r.reportedSigmaY / r.empiricalSigmaY;
+    std::cout << "  " << label << ": sigma x reported " << r.reportedSigmaX << " vs empirical "
+              << r.empiricalSigmaX << " deg (" << ratioX << "), y " << r.reportedSigmaY << " vs "
+              << r.empiricalSigmaY << " (" << ratioY << ")\n";
+    ASSERT_GT_(ratioX, 0.7);
+    ASSERT_LT_(ratioX, 1.3);
+    ASSERT_GT_(ratioY, 0.7);
+    ASSERT_LT_(ratioY, 1.3);
+}
+
+void test_covariance_independent_normals()
+{
+    const auto T = tiltPose(1.0, 60.0);
+
+    EstimateUpParams withFlats;
+    checkCalibrated(
+        monteCarlo(T, 300, 1, 0.0, mrpt::DEG2RAD(2.0), false, withFlats, 400), "walls + flats");
+
+    EstimateUpParams wallsOnly;
+    wallsOnly.flats_weight = 0;
+    checkCalibrated(
+        monteCarlo(T, 300, 1, 0.0, mrpt::DEG2RAD(2.0), false, wallsOnly, 400), "walls only");
+}
+
+void test_covariance_grouped_errors()
+{
+    // Each group of 20 normals shares a 1 deg error, as the normals of one
+    // leaning plane do:
+    const auto T = tiltPose(0.5, 200.0);
+
+    EstimateUpParams p;
+    p.cluster_size = 2.0;
+    checkCalibrated(
+        monteCarlo(T, 40, 20, mrpt::DEG2RAD(1.0), mrpt::DEG2RAD(2.0), true, p, 400),
+        "grouped, with points");
+
+    // Without the points, every normal counts as independent: optimistic.
+    const auto r = monteCarlo(T, 40, 20, mrpt::DEG2RAD(1.0), mrpt::DEG2RAD(2.0), false, p, 400);
+    std::cout << "  grouped, no points: sigma x reported " << r.reportedSigmaX << " vs empirical "
+              << r.empiricalSigmaX << " deg\n";
+    ASSERT_LT_(r.reportedSigmaX, 0.6 * r.empiricalSigmaX);
+}
+
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -217,6 +411,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_deterministic();
         std::cout << "test_deterministic: Success" << std::endl;
+
+        test_walls_only_ignores_sloped_floor();
+        std::cout << "test_walls_only_ignores_sloped_floor: Success" << std::endl;
+
+        test_walls_only_single_direction_rejected();
+        std::cout << "test_walls_only_single_direction_rejected: Success" << std::endl;
+
+        test_covariance_independent_normals();
+        std::cout << "test_covariance_independent_normals: Success" << std::endl;
+
+        test_covariance_grouped_errors();
+        std::cout << "test_covariance_grouped_errors: Success" << std::endl;
 
         return 0;
     }
