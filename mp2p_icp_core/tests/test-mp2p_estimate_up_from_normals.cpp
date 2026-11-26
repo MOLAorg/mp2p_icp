@@ -27,6 +27,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <tuple>
 
@@ -452,6 +453,33 @@ void test_covariance_few_groups()
     ASSERT_GE_(est.up_cov(1, 1), ind(1, 1));
 }
 
+void test_covariance_bad_points()
+{
+    // Points that are not finite, far away, or with cells too small for an
+    // integer index stay out of the cells, without undefined behavior.
+    std::vector<mrpt::math::TPoint3Df> points;
+    const auto normals = estimate_planar_normals(makeRoom(tiltPose(1.0, 45.0)), {}, &points);
+    ASSERT_GT_(points.size(), 300UL);
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    for (size_t i = 0; i < 100; i++)
+    {
+        points[i]       = {nan, 0.0f, 0.0f};
+        points[100 + i] = {1e30f, 0.0f, 0.0f};
+        points[200 + i] = {std::numeric_limits<float>::infinity(), 0.0f, 0.0f};
+    }
+    for (const double cell : {2.0, 1e-12})
+    {
+        EstimateUpParams p;
+        p.cluster_size = cell;
+        const auto est = estimate_up_from_normals(normals, p, &points);
+        std::cout << "  cell " << cell << ": " << est.cov_groups << " groups, sigma x "
+                  << est.up_sigmas_deg()[0] << " deg, reliable " << est.cov_reliable << "\n";
+        ASSERT_(std::isfinite(est.up_cov(0, 0)) && std::isfinite(est.up_cov(1, 1)));
+        ASSERT_(est.cov_reliable);
+        ASSERT_LT_(est.cov_groups, normals.size() - 299);
+    }
+}
+
 void test_covariance_uses_fit_classification()
 {
     // One iteration classifies against +Z. Normals that +Z ignores but the
@@ -647,6 +675,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_covariance_few_groups();
         std::cout << "test_covariance_few_groups: Success" << std::endl;
+
+        test_covariance_bad_points();
+        std::cout << "test_covariance_bad_points: Success" << std::endl;
 
         test_covariance_uses_fit_classification();
         std::cout << "test_covariance_uses_fit_classification: Success" << std::endl;

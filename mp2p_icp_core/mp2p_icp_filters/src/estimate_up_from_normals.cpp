@@ -29,6 +29,7 @@
 #include <cmath>
 #include <cstdint>
 #include <map>
+#include <optional>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>
@@ -203,6 +204,26 @@ void scaleForGroups(Eigen::Matrix2d& G, std::size_t n)
     }
 }
 
+using CellKey = std::array<int64_t, 3>;
+
+// Integer cell of a point, or nothing for a point that is not finite or too
+// far away for an exact integer index.
+std::optional<CellKey> cellOf(const mrpt::math::TPoint3Df& p, double size)
+{
+    constexpr double maxIndex = 9.0e15;  // below 2^53: exact as a double, fits in int64
+    CellKey          key{};
+    for (int i = 0; i < 3; i++)
+    {
+        const double q = std::floor(static_cast<double>(p[i]) / size);
+        if (!std::isfinite(q) || std::abs(q) > maxIndex)
+        {
+            return std::nullopt;
+        }
+        key[i] = static_cast<int64_t>(q);
+    }
+    return key;
+}
+
 /* Sandwich covariance of the estimated up. With u(d) = normalize(u + E d), E the
  * other two eigenvectors of M, the cost u^T M u has the Hessian
  * H = 2 diag(l1 - l0, l2 - l0) in d, and each normal adds the score
@@ -222,10 +243,10 @@ void estimateUpCovariance(
     E.col(0) = eigVecs.asEigen().col(1);
     E.col(1) = eigVecs.asEigen().col(2);
 
-    const bool                                        grouped = points && params.cluster_size > 0;
-    std::map<std::array<int32_t, 3>, Eigen::Vector2d> cellScores;
-    Eigen::Matrix2d                                   Gnormals = Eigen::Matrix2d::Zero();
-    std::size_t                                       nNormals = 0;
+    const bool                         grouped = points && params.cluster_size > 0;
+    std::map<CellKey, Eigen::Vector2d> cellScores;
+    Eigen::Matrix2d                    Gnormals = Eigen::Matrix2d::Zero();
+    std::size_t                        nNormals = 0;
 
     for (size_t i = 0; i < normals.size(); i++)
     {
@@ -247,12 +268,11 @@ void estimateUpCovariance(
         nNormals++;
         if (grouped)
         {
-            const auto& p   = (*points)[i];
-            const auto  key = std::array<int32_t, 3>{
-                 static_cast<int32_t>(std::floor(p.x / params.cluster_size)),
-                 static_cast<int32_t>(std::floor(p.y / params.cluster_size)),
-                 static_cast<int32_t>(std::floor(p.z / params.cluster_size))};
-            cellScores.try_emplace(key, Eigen::Vector2d::Zero()).first->second += score;
+            // A point without a valid cell only counts in the per-normal covariance
+            if (const auto key = cellOf((*points)[i], params.cluster_size); key)
+            {
+                cellScores.try_emplace(*key, Eigen::Vector2d::Zero()).first->second += score;
+            }
         }
     }
     scaleForGroups(Gnormals, nNormals);
