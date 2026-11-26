@@ -443,4 +443,77 @@ mrpt::poses::CPose3D rotation_aligning_up_to_z(const mrpt::math::TVector3D& up)
     return mrpt::poses::CPose3D::FromRotationAndTranslation(R, mrpt::math::TVector3D(0, 0, 0));
 }
 
+mrpt::math::TVector3D interpolate_up(const std::vector<UpSample>& samples, double t)
+{
+    if (samples.empty())
+    {
+        return {0, 0, 1};
+    }
+    const auto byTime = [](const UpSample& s, double tt) { return s.t < tt; };
+    const auto it     = std::lower_bound(samples.begin(), samples.end(), t, byTime);
+
+    double ux = 0;
+    double uy = 0;
+    if (it == samples.begin())
+    {
+        ux = it->up.x;
+        uy = it->up.y;
+    }
+    else if (it == samples.end())
+    {
+        ux = samples.back().up.x;
+        uy = samples.back().up.y;
+    }
+    else
+    {
+        const auto&  a   = *(it - 1);
+        const auto&  b   = *it;
+        const double dt  = b.t - a.t;
+        const double frc = dt > 0 ? (t - a.t) / dt : 1.0;
+        ux               = a.up.x + frc * (b.up.x - a.up.x);
+        uy               = a.up.y + frc * (b.up.y - a.up.y);
+    }
+    const double h2 = ux * ux + uy * uy;
+    ASSERTMSG_(h2 < 1.0, "interpolate_up(): the up samples must point upwards");
+    return {ux, uy, std::sqrt(1.0 - h2)};
+}
+
+std::vector<mrpt::poses::CPose3D> level_poses_from_up(
+    const std::vector<double>& times, const std::vector<mrpt::poses::CPose3D>& poses,
+    const std::vector<UpSample>& samples)
+{
+    MRPT_START
+
+    ASSERT_EQUAL_(times.size(), poses.size());
+    ASSERT_(std::is_sorted(times.begin(), times.end()));
+    ASSERT_(std::is_sorted(
+        samples.begin(), samples.end(),
+        [](const UpSample& a, const UpSample& b) { return a.t < b.t; }));
+
+    std::vector<mrpt::poses::CPose3D> out;
+    out.reserve(poses.size());
+    for (size_t k = 0; k < poses.size(); k++)
+    {
+        const auto Rk = rotation_aligning_up_to_z(interpolate_up(samples, times[k]));
+
+        mrpt::math::TPoint3D p;
+        if (k == 0)
+        {
+            p = poses[0].translation();
+        }
+        else
+        {
+            const double tMid = 0.5 * (times[k - 1] + times[k]);
+            const auto   Rmid = rotation_aligning_up_to_z(interpolate_up(samples, tMid));
+            const auto   step = poses[k].translation() - poses[k - 1].translation();
+            p                 = out.back().translation() + Rmid.rotateVector(step);
+        }
+        out.push_back(mrpt::poses::CPose3D::FromRotationAndTranslation(
+            Rk.getRotationMatrix() * poses[k].getRotationMatrix(), p));
+    }
+    return out;
+
+    MRPT_END
+}
+
 }  // namespace mp2p_icp_filters

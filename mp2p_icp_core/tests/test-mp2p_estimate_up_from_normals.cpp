@@ -394,6 +394,85 @@ void test_covariance_grouped_errors()
     ASSERT_LT_(r.reportedSigmaX, 0.6 * r.empiricalSigmaX);
 }
 
+void test_level_poses_from_up()
+{
+    // A walk at 1 m/s, turning, whose estimated vertical drifts from 0 to 3
+    // deg in 100 s. Each 10 s window sees the room leaning by the drift then.
+    const auto drift = [](double t) { return tiltPose(3.0 * t / 100.0, 30.0 + 0.5 * t); };
+
+    std::vector<double>               times;
+    std::vector<mrpt::poses::CPose3D> truth;
+    std::vector<mrpt::poses::CPose3D> drifted;
+    for (int k = 0; k <= 100; k++)
+    {
+        const double         t   = k;
+        const double         yaw = mrpt::DEG2RAD(1.5 * t);
+        mrpt::math::TPoint3D p(0, 0, 0);
+        if (k > 0)
+        {
+            const auto& prev = truth.back();
+            p = prev.translation() + mrpt::math::TVector3D(std::cos(yaw), std::sin(yaw), 0);
+        }
+        times.push_back(t);
+        truth.push_back(mrpt::poses::CPose3D::FromXYZYawPitchRoll(p.x, p.y, p.z, yaw, 0, 0));
+
+        mrpt::math::TPoint3D q(0, 0, 0);
+        if (k > 0)
+        {
+            const auto step = truth[k].translation() - truth[k - 1].translation();
+            q               = drifted.back().translation() + drift(t - 0.5).rotateVector(step);
+        }
+        drifted.push_back(mrpt::poses::CPose3D::FromRotationAndTranslation(
+            drift(t).getRotationMatrix() * truth[k].getRotationMatrix(), q));
+    }
+
+    std::vector<UpSample> samples;
+    for (int w = 0; w < 10; w++)
+    {
+        const double tc  = 10.0 * w + 5.0;
+        const auto   est = estimate_up_from_normals(estimate_planar_normals(makeRoom(drift(tc))));
+        samples.push_back({tc, est.up});
+    }
+
+    const auto leveled = level_poses_from_up(times, drifted, samples);
+    ASSERT_EQUAL_(leveled.size(), truth.size());
+
+    double maxAttErrInside = 0;
+    double maxAttErr       = 0;
+    double maxZ            = 0;
+    for (size_t k = 0; k < truth.size(); k++)
+    {
+        const auto   up  = leveled[k].rotateVector({0, 0, 1});
+        const auto   tu  = truth[k].rotateVector({0, 0, 1});
+        const double err = mrpt::RAD2DEG(std::acos(mrpt::saturate_val(up.dot(tu), -1.0, 1.0)));
+        maxAttErr        = std::max(maxAttErr, err);
+        if (times[k] >= 5.0 && times[k] <= 95.0)
+        {
+            maxAttErrInside = std::max(maxAttErrInside, err);
+        }
+        maxZ = std::max(maxZ, std::abs(leveled[k].z()));
+        if (k > 0)
+        {
+            // Continuous: each step keeps its length
+            const double a = (leveled[k].translation() - leveled[k - 1].translation()).norm();
+            const double b = (drifted[k].translation() - drifted[k - 1].translation()).norm();
+            ASSERT_NEAR_(a, b, 1e-9);
+        }
+    }
+    double driftedZ = 0;
+    for (const auto& d : drifted)
+    {
+        driftedZ = std::max(driftedZ, std::abs(d.z()));
+    }
+    std::cout << "  leveled: attitude error max " << maxAttErr << " deg (" << maxAttErrInside
+              << " between window centres), |z| max " << maxZ << " m (drifted: " << driftedZ
+              << " m)\n";
+    ASSERT_LT_(maxAttErrInside, 0.1);
+    ASSERT_LT_(maxAttErr, 0.2);
+    ASSERT_LT_(maxZ, 0.05);
+    ASSERT_GT_(driftedZ, 1.0);
+}
+
 }  // namespace
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -423,6 +502,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_covariance_grouped_errors();
         std::cout << "test_covariance_grouped_errors: Success" << std::endl;
+
+        test_level_poses_from_up();
+        std::cout << "test_level_poses_from_up: Success" << std::endl;
 
         return 0;
     }

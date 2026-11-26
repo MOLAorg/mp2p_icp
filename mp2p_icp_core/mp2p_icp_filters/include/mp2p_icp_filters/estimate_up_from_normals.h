@@ -168,6 +168,33 @@ struct EstimateUpResult
  */
 [[nodiscard]] mrpt::poses::CPose3D rotation_aligning_up_to_z(const mrpt::math::TVector3D& up);
 
+/// An "up" estimate at a time, e.g. from the keyframes of one time window
+struct UpSample
+{
+    double                t = 0;  //!< Time [s]
+    mrpt::math::TVector3D up{0, 0, 1};  //!< Unit up vector, in the map frame
+};
+
+/** Up direction at time `t`: linear interpolation of the horizontal
+ *  components of `samples` (sorted by time), held constant before the first
+ *  and after the last one, and normalized. +Z if `samples` is empty.
+ */
+[[nodiscard]] mrpt::math::TVector3D interpolate_up(const std::vector<UpSample>& samples, double t);
+
+/** Levels a trajectory whose vertical drifts slowly: each pose is rotated by
+ *  R_k = rotation_aligning_up_to_z(up(t_k)), and the positions are integrated
+ *  again from the first one with each step rotated by the correction at its
+ *  mid time, so the trajectory stays continuous:
+ *
+ *      p'_0 = p_0,  p'_k = p'_{k-1} + R(t_mid) (p_k - p_{k-1}),  R'_k = R(t_k) R_k
+ *
+ *  `up(t)` is interpolate_up() of `samples`. `times` and `poses` must have
+ *  the same size, with times sorted.
+ */
+[[nodiscard]] std::vector<mrpt::poses::CPose3D> level_poses_from_up(
+    const std::vector<double>& times, const std::vector<mrpt::poses::CPose3D>& poses,
+    const std::vector<UpSample>& samples);
+
 /** @} */
 
 }  // namespace mp2p_icp_filters
