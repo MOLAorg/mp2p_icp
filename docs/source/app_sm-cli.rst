@@ -135,10 +135,10 @@ fixed gauge error that a single rotation removes, while differing values mean dr
 
 ``--piecewise SECONDS`` levels a map whose vertical drifts during the run. :math:`u` is estimated on consecutive
 time windows of that duration, its horizontal components are interpolated linearly in time between the window
-centres (held constant before the first and after the last), and each keyframe :math:`k` is rotated by its own
-minimal rotation :math:`R(t_k)` taking :math:`u(t_k)` to :math:`+Z`. Positions are integrated again from the first
+centers (held constant before the first and after the last), and each keyframe :math:`k` is rotated by its own
+minimal rotation :math:`C(t_k)` taking :math:`u(t_k)` to :math:`+Z`. Positions are integrated again from the first
 keyframe, each step rotated by the correction at its mid time, so the trajectory stays continuous:
-:math:`p'_k = p'_{k-1} + R(t_{mid}) (p_k - p_{k-1})`. Windows where :math:`u` is not observable, has no reliable
+:math:`p'_k = p'_{k-1} + C(t_{mid}) (p_k - p_{k-1})`. Windows where :math:`u` is not observable, has no reliable
 sigma (fewer than 8 cells of normals) or a sigma above ``--max-window-sigma-deg`` are skipped and interpolated
 over, and a last window shorter than half the others joins the previous one. The command aborts if any window
 used needs more than ``--max-correction-deg``.

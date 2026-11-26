@@ -196,11 +196,12 @@ struct UpSample
 [[nodiscard]] mrpt::math::TVector3D interpolate_up(const std::vector<UpSample>& samples, double t);
 
 /** Levels a trajectory whose vertical drifts slowly: each pose is rotated by
- *  R_k = rotation_aligning_up_to_z(up(t_k)), and the positions are integrated
- *  again from the first one with each step rotated by the correction at its
- *  mid time, so the trajectory stays continuous:
+ *  C(t_k), with C(t) = rotation_aligning_up_to_z(up(t)), and the positions are
+ *  integrated again from the first one with each step rotated by the
+ *  correction at its mid time, so the trajectory stays continuous. With R_k
+ *  the attitude of pose k:
  *
- *      p'_0 = p_0,  p'_k = p'_{k-1} + R(t_mid) (p_k - p_{k-1}),  R'_k = R(t_k) R_k
+ *      p'_0 = p_0,  p'_k = p'_{k-1} + C(t_mid) (p_k - p_{k-1}),  R'_k = C(t_k) R_k
  *
  *  `up(t)` is interpolate_up() of `samples`. `times` and `poses` must have
  *  the same size, with times sorted.
