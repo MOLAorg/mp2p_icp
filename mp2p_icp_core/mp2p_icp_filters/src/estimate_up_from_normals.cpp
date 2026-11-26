@@ -179,6 +179,30 @@ NormalKind classify(
     return NormalKind::Ignored;
 }
 
+bool fullRank(const Eigen::Matrix2d& G)
+{
+    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> es(G);
+    const auto&                                          ev = es.eigenvalues();
+    return ev[1] > 0 && ev[0] > 1e-9 * ev[1];
+}
+
+// The smallest covariance that is at least A and at least B: B + max(A - B, 0).
+Eigen::Matrix2d atLeast(const Eigen::Matrix2d& A, const Eigen::Matrix2d& B)
+{
+    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> es(A - B);
+    const Eigen::Vector2d                                ev = es.eigenvalues().cwiseMax(0.0);
+    return B + es.eigenvectors() * ev.asDiagonal() * es.eigenvectors().transpose();
+}
+
+// Unbiased for the scores summing to zero: n / (n - 1)
+void scaleForGroups(Eigen::Matrix2d& G, std::size_t n)
+{
+    if (n > 1)
+    {
+        G *= static_cast<double>(n) / static_cast<double>(n - 1);
+    }
+}
+
 /* Sandwich covariance of the estimated up. With u(d) = normalize(u + E d), E the
  * other two eigenvectors of M, the cost u^T M u has the Hessian
  * H = 2 diag(l1 - l0, l2 - l0) in d, and each normal adds the score
@@ -198,8 +222,8 @@ void estimateUpCovariance(
 
     const bool                                        grouped = points && params.cluster_size > 0;
     std::map<std::array<int32_t, 3>, Eigen::Vector2d> cellScores;
-    Eigen::Matrix2d                                   G      = Eigen::Matrix2d::Zero();
-    std::size_t                                       groups = 0;
+    Eigen::Matrix2d                                   Gnormals = Eigen::Matrix2d::Zero();
+    std::size_t                                       nNormals = 0;
 
     for (size_t i = 0; i < normals.size(); i++)
     {
@@ -217,6 +241,8 @@ void estimateUpCovariance(
         const Eigen::Vector3d n(nn.x, nn.y, nn.z);
         const Eigen::Vector2d score = 2.0 * w * n.dot(u) * (E.transpose() * n);
 
+        Gnormals += score * score.transpose();
+        nNormals++;
         if (grouped)
         {
             const auto& p   = (*points)[i];
@@ -226,33 +252,36 @@ void estimateUpCovariance(
                  static_cast<int32_t>(std::floor(p.z / params.cluster_size))};
             cellScores.try_emplace(key, Eigen::Vector2d::Zero()).first->second += score;
         }
-        else
-        {
-            G += score * score.transpose();
-            groups++;
-        }
     }
-    if (grouped)
-    {
-        for (const auto& [key, S] : cellScores)
-        {
-            G += S * S.transpose();
-        }
-        groups = cellScores.size();
-    }
-    if (groups > 1)
-    {
-        G *= static_cast<double>(groups) / static_cast<double>(groups - 1);
-    }
+    scaleForGroups(Gnormals, nNormals);
 
     Eigen::Matrix2d Hinv = Eigen::Matrix2d::Zero();
     Hinv(0, 0)           = 1.0 / (2.0 * (eigVals[1] - eigVals[0]));
     Hinv(1, 1)           = 1.0 / (2.0 * (eigVals[2] - eigVals[0]));
 
-    const Eigen::Matrix2d covD  = Hinv * G * Hinv;
+    Eigen::Matrix2d covD = Hinv * Gnormals * Hinv;
+    r.cov_groups         = nNormals;
+    r.cov_reliable       = nNormals >= params.min_cov_groups && fullRank(Gnormals);
+
+    if (grouped)
+    {
+        Eigen::Matrix2d Gcells = Eigen::Matrix2d::Zero();
+        for (const auto& [key, S] : cellScores)
+        {
+            Gcells += S * S.transpose();
+        }
+        scaleForGroups(Gcells, cellScores.size());
+
+        r.cov_groups   = cellScores.size();
+        r.cov_reliable = cellScores.size() >= params.min_cov_groups && fullRank(Gcells);
+        if (r.cov_reliable)
+        {
+            covD = atLeast(Hinv * Gcells * Hinv, covD);
+        }
+    }
+
     const Eigen::Matrix3d covUp = E * covD * E.transpose();
     r.up_cov.asEigen()          = covUp.topLeftCorner<2, 2>();
-    r.cov_groups                = groups;
 }
 
 }  // namespace

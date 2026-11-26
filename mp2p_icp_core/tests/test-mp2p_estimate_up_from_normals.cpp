@@ -28,6 +28,7 @@
 #include <cmath>
 #include <iostream>
 #include <random>
+#include <tuple>
 
 using namespace mp2p_icp_filters;
 
@@ -394,6 +395,56 @@ void test_covariance_grouped_errors()
     ASSERT_LT_(r.reportedSigmaX, 0.6 * r.empiricalSigmaX);
 }
 
+void test_covariance_few_groups()
+{
+    const auto perNormal = [](const std::vector<mrpt::math::TVector3D>& normals)
+    { return estimate_up_from_normals(normals).up_cov; };
+
+    // The room at a known place, so the cells it falls in are known:
+    for (const auto& [origin, cell, groups] :
+         {std::tuple<double, double, size_t>{1.0, 25.0, 1},
+          std::tuple<double, double, size_t>{14.0, 16.0, 2}})
+    {
+        const auto T =
+            mrpt::poses::CPose3D::FromTranslation(origin, 1.0, 1.0) + tiltPose(1.0, 70.0);
+        std::vector<mrpt::math::TPoint3Df> points;
+        const auto normals = estimate_planar_normals(makeRoom(T), {}, &points);
+
+        EstimateUpParams p;
+        p.cluster_size = cell;
+        const auto est = estimate_up_from_normals(normals, p, &points);
+        std::cout << "  " << est.cov_groups << " group(s): sigma x " << est.up_sigmas_deg()[0]
+                  << " deg, reliable " << est.cov_reliable << "\n";
+        ASSERT_EQUAL_(est.cov_groups, groups);
+        ASSERT_(!est.cov_reliable);
+        // Falls back to the per-normal covariance, never a null or rank-1 one:
+        const auto ind = perNormal(normals);
+        for (int i = 0; i < 2; i++)
+        {
+            for (int j = 0; j < 2; j++)
+            {
+                ASSERT_EQUAL_(est.up_cov(i, j), ind(i, j));
+            }
+        }
+        const double det =
+            est.up_cov(0, 0) * est.up_cov(1, 1) - est.up_cov(0, 1) * est.up_cov(1, 0);
+        ASSERT_GT_(det, 0);
+    }
+
+    // Enough cells: grouped, and never below the per-normal covariance
+    const auto T = mrpt::poses::CPose3D::FromTranslation(1.0, 1.0, 1.0) + tiltPose(1.0, 70.0);
+    std::vector<mrpt::math::TPoint3Df> points;
+    const auto                         normals = estimate_planar_normals(makeRoom(T), {}, &points);
+    EstimateUpParams                   p;
+    p.cluster_size = 1.0;
+    const auto est = estimate_up_from_normals(normals, p, &points);
+    ASSERT_(est.cov_reliable);
+    ASSERT_GE_(est.cov_groups, p.min_cov_groups);
+    const auto ind = perNormal(normals);
+    ASSERT_GE_(est.up_cov(0, 0), ind(0, 0));
+    ASSERT_GE_(est.up_cov(1, 1), ind(1, 1));
+}
+
 void test_level_poses_from_up()
 {
     // A walk at 1 m/s, turning, whose estimated vertical drifts from 0 to 3
@@ -502,6 +553,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_covariance_grouped_errors();
         std::cout << "test_covariance_grouped_errors: Success" << std::endl;
+
+        test_covariance_few_groups();
+        std::cout << "test_covariance_few_groups: Success" << std::endl;
 
         test_level_poses_from_up();
         std::cout << "test_level_poses_from_up: Success" << std::endl;

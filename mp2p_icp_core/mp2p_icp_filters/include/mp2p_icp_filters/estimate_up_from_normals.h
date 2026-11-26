@@ -92,6 +92,13 @@ struct EstimateUpParams
     /// wall, a noisy patch, overlapping neighborhoods) then count once per
     /// cell. 0, or no points, treats every normal as independent.
     double cluster_size = 2.0;
+
+    /// Fewest groups (cells) for the grouped `up_cov`. The scores of all
+    /// groups sum to zero at the optimum, so a handful of groups cannot
+    /// measure their spread (one group gives a null covariance, two a rank-1
+    /// one): below this, or with a rank-deficient score covariance, `up_cov`
+    /// falls back to the per-normal covariance and `cov_reliable` is false.
+    std::size_t min_cov_groups = 8;
 };
 
 /// Output of estimate_up_from_normals()
@@ -122,14 +129,21 @@ struct EstimateUpResult
      *  noise model. Its one assumption is independence between the groups of
      *  normals (cells of EstimateUpParams::cluster_size, or single normals):
      *  normals of one plane share its error, so per-normal independence is
-     *  optimistic on real clouds. It does not account for references that
-     *  are not plumb or level (a sloped floor, a leaning facade).
+     *  optimistic on real clouds. The grouped covariance is never smaller
+     *  than the per-normal one. It does not account for references that are
+     *  not plumb or level (a sloped floor, a leaning facade).
      */
     mrpt::math::CMatrixDouble22 up_cov;
 
-    /// Number of independent groups (cells or normals) behind `up_cov`.
-    /// With few groups (under ~10) `up_cov` is itself uncertain.
+    /// Number of groups found: cells of EstimateUpParams::cluster_size if
+    /// points were given, otherwise single normals.
     std::size_t cov_groups = 0;
+
+    /// True if `up_cov` comes from those groups: at least
+    /// EstimateUpParams::min_cov_groups of them, with a full-rank score
+    /// covariance. False means it fell back to the per-normal covariance,
+    /// a lower bound of the real uncertainty: do not use it as a weight.
+    bool cov_reliable = false;
 
     /// Angle between `up` and +Z [deg]
     [[nodiscard]] double tilt_deg() const;
@@ -199,6 +213,6 @@ struct UpSample
 
 }  // namespace mp2p_icp_filters
 
-/** Feature macro: EstimateUpParams::flats_weight, EstimateUpResult::up_cov and
- *  level_poses_from_up() are available */
+/** Feature macro: EstimateUpParams::flats_weight, EstimateUpResult::up_cov,
+ *  EstimateUpResult::cov_reliable and level_poses_from_up() are available */
 #define MP2P_ICP_HAS_ESTIMATE_UP_COVARIANCE 1
