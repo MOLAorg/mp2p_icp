@@ -52,6 +52,10 @@ struct cli_flags
     double      arg_max_correction_deg = 5.0;
     bool        arg_estimate_only      = false;
     size_t      arg_windows            = 0;
+    double      arg_piecewise          = 0;
+    bool        arg_walls_only         = false;
+    double      arg_cluster_size       = 2.0;
+    std::string arg_windows_out;
 
     // Option handles, kept to reproduce TCLAP's isSet() semantics exactly
     // (distinguishing "not passed" from "passed with the default value").
@@ -111,6 +115,20 @@ struct cli_flags
         cmd.add_option(
             "--windows", arg_windows,
             "level-walls: also report the estimate on N equal time windows");
+        cmd.add_option(
+            "--piecewise", arg_piecewise,
+            "level-walls: level each time window of this duration [s] on its own, "
+            "interpolating between windows, instead of one rotation of the whole map");
+        cmd.add_flag(
+            "--walls-only", arg_walls_only,
+            "level-walls: use only the walls as vertical reference, not floors and ceilings");
+        cmd.add_option(
+            "--cluster-size", arg_cluster_size,
+            "level-walls: cell size grouping the normals for the uncertainty of up [m]");
+        cmd.add_option(
+            "--windows-out", arg_windows_out,
+            "level-walls: write one row per time window (--windows or --piecewise) to this "
+            "file");
 
         cmd.add_flag("-h,--help", argHelp, "Shows more detailed help for command");
         cmd.add_flag("--version", argVersion, "Shows program version and exits");

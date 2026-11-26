@@ -28,10 +28,12 @@
 #include <mrpt/io/lazy_load_path.h>
 #include <mrpt/maps/CSimpleMap.h>
 #include <mrpt/obs/CObservationComment.h>
+#include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <mrpt/system/filesystem.h>
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <optional>
 
@@ -108,16 +110,19 @@ mrpt::maps::CPointsMap::Ptr buildAnalysisCloud(
 mp2p_icp_filters::EstimateUpParams estimateParams()
 {
     mp2p_icp_filters::EstimateUpParams p;
-    p.wall_nz = cli->arg_wall_nz;
-    p.flat_nz = cli->arg_flat_nz;
+    p.wall_nz      = cli->arg_wall_nz;
+    p.flat_nz      = cli->arg_flat_nz;
+    p.flats_weight = cli->arg_walls_only ? 0.0 : 1.0;
+    p.cluster_size = cli->arg_cluster_size;
     return p;
 }
 
-std::vector<mrpt::math::TVector3D> normalsFromCloud(const mrpt::maps::CPointsMap& pc)
+std::vector<mrpt::math::TVector3D> normalsFromCloud(
+    const mrpt::maps::CPointsMap& pc, std::vector<mrpt::math::TPoint3Df>* points = nullptr)
 {
     mp2p_icp_filters::PlanarNormalsParams p;
     p.search_radius = cli->arg_normal_radius;
-    return mp2p_icp_filters::estimate_planar_normals(pc, p);
+    return mp2p_icp_filters::estimate_planar_normals(pc, p, points);
 }
 
 // "[0 0 0 yaw pitch roll]" in degrees, as expected by `sm-cli tf`
@@ -144,34 +149,58 @@ std::optional<double> keyframeTime(const mrpt::obs::CSensoryFrame& sf)
     return std::nullopt;
 }
 
-// Keyframe index ranges [first, last] of N windows of equal duration, or of
-// equal keyframe count if any keyframe lacks a timestamp.
-std::vector<std::pair<size_t, size_t>> timeWindows(const mrpt::maps::CSimpleMap& sm, size_t N)
+// Times of all keyframes, if all have one and they are sorted.
+std::optional<std::vector<double>> keyframeTimes(const mrpt::maps::CSimpleMap& sm)
 {
-    const size_t nKFs = sm.size();
-
     std::vector<double> times;
-    times.reserve(nKFs);
+    times.reserve(sm.size());
     for (const auto& [pose, sf, twist] : sm)
     {
         const auto t = sf ? keyframeTime(*sf) : std::nullopt;
         if (!t)
         {
-            break;
+            return std::nullopt;
         }
         times.push_back(*t);
     }
-
-    std::vector<size_t> windowOfKF(nKFs);
-    // Windows must be contiguous keyframe ranges, so times must be sorted:
-    if (times.size() == nKFs && std::is_sorted(times.begin(), times.end()) &&
-        times.back() > times.front())
+    if (times.empty() || !std::is_sorted(times.begin(), times.end()) ||
+        !(times.back() > times.front()))
     {
-        const double t0 = times.front();
-        const double dt = (times.back() - t0) / static_cast<double>(N);
+        return std::nullopt;
+    }
+    return times;
+}
+
+// Contiguous keyframe index ranges [first, last], from the window of each keyframe.
+std::vector<std::pair<size_t, size_t>> rangesOf(const std::vector<size_t>& windowOfKF)
+{
+    std::vector<std::pair<size_t, size_t>> ranges;
+    for (size_t i = 0; i < windowOfKF.size(); i++)
+    {
+        if (i == 0 || windowOfKF[i] != windowOfKF[i - 1])
+        {
+            ranges.emplace_back(i, i);
+        }
+        ranges.back().second = i;
+    }
+    return ranges;
+}
+
+// Keyframe index ranges [first, last] of N windows of equal duration, or of
+// equal keyframe count if any keyframe lacks a timestamp.
+std::vector<std::pair<size_t, size_t>> timeWindows(const mrpt::maps::CSimpleMap& sm, size_t N)
+{
+    const size_t        nKFs = sm.size();
+    std::vector<size_t> windowOfKF(nKFs);
+
+    // Windows must be contiguous keyframe ranges, so times must be sorted:
+    if (const auto times = keyframeTimes(sm); times)
+    {
+        const double t0 = times->front();
+        const double dt = (times->back() - t0) / static_cast<double>(N);
         for (size_t i = 0; i < nKFs; i++)
         {
-            windowOfKF[i] = std::min(N - 1, static_cast<size_t>((times[i] - t0) / dt));
+            windowOfKF[i] = std::min(N - 1, static_cast<size_t>(((*times)[i] - t0) / dt));
         }
     }
     else
@@ -183,17 +212,19 @@ std::vector<std::pair<size_t, size_t>> timeWindows(const mrpt::maps::CSimpleMap&
             windowOfKF[i] = (i * N) / nKFs;
         }
     }
+    return rangesOf(windowOfKF);
+}
 
-    std::vector<std::pair<size_t, size_t>> ranges;
-    for (size_t i = 0; i < nKFs; i++)
+// Keyframe index ranges [first, last] of consecutive windows of `duration` seconds.
+std::vector<std::pair<size_t, size_t>> durationWindows(
+    const std::vector<double>& times, double duration)
+{
+    std::vector<size_t> windowOfKF(times.size());
+    for (size_t i = 0; i < times.size(); i++)
     {
-        if (i == 0 || windowOfKF[i] != windowOfKF[i - 1])
-        {
-            ranges.emplace_back(i, i);
-        }
-        ranges.back().second = i;
+        windowOfKF[i] = static_cast<size_t>((times[i] - times.front()) / duration);
     }
-    return ranges;
+    return rangesOf(windowOfKF);
 }
 
 // RMS of the angle between wall normals and the horizontal plane [deg]
@@ -217,13 +248,169 @@ void printEstimate(const mp2p_icp_filters::EstimateUpResult& est)
     std::cout << mrpt::format(
         "Normals used: walls=%zu flats=%zu\n"
         "Estimated up: [%+.6f %+.6f %+.6f]\n"
-        "Tilt        : %.3f deg\n",
-        est.wall_count, est.flat_count, est.up.x, est.up.y, est.up.z, est.tilt_deg());
+        "Tilt        : %.3f deg\n"
+        "Sigma up    : x %.3f y %.3f deg (%zu groups)\n",
+        est.wall_count, est.flat_count, est.up.x, est.up.y, est.up.z, est.tilt_deg(),
+        est.up_sigmas_deg()[0], est.up_sigmas_deg()[1], est.cov_groups);
     if (est.single_wall_direction)
     {
         std::cout << "Warning: all walls share one direction: the estimate relies on the floors "
                      "and ceilings.\n";
     }
+}
+
+// The estimate of one window of keyframes, also as a --windows-out row.
+struct WindowEstimate
+{
+    size_t                                            first = 0;
+    size_t                                            last  = 0;
+    double                                            t0    = 0;
+    double                                            t1    = 0;
+    std::optional<mp2p_icp_filters::EstimateUpResult> est;
+};
+
+WindowEstimate estimateWindow(
+    const mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline,
+    const std::optional<std::vector<double>>& times, size_t index, size_t count, size_t first,
+    size_t last)
+{
+    WindowEstimate w;
+    w.first = first;
+    w.last  = last;
+    if (times)
+    {
+        w.t0 = (*times)[first];
+        w.t1 = (*times)[last];
+    }
+    std::cout << "\nWindow " << (index + 1) << "/" << count << ": keyframes [" << first << ", "
+              << last << "]";
+    if (times)
+    {
+        std::cout << mrpt::format(
+            ", t=[%.3f, %.3f] s", w.t0 - times->front(), w.t1 - times->front());
+    }
+    std::cout << "\n";
+    try
+    {
+        const auto                         pc = buildAnalysisCloud(sm, pipeline, first, last);
+        std::vector<mrpt::math::TPoint3Df> points;
+        const auto                         normals = normalsFromCloud(*pc, &points);
+        w.est = mp2p_icp_filters::estimate_up_from_normals(normals, estimateParams(), &points);
+        printEstimate(*w.est);
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "Could not estimate: " << mrpt::exception_to_str(e) << "\n";
+    }
+    return w;
+}
+
+void writeWindowsOut(const std::vector<WindowEstimate>& windows)
+{
+    if (cli->arg_windows_out.empty())
+    {
+        return;
+    }
+    std::ofstream f(cli->arg_windows_out);
+    ASSERTMSG_(f.is_open(), "Cannot write --windows-out file: " + cli->arg_windows_out);
+    f << "# window kf_first kf_last t_start t_end up_x up_y up_z tilt_deg sigma_x_deg "
+         "sigma_y_deg walls flats groups observable\n";
+    for (size_t i = 0; i < windows.size(); i++)
+    {
+        const auto& w = windows[i];
+        f << mrpt::format("%zu %zu %zu %.6f %.6f ", i, w.first, w.last, w.t0, w.t1);
+        if (w.est)
+        {
+            const auto& e = *w.est;
+            f << mrpt::format(
+                "%.8f %.8f %.8f %.4f %.4f %.4f %zu %zu %zu 1\n", e.up.x, e.up.y, e.up.z,
+                e.tilt_deg(), e.up_sigmas_deg()[0], e.up_sigmas_deg()[1], e.wall_count,
+                e.flat_count, e.cov_groups);
+        }
+        else
+        {
+            f << "nan nan nan nan nan nan 0 0 0 0\n";
+        }
+    }
+    std::cout << "Windows written to: '" << cli->arg_windows_out << "'\n";
+}
+
+// --piecewise: a correction per time window, interpolated between windows.
+int levelPiecewise(
+    mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, bool estimateOnly)
+{
+    const auto times = keyframeTimes(sm);
+    ASSERTMSG_(times, "--piecewise needs sorted timestamps in all keyframes");
+
+    const auto ranges = durationWindows(*times, cli->arg_piecewise);
+
+    std::vector<WindowEstimate>             windows;
+    std::vector<mp2p_icp_filters::UpSample> samples;
+    double                                  maxTilt = 0;
+    for (size_t i = 0; i < ranges.size(); i++)
+    {
+        auto w = estimateWindow(
+            sm, pipeline, times, i, ranges.size(), ranges[i].first, ranges[i].second);
+        if (w.est)
+        {
+            samples.push_back({0.5 * (w.t0 + w.t1), w.est->up});
+            maxTilt = std::max(maxTilt, w.est->tilt_deg());
+        }
+        windows.push_back(std::move(w));
+    }
+    writeWindowsOut(windows);
+
+    ASSERTMSG_(!samples.empty(), "No time window had an observable up direction.");
+    std::cout << mrpt::format(
+        "\nPiecewise: %zu of %zu windows observable, largest tilt %.3f deg\n", samples.size(),
+        windows.size(), maxTilt);
+
+    if (maxTilt > cli->arg_max_correction_deg)
+    {
+        setConsoleErrorColor();
+        std::cerr << mrpt::format(
+            "Error: a window needs a correction (%.3f deg) above --max-correction-deg (%.3f "
+            "deg).\n",
+            maxTilt, cli->arg_max_correction_deg);
+        setConsoleNormalColor();
+        return 1;
+    }
+    if (estimateOnly)
+    {
+        return 0;
+    }
+
+    std::vector<mrpt::poses::CPose3D> poses;
+    poses.reserve(sm.size());
+    for (const auto& [pose, sf, twist] : sm)
+    {
+        poses.push_back(pose->getMeanVal());
+    }
+    const auto leveled = mp2p_icp_filters::level_poses_from_up(*times, poses, samples);
+
+    double maxShift = 0;
+    size_t k        = 0;
+    for (auto& [pose, sf, twist] : sm)
+    {
+        // Rotate the covariance with the attitude, then place the mean:
+        mrpt::poses::CPose3DPDFGaussian g;
+        g.copyFrom(*pose);
+        g.changeCoordinatesReference(mp2p_icp_filters::rotation_aligning_up_to_z(
+            mp2p_icp_filters::interpolate_up(samples, (*times)[k])));
+        g.mean = leveled[k];
+        pose   = std::make_shared<mrpt::poses::CPose3DPDFGaussian>(g);
+
+        maxShift = std::max(maxShift, (leveled[k].translation() - poses[k].translation()).norm());
+        k++;
+    }
+    std::cout << mrpt::format("Keyframes moved up to %.3f m.\n", maxShift);
+
+    const std::string outFile = cli->argCmd.at(2);
+    std::cout << "Saving result to: '" << outFile << "'... " << std::endl;
+    const bool saveOk = sm.saveToFile(outFile);
+    ASSERTMSG_(saveOk, "Error writing output file");
+
+    return 0;
 }
 
 }  // namespace
@@ -265,14 +452,20 @@ int commandLevelWalls()
         pipeline = defaultPipeline(cli->arg_voxel);
     }
 
+    if (cli->arg_piecewise > 0)
+    {
+        return levelPiecewise(sm, pipeline, estimateOnly);
+    }
+
     // Whole run:
     const auto pc = buildAnalysisCloud(sm, pipeline, 0, sm.size() - 1);
     std::cout << "Analysis cloud: " << pc->size() << " points.\n";
 
-    const auto normals = normalsFromCloud(*pc);
+    std::vector<mrpt::math::TPoint3Df> points;
+    const auto                         normals = normalsFromCloud(*pc, &points);
     std::cout << "Planar normals: " << normals.size() << "\n";
 
-    const auto est = mp2p_icp_filters::estimate_up_from_normals(normals, estimateParams());
+    const auto est = mp2p_icp_filters::estimate_up_from_normals(normals, estimateParams(), &points);
     printEstimate(est);
 
     const auto R = mp2p_icp_filters::rotation_aligning_up_to_z(est.up);
@@ -297,25 +490,16 @@ int commandLevelWalls()
     // Drift diagnostic:
     if (cli->arg_windows > 0)
     {
-        const auto ranges = timeWindows(sm, cli->arg_windows);
+        const auto                  times  = keyframeTimes(sm);
+        const auto                  ranges = timeWindows(sm, cli->arg_windows);
+        std::vector<WindowEstimate> windows;
         for (size_t w = 0; w < ranges.size(); w++)
         {
-            const auto [first, last] = ranges[w];
-            std::cout << "\nWindow " << (w + 1) << "/" << ranges.size() << ": keyframes [" << first
-                      << ", " << last << "]\n";
-            try
-            {
-                const auto wPc  = buildAnalysisCloud(sm, pipeline, first, last);
-                const auto wEst = mp2p_icp_filters::estimate_up_from_normals(
-                    normalsFromCloud(*wPc), estimateParams());
-                printEstimate(wEst);
-            }
-            catch (const std::exception& e)
-            {
-                std::cout << "Could not estimate: " << mrpt::exception_to_str(e) << "\n";
-            }
+            windows.push_back(estimateWindow(
+                sm, pipeline, times, w, ranges.size(), ranges[w].first, ranges[w].second));
         }
         std::cout << "\n";
+        writeWindowsOut(windows);
     }
 
     if (est.tilt_deg() > cli->arg_max_correction_deg)
@@ -370,11 +554,20 @@ int printCommandsLevelWalls(bool showErrorMsg)
         [--max-correction-deg 5]            # refuse larger corrections
         [--estimate-only]                   # print the rotation, do not write output
         [--windows N]                       # also estimate on N equal time windows
+        [--piecewise SECONDS]               # level each time window on its own
+        [--walls-only]                      # walls are the only vertical reference
+        [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
+        [--windows-out <file.txt>]          # one row per window, machine readable
 
 Corrects a global pitch/roll error of a map by rotating it (about the map origin)
 so walls are as vertical, and floors and ceilings as horizontal, as possible.
 Only keyframe poses change. Requires a mostly rectilinear structure (indoors,
 buildings); do not use it on outdoor or sloped scenes.
+
+With --piecewise, the vertical is estimated on consecutive time windows of that
+duration and interpolated in time, and each keyframe is rotated by its own
+correction, with positions integrated again so the trajectory stays continuous.
+This removes a vertical that drifts during the run, which one rotation can not.
 
 With --pipeline, all point layers the pipeline outputs are merged and voxel
 decimated with --voxel.
