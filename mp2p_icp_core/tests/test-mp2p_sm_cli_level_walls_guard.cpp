@@ -24,10 +24,13 @@
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <mrpt/system/filesystem.h>
+#include <sys/wait.h>
 
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -124,18 +127,39 @@ void writeSimplemap(const std::string& f, const Corridor& c)
     ASSERT_(sm.saveToFile(f));
 }
 
-int run(const std::string& args)
+// Runs sm-cli level-walls, its stderr into `errFile`; returns the exit code,
+// or -1 if it did not exit normally (e.g. a crash)
+int run(const std::string& args, const std::string& errFile)
 {
-    const std::string cmd = std::string("\"") + SM_CLI_PATH + "\" level-walls " + args;
+    const std::string cmd =
+        std::string("\"") + SM_CLI_PATH + "\" level-walls " + args + " 2> \"" + errFile + "\"";
     std::cout << "Running: " << cmd << std::endl;
-    return std::system(cmd.c_str());
+    const int status = std::system(cmd.c_str());
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
-void expectExit(const std::string& args, bool ok)
+std::string readFile(const std::string& f)
 {
-    const int ret = run(args);
-    std::cout << "  -> " << (ret == 0 ? "exit 0" : "failed") << "\n";
-    ASSERTMSG_((ret == 0) == ok, "unexpected exit status for: " + args);
+    std::ifstream in(f);
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+
+void expectLeveled(const std::string& args, const std::string& errFile)
+{
+    const int ret = run(args, errFile);
+    std::cout << "  -> exit " << ret << "\n";
+    ASSERTMSG_(ret == 0, "expected exit 0 for: " + args);
+}
+
+// A refusal: a normal exit with code 1, and `why` in its error output
+void expectRefused(const std::string& args, const std::string& errFile, const std::string& why)
+{
+    const int ret = run(args, errFile);
+    std::cout << "  -> exit " << ret << "\n";
+    ASSERTMSG_(ret == 1, "expected exit 1 for: " + args);
+    ASSERTMSG_(
+        readFile(errFile).find(why) != std::string::npos,
+        "expected '" + why + "' in the error output of: " + args);
 }
 }  // namespace
 
@@ -151,37 +175,41 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         }
         const std::string dir = mrpt::system::getTempFileName() + "_level_walls_guard";
         ASSERT_(mrpt::system::createDirectory(dir));
-        const std::string out = " " + dir + "/out.simplemap --max-correction-deg 20";
+        const std::string out        = " " + dir + "/out.simplemap --max-correction-deg 20";
+        const std::string err        = dir + "/stderr.txt";
+        const std::string contradict = "the walls contradict the floors";
 
         // A level corridor: walls confirm the floor
         const std::string level = dir + "/level.simplemap";
         writeSimplemap(level, {});
-        expectExit(level + out, true);
-        expectExit(level + out + " --piecewise 20", true);
+        expectLeveled(level + out, err);
+        expectLeveled(level + out + " --piecewise 20", err);
 
         // The floor rises 8 deg along the first 80 m of 100: the walls contradict it
         // in 4 of the 5 windows, and over the whole map
         const std::string ramp80 = dir + "/ramp80.simplemap";
         writeSimplemap(ramp80, {true, 80.0});
-        expectExit(ramp80 + out, false);
-        expectExit(ramp80 + " --estimate-only --max-correction-deg 20", false);
-        expectExit(ramp80 + out + " --max-walls-flats-deg 0", true);
-        expectExit(ramp80 + out + " --piecewise 20", false);
+        expectRefused(ramp80 + out, err, contradict);
+        expectRefused(ramp80 + " --estimate-only --max-correction-deg 20", err, contradict);
+        expectLeveled(ramp80 + out + " --max-walls-flats-deg 0", err);
+        expectRefused(
+            ramp80 + out + " --piecewise 20", err, "windows with an estimate the walls contradict");
 
         // Along the first 60 m: 3 windows of 5, below the refusal
         const std::string ramp60 = dir + "/ramp60.simplemap";
         writeSimplemap(ramp60, {true, 60.0});
-        expectExit(ramp60 + out + " --piecewise 20", true);
+        expectLeveled(ramp60 + out + " --piecewise 20", err);
 
         // A single facade direction over a level floor: the walls cannot tell, so they
         // neither confirm nor contradict the floor, and nothing is refused
         const std::string facade = dir + "/facade.simplemap";
         writeSimplemap(facade, {false, 0.0});
-        expectExit(facade + out, true);
-        expectExit(facade + out + " --piecewise 20", true);
+        expectLeveled(facade + out, err);
+        expectLeveled(facade + out + " --piecewise 20", err);
 
         // Invalid limit
-        expectExit(level + out + " --max-walls-flats-deg -1", false);
+        expectRefused(
+            level + out + " --max-walls-flats-deg -1", err, "--max-walls-flats-deg must be >= 0");
 
         mrpt::system::deleteFilesInDirectory(dir, true);
         std::cout << "All tests passed.\n";
