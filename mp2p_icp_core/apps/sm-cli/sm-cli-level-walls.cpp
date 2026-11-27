@@ -285,6 +285,8 @@ TumPath readTum(const std::string& file)
         path.times.push_back(t);
         path.poses.emplace_back(q, x, y, z);
     }
+    // A read error ends the loop like the end of the file: not a whole path
+    ASSERTMSG_(!f.bad(), "Error reading --input-tum: " + file);
     ASSERTMSG_(!path.times.empty(), "--input-tum has no poses: " + file);
     ASSERTMSG_(
         std::is_sorted(path.times.begin(), path.times.end()),
