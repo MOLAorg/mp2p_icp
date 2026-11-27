@@ -110,10 +110,11 @@ mrpt::maps::CPointsMap::Ptr buildAnalysisCloud(
 mp2p_icp_filters::EstimateUpParams estimateParams()
 {
     mp2p_icp_filters::EstimateUpParams p;
-    p.wall_nz      = cli->arg_wall_nz;
-    p.flat_nz      = cli->arg_flat_nz;
-    p.flats_weight = cli->arg_walls_only ? 0.0 : 1.0;
-    p.cluster_size = cli->arg_cluster_size;
+    p.wall_nz                   = cli->arg_wall_nz;
+    p.flat_nz                   = cli->arg_flat_nz;
+    p.flats_weight              = cli->arg_walls_only ? 0.0 : 1.0;
+    p.cluster_size              = cli->arg_cluster_size;
+    p.max_walls_flats_angle_deg = cli->arg_max_walls_flats;
     return p;
 }
 
@@ -266,6 +267,17 @@ void printEstimate(const mp2p_icp_filters::EstimateUpResult& est)
         std::cout << "Warning: all walls share one direction: the estimate relies on the floors "
                      "and ceilings.\n";
     }
+    if (std::isfinite(est.walls_flats_angle_deg))
+    {
+        std::cout << mrpt::format(
+            "Walls vs floors: %.3f deg apart%s\n", est.walls_flats_angle_deg,
+            est.walls_contradict_flats ? " (beyond --max-walls-flats-deg: they contradict)" : "");
+    }
+    else if (est.references_disagree)
+    {
+        std::cout << "Walls vs floors: the walls alone do not give up, so they can neither confirm "
+                     "nor contradict the floors.\n";
+    }
 }
 
 // The estimate of one window of keyframes, also as a --windows-out row.
@@ -342,7 +354,8 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
     std::ofstream f(cli->arg_windows_out);
     ASSERTMSG_(f.is_open(), "Cannot write --windows-out file: " + cli->arg_windows_out);
     f << "# window kf_first kf_last t_start t_end up_x up_y up_z tilt_deg sigma_x_deg "
-         "sigma_y_deg walls flats groups observable usable\n";
+         "sigma_y_deg walls flats groups observable usable walls_flats_deg flats_unconfirmed "
+         "flats_contradicted\n";
     for (size_t i = 0; i < windows.size(); i++)
     {
         const auto& w = windows[i];
@@ -351,13 +364,14 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
         {
             const auto& e = *w.est;
             f << mrpt::format(
-                "%.8f %.8f %.8f %.4f %.4f %.4f %zu %zu %zu 1 %d\n", e.up.x, e.up.y, e.up.z,
-                e.tilt_deg(), e.up_sigmas_deg()[0], e.up_sigmas_deg()[1], e.wall_count,
-                e.flat_count, e.cov_groups, w.usable ? 1 : 0);
+                "%.8f %.8f %.8f %.4f %.4f %.4f %zu %zu %zu 1 %d %.4f %d %d\n", e.up.x, e.up.y,
+                e.up.z, e.tilt_deg(), e.up_sigmas_deg()[0], e.up_sigmas_deg()[1], e.wall_count,
+                e.flat_count, e.cov_groups, w.usable ? 1 : 0, e.walls_flats_angle_deg,
+                e.references_disagree ? 1 : 0, e.walls_contradict_flats ? 1 : 0);
         }
         else
         {
-            f << "nan nan nan nan nan nan 0 0 0 0 0\n";
+            f << "nan nan nan nan nan nan 0 0 0 0 0 nan 0 0\n";
         }
     }
     f.close();
@@ -389,6 +403,33 @@ int levelPiecewise(
         windows.push_back(std::move(w));
     }
     writeWindowsOut(windows);
+
+    // A sloped or quarried scene: nearly every window's walls contradict its
+    // floors. A few such windows (a ramp, a sloped lawn) are not a reason to
+    // stand down, and skipping them only leaves gaps to interpolate over.
+    // Windows whose walls cannot tell (one wall direction, along a single
+    // facade) are not counted: they say nothing against the floors.
+    size_t estimated    = 0;
+    size_t contradicted = 0;
+    for (const auto& w : windows)
+    {
+        if (w.est)
+        {
+            estimated++;
+            contradicted += w.est->walls_contradict_flats ? 1 : 0;
+        }
+    }
+    if (estimated > 0 && contradicted * 5 >= estimated * 4)
+    {
+        setConsoleErrorColor();
+        std::cerr << mrpt::format(
+            "Error: in %zu of the %zu windows with an estimate the walls contradict the floors "
+            "(--max-walls-flats-deg): sloped ground or leaning walls, not a scene of plumb walls "
+            "and level floors. Nothing was leveled.\n",
+            contradicted, estimated);
+        setConsoleNormalColor();
+        return 1;
+    }
 
     ASSERTMSG_(!samples.empty(), "No time window had a usable up direction.");
     std::cout << mrpt::format(
@@ -459,6 +500,9 @@ int commandLevelWalls()
     }
 
     const std::string inFile = lstCmds.at(1);
+    ASSERTMSG_(
+        cli->arg_max_walls_flats >= 0,
+        mrpt::format("--max-walls-flats-deg must be >= 0 (got %g)", cli->arg_max_walls_flats));
 
     mrpt::maps::CSimpleMap sm = read_input_sm_from_cli(inFile);
     ASSERT_(!sm.empty());
@@ -550,6 +594,15 @@ int commandLevelWalls()
         setConsoleNormalColor();
         return 1;
     }
+    if (est.walls_contradict_flats)
+    {
+        // Also with --estimate-only: the printed rotation is not a vertical reference
+        setConsoleErrorColor();
+        std::cerr << "Error: the walls contradict the floors (--max-walls-flats-deg): sloped "
+                     "floors or leaning walls, not a vertical reference. Nothing was leveled.\n";
+        setConsoleNormalColor();
+        return 1;
+    }
 
     if (estimateOnly)
     {
@@ -597,6 +650,7 @@ int printCommandsLevelWalls(bool showErrorMsg)
         [--walls-only]                      # walls are the only vertical reference
         [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
         [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
+        [--max-walls-flats-deg 2.0]         # refuse when walls contradict floors
         [--windows-out <file.txt>]          # one row per window, machine readable
 
 Corrects a global pitch/roll error of a map by rotating it (about the map origin)
@@ -610,6 +664,14 @@ correction, with positions integrated again so the trajectory stays continuous.
 This removes a vertical that drifts during the run, which one rotation cannot.
 Windows without a reliable sigma of up, or with one above --max-window-sigma-deg,
 are skipped and interpolated over, and a short last window joins the previous one.
+
+Walls are checked against floors: where the walls alone and the floors alone
+give up directions more than --max-walls-flats-deg apart (floors on a slope,
+walls that lean, e.g. an open quarry) they contradict each other. The
+whole-map command then refuses to level (and exits with an error, also with
+--estimate-only); --piecewise refuses the map when that happens in four or
+more of every five windows with an estimate. Windows whose walls alone do not
+give up (one wall direction) are reported but never refused.
 
 With --pipeline, all point layers the pipeline outputs are merged and voxel
 decimated with --voxel.

@@ -116,6 +116,7 @@ attitude of a LiDAR-inertial run, estimated from a short accelerometer average.
         [--walls-only]                      # walls are the only vertical reference
         [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
         [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
+        [--max-walls-flats-deg 2.0]         # refuse when walls contradict floors
         [--windows-out <file.txt>]          # one row per window, machine readable
 
 How it works:
@@ -144,12 +145,21 @@ over, and a last window shorter than half the others joins the previous one. The
 used needs more than ``--max-correction-deg``.
 Windows of 20 to 30 s worked well on indoor walks; shorter ones follow the drift more closely but are noisier.
 
+Walls are checked against floors. Where the walls alone and the floors alone give :math:`u` more than
+``--max-walls-flats-deg`` apart (default 2), they contradict each other: one of the two references is not plumb or
+level (a sloped field, a ramp, the rock faces of a quarry). The whole-map command then refuses to level and exits with
+an error, also with ``--estimate-only``. ``--piecewise`` refuses the map when the walls contradict the floors in four or
+more of every five windows that gave an estimate, and otherwise levels with all usable windows as before. Windows whose
+walls alone do not give :math:`u` (one wall direction, too few walls) can neither confirm nor contradict their floors:
+they are reported, never refused. On 30 s windows of college and campus recordings the walls contradicted the floors
+in 0-45 % of the windows (sloped lawns and streets); on an open quarry, in 9 of 9.
+
 ``--walls-only`` drops floors and ceilings from the estimate (they are not a vertical reference where a floor
 slopes, e.g. a ramp), so walls with at least two directions are needed. Each estimate also reports the standard
 deviations of :math:`u_x, u_y` from a sandwich covariance, which takes the normals in cells of ``--cluster-size``
 as the independent groups, and ``--windows-out`` writes one row per window
 (``window kf_first kf_last t_start t_end up_x up_y up_z tilt_deg sigma_x_deg sigma_y_deg walls flats groups
-observable usable``) for further processing.
+observable usable walls_flats_deg flats_unconfirmed flats_contradicted``) for further processing.
 
 .. note::
 

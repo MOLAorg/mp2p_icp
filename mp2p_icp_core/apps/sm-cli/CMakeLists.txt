@@ -26,3 +26,8 @@ mola_add_executable(
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_ICP_VERSION=\"${MP2P_ICP_VERSION}\")
+
+# Tests that run sm-cli must not run a stale binary:
+if(TARGET test-mp2p_sm_cli_level_walls_guard)
+  add_dependencies(test-mp2p_sm_cli_level_walls_guard sm-cli)
+endif()

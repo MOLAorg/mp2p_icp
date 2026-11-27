@@ -56,6 +56,7 @@ struct cli_flags
     bool        arg_walls_only         = false;
     double      arg_cluster_size       = 2.0;
     double      arg_max_window_sigma   = 1.0;
+    double      arg_max_walls_flats    = 2.0;
     std::string arg_windows_out;
 
     // Option handles, kept to reproduce TCLAP's isSet() semantics exactly
@@ -130,6 +131,11 @@ struct cli_flags
             "--max-window-sigma-deg", arg_max_window_sigma,
             "level-walls: with --piecewise, skip windows whose up is less certain than this "
             "[deg]");
+        cmd.add_option(
+            "--max-walls-flats-deg", arg_max_walls_flats,
+            "level-walls: walls and floors, each on its own, more than this apart on up [deg] "
+            "contradict each other (sloped floors, leaning walls): the whole map is then not "
+            "leveled, and --piecewise refuses when 4 of 5 windows contradict; 0 disables");
         cmd.add_option(
             "--windows-out", arg_windows_out,
             "level-walls: write one row per time window (--windows or --piecewise) to this "

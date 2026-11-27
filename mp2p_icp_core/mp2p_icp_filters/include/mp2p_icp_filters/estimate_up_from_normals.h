@@ -27,6 +27,7 @@
 
 #include <array>
 #include <cstddef>
+#include <limits>
 #include <vector>
 
 namespace mp2p_icp_filters
@@ -99,6 +100,15 @@ struct EstimateUpParams
     /// one): below this, or with a rank-deficient score covariance, `up_cov`
     /// falls back to the per-normal covariance and `cov_reliable` is false.
     std::size_t min_cov_groups = 8;
+
+    /// Largest angle [deg] between the up of the walls alone and the up of
+    /// the floors and ceilings alone. Beyond it the two references contradict
+    /// each other: floors that are not level (slopes, ramps) or walls that are
+    /// not plumb (rock faces), see EstimateUpResult::walls_contradict_flats.
+    /// Where the walls alone do not give up (a single wall direction, too few
+    /// walls) the flats cannot be confirmed either, see
+    /// EstimateUpResult::references_disagree. 0 disables the check.
+    double max_walls_flats_angle_deg = 2.0;
 };
 
 /// Output of estimate_up_from_normals()
@@ -147,6 +157,23 @@ struct EstimateUpResult
     /// is a lower bound of the real uncertainty, not a weight.
     bool cov_reliable = false;
 
+    /// Angle [deg] between the up of the walls alone (a fit of its own) and
+    /// the up of the flats alone (those of the last fit). NaN if no flats are
+    /// used, or the walls alone do not give up.
+    double walls_flats_angle_deg = std::numeric_limits<double>::quiet_NaN();
+
+    /// True if flats are used and the walls do not confirm them: either the
+    /// walls contradict them (walls_contradict_flats), or the walls alone do
+    /// not give up, so the flats cannot be told apart from a slope. The
+    /// estimate is still returned; the caller decides what to do with it.
+    bool references_disagree = false;
+
+    /// True if the walls alone and the flats alone give up directions more
+    /// than EstimateUpParams::max_walls_flats_angle_deg apart (a finite
+    /// walls_flats_angle_deg): one of the two references is not plumb or
+    /// level. Implies references_disagree.
+    bool walls_contradict_flats = false;
+
     /// Angle between `up` and +Z [deg]
     [[nodiscard]] double tilt_deg() const;
 
@@ -171,6 +198,12 @@ struct EstimateUpResult
  *  EstimateUpResult::up_cov.
  *
  *  The result is deterministic: normals are accumulated sequentially.
+ *
+ *  When flats are used, the walls are fitted on their own too, and
+ *  EstimateUpResult::references_disagree flags an estimate whose walls do not
+ *  confirm its flats, EstimateUpResult::walls_contradict_flats one whose walls
+ *  contradict them (see EstimateUpParams::max_walls_flats_angle_deg). It does
+ *  not throw for either: the caller decides.
  *
  *  \exception std::exception If there are not enough normals, or "up" is not
  *             observable from them.
@@ -219,3 +252,7 @@ struct UpSample
 /** Feature macro: EstimateUpParams::flats_weight, EstimateUpResult::up_cov,
  *  EstimateUpResult::cov_reliable and level_poses_from_up() are available */
 #define MP2P_ICP_HAS_ESTIMATE_UP_COVARIANCE 1
+
+/** Feature macro: EstimateUpResult::walls_flats_angle_deg,
+ *  references_disagree and walls_contradict_flats are available */
+#define MP2P_ICP_HAS_UP_REFERENCES_CHECK 1
