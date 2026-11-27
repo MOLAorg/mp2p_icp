@@ -256,6 +256,88 @@ void test_walls_only_single_direction_rejected()
     ASSERTMSG_(thrown, "Walls only with a single wall direction must be rejected");
 }
 
+void test_walls_flats_agreement()
+{
+    const auto T = tiltPose(1.0, 40.0);
+
+    // A plain room: walls and floors agree.
+    {
+        const auto normals = estimate_planar_normals(makeRoom(T));
+        const auto est     = estimate_up_from_normals(normals);
+        std::cout << "  room: walls vs flats " << est.walls_flats_angle_deg << " deg\n";
+        ASSERT_(std::isfinite(est.walls_flats_angle_deg));
+        ASSERT_LT_(est.walls_flats_angle_deg, 0.2);
+        ASSERT_(!est.references_disagree);
+        ASSERT_(!est.walls_contradict_flats);
+    }
+
+    // The floor and ceiling slope 5 deg against plumb walls: flagged, with the angle.
+    RoomOptions walls;
+    walls.floor   = false;
+    walls.ceiling = false;
+    RoomOptions flats;
+    flats.wallsAlongX       = false;
+    flats.wallsAlongY       = false;
+    auto       normals      = estimate_planar_normals(makeRoom(T, walls));
+    const auto flatsNormals = estimate_planar_normals(makeRoom(tiltPose(5.0, 130.0) + T, flats));
+    normals.insert(normals.end(), flatsNormals.begin(), flatsNormals.end());
+    {
+        const auto est = estimate_up_from_normals(normals);
+        std::cout << "  sloped floor: walls vs flats " << est.walls_flats_angle_deg << " deg\n";
+        ASSERT_NEAR_(est.walls_flats_angle_deg, 5.0, 0.3);
+        ASSERT_(est.references_disagree);
+        ASSERT_(est.walls_contradict_flats);
+    }
+    // A wider limit, or 0, accepts it, still reporting the angle.
+    for (const double limit : {6.0, 0.0})
+    {
+        EstimateUpParams p;
+        p.max_walls_flats_angle_deg = limit;
+        const auto est              = estimate_up_from_normals(normals, p);
+        ASSERT_NEAR_(est.walls_flats_angle_deg, 5.0, 0.3);
+        ASSERT_(!est.references_disagree);
+        ASSERT_(!est.walls_contradict_flats);
+    }
+    // Walls only: no flats to compare with.
+    {
+        EstimateUpParams p;
+        p.flats_weight = 0;
+        const auto est = estimate_up_from_normals(normals, p);
+        ASSERT_(!std::isfinite(est.walls_flats_angle_deg));
+        ASSERT_(!est.references_disagree);
+    }
+    // One wall direction: the walls alone cannot confirm the floors, which
+    // are then not trusted (the estimate is still returned).
+    {
+        RoomOptions o;
+        o.wallsAlongY       = false;
+        const auto normals1 = estimate_planar_normals(makeRoom(tiltPose(5.0, 0.0), o));
+        const auto est      = estimate_up_from_normals(normals1);
+        ASSERT_(est.single_wall_direction);
+        ASSERT_(!std::isfinite(est.walls_flats_angle_deg));
+        ASSERT_(est.references_disagree);
+        ASSERT_(!est.walls_contradict_flats);
+        EstimateUpParams p;
+        p.max_walls_flats_angle_deg = 0;
+        ASSERT_(!estimate_up_from_normals(normals1, p).references_disagree);
+    }
+    // A negative limit is invalid.
+    {
+        EstimateUpParams p;
+        p.max_walls_flats_angle_deg = -1;
+        bool thrown                 = false;
+        try
+        {
+            [[maybe_unused]] const auto est = estimate_up_from_normals(normals, p);
+        }
+        catch (const std::exception&)
+        {
+            thrown = true;
+        }
+        ASSERT_(thrown);
+    }
+}
+
 // A unit vector at a random angle of `sigma` [rad] per axis from `n`.
 mrpt::math::TVector3D perturb(const mrpt::math::TVector3D& n, double sigma, std::mt19937& rng)
 {
@@ -675,6 +757,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
         test_walls_only_single_direction_rejected();
         std::cout << "test_walls_only_single_direction_rejected: Success" << std::endl;
+
+        test_walls_flats_agreement();
+        std::cout << "test_walls_flats_agreement: Success" << std::endl;
 
         test_covariance_independent_normals();
         std::cout << "test_covariance_independent_normals: Success" << std::endl;

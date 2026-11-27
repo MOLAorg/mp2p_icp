@@ -29,6 +29,7 @@
 #include <cmath>
 #include <cstdint>
 #include <map>
+#include <new>
 #include <optional>
 
 #if defined(MP2P_HAS_TBB)
@@ -327,6 +328,10 @@ EstimateUpResult estimate_up_from_normals(
     ASSERTMSG_(
         params.cluster_size >= 0,
         mrpt::format("cluster_size must be >= 0 (got %g)", params.cluster_size));
+    ASSERTMSG_(
+        params.max_walls_flats_angle_deg >= 0,
+        mrpt::format(
+            "max_walls_flats_angle_deg must be >= 0 (got %g)", params.max_walls_flats_angle_deg));
     if (points)
     {
         ASSERT_EQUAL_(points->size(), normals.size());
@@ -337,6 +342,8 @@ EstimateUpResult estimate_up_from_normals(
     mrpt::math::TVector3D       classUp    = r.up;  // the up the last fit classified against
     double                      wallWeight = 0;
     double                      flatWeight = 0;
+    // The flats' own up, from the last fit (unit, or zero if none):
+    Eigen::Vector3d flatsUp = Eigen::Vector3d::Zero();
 
     for (size_t iter = 0; iter < params.iterations; iter++)
     {
@@ -434,6 +441,7 @@ EstimateUpResult estimate_up_from_normals(
         }
 
         r.wallEigVals = {0, 0, 0};
+        flatsUp.setZero();
         if (nW > 0)
         {
             mrpt::math::CMatrixDouble33 wallEigVecs;
@@ -443,6 +451,12 @@ EstimateUpResult estimate_up_from_normals(
             {
                 r.wallEigVals[k] = wallEigVals[k];
             }
+        }
+        if (nF > 0)
+        {
+            // The direction closest to all flat normals:
+            const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(Mf.asEigen());
+            flatsUp = es.eigenvectors().col(2);
         }
         r.single_wall_direction = r.wallEigVals[1] - r.wallEigVals[0] < params.min_eigen_gap;
 
@@ -459,6 +473,34 @@ EstimateUpResult estimate_up_from_normals(
 
     estimateUpCovariance(
         normals, points, params, eigVecs, r.eigVals, classUp, wallWeight, flatWeight, r);
+
+    // Flats are taken as level only if the walls, fitted on their own,
+    // confirm it: a slope or a ramp is told apart from a floor only by them.
+    if (r.flat_count > 0 && flatsUp.squaredNorm() > 0)
+    {
+        auto wallsOnly                      = params;
+        wallsOnly.flats_weight              = 0;
+        wallsOnly.max_walls_flats_angle_deg = 0;
+        bool confirmed                      = false;
+        try
+        {
+            const auto            w = estimate_up_from_normals(normals, wallsOnly);
+            const Eigen::Vector3d uw(w.up.x, w.up.y, w.up.z);
+            const double          c = std::min(1.0, std::abs(uw.dot(flatsUp)));
+            r.walls_flats_angle_deg = mrpt::RAD2DEG(std::acos(c));
+            confirmed               = !(r.walls_flats_angle_deg > params.max_walls_flats_angle_deg);
+        }
+        catch (const std::bad_alloc&)
+        {
+            throw;
+        }
+        catch (const std::exception&)
+        {
+            // Walls alone do not give up (one direction, too few): unconfirmed
+        }
+        r.references_disagree    = params.max_walls_flats_angle_deg > 0 && !confirmed;
+        r.walls_contradict_flats = r.references_disagree && std::isfinite(r.walls_flats_angle_deg);
+    }
 
     return r;
 
