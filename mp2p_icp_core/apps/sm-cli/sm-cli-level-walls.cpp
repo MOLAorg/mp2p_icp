@@ -586,13 +586,12 @@ int levelPiecewise(
         // The same samples as the keyframes, integrated on the path's own steps.
         // The keyframes are integrated from the first one, so the path is
         // anchored where both first exist: there it moves as much as they do.
-        auto&      path   = *inputTum;
-        const auto in     = path.poses;
-        path.poses        = mp2p_icp_filters::level_poses_from_up(path.times, path.poses, samples);
-        const double tRef = std::max(times->front(), path.times.front());
+        auto&        path     = *inputTum;
+        const double tRef     = std::max(times->front(), path.times.front());
         const auto   kfOffset = positionAt(*times, leveled, tRef) - positionAt(*times, poses, tRef);
-        const auto   shift =
-            positionAt(path.times, in, tRef) + kfOffset - positionAt(path.times, path.poses, tRef);
+        const auto   before   = positionAt(path.times, path.poses, tRef);
+        path.poses       = mp2p_icp_filters::level_poses_from_up(path.times, path.poses, samples);
+        const auto shift = before + kfOffset - positionAt(path.times, path.poses, tRef);
         for (auto& p : path.poses)
         {
             p.x(p.x() + shift.x);
