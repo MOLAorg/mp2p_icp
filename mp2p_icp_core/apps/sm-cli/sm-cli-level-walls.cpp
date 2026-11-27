@@ -34,6 +34,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -659,6 +660,18 @@ int commandLevelWalls()
     std::optional<TumPath> inputTum;
     if (!cli->arg_input_tum.empty())
     {
+        // The path is written before the map: it must not overwrite either map
+        const auto same = [](const std::string& a, const std::string& b)
+        {
+            std::error_code ec;
+            return std::filesystem::weakly_canonical(a, ec) ==
+                   std::filesystem::weakly_canonical(b, ec);
+        };
+        ASSERTMSG_(
+            !same(cli->arg_output_tum, inFile), "--output-tum must not be the input simple-map");
+        ASSERTMSG_(
+            estimateOnly || !same(cli->arg_output_tum, lstCmds.at(2)),
+            "--output-tum must not be the output simple-map");
         inputTum = readTum(cli->arg_input_tum);
     }
 

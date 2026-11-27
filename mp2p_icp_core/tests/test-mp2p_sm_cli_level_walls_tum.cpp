@@ -328,6 +328,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 run(smIn + " --estimate-only --input-tum " + tumBad + " --output-tum " + dir +
                     "/bad_out.tum") != 0);
         }
+        // The path must not overwrite either map
+        ASSERT_(
+            run(smIn + " " + dir + "/same.out --input-tum " + tumIn + " --output-tum " + dir +
+                "/same.out") != 0);
+        ASSERT_(
+            run(smIn + " " + dir + "/y.simplemap --input-tum " + tumIn + " --output-tum " + smIn) !=
+            0);
+        ASSERT_(mrpt::system::fileExists(smIn) && !mrpt::system::fileExists(dir + "/y.simplemap"));
         // Both options or none
         ASSERT_(run(smIn + " " + dir + "/x.simplemap --input-tum " + tumIn) != 0);
 
