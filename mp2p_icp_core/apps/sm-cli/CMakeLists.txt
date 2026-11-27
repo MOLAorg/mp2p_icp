@@ -31,3 +31,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE MP2P_ICP_VERSION=\"${MP2P_ICP
 if(TARGET test-mp2p_sm_cli_level_walls_guard)
   add_dependencies(test-mp2p_sm_cli_level_walls_guard sm-cli)
 endif()
+if(TARGET test-mp2p_sm_cli_level_walls_tum)
+  add_dependencies(test-mp2p_sm_cli_level_walls_tum sm-cli)
+endif()

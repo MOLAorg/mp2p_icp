@@ -41,6 +41,7 @@ constexpr double DURATION = 38.0;  // [s]
 constexpr double SPEED    = 1.0;  // [m/s]
 constexpr double DENSE_DT = 0.2;  // [s]
 constexpr int    KF_EVERY = 10;  // dense poses per keyframe (2 s)
+constexpr int    SKIP_RET = 77;  // ctest SKIP_RETURN_CODE
 
 // The odometry frame's tilt at time t: pitch and roll drifting by a few degrees
 mrpt::poses::CPose3D frameTilt(double t)
@@ -121,7 +122,7 @@ Path driftingPath()
     return out;
 }
 
-void writeTum(const std::string& f, const Path& path)
+void writeTum(const std::string& f, const Path& path, double timeShift = 0)
 {
     std::ofstream o(f);
     for (size_t i = 0; i < path.t.size(); i++)
@@ -129,8 +130,8 @@ void writeTum(const std::string& f, const Path& path)
         mrpt::math::CQuaternionDouble q;
         path.p[i].getAsQuaternion(q);
         o << mrpt::format(
-            "%.6f %.6f %.6f %.6f %.9f %.9f %.9f %.9f\n", path.t[i], path.p[i].x(), path.p[i].y(),
-            path.p[i].z(), q.x(), q.y(), q.z(), q.w());
+            "%.6f %.6f %.6f %.6f %.9f %.9f %.9f %.9f\n", path.t[i] + timeShift, path.p[i].x(),
+            path.p[i].y(), path.p[i].z(), q.x(), q.y(), q.z(), q.w());
     }
 }
 
@@ -162,12 +163,13 @@ Path readTum(const std::string& f)
     return out;
 }
 
-// Keyframes every KF_EVERY dense poses, with the corridor seen from the true pose
-void writeSimplemap(const std::string& f, const Path& path)
+// Keyframes every KF_EVERY dense poses from dense pose `first` on, with the
+// corridor seen from the true pose
+void writeSimplemap(const std::string& f, const Path& path, size_t first = 0)
 {
     const auto             world = corridor();
     mrpt::maps::CSimpleMap sm;
-    for (size_t k = 0; k < path.t.size(); k += KF_EVERY)
+    for (size_t k = first; k < path.t.size(); k += KF_EVERY)
     {
         const auto truth = truePose(path.t[k]);
         auto       pc    = mrpt::maps::CSimplePointsMap::Create();
@@ -213,17 +215,18 @@ double heightRange(const Path& p)
 }
 
 // The leveled dense path, at each keyframe's time, against the leveled keyframe
-void checkFollowsKeyframes(const std::string& smFile, const Path& dense, double maxPosErr)
+void checkFollowsKeyframes(
+    const std::string& smFile, const Path& dense, double maxPosErr, size_t first = 0)
 {
     mrpt::maps::CSimpleMap sm;
     ASSERT_(sm.loadFromFile(smFile));
-    ASSERT_EQUAL_(sm.size(), (dense.t.size() + KF_EVERY - 1) / KF_EVERY);
+    ASSERT_EQUAL_(sm.size(), (dense.t.size() - first + KF_EVERY - 1) / KF_EVERY);
     double maxPos = 0;
     double maxRot = 0;
     for (size_t i = 0; i < sm.size(); i++)
     {
         const auto kf   = sm.get(i).pose->getMeanVal();
-        const auto d    = dense.p.at(i * KF_EVERY);
+        const auto d    = dense.p.at(first + i * KF_EVERY);
         const auto diff = kf - d;
         maxPos          = std::max(maxPos, diff.translation().norm());
         const auto ang  = mrpt::poses::CPose3D::FromRotationAndTranslation(
@@ -247,7 +250,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         if (bin.empty() || !mrpt::system::fileExists(bin))
         {
             std::cout << "sm-cli not built: test skipped.\n";
-            return 0;
+            return SKIP_RET;
         }
         const std::string dir = mrpt::system::getTempFileName() + "_level_walls_tum";
         ASSERT_(mrpt::system::createDirectory(dir));
@@ -290,6 +293,40 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                     " --output-tum " + tumOnly),
                 0);
             ASSERT_(mrpt::system::fileExists(tumOnly));
+        }
+        // A dense path that starts 6 s before the first keyframe (e.g. a cropped
+        // map): where both exist, it moves as much as the keyframes do
+        {
+            constexpr size_t  first  = 3 * KF_EVERY;
+            const std::string smLate = dir + "/late.simplemap";
+            writeSimplemap(smLate, path, first);
+            const std::string smOut  = dir + "/late_pw.simplemap";
+            const std::string tumOut = dir + "/late_pw.tum";
+            ASSERT_EQUAL_(
+                run(smLate + " " + smOut + " --piecewise 10 --max-correction-deg 10 --input-tum " +
+                    tumIn + " --output-tum " + tumOut),
+                0);
+            checkFollowsKeyframes(smOut, readTum(tumOut), 0.01, first);
+        }
+        // Another clock (relative times): refused, the windows cannot be matched
+        {
+            const std::string tumRel = dir + "/relative.tum";
+            writeTum(tumRel, path, -T0);
+            ASSERT_(
+                run(smIn + " " + dir +
+                    "/rel.simplemap --piecewise 10 --max-correction-deg 10 "
+                    "--input-tum " +
+                    tumRel + " --output-tum " + dir + "/rel.tum") != 0);
+            ASSERT_(!mrpt::system::fileExists(dir + "/rel.tum"));
+        }
+        // Not a TUM file: extra columns, or a null quaternion
+        for (const char* bad : {"1000 0 0 0 0 0 0 1 7\n", "1000 0 0 0 0 0 0 0\n"})
+        {
+            const std::string tumBad = dir + "/bad.tum";
+            std::ofstream(tumBad) << bad;
+            ASSERT_(
+                run(smIn + " --estimate-only --input-tum " + tumBad + " --output-tum " + dir +
+                    "/bad_out.tum") != 0);
         }
         // Both options or none
         ASSERT_(run(smIn + " " + dir + "/x.simplemap --input-tum " + tumIn) != 0);

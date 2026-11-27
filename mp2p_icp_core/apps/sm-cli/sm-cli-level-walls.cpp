@@ -38,6 +38,7 @@
 #include <iostream>
 #include <optional>
 #include <sstream>
+#include <utility>
 
 #include "sm-cli.h"
 
@@ -271,9 +272,14 @@ TumPath readTum(const std::string& file)
         double             qy = 0;
         double             qz = 0;
         double             qw = 0;
+        std::string        extra;
         ASSERTMSG_(
-            static_cast<bool>(ss >> t >> x >> y >> z >> qx >> qy >> qz >> qw),
-            mrpt::format("%s:%zu: expected 't x y z qx qy qz qw'", file.c_str(), lineNum));
+            static_cast<bool>(ss >> t >> x >> y >> z >> qx >> qy >> qz >> qw) && !(ss >> extra),
+            mrpt::format("%s:%zu: expected exactly 't x y z qx qy qz qw'", file.c_str(), lineNum));
+        const double qn = std::sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
+        ASSERTMSG_(
+            std::isfinite(qn) && qn > 1e-6,
+            mrpt::format("%s:%zu: invalid quaternion", file.c_str(), lineNum));
         mrpt::math::CQuaternionDouble q(qw, qx, qy, qz);
         q.normalize();
         path.times.push_back(t);
@@ -304,6 +310,53 @@ void writeTum(const std::string& file, const TumPath& path)
     ASSERTMSG_(!f.fail(), "Error writing --output-tum file: " + file);
     std::cout << "Leveled trajectory (" << path.times.size() << " poses) written to: '" << file
               << "'\n";
+}
+
+// Position at time t along a sorted path, linearly interpolated (held at the ends)
+mrpt::math::TPoint3D positionAt(
+    const std::vector<double>& times, const std::vector<mrpt::poses::CPose3D>& poses, double t)
+{
+    const auto it = std::lower_bound(times.begin(), times.end(), t);
+    if (it == times.begin())
+    {
+        return poses.front().translation();
+    }
+    if (it == times.end())
+    {
+        return poses.back().translation();
+    }
+    const size_t i   = static_cast<size_t>(it - times.begin());
+    const double dt  = times[i] - times[i - 1];
+    const double frc = dt > 0 ? (t - times[i - 1]) / dt : 1.0;
+    const auto   a   = poses[i - 1].translation();
+    const auto   b   = poses[i].translation();
+    return a + (b - a) * frc;
+}
+
+// --input-tum must be in the keyframes' clock: no overlap at all means
+// another clock (e.g. relative times), and it is refused.
+void checkTumOverlap(const TumPath& path, const std::vector<double>& kfTimes)
+{
+    const double t0 = kfTimes.front();
+    const double t1 = kfTimes.back();
+    ASSERTMSG_(
+        path.times.back() >= t0 && path.times.front() <= t1,
+        mrpt::format(
+            "--input-tum times [%.3f, %.3f] do not overlap the keyframes' [%.3f, %.3f]: they "
+            "must use the same clock",
+            path.times.front(), path.times.back(), t0, t1));
+    size_t outside = 0;
+    for (const double t : path.times)
+    {
+        outside += (t < t0 || t > t1) ? 1 : 0;
+    }
+    if (outside > 0)
+    {
+        std::cout << mrpt::format(
+            "Warning: %zu of %zu --input-tum poses are outside the keyframes' time range; there "
+            "the correction of the nearest window is held.\n",
+            outside, path.times.size());
+    }
 }
 
 // RMS of the angle between wall normals and the horizontal plane [deg]
@@ -450,10 +503,15 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
 
 // --piecewise: a correction per time window, interpolated between windows.
 int levelPiecewise(
-    mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, bool estimateOnly)
+    mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, bool estimateOnly,
+    std::optional<TumPath> inputTum)
 {
     const auto times = keyframeTimes(sm);
     ASSERTMSG_(times, "--piecewise needs sorted timestamps in all keyframes");
+    if (inputTum)
+    {
+        checkTumOverlap(*inputTum, *times);
+    }
 
     const auto ranges = durationWindows(*times, cli->arg_piecewise);
 
@@ -515,18 +573,6 @@ int levelPiecewise(
         setConsoleNormalColor();
         return 1;
     }
-    if (!cli->arg_input_tum.empty())
-    {
-        // The same samples as the keyframes, so the path follows them:
-        auto path  = readTum(cli->arg_input_tum);
-        path.poses = mp2p_icp_filters::level_poses_from_up(path.times, path.poses, samples);
-        writeTum(cli->arg_output_tum, path);
-    }
-    if (estimateOnly)
-    {
-        return 0;
-    }
-
     std::vector<mrpt::poses::CPose3D> poses;
     poses.reserve(sm.size());
     for (const auto& [pose, sf, twist] : sm)
@@ -534,6 +580,31 @@ int levelPiecewise(
         poses.push_back(pose->getMeanVal());
     }
     const auto leveled = mp2p_icp_filters::level_poses_from_up(*times, poses, samples);
+
+    if (inputTum)
+    {
+        // The same samples as the keyframes, integrated on the path's own steps.
+        // The keyframes are integrated from the first one, so the path is
+        // anchored where both first exist: there it moves as much as they do.
+        auto&      path   = *inputTum;
+        const auto in     = path.poses;
+        path.poses        = mp2p_icp_filters::level_poses_from_up(path.times, path.poses, samples);
+        const double tRef = std::max(times->front(), path.times.front());
+        const auto   kfOffset = positionAt(*times, leveled, tRef) - positionAt(*times, poses, tRef);
+        const auto   shift =
+            positionAt(path.times, in, tRef) + kfOffset - positionAt(path.times, path.poses, tRef);
+        for (auto& p : path.poses)
+        {
+            p.x(p.x() + shift.x);
+            p.y(p.y() + shift.y);
+            p.z(p.z() + shift.z);
+        }
+        writeTum(cli->arg_output_tum, path);
+    }
+    if (estimateOnly)
+    {
+        return 0;
+    }
 
     double maxShift = 0;
     size_t k        = 0;
@@ -580,6 +651,16 @@ int commandLevelWalls()
         cli->arg_max_walls_flats >= 0,
         mrpt::format("--max-walls-flats-deg must be >= 0 (got %g)", cli->arg_max_walls_flats));
 
+    // Checked before the map is loaded, so a typo fails at once:
+    ASSERTMSG_(
+        cli->arg_input_tum.empty() == cli->arg_output_tum.empty(),
+        "--input-tum and --output-tum must be given together");
+    std::optional<TumPath> inputTum;
+    if (!cli->arg_input_tum.empty())
+    {
+        inputTum = readTum(cli->arg_input_tum);
+    }
+
     mrpt::maps::CSimpleMap sm = read_input_sm_from_cli(inFile);
     ASSERT_(!sm.empty());
 
@@ -611,12 +692,9 @@ int commandLevelWalls()
         std::cout << "Warning: --windows-out needs --windows or --piecewise: nothing will be "
                      "written to it.\n";
     }
-    ASSERTMSG_(
-        cli->arg_input_tum.empty() == cli->arg_output_tum.empty(),
-        "--input-tum and --output-tum must be given together");
     if (cli->arg_piecewise > 0)
     {
-        return levelPiecewise(sm, pipeline, estimateOnly);
+        return levelPiecewise(sm, pipeline, estimateOnly, std::move(inputTum));
     }
 
     // Whole run:
@@ -683,10 +761,10 @@ int commandLevelWalls()
         return 1;
     }
 
-    if (!cli->arg_input_tum.empty())
+    if (inputTum)
     {
-        // One rotation about the map origin, as for the keyframes:
-        auto path = readTum(cli->arg_input_tum);
+        // One rotation about the map origin, as for the keyframes (any clock):
+        auto& path = *inputTum;
         for (auto& p : path.poses)
         {
             p = R + p;
