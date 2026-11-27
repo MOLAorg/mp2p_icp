@@ -164,9 +164,11 @@ observable usable walls_flats_deg flats_unconfirmed flats_contradicted``) for fu
 
 ``--input-tum`` levels a trajectory in TUM format with the same correction as the keyframes and saves it to
 ``--output-tum``: the single rotation, or with ``--piecewise`` the same interpolated up samples and re-integrated
-positions. Use it for the dense path of the run (e.g. the odometry's per-scan trajectory), so it stays on the
-leveled keyframes; its timestamps must be sorted and in the same clock as the keyframes. It is also written with
-``--estimate-only``, which only skips the output simple-map.
+positions. Use it for the dense path of the run (e.g. the odometry's per-scan trajectory); its timestamps must be
+sorted and in the same clock as the keyframes. With ``--piecewise`` the path is re-integrated on its own steps, so at
+the keyframe stamps it differs from the leveled keyframes only to second order (the change of up between two
+keyframes times the excursion between them): 1-5 cm on real maps. It is also written with ``--estimate-only``, which
+only skips the output simple-map.
 
 .. note::
 
