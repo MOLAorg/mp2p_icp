@@ -27,6 +27,7 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/io/lazy_load_path.h>
 #include <mrpt/maps/CSimpleMap.h>
+#include <mrpt/math/CQuaternion.h>
 #include <mrpt/obs/CObservationComment.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <mrpt/system/filesystem.h>
@@ -36,6 +37,7 @@
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <sstream>
 
 #include "sm-cli.h"
 
@@ -235,6 +237,73 @@ std::vector<std::pair<size_t, size_t>> durationWindows(
         ranges.pop_back();
     }
     return ranges;
+}
+
+struct TumPath
+{
+    std::vector<double>               times;
+    std::vector<mrpt::poses::CPose3D> poses;
+};
+
+// Reads a TUM trajectory ("t x y z qx qy qz qw" rows, '#' comments). Times
+// must be sorted, as level_poses_from_up() integrates the path in order.
+TumPath readTum(const std::string& file)
+{
+    std::ifstream f(file);
+    ASSERTMSG_(f.is_open(), "Cannot read --input-tum file: " + file);
+    TumPath     path;
+    std::string line;
+    size_t      lineNum = 0;
+    while (std::getline(f, line))
+    {
+        lineNum++;
+        const auto first = line.find_first_not_of(" \t\r");
+        if (first == std::string::npos || line[first] == '#')
+        {
+            continue;
+        }
+        std::istringstream ss(line);
+        double             t  = 0;
+        double             x  = 0;
+        double             y  = 0;
+        double             z  = 0;
+        double             qx = 0;
+        double             qy = 0;
+        double             qz = 0;
+        double             qw = 0;
+        ASSERTMSG_(
+            static_cast<bool>(ss >> t >> x >> y >> z >> qx >> qy >> qz >> qw),
+            mrpt::format("%s:%zu: expected 't x y z qx qy qz qw'", file.c_str(), lineNum));
+        mrpt::math::CQuaternionDouble q(qw, qx, qy, qz);
+        q.normalize();
+        path.times.push_back(t);
+        path.poses.emplace_back(q, x, y, z);
+    }
+    ASSERTMSG_(!path.times.empty(), "--input-tum has no poses: " + file);
+    ASSERTMSG_(
+        std::is_sorted(path.times.begin(), path.times.end()),
+        "--input-tum timestamps must be sorted: " + file);
+    return path;
+}
+
+void writeTum(const std::string& file, const TumPath& path)
+{
+    std::ofstream f(file);
+    ASSERTMSG_(f.is_open(), "Cannot write --output-tum file: " + file);
+    f << "# t x y z qx qy qz qw\n";
+    for (size_t i = 0; i < path.times.size(); i++)
+    {
+        const auto&                   p = path.poses[i];
+        mrpt::math::CQuaternionDouble q;
+        p.getAsQuaternion(q);
+        f << mrpt::format(
+            "%.9f %.6f %.6f %.6f %.9f %.9f %.9f %.9f\n", path.times[i], p.x(), p.y(), p.z(), q.x(),
+            q.y(), q.z(), q.w());
+    }
+    f.close();
+    ASSERTMSG_(!f.fail(), "Error writing --output-tum file: " + file);
+    std::cout << "Leveled trajectory (" << path.times.size() << " poses) written to: '" << file
+              << "'\n";
 }
 
 // RMS of the angle between wall normals and the horizontal plane [deg]
@@ -446,6 +515,13 @@ int levelPiecewise(
         setConsoleNormalColor();
         return 1;
     }
+    if (!cli->arg_input_tum.empty())
+    {
+        // The same samples as the keyframes, so the path follows them:
+        auto path  = readTum(cli->arg_input_tum);
+        path.poses = mp2p_icp_filters::level_poses_from_up(path.times, path.poses, samples);
+        writeTum(cli->arg_output_tum, path);
+    }
     if (estimateOnly)
     {
         return 0;
@@ -535,6 +611,9 @@ int commandLevelWalls()
         std::cout << "Warning: --windows-out needs --windows or --piecewise: nothing will be "
                      "written to it.\n";
     }
+    ASSERTMSG_(
+        cli->arg_input_tum.empty() == cli->arg_output_tum.empty(),
+        "--input-tum and --output-tum must be given together");
     if (cli->arg_piecewise > 0)
     {
         return levelPiecewise(sm, pipeline, estimateOnly);
@@ -604,6 +683,17 @@ int commandLevelWalls()
         return 1;
     }
 
+    if (!cli->arg_input_tum.empty())
+    {
+        // One rotation about the map origin, as for the keyframes:
+        auto path = readTum(cli->arg_input_tum);
+        for (auto& p : path.poses)
+        {
+            p = R + p;
+        }
+        writeTum(cli->arg_output_tum, path);
+    }
+
     if (estimateOnly)
     {
         return 0;
@@ -652,6 +742,7 @@ int printCommandsLevelWalls(bool showErrorMsg)
         [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
         [--max-walls-flats-deg 2.0]         # refuse when walls contradict floors
         [--windows-out <file.txt>]          # one row per window, machine readable
+        [--input-tum <in.tum> --output-tum <out.tum>]  # level a dense path too
 
 Corrects a global pitch/roll error of a map by rotating it (about the map origin)
 so walls are as vertical, and floors and ceilings as horizontal, as possible.
@@ -672,6 +763,10 @@ whole-map command then refuses to level (and exits with an error, also with
 --estimate-only); --piecewise refuses the map when that happens in four or
 more of every five windows with an estimate. Windows whose walls alone do not
 give up (one wall direction) are reported but never refused.
+
+--input-tum levels a trajectory (e.g. the dense path of the run, in the same
+clock as the keyframes) with the same correction as the keyframes, into
+--output-tum. It is written with --estimate-only too.
 
 With --pipeline, all point layers the pipeline outputs are merged and voxel
 decimated with --voxel.

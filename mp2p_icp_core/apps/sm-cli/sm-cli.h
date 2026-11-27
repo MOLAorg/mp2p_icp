@@ -58,6 +58,8 @@ struct cli_flags
     double      arg_max_window_sigma   = 1.0;
     double      arg_max_walls_flats    = 2.0;
     std::string arg_windows_out;
+    std::string arg_input_tum;
+    std::string arg_output_tum;
 
     // Option handles, kept to reproduce TCLAP's isSet() semantics exactly
     // (distinguishing "not passed" from "passed with the default value").
@@ -140,6 +142,12 @@ struct cli_flags
             "--windows-out", arg_windows_out,
             "level-walls: write one row per time window (--windows or --piecewise) to this "
             "file");
+        cmd.add_option(
+            "--input-tum", arg_input_tum,
+            "level-walls: a trajectory (TUM format, same clock as the keyframes) to level with "
+            "the same correction as the keyframes, e.g. the dense path of the run");
+        cmd.add_option(
+            "--output-tum", arg_output_tum, "level-walls: where to save the leveled --input-tum");
 
         cmd.add_flag("-h,--help", argHelp, "Shows more detailed help for command");
         cmd.add_flag("--version", argVersion, "Shows program version and exits");
