@@ -107,6 +107,10 @@ mp2p_add_test(mp2p_sm_cli_level_walls_guard EXTRA_LIBS mp2p_icp_filters)
 target_compile_definitions(test-mp2p_sm_cli_level_walls_guard
   PRIVATE SM_CLI_PATH="$<$<TARGET_EXISTS:sm-cli>:$<TARGET_FILE:sm-cli>>")
 set_tests_properties(run_test-mp2p_sm_cli_level_walls_guard PROPERTIES SKIP_RETURN_CODE 77)
+mp2p_add_test(mp2p_sm_cli_level_walls_tum EXTRA_LIBS mp2p_icp_filters)
+target_compile_definitions(test-mp2p_sm_cli_level_walls_tum
+  PRIVATE SM_CLI_PATH="$<$<TARGET_EXISTS:sm-cli>:$<TARGET_FILE:sm-cli>>")
+set_tests_properties(run_test-mp2p_sm_cli_level_walls_tum PROPERTIES SKIP_RETURN_CODE 77)
 mp2p_add_test(mp2p_FilterAbsoluteTimestamp EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterAdjustTimestamps EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterByExpression EXTRA_LIBS mp2p_icp_filters)

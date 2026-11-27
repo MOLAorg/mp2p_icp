@@ -118,6 +118,7 @@ attitude of a LiDAR-inertial run, estimated from a short accelerometer average.
         [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
         [--max-walls-flats-deg 2.0]         # refuse when walls contradict floors
         [--windows-out <file.txt>]          # one row per window, machine readable
+        [--input-tum <in.tum> --output-tum <out.tum>]  # level a dense path too
 
 How it works:
 
@@ -160,6 +161,17 @@ deviations of :math:`u_x, u_y` from a sandwich covariance, which takes the norma
 as the independent groups, and ``--windows-out`` writes one row per window
 (``window kf_first kf_last t_start t_end up_x up_y up_z tilt_deg sigma_x_deg sigma_y_deg walls flats groups
 observable usable walls_flats_deg flats_unconfirmed flats_contradicted``) for further processing.
+
+``--input-tum`` levels a trajectory in TUM format with the same correction as the keyframes and saves it to
+``--output-tum``: the single rotation, or with ``--piecewise`` the same interpolated up samples and re-integrated
+positions. Use it for the dense path of the run (e.g. the odometry's per-scan trajectory); its timestamps must be
+sorted and, with ``--piecewise``, in the same clock as the keyframes: a path whose time range does not overlap the
+keyframes' is refused, and poses outside it (a warning tells how many) get the correction of the nearest window. With
+``--piecewise`` the path is re-integrated on its own steps and anchored where it and the keyframes first both exist,
+so there it moves as much as the keyframes; at the keyframe stamps it differs from the leveled keyframes only to second
+order (the change of up between two keyframes times the excursion between them): 1-5 cm on real maps. It is also
+written with ``--estimate-only``, which only skips the output simple-map. The file is read and checked (8 columns,
+valid quaternions) before the map is loaded.
 
 .. note::
 
