@@ -68,9 +68,12 @@ using KeyframeSignature = std::vector<uint64_t>;
  *
  *  With `oriented`, the key of each voxel includes one of six axis directions:
  *  that of the normal of its points, oriented towards the sensor, if they are
- *  planar; otherwise that of the viewing ray (in a separate set of six). Two
- *  keyframes then share a voxel only if they see the same side of the same
- *  surface. Deterministic.
+ *  planar; otherwise that of the viewing ray (in a separate set of six); and
+ *  whether the voxel is above or below the sensor. Two keyframes then share a
+ *  voxel only if they see the same side of the same surface from the same
+ *  height side: the floor and the ceiling of a slab, or a wall where it crosses
+ *  a slab, do not join two storeys. `sensorInMap` must be the position of the
+ *  sensor itself, not that of a robot frame below it. Deterministic.
  */
 [[nodiscard]] KeyframeSignature keyframe_signature(
     const mrpt::maps::CPointsMap& pointsInMap, const mrpt::math::TPoint3D& sensorInMap,

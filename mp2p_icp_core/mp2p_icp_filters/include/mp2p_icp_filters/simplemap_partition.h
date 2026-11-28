@@ -91,6 +91,9 @@ struct SimplemapPartition
     /// links (no points), that of the closest keyframe in the sequence.
     std::vector<uint32_t> keyframe_submap;
 
+    /// simplemap_fingerprint() of the map it was made from (0: unknown)
+    uint64_t map_fingerprint = 0;
+
     [[nodiscard]] std::size_t keyframe_count() const { return keyframe_submap.size(); }
     [[nodiscard]] std::size_t submap_count() const;
 
@@ -104,11 +107,24 @@ struct SimplemapPartition
 /// Statistics of partition_simplemap()
 struct SimplemapPartitionStats
 {
-    double      signatures_seconds = 0;  //!< Points and signatures of all keyframes
-    double      graph_seconds      = 0;  //!< Node insertion and keyframe queries
-    double      partition_seconds  = 0;  //!< Spectral partition of the node graph
-    std::size_t signature_voxels   = 0;  //!< Sum of the voxels of all node signatures
+    double      nodes_seconds     = 0;  //!< Node signatures and the node graph
+    double      keyframes_seconds = 0;  //!< Signatures and links of the other keyframes
+    double      partition_seconds = 0;  //!< Spectral partition of the node graph
+    std::size_t signature_voxels  = 0;  //!< Sum of the voxels of all node signatures
+
+    /// Fiedler vector solves that did not converge (see GraphPartitionStats)
+    std::size_t unconverged_eigen_solves = 0;
 };
+
+/** The default sm2mm pipeline to turn keyframes into points: every point of
+ *  every observation, decimated per keyframe to one point per voxel of
+ *  `voxel` [m] (the first one).
+ */
+[[nodiscard]] mrpt::containers::yaml decimated_keyframes_pipeline(double voxel);
+
+/** A hash of the number of keyframes and the timestamp of each one, to tell
+ *  whether a partition belongs to a map: it does not change when poses do. */
+[[nodiscard]] uint64_t simplemap_fingerprint(const mrpt::maps::CSimpleMap& sm);
 
 /** Splits the keyframes of `sm` into submaps of shared content: samples nodes
  *  (SimplemapPartitionParams::sample_distance, sample_angle_deg), builds their
@@ -159,11 +175,10 @@ struct UpFieldParams
  *  of its nodes with its covariance (counted once per submap, whatever its
  *  size),
  *  and a prior that nodes sharing content have similar ups (see
- *  UpFieldParams::step_sigma_deg). One sparse solve. Nodes without an
- *  estimate of their own (a submap without a usable up) follow their
- *  neighbors; a part of the graph with no estimate at all takes the mean of
- *  all of them. Each keyframe then takes the mean of the ups of the nodes it
- *  is linked to, weighted by similarity, or without links, that of the
+ *  UpFieldParams::step_sigma_deg), plus a weak one between consecutive
+ *  nodes. One sparse solve. Nodes without an estimate of their own (a submap
+ *  without a usable up, an empty scan) follow their neighbors. Each keyframe then takes the mean of
+ * the ups of the nodes it is linked to, weighted by similarity, or without links, that of the
  *  closest keyframe in the sequence.
  *
  *  \exception std::exception If no submap has an up.
@@ -184,3 +199,7 @@ struct UpFieldParams
 /** @} */
 
 }  // namespace mp2p_icp_filters
+
+/** Feature macro: simple-map partitions (partition_simplemap()), the up field
+ *  (keyframe_ups_from_submaps()) and leveling by place (level_by_place.h) */
+#define MP2P_ICP_HAS_SIMPLEMAP_PARTITION 1

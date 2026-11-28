@@ -28,6 +28,7 @@
 #include <mrpt/obs/registerAllClasses.h>
 
 #include <CLI/CLI.hpp>
+#include <filesystem>
 #include <iostream>
 #include <map>
 
@@ -164,4 +165,18 @@ mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& inFile)
     ASSERT_(loadOk);
 
     return sm;
+}
+
+bool same_file(const std::string& a, const std::string& b)
+{
+    std::error_code ea;
+    std::error_code eb;
+    if (std::filesystem::exists(a, ea) && std::filesystem::exists(b, eb))
+    {
+        std::error_code e;
+        return std::filesystem::equivalent(a, b, e) && !e;
+    }
+    const auto pa = std::filesystem::weakly_canonical(a, ea);
+    const auto pb = std::filesystem::weakly_canonical(b, eb);
+    return !ea && !eb && pa == pb;
 }

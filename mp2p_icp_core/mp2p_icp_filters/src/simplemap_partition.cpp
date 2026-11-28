@@ -24,6 +24,11 @@
 #include <mrpt/core/Clock.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/obs/CObservation2DRangeScan.h>
+#include <mrpt/obs/CObservation3DRangeScan.h>
+#include <mrpt/obs/CObservationPointCloud.h>
+#include <mrpt/obs/CObservationRotatingScan.h>
+#include <mrpt/obs/CObservationVelodyneScan.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/system/filesystem.h>
 
@@ -33,6 +38,8 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <functional>
+#include <iterator>
 #include <map>
 
 #if defined(MP2P_HAS_TBB)
@@ -46,41 +53,19 @@ namespace
 {
 constexpr const char* FORMAT_NAME = "mp2p_icp_simplemap_partition";
 
-mrpt::containers::yaml defaultPipeline(double voxel)
+// Observations that hold range data: their sensor is the origin of their points
+bool isRangeObservation(const mrpt::obs::CObservation& obs)
 {
-    return mrpt::containers::yaml::FromText(mrpt::format(
-        R"XXX(
-generators:
-  - class_name: mp2p_icp_filters::Generator
-    params:
-      target_layer: 'raw'
-filters:
-  - class_name: mp2p_icp_filters::FilterDecimateVoxels
-    params:
-      input_pointcloud_layer: 'raw'
-      output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: %f
-      decimate_method: DecimateMethod::FirstPoint
-  - class_name: mp2p_icp_filters::FilterDeleteLayer
-    params:
-      pointcloud_layer_to_remove: ['raw']
-)XXX",
-        voxel));
+    return IS_CLASS(obs, mrpt::obs::CObservationPointCloud) ||
+           IS_CLASS(obs, mrpt::obs::CObservation3DRangeScan) ||
+           IS_CLASS(obs, mrpt::obs::CObservationRotatingScan) ||
+           IS_CLASS(obs, mrpt::obs::CObservationVelodyneScan) ||
+           IS_CLASS(obs, mrpt::obs::CObservation2DRangeScan);
 }
 
-// All point layers of one keyframe, merged, in the map frame
-mrpt::maps::CSimplePointsMap keyframePoints(
-    const mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, size_t k)
+// All point layers of `mm`, merged
+mrpt::maps::CSimplePointsMap mergedPoints(const mp2p_icp::metric_map_t& mm)
 {
-    sm2mm_options_t opts;
-    opts.showProgressBar = false;
-    opts.verbosity       = mrpt::system::LVL_WARN;
-    opts.start_index     = k;
-    opts.end_index       = k;
-
-    mp2p_icp::metric_map_t mm;
-    simplemap_to_metricmap(sm, mm, pipeline, opts);
-
     mrpt::maps::CSimplePointsMap pts;
     size_t                       total = 0;
     for (const auto& [name, layer] : mm.layers)
@@ -108,6 +93,66 @@ mrpt::maps::CSimplePointsMap keyframePoints(
     return pts;
 }
 
+mrpt::maps::CSimplePointsMap pointsOf(
+    const mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, size_t k)
+{
+    sm2mm_options_t opts;
+    opts.showProgressBar = false;
+    opts.verbosity       = mrpt::system::LVL_WARN;
+    opts.start_index     = k;
+    opts.end_index       = k;
+    mp2p_icp::metric_map_t mm;
+    simplemap_to_metricmap(sm, mm, pipeline, opts);
+    return mergedPoints(mm);
+}
+
+// Signature of keyframe k, each range observation with its own sensor as the
+// origin of its points
+KeyframeSignature signatureOf(
+    const mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, size_t k,
+    const KeyframeSignatureParams& params)
+{
+    const auto&                               kf    = sm.get(k);
+    const auto                                robot = kf.pose->getMeanVal();
+    std::vector<mrpt::obs::CObservation::Ptr> ranges;
+    for (const auto& obs : *kf.sf)
+    {
+        if (obs && isRangeObservation(*obs))
+        {
+            ranges.push_back(obs);
+        }
+    }
+    if (ranges.size() <= 1)
+    {
+        const auto origin = ranges.empty() ? robot.translation()
+                                           : (robot + ranges[0]->getSensorPose()).translation();
+        return keyframe_signature(pointsOf(sm, pipeline, k), origin, params);
+    }
+    // Several sensors: one keyframe per sensor, each with the other
+    // (non-range) observations, then the union of the signatures
+    KeyframeSignature sig;
+    for (const auto& r : ranges)
+    {
+        auto one = mrpt::obs::CSensoryFrame::Create();
+        for (const auto& obs : *kf.sf)
+        {
+            if (obs && (obs == r || !isRangeObservation(*obs)))
+            {
+                one->insert(obs);
+            }
+        }
+        mrpt::maps::CSimpleMap single;
+        single.insert(kf.pose, one, kf.localTwist);
+        const auto part = keyframe_signature(
+            pointsOf(single, pipeline, 0), (robot + r->getSensorPose()).translation(), params);
+        KeyframeSignature merged;
+        std::set_union(
+            sig.begin(), sig.end(), part.begin(), part.end(), std::back_inserter(merged));
+        sig.swap(merged);
+    }
+    return sig;
+}
+
 double rotationAngle(const mrpt::poses::CPose3D& a, const mrpt::poses::CPose3D& b)
 {
     const auto   R = a.getRotationMatrix().asEigen().transpose() * b.getRotationMatrix().asEigen();
@@ -129,25 +174,92 @@ void keepBest(std::vector<std::pair<uint32_t, double>>& links, size_t maxCount)
     std::sort(links.begin(), links.end());
 }
 
-// Index of the closest element, in the sequence, for which `has` is true
-template <class PRED>
-std::optional<size_t> closestInSequence(size_t k, size_t n, PRED has)
+// For each index, the closest index in the sequence for which `has` is true
+// (the earlier one on ties), or nullopt if there is none. Linear time.
+std::vector<std::optional<size_t>> closestInSequence(const std::vector<bool>& has)
 {
-    for (size_t d = 1; d < n; d++)
+    const size_t                       n = has.size();
+    std::vector<std::optional<size_t>> before(n);
+    std::vector<std::optional<size_t>> after(n);
+    for (size_t k = 0; k < n; k++)
     {
-        if (k >= d && has(k - d))
+        before[k] = has[k] ? std::optional<size_t>(k) : (k > 0 ? before[k - 1] : std::nullopt);
+    }
+    for (size_t k = n; k-- > 0;)
+    {
+        after[k] = has[k] ? std::optional<size_t>(k) : (k + 1 < n ? after[k + 1] : std::nullopt);
+    }
+    std::vector<std::optional<size_t>> out(n);
+    for (size_t k = 0; k < n; k++)
+    {
+        if (before[k] && (!after[k] || k - *before[k] <= *after[k] - k))
         {
-            return k - d;
+            out[k] = before[k];
         }
-        if (k + d < n && has(k + d))
+        else
         {
-            return k + d;
+            out[k] = after[k];
         }
     }
-    return std::nullopt;
+    return out;
 }
 
 }  // namespace
+
+mrpt::containers::yaml decimated_keyframes_pipeline(double voxel)
+{
+    ASSERT_GT_(voxel, 0.0);
+    return mrpt::containers::yaml::FromText(mrpt::format(
+        R"XXX(
+generators:
+  - class_name: mp2p_icp_filters::Generator
+    params:
+      target_layer: 'raw'
+filters:
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      input_pointcloud_layer: 'raw'
+      output_pointcloud_layer: 'decimated'
+      voxel_filter_resolution: %f
+      decimate_method: DecimateMethod::FirstPoint
+  - class_name: mp2p_icp_filters::FilterDeleteLayer
+    params:
+      pointcloud_layer_to_remove: ['raw']
+)XXX",
+        voxel));
+}
+
+uint64_t simplemap_fingerprint(const mrpt::maps::CSimpleMap& sm)
+{
+    // FNV-1a over the keyframe count and the first stamp of each keyframe
+    uint64_t   h   = 1469598103934665603ULL;
+    const auto mix = [&h](uint64_t v)
+    {
+        for (int b = 0; b < 8; b++)
+        {
+            h ^= (v >> (8 * b)) & 0xFF;
+            h *= 1099511628211ULL;
+        }
+    };
+    mix(sm.size());
+    for (const auto& [pose, sf, twist] : sm)
+    {
+        int64_t ticks = 0;
+        if (sf)
+        {
+            for (const auto& obs : *sf)
+            {
+                if (obs && obs->timestamp != mrpt::Clock::time_point())
+                {
+                    ticks = obs->timestamp.time_since_epoch().count();
+                    break;
+                }
+            }
+        }
+        mix(static_cast<uint64_t>(ticks));
+    }
+    return h;
+}
 
 std::size_t SimplemapPartition::submap_count() const
 {
@@ -181,6 +293,8 @@ void SimplemapPartition::save_to_file(const std::string& file) const
     f << "format: " << FORMAT_NAME << "\n";
     f << "version: 1\n";
     f << "keyframe_count: " << keyframe_count() << "\n";
+    f << "map_fingerprint: '"
+      << mrpt::format("%016llx", static_cast<unsigned long long>(map_fingerprint)) << "'\n";
     f << "submap_count: " << submap_count() << "\n";
     f << "# [keyframe, submap, voxels] per node\n";
     f << "nodes:\n";
@@ -221,6 +335,10 @@ SimplemapPartition SimplemapPartition::load_from_file(const std::string& file)
     ASSERTMSG_(y["version"].as<int>() == 1, "Unsupported partition file version: " + file);
 
     SimplemapPartition p;
+    if (y.has("map_fingerprint"))
+    {
+        p.map_fingerprint = std::stoull(y["map_fingerprint"].as<std::string>(), nullptr, 16);
+    }
     if (y.has("nodes") && y["nodes"].isSequence())
     {
         for (const auto& row : y["nodes"].asSequence())
@@ -322,91 +440,83 @@ SimplemapPartition partition_simplemap(
         }
     }
 
-    // Signatures of all keyframes:
     ASSERTMSG_(
         !params.pipeline.empty() || params.decimation_voxel > 0,
         "partition_simplemap(): decimation_voxel must be > 0 with the default pipeline");
-    const auto pipeline =
-        params.pipeline.empty() ? defaultPipeline(params.decimation_voxel) : params.pipeline;
-    const double                   t0 = mrpt::Clock::nowDouble();
-    std::vector<KeyframeSignature> sigs(N);
-    const auto                     computeSig = [&](size_t k)
-    {
-        const auto pts = keyframePoints(sm, pipeline, k);
-        sigs[k]        = keyframe_signature(pts, poses[k].translation(), params.signature);
-    };
-#if defined(MP2P_HAS_TBB)
-    tbb::parallel_for(
-        tbb::blocked_range<size_t>(0, N, 1),
-        [&](const tbb::blocked_range<size_t>& r)
-        {
-            for (size_t k = r.begin(); k < r.end(); k++)
-            {
-                computeSig(k);
-            }
-        });
-#else
-    for (size_t k = 0; k < N; k++)
-    {
-        computeSig(k);
-    }
-#endif
-    const double t1 = mrpt::Clock::nowDouble();
+    const auto pipeline = params.pipeline.empty()
+                              ? decimated_keyframes_pipeline(params.decimation_voxel)
+                              : params.pipeline;
+    out.map_fingerprint = simplemap_fingerprint(sm);
 
-    // Node graph, then links of every keyframe:
+    const auto parallelFor = [](size_t n, size_t grain, const std::function<void(size_t)>& f)
+    {
+#if defined(MP2P_HAS_TBB)
+        tbb::parallel_for(
+            tbb::blocked_range<size_t>(0, n, grain),
+            [&](const tbb::blocked_range<size_t>& r)
+            {
+                for (size_t i = r.begin(); i < r.end(); i++)
+                {
+                    f(i);
+                }
+            });
+#else
+        (void)grain;
+        for (size_t i = 0; i < n; i++)
+        {
+            f(i);
+        }
+#endif
+    };
+
+    // Nodes first: signatures, then the graph in node order
+    const double                   t0     = mrpt::Clock::nowDouble();
+    const size_t                   nNodes = out.node_keyframe.size();
+    std::vector<KeyframeSignature> nodeSigs(nNodes);
+    parallelFor(
+        nNodes, 1,
+        [&](size_t n)
+        { nodeSigs[n] = signatureOf(sm, pipeline, out.node_keyframe[n], params.signature); });
+
     KeyframeOverlapGraph graph(params.graph);
     size_t               voxels = 0;
-    for (const auto kf : out.node_keyframe)
+    for (auto& sig : nodeSigs)
     {
-        graph.add_node(sigs[kf]);
-        voxels += sigs[kf].size();
-        out.node_voxels.push_back(static_cast<uint32_t>(sigs[kf].size()));
+        graph.add_node(sig);
+        voxels += sig.size();
+        out.node_voxels.push_back(static_cast<uint32_t>(sig.size()));
+        KeyframeSignature().swap(sig);
     }
-    out.node_edges = graph.edges();
+    out.node_edges  = graph.edges();
+    const double t1 = mrpt::Clock::nowDouble();
 
+    // Then every other keyframe: its signature is only queried, not kept
     out.keyframe_links.resize(N);
     for (const auto& e : out.node_edges)
     {
         out.keyframe_links[out.node_keyframe[e.i]].emplace_back(e.j, e.w);
         out.keyframe_links[out.node_keyframe[e.j]].emplace_back(e.i, e.w);
     }
-    const auto linkKf = [&](size_t k)
-    {
-        auto& links = out.keyframe_links[k];
-        if (nodeOfKf[k] >= 0)
+    parallelFor(
+        N, 1,
+        [&](size_t k)
         {
-            // Its own node always stays: keep one fewer of the others
-            keepBest(links, params.max_keyframe_links - 1);
-            links.emplace_back(static_cast<uint32_t>(nodeOfKf[k]), 1.0);
-            std::sort(links.begin(), links.end());
-        }
-        else
-        {
-            links = graph.query(sigs[k]);
-            keepBest(links, params.max_keyframe_links);
-        }
-        KeyframeSignature().swap(sigs[k]);
-    };
-#if defined(MP2P_HAS_TBB)
-    tbb::parallel_for(
-        tbb::blocked_range<size_t>(0, N, 16),
-        [&](const tbb::blocked_range<size_t>& r)
-        {
-            for (size_t k = r.begin(); k < r.end(); k++)
+            auto& links = out.keyframe_links[k];
+            if (nodeOfKf[k] >= 0)
             {
-                linkKf(k);
+                // Its own node always stays: keep one fewer of the others
+                keepBest(links, params.max_keyframe_links - 1);
+                links.emplace_back(static_cast<uint32_t>(nodeOfKf[k]), 1.0);
+                std::sort(links.begin(), links.end());
+                return;
             }
+            links = graph.query(signatureOf(sm, pipeline, k, params.signature));
+            keepBest(links, params.max_keyframe_links);
         });
-#else
-    for (size_t k = 0; k < N; k++)
-    {
-        linkKf(k);
-    }
-#endif
     const double t2 = mrpt::Clock::nowDouble();
 
-    out.node_submap =
-        spectral_partition(out.node_keyframe.size(), out.node_edges, params.partition);
+    GraphPartitionStats cutStats;
+    out.node_submap = spectral_partition(nNodes, out.node_edges, params.partition, &cutStats);
     const double t3 = mrpt::Clock::nowDouble();
 
     // Keyframe submaps: that of the most similar node
@@ -426,24 +536,22 @@ SimplemapPartition partition_simplemap(
         out.keyframe_submap[k] = out.node_submap[best->first];
         assigned[k]            = true;
     }
+    const auto closest = closestInSequence(assigned);
     for (size_t k = 0; k < N; k++)
     {
-        if (!assigned[k])
+        if (!assigned[k] && closest[k])
         {
-            const auto c = closestInSequence(k, N, [&](size_t i) { return assigned[i]; });
-            if (c)
-            {
-                out.keyframe_submap[k] = out.keyframe_submap[*c];
-            }
+            out.keyframe_submap[k] = out.keyframe_submap[*closest[k]];
         }
     }
 
     if (stats)
     {
-        stats->signatures_seconds = t1 - t0;
-        stats->graph_seconds      = t2 - t1;
-        stats->partition_seconds  = t3 - t2;
-        stats->signature_voxels   = voxels;
+        stats->nodes_seconds            = t1 - t0;
+        stats->keyframes_seconds        = t2 - t1;
+        stats->partition_seconds        = t3 - t2;
+        stats->signature_voxels         = voxels;
+        stats->unconverged_eigen_solves = cutStats.unconverged;
     }
     return out;
     MRPT_END
@@ -541,6 +649,21 @@ std::vector<mrpt::math::TVector3D> keyframe_ups_from_submaps(
             trip.emplace_back(j, i, -w);
         }
     }
+    // A weak link between consecutive nodes, so a node without content edges
+    // (an empty scan) follows its neighbors in the sequence:
+    const double weakStiff = 0.01 * stiff;
+    for (size_t n = 0; n + 1 < nNodes; n++)
+    {
+        for (int r = 0; r < 2; r++)
+        {
+            const auto i = static_cast<Eigen::Index>(2 * n + r);
+            const auto j = static_cast<Eigen::Index>(2 * (n + 1) + r);
+            trip.emplace_back(i, i, weakStiff);
+            trip.emplace_back(j, j, weakStiff);
+            trip.emplace_back(i, j, -weakStiff);
+            trip.emplace_back(j, i, -weakStiff);
+        }
+    }
     Eigen::SparseMatrix<double> H(M, M);
     H.setFromTriplets(trip.begin(), trip.end());
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
@@ -572,16 +695,16 @@ std::vector<mrpt::math::TVector3D> keyframe_ups_from_submaps(
             kfUp[k] = acc * (1.0 / acc.norm());
         }
     }
+    std::vector<bool> has(N);
+    for (size_t k = 0; k < N; k++)
+    {
+        has[k] = kfUp[k].has_value();
+    }
+    const auto                         closest = closestInSequence(has);
     std::vector<mrpt::math::TVector3D> out(N);
     for (size_t k = 0; k < N; k++)
     {
-        if (kfUp[k])
-        {
-            out[k] = *kfUp[k];
-            continue;
-        }
-        const auto c = closestInSequence(k, N, [&](size_t i) { return kfUp[i].has_value(); });
-        out[k]       = c ? *kfUp[*c] : nodeUp(0);
+        out[k] = closest[k] ? *kfUp[*closest[k]] : nodeUp(0);
     }
     return out;
     MRPT_END

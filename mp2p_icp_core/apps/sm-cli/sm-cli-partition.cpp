@@ -29,7 +29,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <filesystem>
 #include <iostream>
 #include <unordered_set>
 
@@ -109,16 +108,11 @@ int commandPartition()
 
     // Checked before the map is loaded: no output may overwrite the input or another output
     {
-        const auto same = [](const std::string& a, const std::string& b)
-        {
-            std::error_code ec;
-            return std::filesystem::weakly_canonical(a, ec) ==
-                   std::filesystem::weakly_canonical(b, ec);
-        };
         const std::string& mapOut = cli->arg_output_colored_map;
-        ASSERTMSG_(!same(outFile, inFile), "The partition file must not be the input simple-map");
         ASSERTMSG_(
-            mapOut.empty() || (!same(mapOut, inFile) && !same(mapOut, outFile)),
+            !same_file(outFile, inFile), "The partition file must not be the input simple-map");
+        ASSERTMSG_(
+            mapOut.empty() || (!same_file(mapOut, inFile) && !same_file(mapOut, outFile)),
             "--output-colored-map must not be the input simple-map nor the partition file");
     }
 
@@ -155,9 +149,16 @@ int commandPartition()
         "Keyframes: %zu, nodes: %zu, node edges: %zu, submaps: %zu\n", part.keyframe_count(),
         part.node_keyframe.size(), part.node_edges.size(), groups.size());
     std::cout << mrpt::format(
-        "Time: signatures %.2f s, graph %.2f s, partition %.2f s (%zu node voxels)\n",
-        stats.signatures_seconds, stats.graph_seconds, stats.partition_seconds,
+        "Time: nodes %.2f s, other keyframes %.2f s, partition %.2f s (%zu node voxels)\n",
+        stats.nodes_seconds, stats.keyframes_seconds, stats.partition_seconds,
         stats.signature_voxels);
+    if (stats.unconverged_eigen_solves > 0)
+    {
+        std::cout << mrpt::format(
+            "Warning: %zu Fiedler vector solves did not converge; their cuts were taken along "
+            "the best vector found.\n",
+            stats.unconverged_eigen_solves);
+    }
     for (size_t s = 0; s < groups.size(); s++)
     {
         const auto& g = groups[s];
@@ -177,27 +178,8 @@ int commandPartition()
 
     if (!cli->arg_output_colored_map.empty())
     {
-        mrpt::containers::yaml pipeline = p.pipeline;
-        if (pipeline.empty())
-        {
-            pipeline = mrpt::containers::yaml::FromText(mrpt::format(
-                R"XXX(
-generators:
-  - class_name: mp2p_icp_filters::Generator
-    params:
-      target_layer: 'raw'
-filters:
-  - class_name: mp2p_icp_filters::FilterDecimateVoxels
-    params:
-      input_pointcloud_layer: 'raw'
-      output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: 0.2
-      decimate_method: DecimateMethod::FirstPoint
-  - class_name: mp2p_icp_filters::FilterDeleteLayer
-    params:
-      pointcloud_layer_to_remove: ['raw']
-)XXX"));
-        }
+        const auto pipeline =
+            p.pipeline.empty() ? mp2p_icp_filters::decimated_keyframes_pipeline(0.2) : p.pipeline;
         writeColoredMap(sm, pipeline, part, cli->arg_output_colored_map);
     }
     return 0;
@@ -231,8 +213,9 @@ int printCommandsPartition(bool showErrorMsg)
 
 Splits the keyframes into submaps that observe the same place, whenever they
 were visited: keyframes are sampled (graph nodes), each one is turned into
-voxels in the map frame, tagged with the side of the surface seen from the
-sensor, and two nodes are as similar as the voxels they share (Jaccard). The
+voxels in the map frame, tagged with the side of the surface seen from its
+sensor (each range observation's sensorPose) and with whether they are above
+or below it, and two nodes are as similar as the voxels they share (Jaccard). The
 graph is split by recursive normalized cuts. Every keyframe joins the submap
 of its most similar node. Poses are used as they are: no registration.
 

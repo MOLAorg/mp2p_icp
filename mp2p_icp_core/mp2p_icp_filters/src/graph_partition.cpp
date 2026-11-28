@@ -159,7 +159,8 @@ std::vector<std::vector<uint32_t>> components(const Csr& g)
 // Lanczos with full reorthogonalization on A = D^-1/2 W D^-1/2, restricted to
 // the complement of its top eigenvector D^1/2 1, restarted from the Ritz vector.
 std::vector<double> fiedlerConnected(
-    const Csr& g, const std::vector<double>& d, const GraphPartitionParams& p, double* lambda2)
+    const Csr& g, const std::vector<double>& d, const GraphPartitionParams& p, double* lambda2,
+    bool* converged)
 {
     const size_t n = g.size();
     ASSERT_GE_(n, 2UL);
@@ -200,6 +201,7 @@ std::vector<double> fiedlerConnected(
     Eigen::VectorXd r(n);
     Eigen::VectorXd ritz  = q;
     double          theta = 0;
+    bool            done  = false;
 
     for (size_t restart = 0; restart <= p.lanczos_max_restarts; restart++)
     {
@@ -259,6 +261,7 @@ std::vector<double> fiedlerConnected(
         const double residual = std::abs(beta.back() * s[last]);
         if (residual < p.lanczos_tolerance || beta.back() < 1e-12 || k < m)
         {
+            done = true;
             break;
         }
     }
@@ -266,6 +269,10 @@ std::vector<double> fiedlerConnected(
     if (lambda2)
     {
         *lambda2 = std::max(0.0, 1.0 - theta);
+    }
+    if (converged)
+    {
+        *converged = done;
     }
     std::vector<double> f(n);
     for (size_t k = 0; k < n; k++)
@@ -377,7 +384,7 @@ double normalized_cut(
 
 std::vector<double> fiedler_vector(
     std::size_t nodeCount, const std::vector<WeightedEdge>& edges,
-    const GraphPartitionParams& params, double* lambda2)
+    const GraphPartitionParams& params, double* lambda2, bool* converged)
 {
     MRPT_START
     const Csr             g = buildCsr(nodeCount, edges);
@@ -395,13 +402,17 @@ std::vector<double> fiedler_vector(
     {
         *lambda2 = 0;
     }
+    if (converged)
+    {
+        *converged = true;
+    }
     if (active.size() < 2)
     {
         return f;
     }
     std::vector<int64_t> local(nodeCount, -1);
     const Csr            s  = subgraph(g, active, local);
-    const auto           fs = fiedlerConnected(s, degrees(s), params, lambda2);
+    const auto           fs = fiedlerConnected(s, degrees(s), params, lambda2, converged);
     for (size_t k = 0; k < active.size(); k++)
     {
         f[active[k]] = fs[k];
@@ -417,7 +428,7 @@ std::vector<double> fiedler_vector(
 
 std::vector<uint32_t> spectral_partition(
     std::size_t nodeCount, const std::vector<WeightedEdge>& edges,
-    const GraphPartitionParams& params)
+    const GraphPartitionParams& params, GraphPartitionStats* stats)
 {
     MRPT_START
     ASSERT_GE_(params.min_part_size, 1UL);
@@ -456,8 +467,14 @@ std::vector<uint32_t> spectral_partition(
             leaves.push_back(nodes);
             continue;
         }
-        const auto d     = degrees(s);
-        const auto f     = fiedlerConnected(s, d, params, nullptr);
+        const auto d         = degrees(s);
+        bool       converged = true;
+        const auto f         = fiedlerConnected(s, d, params, nullptr, &converged);
+        if (stats)
+        {
+            stats->eigen_solves++;
+            stats->unconverged += converged ? 0 : 1;
+        }
         const auto split = sweepCut(s, d, f, params.min_part_size);
         if (!split.found || split.ncut > params.max_ncut)
         {

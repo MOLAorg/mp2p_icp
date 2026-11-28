@@ -37,9 +37,9 @@
 
 #include <algorithm>
 #include <cmath>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <utility>
@@ -51,29 +51,6 @@ namespace
 int printCommandsLevelWalls(bool showErrorMsg);
 
 constexpr const char* ANALYSIS_LAYER = "level_walls_analysis";
-
-// Per-keyframe voxel decimation, so the accumulated cloud stays small:
-mrpt::containers::yaml defaultPipeline(double voxel)
-{
-    return mrpt::containers::yaml::FromText(mrpt::format(
-        R"XXX(
-generators:
-  - class_name: mp2p_icp_filters::Generator
-    params:
-      target_layer: 'raw'
-filters:
-  - class_name: mp2p_icp_filters::FilterDecimateVoxels
-    params:
-      input_pointcloud_layer: 'raw'
-      output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: %f
-      decimate_method: DecimateMethod::FirstPoint
-  - class_name: mp2p_icp_filters::FilterDeleteLayer
-    params:
-      pointcloud_layer_to_remove: ['raw']
-)XXX",
-        voxel));
-}
 
 // Converts keyframes [first, last] into one voxel-decimated cloud in the map frame,
 // merging all point layers the pipeline outputs.
@@ -550,16 +527,21 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
 // stand down, and skipping them only leaves gaps to interpolate over.
 // Windows whose walls cannot tell (one wall direction, along a single
 // facade) are not counted: they say nothing against the floors.
-bool slopedScene(const std::vector<WindowEstimate>& windows, const char* what)
+// `weights`, if given, weigh each window (e.g. by its keyframes) instead of 1.
+bool slopedScene(
+    const std::vector<WindowEstimate>& windows, const char* what,
+    const std::vector<size_t>* weights = nullptr)
 {
     size_t estimated    = 0;
     size_t contradicted = 0;
-    for (const auto& w : windows)
+    for (size_t i = 0; i < windows.size(); i++)
     {
+        const auto& w = windows[i];
         if (w.est)
         {
-            estimated++;
-            contradicted += w.est->walls_contradict_flats ? 1 : 0;
+            const size_t n = weights ? (*weights)[i] : 1;
+            estimated += n;
+            contradicted += w.est->walls_contradict_flats ? n : 0;
         }
     }
     if (estimated > 0 && contradicted * 5 >= estimated * 4)
@@ -583,18 +565,48 @@ void printRevisitSplit(
     const std::vector<double>& times, const std::vector<mrpt::poses::CPose3D>& before,
     const std::vector<mrpt::poses::CPose3D>& after)
 {
+    // Candidates from a 0.3 m plan grid: the same and the eight neighbor cells
+    constexpr double                                           cell = 0.3;
+    std::map<std::pair<int64_t, int64_t>, std::vector<size_t>> grid;
+    const auto cellOf = [&](const mrpt::poses::CPose3D& p)
+    {
+        return std::make_pair(
+            static_cast<int64_t>(std::floor(p.x() / cell)),
+            static_cast<int64_t>(std::floor(p.y() / cell)));
+    };
+    for (size_t i = 0; i < before.size(); i++)
+    {
+        grid[cellOf(before[i])].push_back(i);
+    }
     double sumSqr = 0;
     size_t pairs  = 0;
     for (size_t i = 0; i < before.size(); i++)
     {
-        for (size_t j = i + 1; j < before.size(); j++)
+        const auto [cx, cy] = cellOf(before[i]);
+        for (int64_t dx = -1; dx <= 1; dx++)
         {
-            const auto d = before[j].translation() - before[i].translation();
-            if (times[j] - times[i] > 30.0 && std::abs(d.z) < 1.0 && std::hypot(d.x, d.y) < 0.3)
+            for (int64_t dy = -1; dy <= 1; dy++)
             {
-                const double split = (after[j].z() - after[i].z()) - d.z;
-                sumSqr += split * split;
-                pairs++;
+                const auto it = grid.find({cx + dx, cy + dy});
+                if (it == grid.end())
+                {
+                    continue;
+                }
+                for (const size_t j : it->second)
+                {
+                    if (j <= i)
+                    {
+                        continue;
+                    }
+                    const auto d = before[j].translation() - before[i].translation();
+                    if (times[j] - times[i] > 30.0 && std::abs(d.z) < 1.0 &&
+                        std::hypot(d.x, d.y) < cell)
+                    {
+                        const double split = (after[j].z() - after[i].z()) - d.z;
+                        sumSqr += split * split;
+                        pairs++;
+                    }
+                }
             }
         }
     }
@@ -730,6 +742,11 @@ int levelBySubmap(
             "--by-submap: the partition has %zu keyframes, the simple-map %zu: it was made for "
             "another map",
             part.keyframe_count(), sm.size()));
+    ASSERTMSG_(
+        part.map_fingerprint == 0 ||
+            part.map_fingerprint == mp2p_icp_filters::simplemap_fingerprint(sm),
+        "--by-submap: the keyframe timestamps of the partition and the simple-map differ: it was "
+        "made for another map");
 
     const auto times = keyframeTimes(sm);
     if (inputTum)
@@ -742,7 +759,10 @@ int levelBySubmap(
     const auto                                             groups = part.submap_keyframes();
     std::vector<WindowEstimate>                            submaps;
     std::vector<std::optional<mp2p_icp_filters::SubmapUp>> ups(groups.size());
-    size_t                                                 used = 0;
+    std::vector<WindowEstimate> original;  // walls and floors, for the scene rule
+    std::vector<size_t>         weights;  // keyframes of each submap
+    size_t                      used    = 0;
+    double                      maxTilt = 0;
     for (size_t s = 0; s < groups.size(); s++)
     {
         const auto&    g = groups[s];
@@ -750,6 +770,8 @@ int levelBySubmap(
         if (g.empty())
         {
             submaps.push_back(w);
+            original.push_back(w);
+            weights.push_back(0);
             continue;
         }
         w.first = g.front();
@@ -790,21 +812,55 @@ int levelBySubmap(
                 std::cout << "The walls contradict the floors, and alone they do not give up.\n";
             }
         }
-        // Every estimate with a reliable covariance counts, weighted by it:
-        if (est && (est->cov_reliable || cli->arg_cluster_size <= 0))
+        original.push_back(w);
+        weights.push_back(g.size());
+
+        // Every estimate with a reliable covariance within --max-window-sigma-deg
+        // counts, weighted by it; the others follow their neighbors:
+        w.usable = false;
+        if (est && cli->arg_cluster_size > 0 && !est->cov_reliable)
         {
-            ups[s] = mp2p_icp_filters::SubmapUp{est->up, est->up_cov};
+            std::cout << "Not used: too few groups of normals for a reliable sigma.\n";
+        }
+        else if (
+            est &&
+            std::max(est->up_sigmas_deg()[0], est->up_sigmas_deg()[1]) > cli->arg_max_window_sigma)
+        {
+            std::cout << "Not used: sigma above --max-window-sigma-deg.\n";
+        }
+        else if (est)
+        {
+            ups[s]   = mp2p_icp_filters::SubmapUp{est->up, est->up_cov};
+            w.usable = true;
+            maxTilt  = std::max(maxTilt, est->tilt_deg());
             used++;
         }
+        w.est = est;  // what was used, for --windows-out
         submaps.push_back(std::move(w));
     }
     writeWindowsOut(submaps);
 
-    if (slopedScene(submaps, "submaps"))
+    if (slopedScene(original, "keyframes in submaps", &weights))
     {
         return 1;
     }
-    ASSERTMSG_(used > 0, "No submap had an up direction with a reliable covariance.");
+    if (maxTilt > cli->arg_max_correction_deg)
+    {
+        setConsoleErrorColor();
+        std::cerr << mrpt::format(
+            "Error: a submap needs a correction (%.3f deg) above --max-correction-deg (%.3f "
+            "deg).\n",
+            maxTilt, cli->arg_max_correction_deg);
+        setConsoleNormalColor();
+        return 1;
+    }
+    if (used == 0)
+    {
+        setConsoleErrorColor();
+        std::cerr << "Error: no submap has a usable up direction. Nothing was leveled.\n";
+        setConsoleNormalColor();
+        return 1;
+    }
     std::cout << mrpt::format("\nBy submap: %zu of %zu submaps used\n", used, groups.size());
 
     std::vector<mrpt::poses::CPose3D> poses;
@@ -921,21 +977,39 @@ int commandLevelWalls()
     ASSERTMSG_(
         cli->arg_input_tum.empty() == cli->arg_output_tum.empty(),
         "--input-tum and --output-tum must be given together");
+    {
+        // No output may overwrite an input or another output
+        const auto same = [](const std::string& a, const std::string& b)
+        { return !a.empty() && !b.empty() && same_file(a, b); };
+        const std::string outMap = estimateOnly ? std::string() : lstCmds.at(2);
+        const std::vector<std::pair<std::string, const char*>> inputs = {
+            {inFile, "the input simple-map"},
+            {cli->arg_input_tum, "--input-tum"},
+            {cli->arg_by_submap, "--by-submap"},
+            {cli->arg_pipeline, "--pipeline"}};
+        const std::vector<std::pair<std::string, const char*>> outputs = {
+            {outMap, "the output simple-map"},
+            {cli->arg_output_tum, "--output-tum"},
+            {cli->arg_windows_out, "--windows-out"}};
+        for (size_t i = 0; i < outputs.size(); i++)
+        {
+            for (const auto& [in, inName] : inputs)
+            {
+                ASSERTMSG_(
+                    !same(outputs[i].first, in),
+                    mrpt::format("%s must not be %s", outputs[i].second, inName));
+            }
+            for (size_t j = i + 1; j < outputs.size(); j++)
+            {
+                ASSERTMSG_(
+                    !same(outputs[i].first, outputs[j].first),
+                    mrpt::format("%s must not be %s", outputs[i].second, outputs[j].second));
+            }
+        }
+    }
     std::optional<TumPath> inputTum;
     if (!cli->arg_input_tum.empty())
     {
-        // The path is written before the map: it must not overwrite either map
-        const auto same = [](const std::string& a, const std::string& b)
-        {
-            std::error_code ec;
-            return std::filesystem::weakly_canonical(a, ec) ==
-                   std::filesystem::weakly_canonical(b, ec);
-        };
-        ASSERTMSG_(
-            !same(cli->arg_output_tum, inFile), "--output-tum must not be the input simple-map");
-        ASSERTMSG_(
-            estimateOnly || !same(cli->arg_output_tum, lstCmds.at(2)),
-            "--output-tum must not be the output simple-map");
         inputTum = readTum(cli->arg_input_tum);
     }
 
@@ -958,12 +1032,13 @@ int commandLevelWalls()
     }
     else
     {
-        pipeline = defaultPipeline(cli->arg_voxel);
+        // Per-keyframe voxel decimation, so the accumulated cloud stays small:
+        pipeline = mp2p_icp_filters::decimated_keyframes_pipeline(cli->arg_voxel);
     }
 
-    if (cli->arg_piecewise > 0 && cli->arg_windows > 0)
+    if ((cli->arg_piecewise > 0 || !cli->arg_by_submap.empty()) && cli->arg_windows > 0)
     {
-        std::cout << "Warning: --windows is ignored with --piecewise.\n";
+        std::cout << "Warning: --windows is ignored with --piecewise and --by-submap.\n";
     }
     if (!cli->arg_windows_out.empty() && cli->arg_piecewise <= 0 && cli->arg_windows == 0 &&
         cli->arg_by_submap.empty())
@@ -1132,9 +1207,10 @@ drawn twice, apart by their difference times the range.
 Positions are then solved by least squares on the graph of consecutive
 keyframes plus links between keyframes of the same place, so a place visited
 twice is corrected alike, and its floor is not split in two as with a
-correction that depends on time. Submaps without a reliable up follow their
-neighbors in the graph; submaps whose walls contradict their floors (stairs, a
-ramp) use their walls alone. Use it instead of --piecewise whenever the run
+correction that depends on time. Submaps without a reliable sigma, or with one
+above --max-window-sigma-deg, follow their neighbors in the graph; submaps whose
+walls contradict their floors (stairs, a ramp) use their walls alone; and the
+map is refused if a used submap needs more than --max-correction-deg. Use it instead of --piecewise whenever the run
 revisits places. The log reports the residual of the position solve and, as in
 --piecewise, how much the height difference of keyframes that revisit a place
 changed.

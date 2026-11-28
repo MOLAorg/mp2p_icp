@@ -227,5 +227,9 @@ int  commandExportRawlog();  // "export-rawlog"
 
 mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& fil);
 
+/// True if both paths name the same file: the same path once resolved, or,
+/// for existing files, the same file (hard links included)
+bool same_file(const std::string& a, const std::string& b);
+
 void setConsoleErrorColor();
 void setConsoleNormalColor();

@@ -155,31 +155,39 @@ Windows of 20 to 30 s worked well on indoor walks; shorter ones follow the drift
 a revisit registers against the same local map as the first visit, so both share the error of that place. A
 correction that depends on time, as ``--piecewise``, gives the two visits different rotations and draws the same
 floor twice. Here :math:`u` is estimated on each submap of a partition made by ``sm-cli partition`` (keyframes that
-observe the same place, whenever they were visited), and the correction of each keyframe comes from a smooth field over
-the graph of shared content: the submap estimates, each one weighted by its covariance (an axis the walls do not
-constrain counts little, and an extra 0.3 deg stands for the systematic error of the references of a place),
-against a prior that keyframes seeing the same content have similar corrections, with
-standard deviation ``--up-step-sigma-deg`` for two keyframes that share as much content as a typical keyframe sees. A surface seen with two
-different corrections is drawn twice, apart by their difference times the range, so this stiffness trades the
+observe the same place, whenever they were visited), and the correction of each keyframe comes from a smooth field
+over the graph of shared content: the submap estimates, each one weighted by its covariance (an axis the walls do not
+constrain counts little, and an extra 0.3 deg stands for the systematic error of the references of a place), against
+a prior that keyframes seeing the same content have similar corrections, with standard deviation
+``--up-step-sigma-deg`` for two keyframes that share as much content as a typical keyframe sees. A surface seen with
+two different corrections is drawn twice, apart by their difference times the range, so this stiffness trades the
 curvature that can be followed for the thickness of floors and walls. Each keyframe is then rotated by its own
 correction, and positions are solved by least squares, not integrated in time: on the graph of consecutive keyframes
 plus links between keyframes of the same place (closer than ``--max-link-length``, with ``--link-weight`` times their
 similarity), :math:`p'_j - p'_i = C_{ij} (p_j - p_i)`, with :math:`p'_0 = p_0` and :math:`C_{ij}` the correction of the
 mean up of both. Two visits of a place keep their relative position. The log reports the residual of that solve (the
 part of the field that is not a gradient) and, as for ``--piecewise``, how much the height difference of keyframes
-that revisit a place (closer than 0.3 m in plan, more than 30 s apart) changed. ``--input-tum`` moves each pose of the
-dense path with the two keyframes around it in time. ``--windows-out`` writes one row per submap. A submap whose walls
-contradict its floors (stairs, a ramp) is estimated from its walls alone; the map is refused, as with ``--piecewise``,
-when that happens in four or more of every five submaps.
+that revisit a place (closer than 0.3 m in plan and 1 m in height, more than 30 s apart) changed. ``--input-tum``
+moves each pose of the dense path with the two keyframes around it in time. ``--windows-out`` writes one row per
+submap, with the estimate used and whether it was used.
+
+The same safety rules as ``--piecewise`` apply, per submap:
+
+- a submap without a reliable sigma, or with one above ``--max-window-sigma-deg``, is not used: it follows its
+  neighbors in the graph;
+- the map is refused when a used submap needs more than ``--max-correction-deg``, or when the walls contradict the
+  floors in four or more of every five keyframes (counted by the submaps they belong to);
+- a submap whose walls contradict its floors (stairs, a ramp) is estimated from its walls alone.
 
 Walls are checked against floors. Where the walls alone and the floors alone give :math:`u` more than
 ``--max-walls-flats-deg`` apart (default 2), they contradict each other: one of the two references is not plumb or
 level (a sloped field, a ramp, the rock faces of a quarry). The whole-map command then refuses to level and exits with
-an error, also with ``--estimate-only``. ``--piecewise`` and ``--by-submap`` refuse the map when the walls contradict the
-floors in four or more of every five windows (submaps) that gave an estimate, and otherwise levels with all usable windows as before. Windows whose
-walls alone do not give :math:`u` (one wall direction, too few walls) can neither confirm nor contradict their floors:
-they are reported, never refused. On 30 s windows of college and campus recordings the walls contradicted the floors
-in 0-45 % of the windows (sloped lawns and streets); on an open quarry, in 9 of 9.
+an error, also with ``--estimate-only``. ``--piecewise`` and ``--by-submap`` refuse the map when the walls contradict
+the floors in four or more of every five windows (keyframes, for submaps) that gave an estimate, and otherwise they
+level with all usable windows as before. Windows whose walls alone do not give :math:`u` (one wall direction, too few
+walls) can neither confirm nor contradict their floors: they are reported, never refused. On 30 s windows of
+college and campus recordings the walls contradicted the floors in 0-45 % of the windows (sloped lawns and streets);
+on an open quarry, in 9 of 9.
 
 ``--walls-only`` drops floors and ceilings from the estimate (they are not a vertical reference where a floor
 slopes, e.g. a ramp), so walls with at least two directions are needed. Each estimate also reports the standard
@@ -229,9 +237,11 @@ How it works:
 - Keyframes are sampled as graph nodes, one every ``--sample-distance`` or ``--sample-angle-deg``.
 - Each keyframe becomes a set of voxels of ``--overlap-voxel`` in the map frame, each one tagged with the side of the
   surface seen from the sensor (the direction of its normal, oriented towards the sensor, or of the viewing ray where
-  the points are not planar). Two keyframes then share a voxel only if they see the same side of the same surface: the
-  two faces of a wall or of a floor slab are different content, so storeys stay apart. Poses are used as they are, with
-  no registration.
+  the points are not planar) and with whether it is above or below the sensor. Two keyframes then share a voxel only
+  if they see the same side of the same surface: the two faces of a wall or of a floor slab are different content, and
+  so are walls where they cross a slab, so storeys stay apart. The sensor is the one of each range observation (its
+  ``sensorPose`` on the keyframe pose), not the keyframe frame, which may be at floor level. Poses are used as they
+  are, with no registration.
 - Two nodes are as similar as the voxels they share (Jaccard), all pairs at once through an inverted index of voxels.
 - The graph is split by recursive normalized cuts (Shi and Malik): the Fiedler vector of each part, computed with
   Lanczos on the sparse graph, orders its nodes, and the part is cut where the normalized cut is lowest, if it is at

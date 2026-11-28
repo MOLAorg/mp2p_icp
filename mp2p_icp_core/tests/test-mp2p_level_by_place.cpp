@@ -26,7 +26,12 @@
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <mrpt/system/filesystem.h>
 
+#if defined(MP2P_TEST_HAS_TBB)
+#include <tbb/global_control.h>
+#endif
+
 #include <Eigen/Dense>
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <set>
@@ -66,19 +71,22 @@ Pts room(double x0, double x1, double y0, double y1, double z0, double z1)
     return pts;
 }
 
-// A keyframe seeing `world` from `pose`
+// A keyframe at `pose` seeing `world` from a sensor at `sensorPose` on it
 void addKeyframe(
-    mrpt::maps::CSimpleMap& sm, const Pts& world, const mrpt::poses::CPose3D& pose, double t)
+    mrpt::maps::CSimpleMap& sm, const Pts& world, const mrpt::poses::CPose3D& pose, double t,
+    const mrpt::poses::CPose3D& sensorPose = {})
 {
-    auto pc = mrpt::maps::CSimplePointsMap::Create();
+    auto       pc     = mrpt::maps::CSimplePointsMap::Create();
+    const auto sensor = pose + sensorPose;
     for (const auto& w : world)
     {
-        const auto l = pose.inverseComposePoint(w);
+        const auto l = sensor.inverseComposePoint(w);
         pc->insertPoint(static_cast<float>(l.x), static_cast<float>(l.y), static_cast<float>(l.z));
     }
     auto obs         = mrpt::obs::CObservationPointCloud::Create();
     obs->timestamp   = mrpt::Clock::fromDouble(t);
     obs->sensorLabel = "lidar";
+    obs->sensorPose  = sensorPose;
     obs->pointcloud  = pc;
     auto sf          = mrpt::obs::CSensoryFrame::Create();
     sf->insert(obs);
@@ -154,38 +162,81 @@ void test_partition_two_rooms(bool oriented)
     ASSERT_(back.node_submap == part.node_submap);
     ASSERT_(back.node_voxels == part.node_voxels);
     ASSERT_EQUAL_(back.node_edges.size(), part.node_edges.size());
+    ASSERT_EQUAL_(back.map_fingerprint, part.map_fingerprint);
+    ASSERT_EQUAL_(back.map_fingerprint, simplemap_fingerprint(sm));
+    for (size_t e = 0; e < back.node_edges.size(); e++)
+    {
+        ASSERT_EQUAL_(back.node_edges[e].i, part.node_edges[e].i);
+        ASSERT_EQUAL_(back.node_edges[e].j, part.node_edges[e].j);
+        ASSERT_NEAR_(back.node_edges[e].w, part.node_edges[e].w, 1e-5);
+    }
     ASSERT_EQUAL_(back.keyframe_links.size(), part.keyframe_links.size());
     for (size_t k = 0; k < back.keyframe_links.size(); k++)
     {
         ASSERT_EQUAL_(back.keyframe_links[k].size(), part.keyframe_links[k].size());
+        for (size_t l = 0; l < back.keyframe_links[k].size(); l++)
+        {
+            ASSERT_EQUAL_(back.keyframe_links[k][l].first, part.keyframe_links[k][l].first);
+            ASSERT_NEAR_(back.keyframe_links[k][l].second, part.keyframe_links[k][l].second, 1e-5);
+        }
     }
+    mrpt::system::deleteFile(file);
+
+    // Same result with a single thread:
+#if defined(MP2P_TEST_HAS_TBB)
+    {
+        tbb::global_control one(tbb::global_control::max_allowed_parallelism, 1);
+        const auto          single = partition_simplemap(sm, p);
+        ASSERT_(single.keyframe_submap == part.keyframe_submap);
+        ASSERT_(single.node_submap == part.node_submap);
+        ASSERT_EQUAL_(single.node_edges.size(), part.node_edges.size());
+        for (size_t e = 0; e < single.node_edges.size(); e++)
+        {
+            ASSERT_EQUAL_(single.node_edges[e].w, part.node_edges[e].w);
+        }
+    }
+#endif
 }
 
 // Two storeys, one above the other, a thin slab between them: the ceiling
-// below and the floor above fall in the same voxels but face away.
-void test_partition_two_floors()
+// below and the floor above fall in the same voxels but face away, and walls
+// crossing the slab are above one sensor and below the other. The keyframe
+// pose is `base` above each floor, and the sensor 1.2 m above the floor.
+void test_partition_two_floors(double base)
 {
-    const Pts lower = room(0.0, 10.0, 0.0, 6.0, 0.0, 2.6);
-    const Pts upper = room(0.0, 10.0, 0.0, 6.0, 2.7, 5.3);
+    const Pts                  lower = room(0.0, 10.0, 0.0, 6.0, 0.0, 2.6);
+    const Pts                  upper = room(0.0, 10.0, 0.0, 6.0, 2.7, 5.3);
+    const mrpt::poses::CPose3D sensorPose(0, 0, 1.2 - base, 0, 0, 0);
 
     mrpt::maps::CSimpleMap sm;
     double                 t = 0;
     for (int k = 0; k < 20; k++, t += 1)
     {
-        addKeyframe(sm, lower, mrpt::poses::CPose3D(1.0 + 0.4 * k, 3.0, 1.2, 0, 0, 0), t);
+        addKeyframe(
+            sm, lower, mrpt::poses::CPose3D(1.0 + 0.4 * k, 3.0, base, 0, 0, 0), t, sensorPose);
     }
     for (int k = 0; k < 20; k++, t += 1)
     {
-        addKeyframe(sm, upper, mrpt::poses::CPose3D(9.0 - 0.4 * k, 3.0, 3.9, 0, 0, 0), t);
+        addKeyframe(
+            sm, upper, mrpt::poses::CPose3D(9.0 - 0.4 * k, 3.0, 2.7 + base, 0, 0, 0), t,
+            sensorPose);
     }
     for (int k = 0; k < 20; k++, t += 1)
     {
-        addKeyframe(sm, lower, mrpt::poses::CPose3D(1.2 + 0.4 * k, 2.5, 1.2, 0, 0, 0), t);
+        addKeyframe(
+            sm, lower, mrpt::poses::CPose3D(1.2 + 0.4 * k, 2.5, base, 0, 0, 0), t, sensorPose);
     }
     SimplemapPartitionParams p;
     p.sample_distance         = 1.0;
     p.partition.min_part_size = 3;
     const auto part           = partition_simplemap(sm, p);
+
+    // No content is shared across the slab:
+    for (const auto& e : part.node_edges)
+    {
+        const auto up = [](uint32_t kf) { return kf >= 20 && kf < 40; };
+        ASSERT_(up(part.node_keyframe[e.i]) == up(part.node_keyframe[e.j]));
+    }
     ASSERT_EQUAL_(part.submap_count(), 2UL);
     for (size_t k = 0; k < sm.size(); k++)
     {
@@ -310,6 +361,57 @@ void test_revisit_consistency()
     ASSERT_LT_((mid[0].translation() - avg).norm(), 1e-9);
 }
 
+void test_single_keyframe()
+{
+    mrpt::maps::CSimpleMap sm;
+    addKeyframe(
+        sm, room(0.0, 8.0, 0.0, 6.0, 0.0, 3.0), mrpt::poses::CPose3D(2, 3, 1.2, 0, 0, 0), 0);
+    const auto part = partition_simplemap(sm);
+    ASSERT_EQUAL_(part.keyframe_count(), 1UL);
+    ASSERT_EQUAL_(part.submap_count(), 1UL);
+    ASSERT_EQUAL_(part.node_keyframe.size(), 1UL);
+    ASSERT_EQUAL_(part.keyframe_links[0].size(), 1UL);
+}
+
+void test_place_links()
+{
+    // Keyframes 0..5 on a line; node keyframes 0 and 4
+    SimplemapPartition p;
+    p.node_keyframe  = {0, 4};
+    p.node_submap    = {0, 0};
+    p.node_voxels    = {100, 100};
+    p.node_edges     = {{0, 1, 0.5}};
+    p.keyframe_links = {{{0, 1.0}, {1, 0.5}}, {{0, 0.9}},           {{0, 0.6}, {1, 0.4}},
+                        {{1, 0.7}},           {{0, 0.5}, {1, 1.0}}, {{1, 0.8}, {0, 0.1}}};
+    p.keyframe_submap.assign(6, 0);
+    std::vector<mrpt::math::TPoint3D> pos;
+    for (int k = 0; k < 6; k++)
+    {
+        pos.emplace_back(1.0 * k, 0, 0);
+    }
+    const auto links = keyframe_place_links(p, pos, 3.0, 10.0);
+    // Consecutive pairs are left to the sequence, too long ones dropped, and
+    // each pair appears once with the largest weight:
+    std::set<std::pair<uint32_t, uint32_t>> seen;
+    for (const auto& l : links)
+    {
+        ASSERT_LT_(l.i, l.j);
+        ASSERT_GE_(l.j - l.i, 2U);
+        ASSERT_LE_(std::abs(pos[l.j].x - pos[l.i].x), 3.0);
+        ASSERT_(seen.insert({l.i, l.j}).second);
+    }
+    ASSERT_(seen.count({0, 2}) == 1);  // kf 2 -> node 0 (kf 0)
+    ASSERT_(seen.count({2, 4}) == 1);  // kf 2 -> node 1 (kf 4)
+    ASSERT_(seen.count({0, 4}) == 0);  // 4 m: too long
+    for (const auto& l : links)
+    {
+        if (l.i == 0 && l.j == 2)
+        {
+            ASSERT_NEAR_(l.w, 6.0, 1e-12);
+        }
+    }
+}
+
 // An up estimate with the same sigma [deg] on both axes
 SubmapUp est(const mrpt::math::TVector3D& up, double sigmaDeg)
 {
@@ -374,6 +476,19 @@ void test_keyframe_ups()
     // A submap without an estimate follows its neighbors:
     const auto d = keyframe_ups_from_submaps(p, {est(upA, 0.05), std::nullopt});
     ASSERT_NEAR_(tiltOf(d[19]), 1.0, 0.01);
+
+    // A node without content edges (an empty scan) in its own submap, with no
+    // estimate, follows its neighbors in the sequence, not the mean:
+    SimplemapPartition q = p;
+    q.node_edges.erase(
+        std::remove_if(
+            q.node_edges.begin(), q.node_edges.end(),
+            [](const WeightedEdge& e) { return e.i == 4 || e.j == 4; }),
+        q.node_edges.end());
+    q.node_submap[4] = 2;
+    const auto e     = keyframe_ups_from_submaps(q, {est(upA, 0.05), est(upB, 0.05), std::nullopt});
+    ASSERT_NEAR_(tiltOf(e[4]), tiltOf(e[3]), 0.05);
+    ASSERT_NEAR_(tiltOf(e[4]), tiltOf(e[5]), 0.05);
 }
 
 }  // namespace
@@ -384,10 +499,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     {
         test_partition_two_rooms(true);
         test_partition_two_rooms(false);
-        test_partition_two_floors();
+        test_partition_two_floors(1.2);
+        test_partition_two_floors(0.0);  // pose at floor level, sensor above it
+        test_single_keyframe();
         test_constant_up_is_rigid();
         test_revisit_consistency();
         test_keyframe_ups();
+        test_place_links();
         std::cout << "All tests passed.\n";
         return 0;
     }

@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <set>
@@ -222,11 +223,28 @@ Path readTum(const std::string& f)
 
 // Keyframes every second, at their map pose, seeing the room of their storey,
 // or, on the stairs, a stairwell beside the rooms (visibility is not modeled)
-void writeSimplemap(const std::string& f, const Path& mapPath)
+// Floors and ceilings sloped along x, walls plumb: walls contradict floors
+Pts sloped(Pts pts, double z0, double z1, double slopeDeg)
 {
-    const Pts              lower = room(0.0, SLAB);
-    const Pts              upper = room(SLAB + 0.1, SLAB + 2.8);
-    const Pts              stair = room(0.0, SLAB + 2.8, 6.2, 8.2);
+    const double t = std::tan(mrpt::DEG2RAD(slopeDeg));
+    for (auto& p : pts)
+    {
+        if (std::abs(p.z - z0) < 1e-9 || std::abs(p.z - z1) < 1e-9)
+        {
+            p.z += t * (p.x - 5.0);
+        }
+    }
+    return pts;
+}
+
+// `timeShift` moves the keyframe stamps; without `stamps`, keyframes have none
+void writeSimplemap(
+    const std::string& f, const Path& mapPath, double slopeDeg = 0, bool stamps = true,
+    double timeShift = 0)
+{
+    const Pts lower = sloped(room(0.0, SLAB), 0.0, SLAB, slopeDeg);
+    const Pts upper = sloped(room(SLAB + 0.1, SLAB + 2.8), SLAB + 0.1, SLAB + 2.8, slopeDeg);
+    const Pts stair = room(0.0, SLAB + 2.8, 6.2, 8.2);
     mrpt::maps::CSimpleMap sm;
     for (size_t k = 0; k < mapPath.t.size(); k += KF_EVERY)
     {
@@ -247,8 +265,11 @@ void writeSimplemap(const std::string& f, const Path& mapPath)
             pc->insertPoint(
                 static_cast<float>(l.x), static_cast<float>(l.y), static_cast<float>(l.z));
         }
-        auto obs         = mrpt::obs::CObservationPointCloud::Create();
-        obs->timestamp   = mrpt::Clock::fromDouble(mapPath.t[k]);
+        auto obs = mrpt::obs::CObservationPointCloud::Create();
+        if (stamps)
+        {
+            obs->timestamp = mrpt::Clock::fromDouble(mapPath.t[k] + timeShift);
+        }
         obs->sensorLabel = "lidar";
         obs->pointcloud  = pc;
         auto sf          = mrpt::obs::CSensoryFrame::Create();
@@ -398,6 +419,82 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         std::cout << mrpt::format("By time: revisits %.2f mm rms\n", 1e3 * pwErr.first);
         ASSERT_GT_(pwErr.first, 5 * subErr.first);
 
+        // The output simple-map holds the poses of the leveled path at the keyframes:
+        {
+            mrpt::maps::CSimpleMap out;
+            ASSERT_(out.loadFromFile(dir + "/sub.simplemap"));
+            ASSERT_EQUAL_(out.size(), p.keyframe_count());
+            for (size_t k = 0; k < out.size(); k++)
+            {
+                const auto kf = out.get(k).pose->getMeanVal();
+                const auto d  = sub.p.at(k * KF_EVERY);
+                ASSERT_LT_((kf.translation() - d.translation()).norm(), 1e-5);
+                ASSERT_LT_(
+                    (kf.getRotationMatrix().asEigen() - d.getRotationMatrix().asEigen()).norm(),
+                    1e-6);
+            }
+        }
+        // --estimate-only writes the path, not the map:
+        {
+            const std::string t = dir + "/est_only.tum";
+            ASSERT_EQUAL_(
+                run("level-walls", smIn + " --estimate-only --by-submap " + part + " --input-tum " +
+                                       tumIn + " --output-tum " + t),
+                0);
+            ASSERT_(mrpt::system::fileExists(t));
+        }
+        // Refused, and nothing written: a submap above --max-correction-deg, or
+        // no submap within --max-window-sigma-deg
+        for (const char* opts : {" --max-correction-deg 1.0", " --max-window-sigma-deg 0.0001"})
+        {
+            const std::string o = dir + "/refused.simplemap";
+            ASSERT_(run("level-walls", smIn + " " + o + " --by-submap " + part + opts) != 0);
+            ASSERT_(!mrpt::system::fileExists(o));
+        }
+        // Floors that slope where walls are plumb, everywhere: refused
+        {
+            const std::string smSloped = dir + "/sloped.simplemap";
+            const std::string pSloped  = dir + "/sloped.yaml";
+            writeSimplemap(smSloped, mapPath, 4.0);
+            ASSERT_EQUAL_(run("partition", smSloped + " " + pSloped), 0);
+            ASSERT_(
+                run("level-walls",
+                    smSloped + " " + dir + "/sloped_out.simplemap --by-submap " + pSloped) != 0);
+            ASSERT_(!mrpt::system::fileExists(dir + "/sloped_out.simplemap"));
+        }
+        // Keyframes without timestamps: fine without a dense path
+        {
+            const std::string smNoT = dir + "/no_stamps.simplemap";
+            const std::string pNoT  = dir + "/no_stamps.yaml";
+            writeSimplemap(smNoT, mapPath, 0, false);
+            ASSERT_EQUAL_(run("partition", smNoT + " " + pNoT), 0);
+            ASSERT_EQUAL_(
+                run("level-walls",
+                    smNoT + " " + dir + "/no_stamps_out.simplemap --by-submap " + pNoT),
+                0);
+        }
+        // Outputs that would overwrite an input, through a hard link too:
+        {
+            const std::string link = dir + "/link.simplemap";
+            std::error_code   ec;
+            std::filesystem::create_hard_link(smIn, link, ec);
+            if (!ec)
+            {
+                ASSERT_(run("partition", smIn + " " + link) != 0);
+                ASSERT_(run("level-walls", smIn + " " + link + " --by-submap " + part) != 0);
+            }
+            ASSERT_(run("level-walls", smIn + " " + part + " --by-submap " + part) != 0);
+            ASSERT_(
+                run("level-walls", smIn + " --estimate-only --by-submap " + part + " --input-tum " +
+                                       tumIn + " --output-tum " + tumIn) != 0);
+        }
+        // A partition of a map with other keyframe stamps is refused:
+        {
+            const std::string smLate = dir + "/late.simplemap";
+            writeSimplemap(smLate, mapPath, 0, true, 1.0);
+            ASSERT_(run("level-walls", smLate + " --estimate-only --by-submap " + part) != 0);
+        }
+
         // A partition of another map is refused:
         {
             mp2p_icp_filters::SimplemapPartition other = p;
@@ -407,6 +504,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             other.save_to_file(otherFile);
             ASSERT_(run("level-walls", smIn + " --estimate-only --by-submap " + otherFile) != 0);
         }
+        mrpt::system::deleteFilesInDirectory(dir, true);
         std::cout << "All tests passed.\n";
         return 0;
     }

@@ -50,11 +50,19 @@ struct GraphPartitionParams
     /// Krylov subspace size of each Lanczos run for the Fiedler vector
     std::size_t lanczos_size = 60;
 
-    /// Lanczos restarts before taking the current Ritz vector as it is
-    std::size_t lanczos_max_restarts = 20;
+    /// Lanczos restarts before taking the current Ritz vector as it is (it is
+    /// still a good direction to cut along: the sweep evaluates the true cut)
+    std::size_t lanczos_max_restarts = 200;
 
     /// Convergence threshold on the Ritz residual of the Fiedler vector
     double lanczos_tolerance = 1e-6;
+};
+
+/// Statistics of spectral_partition()
+struct GraphPartitionStats
+{
+    std::size_t eigen_solves = 0;  //!< Fiedler vectors computed
+    std::size_t unconverged  = 0;  //!< Of them, those that hit lanczos_max_restarts
 };
 
 /** Normalized cut (Shi and Malik) of a two-way split of a graph:
@@ -71,11 +79,12 @@ struct GraphPartitionParams
  *  eigenvector, so the cost grows with the number of edges, not the square of
  *  the nodes. Deterministic.
  *
- *  `lambda2`, if given, receives that eigenvalue (0 for a disconnected graph).
+ *  `lambda2`, if given, receives that eigenvalue (0 for a disconnected graph),
+ *  and `converged` whether the Ritz residual reached lanczos_tolerance.
  */
 [[nodiscard]] std::vector<double> fiedler_vector(
     std::size_t nodeCount, const std::vector<WeightedEdge>& edges,
-    const GraphPartitionParams& params = {}, double* lambda2 = nullptr);
+    const GraphPartitionParams& params = {}, double* lambda2 = nullptr, bool* converged = nullptr);
 
 /** Splits a graph by recursive normalized-cut bisection: connected components
  *  first, then each part is cut along the ordering of its Fiedler vector at
@@ -88,7 +97,7 @@ struct GraphPartitionParams
  */
 [[nodiscard]] std::vector<uint32_t> spectral_partition(
     std::size_t nodeCount, const std::vector<WeightedEdge>& edges,
-    const GraphPartitionParams& params = {});
+    const GraphPartitionParams& params = {}, GraphPartitionStats* stats = nullptr);
 
 /** @} */
 

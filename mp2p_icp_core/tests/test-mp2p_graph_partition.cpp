@@ -164,6 +164,28 @@ void test_fiedler_vs_dense()
     ASSERT_GT_(c, 0.9999);
 }
 
+// A long chain converges slowly (clustered eigenvalues): it must still
+// converge, and its Fiedler vector is monotonic along the chain
+void test_long_chain()
+{
+    const uint32_t n       = 1500;
+    double         lambda2 = 0;
+    bool           conv    = false;
+    const auto     f       = fiedler_vector(n, chain(n, 3), {}, &lambda2, &conv);
+    ASSERT_(conv);
+    ASSERT_GT_(lambda2, 0.0);
+    const double sign = f.back() > f.front() ? 1.0 : -1.0;
+    for (uint32_t k = 0; k + 1 < n; k++)
+    {
+        ASSERT_GE_(sign * (f[k + 1] - f[k]), -1e-9);
+    }
+    GraphPartitionStats stats;
+    const auto          labels = spectral_partition(n, chain(n, 3), {}, &stats);
+    ASSERT_GT_(stats.eigen_solves, 0UL);
+    ASSERT_EQUAL_(stats.unconverged, 0UL);
+    (void)labels;
+}
+
 void test_fiedler_disconnected()
 {
     // An isolated node makes the graph disconnected: lambda2 is 0
@@ -194,6 +216,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_chain_segments();
         test_fiedler_vs_dense();
         test_fiedler_disconnected();
+        test_long_chain();
         test_normalized_cut();
         std::cout << "All tests passed.\n";
         return 0;

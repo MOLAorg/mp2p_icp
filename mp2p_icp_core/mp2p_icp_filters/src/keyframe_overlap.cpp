@@ -29,8 +29,10 @@ namespace mp2p_icp_filters
 {
 namespace
 {
-constexpr int64_t IDX_BITS = 20;
-constexpr int64_t IDX_HALF = int64_t(1) << (IDX_BITS - 1);
+// Key layout: three voxel indices of IDX_BITS bits, then BUCKET_BITS of direction
+constexpr int64_t IDX_BITS    = 19;
+constexpr int64_t BUCKET_BITS = 5;
+constexpr int64_t IDX_HALF    = int64_t(1) << (IDX_BITS - 1);
 
 uint64_t voxelKey(int64_t ix, int64_t iy, int64_t iz)
 {
@@ -41,7 +43,8 @@ uint64_t voxelKey(int64_t ix, int64_t iy, int64_t iz)
     const auto ux = static_cast<uint64_t>(ix + IDX_HALF);
     const auto uy = static_cast<uint64_t>(iy + IDX_HALF);
     const auto uz = static_cast<uint64_t>(iz + IDX_HALF);
-    return (ux << (2 * IDX_BITS + 4)) | (uy << (IDX_BITS + 4)) | (uz << 4);
+    return (ux << (2 * IDX_BITS + BUCKET_BITS)) | (uy << (IDX_BITS + BUCKET_BITS)) |
+           (uz << BUCKET_BITS);
 }
 
 // One of six directions: dominant axis and its sign
@@ -110,8 +113,11 @@ KeyframeSignature keyframe_signature(
             sig.push_back(key);
             continue;
         }
-        // Mean relative to the sensor, so the viewing ray is the mean itself:
+        // Mean relative to the sensor, so the viewing ray is the mean itself.
+        // Voxels above and below the sensor are kept apart, so a wall seen
+        // from two storeys does not join them where it crosses the slab.
         const Eigen::Vector3d mean   = v.sum / static_cast<double>(v.n);
+        const uint64_t        side   = mean.z() > 0 ? 12 : 0;
         uint64_t              bucket = 6 + axisBucket(mean);
         if (v.n >= params.min_planar_points)
         {
@@ -129,7 +135,7 @@ KeyframeSignature keyframe_signature(
                 bucket = axisBucket(n);
             }
         }
-        sig.push_back(key | bucket);
+        sig.push_back(key | (bucket + side));
     }
     std::sort(sig.begin(), sig.end());
     return sig;
