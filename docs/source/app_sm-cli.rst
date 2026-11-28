@@ -118,6 +118,7 @@ attitude of a LiDAR-inertial run, estimated from a short accelerometer average.
         [--max-link-length 5.0]             # --by-submap: longest same-place link [m]
         [--link-weight 10]                  # --by-submap: weight of same-place links
         [--up-step-sigma-deg 1.0]           # --by-submap: stiffness of the up field
+        [--min-significance K]              # level only if some estimate is K sigma off
         [--walls-only]                      # walls are the only vertical reference
         [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
         [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
@@ -177,7 +178,12 @@ The same safety rules as ``--piecewise`` apply, per submap:
   neighbors in the graph;
 - the map is refused when a used submap needs more than ``--max-correction-deg``, or when the walls contradict the
   floors in four or more of every five keyframes (counted by the submaps they belong to);
-- a submap whose walls contradict its floors (stairs, a ramp) is estimated from its walls alone.
+- a submap whose walls contradict its floors (stairs, a ramp) is estimated from its walls alone;
+- a map that is already level is left alone: unless a used submap, or all of them together, is at least
+  ``--min-significance`` (default 2) sigmas from vertical, each with its own covariance plus 0.1 deg for the systematic
+  error of the references, nothing is leveled and the command exits with an error, as for a refusal. A tilt shared by
+  the whole map adds up over its submaps, so a map tilted by a constant amount is still leveled. The whole-map mode
+  applies the same test only when ``--min-significance`` is given.
 
 Walls are checked against floors. Where the walls alone and the floors alone give :math:`u` more than
 ``--max-walls-flats-deg`` apart (default 2), they contradict each other: one of the two references is not plumb or

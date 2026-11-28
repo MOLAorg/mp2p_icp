@@ -494,6 +494,47 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             writeSimplemap(smLate, mapPath, 0, true, 1.0);
             ASSERT_(run("level-walls", smLate + " --estimate-only --by-submap " + part) != 0);
         }
+        // A map tilted by a small constant amount (0.7 deg) is leveled:
+        {
+            const auto E = mrpt::poses::CPose3D::FromYawPitchRoll(
+                0.0, mrpt::DEG2RAD(0.5), mrpt::DEG2RAD(-0.5));
+            Path tilted = truth;
+            for (auto& q : tilted.p)
+            {
+                q = E + q;
+            }
+            const std::string smT  = dir + "/tilted.simplemap";
+            const std::string pT   = dir + "/tilted.yaml";
+            const std::string tIn  = dir + "/tilted.tum";
+            const std::string tOut = dir + "/tilted_out.tum";
+            writeTum(tIn, tilted);
+            writeSimplemap(smT, tilted);
+            ASSERT_EQUAL_(run("partition", smT + " " + pT), 0);
+            ASSERT_EQUAL_(
+                run("level-walls", smT + " --estimate-only --by-submap " + pT + " --input-tum " +
+                                       tIn + " --output-tum " + tOut),
+                0);
+            const double err = maxTiltError(readTum(tOut), truth);
+            std::cout << mrpt::format("Constant 0.7 deg tilt: leveled to %.3f deg\n", err);
+            ASSERT_LT_(err, 0.05);
+        }
+
+        // A map that is already level is left alone, unless asked otherwise:
+        {
+            const std::string smLevel   = dir + "/level.simplemap";
+            const std::string partLevel = dir + "/level_part.yaml";
+            writeSimplemap(smLevel, truth);
+            ASSERT_EQUAL_(run("partition", smLevel + " " + partLevel), 0);
+            ASSERT_(
+                run("level-walls",
+                    smLevel + " " + dir + "/level_out.simplemap --by-submap " + partLevel) != 0);
+            ASSERT_(!mrpt::system::fileExists(dir + "/level_out.simplemap"));
+            ASSERT_EQUAL_(
+                run("level-walls", smLevel + " " + dir +
+                                       "/level_out.simplemap --min-significance 0 --by-submap " +
+                                       partLevel),
+                0);
+        }
 
         // A partition of another map is refused:
         {

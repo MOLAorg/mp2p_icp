@@ -61,9 +61,10 @@ struct cli_flags
     std::string arg_input_tum;
     std::string arg_output_tum;
     std::string arg_by_submap;
-    double      arg_max_link_length = 5.0;
-    double      arg_link_weight     = 10.0;
-    double      arg_up_step_sigma   = 1.0;
+    double      arg_max_link_length  = 5.0;
+    double      arg_link_weight      = 10.0;
+    double      arg_up_step_sigma    = 1.0;
+    double      arg_min_significance = -1;  // negative: the default of each mode
 
     // partition:
     double      arg_sample_distance    = 2.0;
@@ -173,6 +174,11 @@ struct cli_flags
         cmd.add_option(
             "--link-weight", arg_link_weight,
             "level-walls: with --by-submap, weight of those links against consecutive keyframes");
+        cmd.add_option(
+            "--min-significance", arg_min_significance,
+            "level-walls: level only if an up estimate (a submap, or all of them together) is at "
+            "least this many sigmas from vertical, counting a 0.1 deg systematic error of the "
+            "references; 0 disables (default: 2 with --by-submap, 0 otherwise)");
         cmd.add_option(
             "--up-step-sigma-deg", arg_up_step_sigma,
             "level-walls: with --by-submap, stiffness of the up field: how much up may change "

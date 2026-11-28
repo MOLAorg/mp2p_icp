@@ -35,6 +35,7 @@
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <mrpt/system/filesystem.h>
 
+#include <Eigen/Dense>
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -318,7 +319,8 @@ mrpt::math::TPoint3D positionAt(
 
 // --input-tum must be in the keyframes' clock: no overlap at all means
 // another clock (e.g. relative times), and it is refused.
-void checkTumOverlap(const TumPath& path, const std::vector<double>& kfTimes)
+// `held` names what holds its correction outside the keyframe times
+void checkTumOverlap(const TumPath& path, const std::vector<double>& kfTimes, const char* held)
 {
     const double t0 = kfTimes.front();
     const double t1 = kfTimes.back();
@@ -337,8 +339,8 @@ void checkTumOverlap(const TumPath& path, const std::vector<double>& kfTimes)
     {
         std::cout << mrpt::format(
             "Warning: %zu of %zu --input-tum poses are outside the keyframes' time range; there "
-            "the correction of the nearest window is held.\n",
-            outside, path.times.size());
+            "the correction of the nearest %s is held.\n",
+            outside, path.times.size(), held);
     }
 }
 
@@ -522,6 +524,49 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
     std::cout << "Windows written to: '" << cli->arg_windows_out << "'\n";
 }
 
+// Systematic error of the references added to an estimate's covariance when
+// testing whether a correction is needed at all [deg]
+constexpr double GATE_SYSTEMATIC_DEG = 0.1;
+
+// The horizontal components of up and their information, with the systematic
+// error of the references added to the covariance
+std::pair<Eigen::Vector2d, Eigen::Matrix2d> upInfo(
+    const mrpt::math::TVector3D& up, const mrpt::math::CMatrixDouble22& cov)
+{
+    const double    f = mrpt::DEG2RAD(GATE_SYSTEMATIC_DEG);
+    const auto      u = up * (1.0 / up.norm());
+    Eigen::Matrix2d C = cov.asEigen();
+    C += f * f * Eigen::Matrix2d::Identity();
+    return {Eigen::Vector2d(u.x, u.y), C.inverse()};
+}
+
+// How many sigmas an up estimate is from vertical (its Mahalanobis distance)
+double significance(const mrpt::math::TVector3D& up, const mrpt::math::CMatrixDouble22& cov)
+{
+    const auto [h, I] = upInfo(up, cov);
+    return std::sqrt(h.dot(I * h));
+}
+
+// --min-significance, with the default of each mode
+double minSignificance(bool bySubmap)
+{
+    if (cli->arg_min_significance >= 0)
+    {
+        return cli->arg_min_significance;
+    }
+    return bySubmap ? 2.0 : 0.0;
+}
+
+// Not leveled because no estimate is significantly off vertical
+int notSignificant(double best, double threshold, const char* what)
+{
+    std::cout << mrpt::format(
+        "Not leveled: %s at most %.2f sigma from vertical, below --min-significance %.2f: "
+        "the map is level within what the walls and floors can tell.\n",
+        what, best, threshold);
+    return 1;
+}
+
 // A sloped or quarried scene: nearly every window's walls contradict its
 // floors. A few such windows (a ramp, a sloped lawn) are not a reason to
 // stand down, and skipping them only leaves gaps to interpolate over.
@@ -629,7 +674,7 @@ int levelPiecewise(
     ASSERTMSG_(times, "--piecewise needs sorted timestamps in all keyframes");
     if (inputTum)
     {
-        checkTumOverlap(*inputTum, *times);
+        checkTumOverlap(*inputTum, *times, "window");
     }
 
     const auto ranges = durationWindows(*times, cli->arg_piecewise);
@@ -752,7 +797,7 @@ int levelBySubmap(
     if (inputTum)
     {
         ASSERTMSG_(times, "--input-tum with --by-submap needs sorted timestamps in all keyframes");
-        checkTumOverlap(*inputTum, *times);
+        checkTumOverlap(*inputTum, *times, "keyframe");
     }
 
     const double                                           tStart = mrpt::Clock::nowDouble();
@@ -862,6 +907,32 @@ int levelBySubmap(
         return 1;
     }
     std::cout << mrpt::format("\nBy submap: %zu of %zu submaps used\n", used, groups.size());
+    {
+        // Each submap against its own uncertainty, and all of them together
+        // (a tilt shared by the whole map adds up over its submaps)
+        double          best = 0;
+        Eigen::Matrix2d sumI = Eigen::Matrix2d::Zero();
+        Eigen::Vector2d sumV = Eigen::Vector2d::Zero();
+        for (const auto& u : ups)
+        {
+            if (u)
+            {
+                best              = std::max(best, significance(u->up, u->cov));
+                const auto [h, I] = upInfo(u->up, u->cov);
+                sumI += I;
+                sumV += I * h;
+            }
+        }
+        const Eigen::Vector2d mean     = sumI.ldlt().solve(sumV);
+        const double          together = std::sqrt(mean.dot(sumI * mean));
+        std::cout << mrpt::format(
+            "Correction: largest submap %.2f sigma, all submaps together %.2f sigma\n", best,
+            together);
+        if (const double th = minSignificance(true); std::max(best, together) < th)
+        {
+            return notSignificant(std::max(best, together), th, "the map is");
+        }
+    }
 
     std::vector<mrpt::poses::CPose3D> poses;
     std::vector<mrpt::math::TPoint3D> positions;
@@ -1119,6 +1190,15 @@ int commandLevelWalls()
         setConsoleNormalColor();
         return 1;
     }
+    if (const double th = minSignificance(false); th > 0)
+    {
+        const double sig = significance(est.up, est.up_cov);
+        std::cout << mrpt::format("Correction: %.2f sigma\n", sig);
+        if (sig < th)
+        {
+            return notSignificant(sig, th, "the estimate is");
+        }
+    }
 
     if (inputTum)
     {
@@ -1178,6 +1258,7 @@ int printCommandsLevelWalls(bool showErrorMsg)
         [--max-link-length 5.0]             # --by-submap: longest same-place link [m]
         [--link-weight 10]                  # --by-submap: weight of same-place links
         [--up-step-sigma-deg 1.0]           # --by-submap: stiffness of the up field
+        [--min-significance K]              # level only if some estimate is K sigma off
         [--walls-only]                      # walls are the only vertical reference
         [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
         [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
@@ -1213,7 +1294,12 @@ walls contradict their floors (stairs, a ramp) use their walls alone; and the
 map is refused if a used submap needs more than --max-correction-deg. Use it instead of --piecewise whenever the run
 revisits places. The log reports the residual of the position solve and, as in
 --piecewise, how much the height difference of keyframes that revisit a place
-changed.
+changed. A map that is already level is left alone: with --by-submap, unless
+a submap, or all of them together, is at least --min-significance (default 2)
+sigmas off vertical, counting a 0.1 deg systematic error of the references,
+nothing is leveled and the command exits with an error. A tilt shared by the
+whole map adds up over its submaps. The whole-map mode does the same only when
+--min-significance is given.
 
 Walls are checked against floors: where the walls alone and the floors alone
 give up directions more than --max-walls-flats-deg apart (floors on a slope,
