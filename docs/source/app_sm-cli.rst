@@ -17,6 +17,7 @@ Available commands:
     sm-cli join               Join two or more .simplemap files into one.
     sm-cli level              Levels a .simplemap from its keyframe heights.
     sm-cli level-walls        Levels a .simplemap from its wall/floor normals.
+    sm-cli partition          Splits a .simplemap into submaps of the same place.
     sm-cli tf                 Applies a SE(3) transform by the left to a map.
     sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli --version          Shows program version.
@@ -113,6 +114,10 @@ attitude of a LiDAR-inertial run, estimated from a short accelerometer average.
         [--estimate-only]                   # print the rotation, do not write output
         [--windows N]                       # also estimate on N equal time windows
         [--piecewise SECONDS]               # level each time window on its own
+        [--by-submap <partition.yaml>]      # level each submap (sm-cli partition) on its own
+        [--max-link-length 5.0]             # --by-submap: longest same-place link [m]
+        [--link-weight 10]                  # --by-submap: weight of same-place links
+        [--up-step-sigma-deg 1.0]           # --by-submap: stiffness of the up field
         [--walls-only]                      # walls are the only vertical reference
         [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
         [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
@@ -146,11 +151,32 @@ over, and a last window shorter than half the others joins the previous one. The
 used needs more than ``--max-correction-deg``.
 Windows of 20 to 30 s worked well on indoor walks; shorter ones follow the drift more closely but are noisier.
 
+``--by-submap <partition.yaml>`` levels a map whose vertical error depends on the place, which is the usual case:
+a revisit registers against the same local map as the first visit, so both share the error of that place. A
+correction that depends on time, as ``--piecewise``, gives the two visits different rotations and draws the same
+floor twice. Here :math:`u` is estimated on each submap of a partition made by ``sm-cli partition`` (keyframes that
+observe the same place, whenever they were visited), and the correction of each keyframe comes from a smooth field over
+the graph of shared content: the submap estimates, each one weighted by its covariance (an axis the walls do not
+constrain counts little, and an extra 0.3 deg stands for the systematic error of the references of a place),
+against a prior that keyframes seeing the same content have similar corrections, with
+standard deviation ``--up-step-sigma-deg`` for two keyframes that share as much content as a typical keyframe sees. A surface seen with two
+different corrections is drawn twice, apart by their difference times the range, so this stiffness trades the
+curvature that can be followed for the thickness of floors and walls. Each keyframe is then rotated by its own
+correction, and positions are solved by least squares, not integrated in time: on the graph of consecutive keyframes
+plus links between keyframes of the same place (closer than ``--max-link-length``, with ``--link-weight`` times their
+similarity), :math:`p'_j - p'_i = C_{ij} (p_j - p_i)`, with :math:`p'_0 = p_0` and :math:`C_{ij}` the correction of the
+mean up of both. Two visits of a place keep their relative position. The log reports the residual of that solve (the
+part of the field that is not a gradient) and, as for ``--piecewise``, how much the height difference of keyframes
+that revisit a place (closer than 0.3 m in plan, more than 30 s apart) changed. ``--input-tum`` moves each pose of the
+dense path with the two keyframes around it in time. ``--windows-out`` writes one row per submap. A submap whose walls
+contradict its floors (stairs, a ramp) is estimated from its walls alone; the map is refused, as with ``--piecewise``,
+when that happens in four or more of every five submaps.
+
 Walls are checked against floors. Where the walls alone and the floors alone give :math:`u` more than
 ``--max-walls-flats-deg`` apart (default 2), they contradict each other: one of the two references is not plumb or
 level (a sloped field, a ramp, the rock faces of a quarry). The whole-map command then refuses to level and exits with
-an error, also with ``--estimate-only``. ``--piecewise`` refuses the map when the walls contradict the floors in four or
-more of every five windows that gave an estimate, and otherwise levels with all usable windows as before. Windows whose
+an error, also with ``--estimate-only``. ``--piecewise`` and ``--by-submap`` refuse the map when the walls contradict the
+floors in four or more of every five windows (submaps) that gave an estimate, and otherwise levels with all usable windows as before. Windows whose
 walls alone do not give :math:`u` (one wall direction, too few walls) can neither confirm nor contradict their floors:
 they are reported, never refused. On 30 s windows of college and campus recordings the walls contradicted the floors
 in 0-45 % of the windows (sloped lawns and streets); on an open quarry, in 9 of 9.
@@ -177,6 +203,47 @@ valid quaternions) before the map is loaded.
 
    It assumes a mostly rectilinear structure with vertical walls and level floors (indoors, buildings).
    Do not use it on outdoor or sloped scenes.
+
+|
+
+sm-cli partition
+----------------------
+Splits the keyframes of a simple-map into submaps that observe the same place, whenever they were visited, for
+``sm-cli level-walls --by-submap``.
+
+.. code-block:: bash
+
+    sm-cli partition <input.simplemap> <output_partition.yaml>
+        [--pipeline <sm2mm-pipeline.yaml>]  # keyframes to points (default: built-in)
+        [--sample-distance 2.0]             # distance between graph nodes [m]
+        [--sample-angle-deg 30]             # rotation between graph nodes [deg]
+        [--overlap-voxel 0.5]               # voxel size of the shared content [m]
+        [--overlap-max-range 0]             # ignore points farther than this [m] (0: all)
+        [--overlap-decimation 0.1]          # decimation of each keyframe first [m]
+        [--max-ncut 0.2]                    # split only below this normalized cut
+        [--min-submap-nodes 5]              # fewest nodes on each side of a split
+        [--output-colored-map <out.mm>]     # points with a 'submap' field
+
+How it works:
+
+- Keyframes are sampled as graph nodes, one every ``--sample-distance`` or ``--sample-angle-deg``.
+- Each keyframe becomes a set of voxels of ``--overlap-voxel`` in the map frame, each one tagged with the side of the
+  surface seen from the sensor (the direction of its normal, oriented towards the sensor, or of the viewing ray where
+  the points are not planar). Two keyframes then share a voxel only if they see the same side of the same surface: the
+  two faces of a wall or of a floor slab are different content, so storeys stay apart. Poses are used as they are, with
+  no registration.
+- Two nodes are as similar as the voxels they share (Jaccard), all pairs at once through an inverted index of voxels.
+- The graph is split by recursive normalized cuts (Shi and Malik): the Fiedler vector of each part, computed with
+  Lanczos on the sparse graph, orders its nodes, and the part is cut where the normalized cut is lowest, if it is at
+  most ``--max-ncut`` and both sides keep ``--min-submap-nodes`` nodes. Disconnected parts are always split.
+- Every keyframe is linked to its most similar nodes, and joins the submap of the best one.
+
+A higher ``--max-ncut`` (e.g. 0.5) splits the map into more, smaller submaps: ``level-walls --by-submap`` then follows
+a tilt that changes faster from place to place, at the cost of noisier estimates per submap and of more floor
+thickness where neighboring submaps disagree.
+
+The output YAML holds, per node, its keyframe and submap; the edges between nodes with their similarity; and per
+keyframe, its submap and links. The keyframe count must match the simple-map it is used with.
 
 |
 

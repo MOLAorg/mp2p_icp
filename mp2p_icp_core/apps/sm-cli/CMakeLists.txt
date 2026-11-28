@@ -16,6 +16,7 @@ mola_add_executable(
     sm-cli-join.cpp
     sm-cli-level.cpp
     sm-cli-level-walls.cpp
+    sm-cli-partition.cpp
     sm-cli-tf.cpp
     sm-cli-trim.cpp
   LINK_LIBRARIES
@@ -33,4 +34,7 @@ if(TARGET test-mp2p_sm_cli_level_walls_guard)
 endif()
 if(TARGET test-mp2p_sm_cli_level_walls_tum)
   add_dependencies(test-mp2p_sm_cli_level_walls_tum sm-cli)
+endif()
+if(TARGET test-mp2p_sm_cli_level_walls_by_submap)
+  add_dependencies(test-mp2p_sm_cli_level_walls_by_submap sm-cli)
 endif()

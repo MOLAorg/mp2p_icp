@@ -44,6 +44,7 @@ const std::map<std::string, cmd_t> cliCommands = {
     {"cut", cmd_t(&commandCut)},
     {"level", cmd_t(&commandLevel)},
     {"level-walls", cmd_t(&commandLevelWalls)},
+    {"partition", cmd_t(&commandPartition)},
     {"trim", cmd_t(&commandTrim)},
     {"join", cmd_t(&commandJoin)},
     {"tf", cmd_t(&commandTf)},
@@ -128,6 +129,7 @@ Available commands:
     sm-cli join               Join two or more .simplemap files into one.
     sm-cli level              Levels a .simplemap from its keyframe heights.
     sm-cli level-walls        Levels a .simplemap from its wall/floor normals.
+    sm-cli partition          Splits a .simplemap into submaps of the same place.
     sm-cli tf                 Applies a SE(3) transform by the left to a map.
     sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli --version          Shows program version.
