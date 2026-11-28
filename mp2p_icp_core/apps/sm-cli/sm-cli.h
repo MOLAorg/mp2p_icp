@@ -60,6 +60,21 @@ struct cli_flags
     std::string arg_windows_out;
     std::string arg_input_tum;
     std::string arg_output_tum;
+    std::string arg_by_submap;
+    double      arg_max_link_length  = 5.0;
+    double      arg_link_weight      = 10.0;
+    double      arg_up_step_sigma    = 0.3;
+    double      arg_min_significance = -1;  // negative: the default of each mode
+
+    // partition:
+    double      arg_sample_distance    = 2.0;
+    double      arg_sample_angle_deg   = 30.0;
+    double      arg_overlap_voxel      = 0.5;
+    double      arg_overlap_max_range  = 0;
+    double      arg_overlap_decimation = 0.1;
+    double      arg_max_ncut           = 0.2;
+    size_t      arg_min_submap_nodes   = 5;
+    std::string arg_output_colored_map;
 
     // Option handles, kept to reproduce TCLAP's isSet() semantics exactly
     // (distinguishing "not passed" from "passed with the default value").
@@ -148,6 +163,51 @@ struct cli_flags
             "the same correction as the keyframes, e.g. the dense path of the run");
         cmd.add_option(
             "--output-tum", arg_output_tum, "level-walls: where to save the leveled --input-tum");
+        cmd.add_option(
+            "--by-submap", arg_by_submap,
+            "level-walls: level each submap of this partition file (from `sm-cli partition`) "
+            "on its own, with a correction that depends on place, not on time");
+        cmd.add_option(
+            "--max-link-length", arg_max_link_length,
+            "level-walls: with --by-submap, longest link between keyframes that observe the "
+            "same place [m]");
+        cmd.add_option(
+            "--link-weight", arg_link_weight,
+            "level-walls: with --by-submap, weight of those links against consecutive keyframes");
+        cmd.add_option(
+            "--min-significance", arg_min_significance,
+            "level-walls: level only if an up estimate (a submap, or all of them together) is at "
+            "least this many sigmas from vertical, counting a 0.1 deg systematic error of the "
+            "references; 0 disables (default: 2 with --by-submap, 0 otherwise)");
+        cmd.add_option(
+            "--up-step-sigma-deg", arg_up_step_sigma,
+            "level-walls: with --by-submap, stiffness of the up field: how much up may change "
+            "between two keyframes that see the same content [deg]");
+
+        cmd.add_option(
+            "--sample-distance", arg_sample_distance,
+            "partition: distance between sampled keyframes (graph nodes) [m]");
+        cmd.add_option(
+            "--sample-angle-deg", arg_sample_angle_deg,
+            "partition: rotation between sampled keyframes (graph nodes) [deg]");
+        cmd.add_option(
+            "--overlap-voxel", arg_overlap_voxel,
+            "partition: voxel size of the shared content between keyframes [m]");
+        cmd.add_option(
+            "--overlap-max-range", arg_overlap_max_range,
+            "partition: ignore points farther than this from each keyframe [m] (0: no limit)");
+        cmd.add_option(
+            "--overlap-decimation", arg_overlap_decimation,
+            "partition: voxel decimation of each keyframe before its content is compared [m]");
+        cmd.add_option(
+            "--max-ncut", arg_max_ncut,
+            "partition: split a group of keyframes only if the normalized cut is at most this");
+        cmd.add_option(
+            "--min-submap-nodes", arg_min_submap_nodes,
+            "partition: fewest sampled keyframes on each side of a split");
+        cmd.add_option(
+            "--output-colored-map", arg_output_colored_map,
+            "partition: also write a metric map (.mm) whose points have a 'submap' field");
 
         cmd.add_flag("-h,--help", argHelp, "Shows more detailed help for command");
         cmd.add_flag("--version", argVersion, "Shows program version and exits");
@@ -164,6 +224,7 @@ int  commandCut();  // "cut"
 int  commandInfo();  // "info"
 int  commandLevel();  // "level"
 int  commandLevelWalls();  // "level-walls"
+int  commandPartition();  // "partition"
 int  commandTrim();  // "trim"
 int  commandJoin();  // "join"
 int  commandTf();  // "tf"
@@ -171,6 +232,10 @@ int  commandExportKF();  // "export-keyframes"
 int  commandExportRawlog();  // "export-rawlog"
 
 mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& fil);
+
+/// True if both paths name the same file: the same path once resolved, or,
+/// for existing files, the same file (hard links included)
+bool same_file(const std::string& a, const std::string& b);
 
 void setConsoleErrorColor();
 void setConsoleNormalColor();

@@ -28,6 +28,7 @@
 #include <mrpt/obs/registerAllClasses.h>
 
 #include <CLI/CLI.hpp>
+#include <filesystem>
 #include <iostream>
 #include <map>
 
@@ -44,6 +45,7 @@ const std::map<std::string, cmd_t> cliCommands = {
     {"cut", cmd_t(&commandCut)},
     {"level", cmd_t(&commandLevel)},
     {"level-walls", cmd_t(&commandLevelWalls)},
+    {"partition", cmd_t(&commandPartition)},
     {"trim", cmd_t(&commandTrim)},
     {"join", cmd_t(&commandJoin)},
     {"tf", cmd_t(&commandTf)},
@@ -128,6 +130,7 @@ Available commands:
     sm-cli join               Join two or more .simplemap files into one.
     sm-cli level              Levels a .simplemap from its keyframe heights.
     sm-cli level-walls        Levels a .simplemap from its wall/floor normals.
+    sm-cli partition          Splits a .simplemap into submaps of the same place.
     sm-cli tf                 Applies a SE(3) transform by the left to a map.
     sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli --version          Shows program version.
@@ -162,4 +165,36 @@ mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& inFile)
     ASSERT_(loadOk);
 
     return sm;
+}
+
+bool same_file(const std::string& a, const std::string& b)
+{
+    namespace fs = std::filesystem;
+    // Follow symbolic links, also dangling ones, to the file they would write:
+    const auto resolve = [](fs::path p)
+    {
+        std::error_code ec;
+        for (int i = 0; i < 40 && fs::is_symlink(p, ec); i++)
+        {
+            const auto t = fs::read_symlink(p, ec);
+            if (ec)
+            {
+                break;
+            }
+            p = t.is_absolute() ? t : p.parent_path() / t;
+        }
+        return p;
+    };
+    const auto      pa = resolve(a);
+    const auto      pb = resolve(b);
+    std::error_code ea;
+    std::error_code eb;
+    if (fs::exists(pa, ea) && fs::exists(pb, eb))
+    {
+        std::error_code e;
+        return fs::equivalent(pa, pb, e) && !e;
+    }
+    const auto ca = fs::weakly_canonical(fs::absolute(pa), ea);
+    const auto cb = fs::weakly_canonical(fs::absolute(pb), eb);
+    return !ea && !eb && ca == cb;
 }

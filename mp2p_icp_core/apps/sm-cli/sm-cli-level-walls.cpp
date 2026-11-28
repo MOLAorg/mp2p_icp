@@ -22,21 +22,26 @@
 #include <mp2p_icp/yaml_variables.h>
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
 #include <mp2p_icp_filters/estimate_up_from_normals.h>
+#include <mp2p_icp_filters/level_by_place.h>
+#include <mp2p_icp_filters/simplemap_partition.h>
 #include <mp2p_icp_filters/sm2mm.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/Clock.h>
 #include <mrpt/core/exceptions.h>
 #include <mrpt/io/lazy_load_path.h>
 #include <mrpt/maps/CSimpleMap.h>
+#include <mrpt/math/CMatrixFixed.h>
 #include <mrpt/math/CQuaternion.h>
+#include <mrpt/math/TPoint2D.h>
 #include <mrpt/obs/CObservationComment.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <mrpt/system/filesystem.h>
 
 #include <algorithm>
 #include <cmath>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <utility>
@@ -48,29 +53,6 @@ namespace
 int printCommandsLevelWalls(bool showErrorMsg);
 
 constexpr const char* ANALYSIS_LAYER = "level_walls_analysis";
-
-// Per-keyframe voxel decimation, so the accumulated cloud stays small:
-mrpt::containers::yaml defaultPipeline(double voxel)
-{
-    return mrpt::containers::yaml::FromText(mrpt::format(
-        R"XXX(
-generators:
-  - class_name: mp2p_icp_filters::Generator
-    params:
-      target_layer: 'raw'
-filters:
-  - class_name: mp2p_icp_filters::FilterDecimateVoxels
-    params:
-      input_pointcloud_layer: 'raw'
-      output_pointcloud_layer: 'decimated'
-      voxel_filter_resolution: %f
-      decimate_method: DecimateMethod::FirstPoint
-  - class_name: mp2p_icp_filters::FilterDeleteLayer
-    params:
-      pointcloud_layer_to_remove: ['raw']
-)XXX",
-        voxel));
-}
 
 // Converts keyframes [first, last] into one voxel-decimated cloud in the map frame,
 // merging all point layers the pipeline outputs.
@@ -338,7 +320,8 @@ mrpt::math::TPoint3D positionAt(
 
 // --input-tum must be in the keyframes' clock: no overlap at all means
 // another clock (e.g. relative times), and it is refused.
-void checkTumOverlap(const TumPath& path, const std::vector<double>& kfTimes)
+// `held` names what holds its correction outside the keyframe times
+void checkTumOverlap(const TumPath& path, const std::vector<double>& kfTimes, const char* held)
 {
     const double t0 = kfTimes.front();
     const double t1 = kfTimes.back();
@@ -357,8 +340,8 @@ void checkTumOverlap(const TumPath& path, const std::vector<double>& kfTimes)
     {
         std::cout << mrpt::format(
             "Warning: %zu of %zu --input-tum poses are outside the keyframes' time range; there "
-            "the correction of the nearest window is held.\n",
-            outside, path.times.size());
+            "the correction of the nearest %s is held.\n",
+            outside, path.times.size(), held);
     }
 }
 
@@ -419,32 +402,20 @@ struct WindowEstimate
     bool usable = false;
 };
 
-WindowEstimate estimateWindow(
-    const mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline,
-    const std::optional<std::vector<double>>& times, size_t index, size_t count, size_t first,
-    size_t last)
+// Normals and their points
+struct NormalsSet
 {
-    WindowEstimate w;
-    w.first = first;
-    w.last  = last;
-    if (times)
-    {
-        w.t0 = (*times)[first];
-        w.t1 = (*times)[last];
-    }
-    std::cout << "\nWindow " << (index + 1) << "/" << count << ": keyframes [" << first << ", "
-              << last << "]";
-    if (times)
-    {
-        std::cout << mrpt::format(
-            ", t=[%.3f, %.3f] s", w.t0 - times->front(), w.t1 - times->front());
-    }
-    std::cout << "\n";
+    std::vector<mrpt::math::TVector3D> normals;
+    std::vector<mrpt::math::TPoint3Df> points;
+};
+
+// Estimates up from normals, and tells whether --piecewise or --by-submap may use it.
+void estimateFromNormals(
+    WindowEstimate& w, const std::vector<mrpt::math::TVector3D>& normals,
+    const std::vector<mrpt::math::TPoint3Df>& points)
+{
     try
     {
-        const auto                         pc = buildAnalysisCloud(sm, pipeline, first, last);
-        std::vector<mrpt::math::TPoint3Df> points;
-        const auto                         normals = normalsFromCloud(*pc, &points);
         w.est = mp2p_icp_filters::estimate_up_from_normals(normals, estimateParams(), &points);
         printEstimate(*w.est);
 
@@ -467,6 +438,56 @@ WindowEstimate estimateWindow(
     {
         std::cout << "Could not estimate: " << mrpt::exception_to_str(e) << "\n";
     }
+}
+
+// Estimates up on the analysis cloud of keyframes [first, last] of `sm`. If
+// `gathered` is given, it also receives the normals and their points.
+void estimateInto(
+    WindowEstimate& w, const mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline,
+    size_t first, size_t last, NormalsSet* gathered = nullptr)
+{
+    std::vector<mrpt::math::TVector3D> normals;
+    std::vector<mrpt::math::TPoint3Df> points;
+    try
+    {
+        const auto pc = buildAnalysisCloud(sm, pipeline, first, last);
+        normals       = normalsFromCloud(*pc, &points);
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "Could not estimate: " << mrpt::exception_to_str(e) << "\n";
+        return;
+    }
+    estimateFromNormals(w, normals, points);
+    if (gathered)
+    {
+        gathered->normals = std::move(normals);
+        gathered->points  = std::move(points);
+    }
+}
+
+WindowEstimate estimateWindow(
+    const mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline,
+    const std::optional<std::vector<double>>& times, size_t index, size_t count, size_t first,
+    size_t last)
+{
+    WindowEstimate w;
+    w.first = first;
+    w.last  = last;
+    if (times)
+    {
+        w.t0 = (*times)[first];
+        w.t1 = (*times)[last];
+    }
+    std::cout << "\nWindow " << (index + 1) << "/" << count << ": keyframes [" << first << ", "
+              << last << "]";
+    if (times)
+    {
+        std::cout << mrpt::format(
+            ", t=[%.3f, %.3f] s", w.t0 - times->front(), w.t1 - times->front());
+    }
+    std::cout << "\n";
+    estimateInto(w, sm, pipeline, first, last);
     return w;
 }
 
@@ -504,6 +525,199 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
     std::cout << "Windows written to: '" << cli->arg_windows_out << "'\n";
 }
 
+// Systematic error of the references added to an estimate's covariance when
+// testing whether a correction is needed at all [deg]
+constexpr double GATE_SYSTEMATIC_DEG = 0.1;
+
+// Inverse of a symmetric 2x2 matrix
+mrpt::math::CMatrixDouble22 inverse2(const mrpt::math::CMatrixDouble22& m)
+{
+    const double                det = m(0, 0) * m(1, 1) - m(0, 1) * m(1, 0);
+    mrpt::math::CMatrixDouble22 inv;
+    inv(0, 0) = m(1, 1) / det;
+    inv(1, 1) = m(0, 0) / det;
+    inv(0, 1) = -m(0, 1) / det;
+    inv(1, 0) = -m(1, 0) / det;
+    return inv;
+}
+
+// x^T m x
+double quadForm(const mrpt::math::CMatrixDouble22& m, const mrpt::math::TVector2D& x)
+{
+    return m(0, 0) * x.x * x.x + (m(0, 1) + m(1, 0)) * x.x * x.y + m(1, 1) * x.y * x.y;
+}
+
+// The horizontal components of up and their information, with the systematic
+// error of the references added to the covariance
+std::pair<mrpt::math::TVector2D, mrpt::math::CMatrixDouble22> upInfo(
+    const mrpt::math::TVector3D& up, const mrpt::math::CMatrixDouble22& cov)
+{
+    const double f = mrpt::DEG2RAD(GATE_SYSTEMATIC_DEG);
+    const auto   u = up * (1.0 / up.norm());
+    auto         C = cov;
+    C(0, 0) += f * f;
+    C(1, 1) += f * f;
+    return {mrpt::math::TVector2D(u.x, u.y), inverse2(C)};
+}
+
+// How many sigmas an up estimate is from vertical (its Mahalanobis distance)
+double significance(const mrpt::math::TVector3D& up, const mrpt::math::CMatrixDouble22& cov)
+{
+    const auto [h, I] = upInfo(up, cov);
+    return std::sqrt(quadForm(I, h));
+}
+
+// The largest significance of some up estimates, and that of all of them
+// together (their information-weighted mean: a tilt they share adds up)
+std::pair<double, double> significances(
+    const std::vector<std::pair<mrpt::math::TVector3D, mrpt::math::CMatrixDouble22>>& estimates)
+{
+    double                      best = 0;
+    mrpt::math::CMatrixDouble22 sumI;
+    mrpt::math::TVector2D       sumV(0, 0);
+    sumI.setZero();
+    for (const auto& [up, cov] : estimates)
+    {
+        best              = std::max(best, significance(up, cov));
+        const auto [h, I] = upInfo(up, cov);
+        for (int r = 0; r < 2; r++)
+        {
+            for (int c = 0; c < 2; c++)
+            {
+                sumI(r, c) += I(r, c);
+            }
+        }
+        sumV.x += I(0, 0) * h.x + I(0, 1) * h.y;
+        sumV.y += I(1, 0) * h.x + I(1, 1) * h.y;
+    }
+    if (estimates.empty())
+    {
+        return {0.0, 0.0};
+    }
+    const auto                  cov = inverse2(sumI);
+    const mrpt::math::TVector2D mean(
+        cov(0, 0) * sumV.x + cov(0, 1) * sumV.y, cov(1, 0) * sumV.x + cov(1, 1) * sumV.y);
+    return {best, std::sqrt(quadForm(sumI, mean))};
+}
+
+// --min-significance, with the default of each mode
+double minSignificance(bool bySubmap)
+{
+    if (cli->arg_min_significance >= 0)
+    {
+        return cli->arg_min_significance;
+    }
+    return bySubmap ? 2.0 : 0.0;
+}
+
+// Not leveled because no estimate is significantly off vertical
+int notSignificant(double best, double threshold, const char* what)
+{
+    std::cout << mrpt::format(
+        "Not leveled: %s at most %.2f sigma from vertical, below --min-significance %.2f: "
+        "the map is level within what the walls and floors can tell.\n",
+        what, best, threshold);
+    return 1;
+}
+
+// A sloped or quarried scene: nearly every window's walls contradict its
+// floors. A few such windows (a ramp, a sloped lawn) are not a reason to
+// stand down, and skipping them only leaves gaps to interpolate over.
+// Windows whose walls cannot tell (one wall direction, along a single
+// facade) are not counted: they say nothing against the floors.
+// `weights`, if given, weigh each window (e.g. by its keyframes) instead of 1.
+bool slopedScene(
+    const std::vector<WindowEstimate>& windows, const char* what,
+    const std::vector<size_t>* weights = nullptr)
+{
+    size_t estimated    = 0;
+    size_t contradicted = 0;
+    for (size_t i = 0; i < windows.size(); i++)
+    {
+        const auto& w = windows[i];
+        if (w.est)
+        {
+            const size_t n = weights ? (*weights)[i] : 1;
+            estimated += n;
+            contradicted += w.est->walls_contradict_flats ? n : 0;
+        }
+    }
+    if (estimated > 0 && contradicted * 5 >= estimated * 4)
+    {
+        setConsoleErrorColor();
+        std::cerr << mrpt::format(
+            "Error: in %zu of the %zu %s with an estimate the walls contradict the floors "
+            "(--max-walls-flats-deg): sloped ground or leaning walls, not a scene of plumb walls "
+            "and level floors. Nothing was leveled.\n",
+            contradicted, estimated, what);
+        setConsoleNormalColor();
+        return true;
+    }
+    return false;
+}
+
+// How leveling changed the height difference of keyframes that revisit a
+// place (closer than 0.3 m in plan, under 1 m apart in height, over 30 s
+// apart in time): a correction that depends on place keeps it.
+void printRevisitSplit(
+    const std::vector<double>& times, const std::vector<mrpt::poses::CPose3D>& before,
+    const std::vector<mrpt::poses::CPose3D>& after)
+{
+    // Candidates from a 0.3 m plan grid: the same and the eight neighbor cells
+    constexpr double                                           cell = 0.3;
+    std::map<std::pair<int64_t, int64_t>, std::vector<size_t>> grid;
+    const auto cellOf = [&](const mrpt::poses::CPose3D& p)
+    {
+        return std::make_pair(
+            static_cast<int64_t>(std::floor(p.x() / cell)),
+            static_cast<int64_t>(std::floor(p.y() / cell)));
+    };
+    for (size_t i = 0; i < before.size(); i++)
+    {
+        grid[cellOf(before[i])].push_back(i);
+    }
+    double sumSqr = 0;
+    size_t pairs  = 0;
+    for (size_t i = 0; i < before.size(); i++)
+    {
+        const auto [cx, cy] = cellOf(before[i]);
+        for (int64_t dx = -1; dx <= 1; dx++)
+        {
+            for (int64_t dy = -1; dy <= 1; dy++)
+            {
+                const auto it = grid.find({cx + dx, cy + dy});
+                if (it == grid.end())
+                {
+                    continue;
+                }
+                for (const size_t j : it->second)
+                {
+                    if (j <= i)
+                    {
+                        continue;
+                    }
+                    const auto d = before[j].translation() - before[i].translation();
+                    if (times[j] - times[i] > 30.0 && std::abs(d.z) < 1.0 &&
+                        std::hypot(d.x, d.y) < cell)
+                    {
+                        const double split = (after[j].z() - after[i].z()) - d.z;
+                        sumSqr += split * split;
+                        pairs++;
+                    }
+                }
+            }
+        }
+    }
+    if (pairs == 0)
+    {
+        std::cout << "Revisits: no keyframe pair revisits a place.\n";
+        return;
+    }
+    std::cout << mrpt::format(
+        "Revisits: %zu keyframe pairs, change of their height difference %.3f cm rms.\n", pairs,
+        100.0 * std::sqrt(sumSqr / static_cast<double>(pairs)));
+}
+
 // --piecewise: a correction per time window, interpolated between windows.
 int levelPiecewise(
     mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, bool estimateOnly,
@@ -513,7 +727,7 @@ int levelPiecewise(
     ASSERTMSG_(times, "--piecewise needs sorted timestamps in all keyframes");
     if (inputTum)
     {
-        checkTumOverlap(*inputTum, *times);
+        checkTumOverlap(*inputTum, *times, "window");
     }
 
     const auto ranges = durationWindows(*times, cli->arg_piecewise);
@@ -534,30 +748,8 @@ int levelPiecewise(
     }
     writeWindowsOut(windows);
 
-    // A sloped or quarried scene: nearly every window's walls contradict its
-    // floors. A few such windows (a ramp, a sloped lawn) are not a reason to
-    // stand down, and skipping them only leaves gaps to interpolate over.
-    // Windows whose walls cannot tell (one wall direction, along a single
-    // facade) are not counted: they say nothing against the floors.
-    size_t estimated    = 0;
-    size_t contradicted = 0;
-    for (const auto& w : windows)
+    if (slopedScene(windows, "windows"))
     {
-        if (w.est)
-        {
-            estimated++;
-            contradicted += w.est->walls_contradict_flats ? 1 : 0;
-        }
-    }
-    if (estimated > 0 && contradicted * 5 >= estimated * 4)
-    {
-        setConsoleErrorColor();
-        std::cerr << mrpt::format(
-            "Error: in %zu of the %zu windows with an estimate the walls contradict the floors "
-            "(--max-walls-flats-deg): sloped ground or leaning walls, not a scene of plumb walls "
-            "and level floors. Nothing was leveled.\n",
-            contradicted, estimated);
-        setConsoleNormalColor();
         return 1;
     }
 
@@ -576,6 +768,25 @@ int levelPiecewise(
         setConsoleNormalColor();
         return 1;
     }
+    if (const double th = minSignificance(false); th > 0)
+    {
+        std::vector<std::pair<mrpt::math::TVector3D, mrpt::math::CMatrixDouble22>> estimates;
+        for (const auto& w : windows)
+        {
+            if (w.usable)
+            {
+                estimates.emplace_back(w.est->up, w.est->up_cov);
+            }
+        }
+        const auto [best, together] = significances(estimates);
+        std::cout << mrpt::format(
+            "Correction: largest window %.2f sigma, all windows together %.2f sigma\n", best,
+            together);
+        if (std::max(best, together) < th)
+        {
+            return notSignificant(std::max(best, together), th, "the map is");
+        }
+    }
     std::vector<mrpt::poses::CPose3D> poses;
     poses.reserve(sm.size());
     for (const auto& [pose, sf, twist] : sm)
@@ -583,6 +794,7 @@ int levelPiecewise(
         poses.push_back(pose->getMeanVal());
     }
     const auto leveled = mp2p_icp_filters::level_poses_from_up(*times, poses, samples);
+    printRevisitSplit(*times, poses, leveled);
 
     if (inputTum)
     {
@@ -633,6 +845,250 @@ int levelPiecewise(
     return 0;
 }
 
+// --by-submap: a correction per submap of a partition (`sm-cli partition`),
+// blended where submaps overlap, with positions solved on the graph of
+// consecutive keyframes and links between keyframes of the same place.
+int levelBySubmap(
+    mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, bool estimateOnly,
+    std::optional<TumPath> inputTum)
+{
+    const auto part = mp2p_icp_filters::SimplemapPartition::load_from_file(cli->arg_by_submap);
+    ASSERTMSG_(
+        part.keyframe_count() == sm.size(),
+        mrpt::format(
+            "--by-submap: the partition has %zu keyframes, the simple-map %zu: it was made for "
+            "another map",
+            part.keyframe_count(), sm.size()));
+    ASSERTMSG_(
+        part.map_fingerprint == 0 ||
+            part.map_fingerprint == mp2p_icp_filters::simplemap_fingerprint(sm),
+        "--by-submap: the keyframe timestamps of the partition and the simple-map differ: it was "
+        "made for another map");
+
+    const auto times = keyframeTimes(sm);
+    if (inputTum)
+    {
+        ASSERTMSG_(times, "--input-tum with --by-submap needs sorted timestamps in all keyframes");
+        checkTumOverlap(*inputTum, *times, "keyframe");
+    }
+
+    const double                                           tStart = mrpt::Clock::nowDouble();
+    const auto                                             groups = part.submap_keyframes();
+    std::vector<WindowEstimate>                            submaps;
+    std::vector<std::optional<mp2p_icp_filters::SubmapUp>> ups(groups.size());
+    std::vector<WindowEstimate> original;  // walls and floors, for the scene rule
+    std::vector<size_t>         weights;  // keyframes of each submap
+    size_t                      used    = 0;
+    double                      maxTilt = 0;
+    for (size_t s = 0; s < groups.size(); s++)
+    {
+        const auto&    g = groups[s];
+        WindowEstimate w;
+        if (g.empty())
+        {
+            submaps.push_back(w);
+            original.push_back(w);
+            weights.push_back(0);
+            continue;
+        }
+        w.first = g.front();
+        w.last  = g.back();
+        if (times)
+        {
+            w.t0 = (*times)[w.first];
+            w.t1 = (*times)[w.last];
+        }
+        std::cout << "\nSubmap " << (s + 1) << "/" << groups.size() << ": " << g.size()
+                  << " keyframes in [" << w.first << ", " << w.last << "]\n";
+
+        mrpt::maps::CSimpleMap sub;
+        for (const size_t k : g)
+        {
+            sub.insert(sm.get(k));
+        }
+        NormalsSet normals;
+        estimateInto(w, sub, pipeline, 0, sub.size() - 1, &normals);
+        std::optional<mp2p_icp_filters::EstimateUpResult> est = w.est;
+        if (est && est->walls_contradict_flats)
+        {
+            // Floors that are not level here (stairs, a ramp): the walls alone
+            est.reset();
+            auto p         = estimateParams();
+            p.flats_weight = 0;
+            try
+            {
+                est =
+                    mp2p_icp_filters::estimate_up_from_normals(normals.normals, p, &normals.points);
+                std::cout << mrpt::format(
+                    "The walls contradict the floors: walls alone, tilt %.3f deg, sigma %.3f / "
+                    "%.3f deg\n",
+                    est->tilt_deg(), est->up_sigmas_deg()[0], est->up_sigmas_deg()[1]);
+            }
+            catch (const std::exception&)
+            {
+                std::cout << "The walls contradict the floors, and alone they do not give up.\n";
+            }
+        }
+        original.push_back(w);
+        weights.push_back(g.size());
+
+        // Every estimate with a reliable covariance within --max-window-sigma-deg
+        // counts, weighted by it; the others follow their neighbors:
+        w.usable = false;
+        if (est && cli->arg_cluster_size > 0 && !est->cov_reliable)
+        {
+            std::cout << "Not used: too few groups of normals for a reliable sigma.\n";
+        }
+        else if (
+            est &&
+            std::max(est->up_sigmas_deg()[0], est->up_sigmas_deg()[1]) > cli->arg_max_window_sigma)
+        {
+            std::cout << "Not used: sigma above --max-window-sigma-deg.\n";
+        }
+        else if (est)
+        {
+            ups[s]   = mp2p_icp_filters::SubmapUp{est->up, est->up_cov};
+            w.usable = true;
+            maxTilt  = std::max(maxTilt, est->tilt_deg());
+            used++;
+        }
+        w.est = est;  // what was used, for --windows-out
+        submaps.push_back(std::move(w));
+    }
+    writeWindowsOut(submaps);
+
+    if (slopedScene(original, "keyframes in submaps", &weights))
+    {
+        return 1;
+    }
+    if (maxTilt > cli->arg_max_correction_deg)
+    {
+        setConsoleErrorColor();
+        std::cerr << mrpt::format(
+            "Error: a submap needs a correction (%.3f deg) above --max-correction-deg (%.3f "
+            "deg).\n",
+            maxTilt, cli->arg_max_correction_deg);
+        setConsoleNormalColor();
+        return 1;
+    }
+    if (used == 0)
+    {
+        setConsoleErrorColor();
+        std::cerr << "Error: no submap has a usable up direction. Nothing was leveled.\n";
+        setConsoleNormalColor();
+        return 1;
+    }
+    std::cout << mrpt::format("\nBy submap: %zu of %zu submaps used\n", used, groups.size());
+    {
+        // Each submap against its own uncertainty, and all of them together
+        std::vector<std::pair<mrpt::math::TVector3D, mrpt::math::CMatrixDouble22>> estimates;
+        for (const auto& u : ups)
+        {
+            if (u)
+            {
+                estimates.emplace_back(u->up, u->cov);
+            }
+        }
+        const auto [best, together] = significances(estimates);
+        std::cout << mrpt::format(
+            "Correction: largest submap %.2f sigma, all submaps together %.2f sigma\n", best,
+            together);
+        if (const double th = minSignificance(true); std::max(best, together) < th)
+        {
+            return notSignificant(std::max(best, together), th, "the map is");
+        }
+    }
+
+    std::vector<mrpt::poses::CPose3D> poses;
+    std::vector<mrpt::math::TPoint3D> positions;
+    poses.reserve(sm.size());
+    positions.reserve(sm.size());
+    for (const auto& [pose, sf, twist] : sm)
+    {
+        poses.push_back(pose->getMeanVal());
+        positions.push_back(poses.back().translation());
+    }
+    const double tSubmaps = mrpt::Clock::nowDouble();
+
+    mp2p_icp_filters::UpFieldParams upParams;
+    upParams.step_sigma_deg = cli->arg_up_step_sigma;
+    const auto   kfUps      = mp2p_icp_filters::keyframe_ups_from_submaps(part, ups, upParams);
+    const double tField     = mrpt::Clock::nowDouble();
+    {
+        std::vector<double> tilts;
+        tilts.reserve(kfUps.size());
+        for (const auto& u : kfUps)
+        {
+            tilts.push_back(mrpt::RAD2DEG(std::acos(std::min(1.0, u.z / u.norm()))));
+        }
+        std::sort(tilts.begin(), tilts.end());
+        std::cout << mrpt::format(
+            "Up field: keyframe corrections %.3f / %.3f / %.3f deg (min / median / max)\n",
+            tilts.front(), tilts[tilts.size() / 2], tilts.back());
+        if (tilts.back() > cli->arg_max_correction_deg)
+        {
+            setConsoleErrorColor();
+            std::cerr << mrpt::format(
+                "Error: a keyframe needs a correction (%.3f deg) above --max-correction-deg "
+                "(%.3f deg).\n",
+                tilts.back(), cli->arg_max_correction_deg);
+            setConsoleNormalColor();
+            return 1;
+        }
+    }
+    const auto links = mp2p_icp_filters::keyframe_place_links(
+        part, positions, cli->arg_max_link_length, cli->arg_link_weight);
+    const auto   res    = mp2p_icp_filters::level_poses_by_place(poses, kfUps, links);
+    const double tSolve = mrpt::Clock::nowDouble();
+    std::cout << mrpt::format(
+        "Time: submap estimates %.2f s, up field %.3f s, position solve %.3f s\n",
+        tSubmaps - tStart, tField - tSubmaps, tSolve - tField);
+    std::cout << mrpt::format(
+        "Position solve: %zu links; residual rms/max: consecutive %.4f/%.4f m, links "
+        "%.4f/%.4f m\n",
+        links.size(), res.sequential_residual_rms, res.sequential_residual_max,
+        res.link_residual_rms, res.link_residual_max);
+    if (times)
+    {
+        printRevisitSplit(*times, poses, res.poses);
+    }
+
+    if (inputTum)
+    {
+        auto& path = *inputTum;
+        path.poses = mp2p_icp_filters::level_path_by_place(
+            path.times, path.poses, *times, poses, res.poses, kfUps);
+        writeTum(cli->arg_output_tum, path);
+    }
+    if (estimateOnly)
+    {
+        return 0;
+    }
+
+    double maxShift = 0;
+    size_t k        = 0;
+    for (auto& [pose, sf, twist] : sm)
+    {
+        // Rotate the covariance with the attitude, then place the mean:
+        mrpt::poses::CPose3DPDFGaussian g;
+        g.copyFrom(*pose);
+        g.changeCoordinatesReference(mp2p_icp_filters::rotation_aligning_up_to_z(kfUps[k]));
+        g.mean = res.poses[k];
+        pose   = std::make_shared<mrpt::poses::CPose3DPDFGaussian>(g);
+
+        maxShift = std::max(maxShift, (res.poses[k].translation() - poses[k].translation()).norm());
+        k++;
+    }
+    std::cout << mrpt::format("Keyframes moved up to %.3f m.\n", maxShift);
+
+    const std::string outFile = cli->argCmd.at(2);
+    std::cout << "Saving result to: '" << outFile << "'... " << std::endl;
+    const bool saveOk = sm.saveToFile(outFile);
+    ASSERTMSG_(saveOk, "Error writing output file");
+
+    return 0;
+}
+
 }  // namespace
 
 int commandLevelWalls()
@@ -657,21 +1113,39 @@ int commandLevelWalls()
     ASSERTMSG_(
         cli->arg_input_tum.empty() == cli->arg_output_tum.empty(),
         "--input-tum and --output-tum must be given together");
+    {
+        // No output may overwrite an input or another output
+        const auto same = [](const std::string& a, const std::string& b)
+        { return !a.empty() && !b.empty() && same_file(a, b); };
+        const std::string outMap = estimateOnly ? std::string() : lstCmds.at(2);
+        const std::vector<std::pair<std::string, const char*>> inputs = {
+            {inFile, "the input simple-map"},
+            {cli->arg_input_tum, "--input-tum"},
+            {cli->arg_by_submap, "--by-submap"},
+            {cli->arg_pipeline, "--pipeline"}};
+        const std::vector<std::pair<std::string, const char*>> outputs = {
+            {outMap, "the output simple-map"},
+            {cli->arg_output_tum, "--output-tum"},
+            {cli->arg_windows_out, "--windows-out"}};
+        for (size_t i = 0; i < outputs.size(); i++)
+        {
+            for (const auto& [in, inName] : inputs)
+            {
+                ASSERTMSG_(
+                    !same(outputs[i].first, in),
+                    mrpt::format("%s must not be %s", outputs[i].second, inName));
+            }
+            for (size_t j = i + 1; j < outputs.size(); j++)
+            {
+                ASSERTMSG_(
+                    !same(outputs[i].first, outputs[j].first),
+                    mrpt::format("%s must not be %s", outputs[i].second, outputs[j].second));
+            }
+        }
+    }
     std::optional<TumPath> inputTum;
     if (!cli->arg_input_tum.empty())
     {
-        // The path is written before the map: it must not overwrite either map
-        const auto same = [](const std::string& a, const std::string& b)
-        {
-            std::error_code ec;
-            return std::filesystem::weakly_canonical(a, ec) ==
-                   std::filesystem::weakly_canonical(b, ec);
-        };
-        ASSERTMSG_(
-            !same(cli->arg_output_tum, inFile), "--output-tum must not be the input simple-map");
-        ASSERTMSG_(
-            estimateOnly || !same(cli->arg_output_tum, lstCmds.at(2)),
-            "--output-tum must not be the output simple-map");
         inputTum = readTum(cli->arg_input_tum);
     }
 
@@ -694,17 +1168,24 @@ int commandLevelWalls()
     }
     else
     {
-        pipeline = defaultPipeline(cli->arg_voxel);
+        // Per-keyframe voxel decimation, so the accumulated cloud stays small:
+        pipeline = mp2p_icp_filters::decimated_keyframes_pipeline(cli->arg_voxel);
     }
 
-    if (cli->arg_piecewise > 0 && cli->arg_windows > 0)
+    if ((cli->arg_piecewise > 0 || !cli->arg_by_submap.empty()) && cli->arg_windows > 0)
     {
-        std::cout << "Warning: --windows is ignored with --piecewise.\n";
+        std::cout << "Warning: --windows is ignored with --piecewise and --by-submap.\n";
     }
-    if (!cli->arg_windows_out.empty() && cli->arg_piecewise <= 0 && cli->arg_windows == 0)
+    if (!cli->arg_windows_out.empty() && cli->arg_piecewise <= 0 && cli->arg_windows == 0 &&
+        cli->arg_by_submap.empty())
     {
-        std::cout << "Warning: --windows-out needs --windows or --piecewise: nothing will be "
-                     "written to it.\n";
+        std::cout << "Warning: --windows-out needs --windows, --piecewise or --by-submap: nothing "
+                     "will be written to it.\n";
+    }
+    if (!cli->arg_by_submap.empty())
+    {
+        ASSERTMSG_(cli->arg_piecewise <= 0, "--by-submap and --piecewise are mutually exclusive");
+        return levelBySubmap(sm, pipeline, estimateOnly, std::move(inputTum));
     }
     if (cli->arg_piecewise > 0)
     {
@@ -774,6 +1255,15 @@ int commandLevelWalls()
         setConsoleNormalColor();
         return 1;
     }
+    if (const double th = minSignificance(false); th > 0)
+    {
+        const double sig = significance(est.up, est.up_cov);
+        std::cout << mrpt::format("Correction: %.2f sigma\n", sig);
+        if (sig < th)
+        {
+            return notSignificant(sig, th, "the estimate is");
+        }
+    }
 
     if (inputTum)
     {
@@ -829,6 +1319,11 @@ int printCommandsLevelWalls(bool showErrorMsg)
         [--estimate-only]                   # print the rotation, do not write output
         [--windows N]                       # also estimate on N equal time windows
         [--piecewise SECONDS]               # level each time window on its own
+        [--by-submap <partition.yaml>]      # level each submap (sm-cli partition) on its own
+        [--max-link-length 5.0]             # --by-submap: longest same-place link [m]
+        [--link-weight 10]                  # --by-submap: weight of same-place links
+        [--up-step-sigma-deg 0.3]           # --by-submap: stiffness of the up field
+        [--min-significance K]              # level only if some estimate is K sigma off
         [--walls-only]                      # walls are the only vertical reference
         [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]
         [--max-window-sigma-deg 1.0]        # --piecewise skips less certain windows
@@ -848,13 +1343,37 @@ This removes a vertical that drifts during the run, which one rotation cannot.
 Windows without a reliable sigma of up, or with one above --max-window-sigma-deg,
 are skipped and interpolated over, and a short last window joins the previous one.
 
+With --by-submap, the vertical is estimated on each submap of a partition made
+by `sm-cli partition`: keyframes that observe the same place, whenever they were
+visited. The up of each keyframe comes from a smooth field over the graph of
+shared content: the submap estimates, weighted by their covariances, against
+a prior that keyframes seeing the same content have similar ups
+(--up-step-sigma-deg), since a surface seen with two different corrections is
+drawn twice, apart by their difference times the range.
+Positions are then solved by least squares on the graph of consecutive
+keyframes plus links between keyframes of the same place, so a place visited
+twice is corrected alike, and its floor is not split in two as with a
+correction that depends on time. Submaps without a reliable sigma, or with one
+above --max-window-sigma-deg, follow their neighbors in the graph; submaps whose
+walls contradict their floors (stairs, a ramp) use their walls alone; and the
+map is refused if a used submap needs more than --max-correction-deg. Use it instead of --piecewise whenever the run
+revisits places. The log reports the residual of the position solve and, as in
+--piecewise, how much the height difference of keyframes that revisit a place
+changed. A map that is already level is left alone: with --by-submap, unless
+a submap, or all of them together, is at least --min-significance (default 2)
+sigmas off vertical, counting a 0.1 deg systematic error of the references,
+nothing is leveled and the command exits with an error. A tilt shared by the
+whole map adds up over its submaps. The whole-map mode does the same only when
+--min-significance is given.
+
 Walls are checked against floors: where the walls alone and the floors alone
 give up directions more than --max-walls-flats-deg apart (floors on a slope,
 walls that lean, e.g. an open quarry) they contradict each other. The
 whole-map command then refuses to level (and exits with an error, also with
---estimate-only); --piecewise refuses the map when that happens in four or
-more of every five windows with an estimate. Windows whose walls alone do not
-give up (one wall direction) are reported but never refused.
+--estimate-only); --piecewise and --by-submap refuse the map when that
+happens in four or more of every five windows (submaps) with an estimate.
+Windows whose walls alone do not give up (one wall direction) are reported
+but never refused.
 
 --input-tum levels a trajectory (e.g. the dense path of the run, in the same
 clock as the keyframes) with the same correction as the keyframes, into

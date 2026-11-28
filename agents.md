@@ -101,6 +101,15 @@ Filters are chained and applied in-place to `metric_map_t`, configured via YAML
   loops write only their own slots, and sorts use total orders. Guarded by
   `test-mp2p_plane_segmentation`.
 
+## Simple-map partitions and leveling by place (`mp2p_icp_filters`)
+
+`keyframe_overlap.h` (oriented-voxel signatures, an incremental keyframe similarity graph),
+`graph_partition.h` (sparse normalized cuts: Lanczos Fiedler vector plus a sweep cut, Eigen only),
+`simplemap_partition.h` (submaps of keyframes that see the same place, their file format, the
+smooth up field) and `level_by_place.h` (positions solved on a graph, not integrated in time). Used by
+`sm-cli partition` and `sm-cli level-walls --by-submap`. Outputs must not depend on the thread
+count: parallel loops write only their own slots, and ties break by index.
+
 ## Python bindings (`mp2p_icp_core/python/`)
 
 One pybind11 extension module, `mp2p_icp._core` (`src/`), wrapping the four libraries, plus

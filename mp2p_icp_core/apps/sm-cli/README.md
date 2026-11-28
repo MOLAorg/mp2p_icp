@@ -13,6 +13,7 @@ Available commands:
     sm-cli join               Join two or more .simplemap files into one.
     sm-cli level              Levels a .simplemap from its keyframe heights.
     sm-cli level-walls        Levels a .simplemap from its wall/floor normals.
+    sm-cli partition          Splits a .simplemap into submaps of the same place.
     sm-cli tf                 Applies a SE(3) transform by the left to a map.
     sm-cli trim               Extracts part of a .simplemap inside a given box.
     sm-cli --version          Shows program version.

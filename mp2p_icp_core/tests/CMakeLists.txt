@@ -102,6 +102,12 @@ mp2p_add_test(mp2p_WeightParameters)
 
 mp2p_add_test(mp2p_class_factory EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_estimate_up_from_normals EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_graph_partition EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_level_by_place EXTRA_LIBS mp2p_icp_filters)
+if(TBB_FOUND AND MP2PICP_USE_TBB)
+  target_link_libraries(test-mp2p_level_by_place TBB::tbb)
+  target_compile_definitions(test-mp2p_level_by_place PRIVATE MP2P_TEST_HAS_TBB)
+endif()
 # Runs the sm-cli binary (skipped, exit code 77, if apps are not built):
 mp2p_add_test(mp2p_sm_cli_level_walls_guard EXTRA_LIBS mp2p_icp_filters)
 target_compile_definitions(test-mp2p_sm_cli_level_walls_guard
@@ -111,6 +117,10 @@ mp2p_add_test(mp2p_sm_cli_level_walls_tum EXTRA_LIBS mp2p_icp_filters)
 target_compile_definitions(test-mp2p_sm_cli_level_walls_tum
   PRIVATE SM_CLI_PATH="$<$<TARGET_EXISTS:sm-cli>:$<TARGET_FILE:sm-cli>>")
 set_tests_properties(run_test-mp2p_sm_cli_level_walls_tum PROPERTIES SKIP_RETURN_CODE 77)
+mp2p_add_test(mp2p_sm_cli_level_walls_by_submap EXTRA_LIBS mp2p_icp_filters)
+target_compile_definitions(test-mp2p_sm_cli_level_walls_by_submap
+  PRIVATE SM_CLI_PATH="$<$<TARGET_EXISTS:sm-cli>:$<TARGET_FILE:sm-cli>>")
+set_tests_properties(run_test-mp2p_sm_cli_level_walls_by_submap PROPERTIES SKIP_RETURN_CODE 77)
 mp2p_add_test(mp2p_FilterAbsoluteTimestamp EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterAdjustTimestamps EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_FilterByExpression EXTRA_LIBS mp2p_icp_filters)
