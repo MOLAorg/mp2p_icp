@@ -71,10 +71,11 @@ Pts room(double x0, double x1, double y0, double y1, double z0, double z1)
     return pts;
 }
 
-// A keyframe at `pose` seeing `world` from a sensor at `sensorPose` on it
+// A keyframe at `pose` seeing `world` from a sensor at `sensorPose` on it,
+// optionally with a copy of the points in the vehicle frame (identity pose)
 void addKeyframe(
     mrpt::maps::CSimpleMap& sm, const Pts& world, const mrpt::poses::CPose3D& pose, double t,
-    const mrpt::poses::CPose3D& sensorPose = {})
+    const mrpt::poses::CPose3D& sensorPose = {}, bool vehicleFrameCopy = false)
 {
     auto       pc     = mrpt::maps::CSimplePointsMap::Create();
     const auto sensor = pose + sensorPose;
@@ -90,6 +91,21 @@ void addKeyframe(
     obs->pointcloud  = pc;
     auto sf          = mrpt::obs::CSensoryFrame::Create();
     sf->insert(obs);
+    if (vehicleFrameCopy)
+    {
+        auto copy = mrpt::maps::CSimplePointsMap::Create();
+        for (const auto& w : world)
+        {
+            const auto l = pose.inverseComposePoint(w);
+            copy->insertPoint(
+                static_cast<float>(l.x), static_cast<float>(l.y), static_cast<float>(l.z));
+        }
+        auto c         = mrpt::obs::CObservationPointCloud::Create();
+        c->timestamp   = obs->timestamp;
+        c->sensorLabel = "deskewed";
+        c->pointcloud  = copy;
+        sf->insert(c);
+    }
     auto pdf  = mrpt::poses::CPose3DPDFGaussian::Create();
     pdf->mean = pose;
     sm.insert(pdf, sf);
@@ -413,6 +429,35 @@ void test_two_observations_same_sensor()
     }
 }
 
+// A copy of each scan in the vehicle frame (identity pose) does not move the
+// sensor origin: with a range limit around the sensor, the signatures equal
+// those of the scans alone
+void test_vehicle_frame_copy()
+{
+    // Off the voxel grids, so rounding does not split a surface between voxels:
+    const Pts                  roomA = room(0.13, 12.13, 0.21, 6.21, 0.07, 3.07);
+    mrpt::maps::CSimpleMap     scans;
+    mrpt::maps::CSimpleMap     withCopy;
+    const mrpt::poses::CPose3D sensorPose(0, 0, 1.2, 0, 0, 0);
+    for (int k = 0; k < 15; k++)
+    {
+        const mrpt::poses::CPose3D pose(1.0 + 0.6 * k, 3.0, 0.0, 0, 0, 0);
+        addKeyframe(scans, roomA, pose, k, sensorPose);
+        addKeyframe(withCopy, roomA, pose, k, sensorPose, true);
+    }
+    SimplemapPartitionParams p;
+    p.sample_distance     = 1.0;
+    p.signature.max_range = 3.0;
+    const auto pa         = partition_simplemap(scans, p);
+    const auto pb         = partition_simplemap(withCopy, p);
+    ASSERT_(pa.keyframe_submap == pb.keyframe_submap);
+    ASSERT_EQUAL_(pa.node_voxels.size(), pb.node_voxels.size());
+    for (size_t n = 0; n < pa.node_voxels.size(); n++)
+    {
+        ASSERT_NEAR_(pa.node_voxels[n], pb.node_voxels[n], 0.02 * pa.node_voxels[n]);
+    }
+}
+
 void test_single_keyframe()
 {
     mrpt::maps::CSimpleMap sm;
@@ -559,6 +604,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_partition_two_floors(0.0);  // pose at floor level, sensor above it
         test_single_keyframe();
         test_two_observations_same_sensor();
+        test_vehicle_frame_copy();
         test_constant_up_is_rigid();
         test_revisit_consistency();
         test_keyframe_ups();

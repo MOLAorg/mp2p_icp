@@ -246,8 +246,9 @@ How it works:
   the points are not planar) and with whether it is above or below the sensor. Two keyframes then share a voxel only
   if they see the same side of the same surface: the two faces of a wall or of a floor slab are different content, and
   so are walls where they cross a slab, so storeys stay apart. The sensor is the range observation's ``sensorPose``
-  on the keyframe pose (the mean of several), not the keyframe frame, which may be at floor level. Poses are used as
-  they are, with no registration.
+  on the keyframe pose, not the keyframe frame, which may be at floor level. A cloud stored with an identity
+  ``sensorPose`` (e.g. a de-skewed copy of the scan in the vehicle frame) does not count as a sensor; with several
+  range sensors, their mean position is used. Poses are used as they are, with no registration.
 - Two nodes are as similar as the voxels they share (Jaccard), all pairs at once through an inverted index of voxels.
 - The graph is split by recursive normalized cuts (Shi and Malik): the Fiedler vector of each part, computed with
   Lanczos on the sparse graph, orders its nodes, and the part is cut where the normalized cut is lowest, if it is at

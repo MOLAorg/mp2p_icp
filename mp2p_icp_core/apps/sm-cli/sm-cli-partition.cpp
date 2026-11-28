@@ -214,7 +214,7 @@ int printCommandsPartition(bool showErrorMsg)
 Splits the keyframes into submaps that observe the same place, whenever they
 were visited: keyframes are sampled (graph nodes), each one is turned into
 voxels in the map frame, tagged with the side of the surface seen from its
-sensor (sensorPose; the mean of several) and with whether they are above
+sensor (sensorPose; see the docs) and with whether they are above
 or below it, and two nodes are as similar as the voxels they share (Jaccard). The
 graph is split by recursive normalized cuts. Every keyframe joins the submap
 of its most similar node. Poses are used as they are: no registration.

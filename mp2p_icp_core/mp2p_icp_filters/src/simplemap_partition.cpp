@@ -106,8 +106,10 @@ mrpt::maps::CSimplePointsMap pointsOf(
 }
 
 // Signature of keyframe k, with the sensor as the origin of its points. The
-// whole keyframe is converted at once, as the pipeline expects; with several
-// range sensors, the origin is their mean position.
+// whole keyframe is converted at once, as the pipeline expects. A cloud stored
+// with an identity sensorPose is in the vehicle frame (e.g. a de-skewed copy of
+// a scan) and tells nothing about where the sensor is: the origin is the mean
+// of the range sensors with an offset, or the vehicle frame if there are none.
 KeyframeSignature signatureOf(
     const mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, size_t k,
     const KeyframeSignatureParams& params)
@@ -120,8 +122,12 @@ KeyframeSignature signatureOf(
     {
         if (obs && isRangeObservation(*obs))
         {
-            sensorSum += (robot + obs->getSensorPose()).translation();
-            sensorCount++;
+            const auto sensor = obs->getSensorPose();
+            if (sensor.translation().norm() > 1e-6)
+            {
+                sensorSum += (robot + sensor).translation();
+                sensorCount++;
+            }
         }
     }
     const auto origin = sensorCount == 0 ? robot.translation() : sensorSum * (1.0 / sensorCount);
