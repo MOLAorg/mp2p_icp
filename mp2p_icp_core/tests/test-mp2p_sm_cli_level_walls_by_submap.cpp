@@ -550,7 +550,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 run("level-walls", smLevel + " " + dir +
                                        "/level_out.simplemap --min-significance 0 --by-submap " +
                                        partLevel),
-                0);
+                0);  // --piecewise applies the test only when asked:
+            const std::string pwOut = dir + "/level_pw.simplemap";
+            ASSERT_(
+                run("level-walls",
+                    smLevel + " " + pwOut + " --piecewise 20 --min-significance 2") != 0);
+            ASSERT_(!mrpt::system::fileExists(pwOut));
+            ASSERT_EQUAL_(run("level-walls", smLevel + " " + pwOut + " --piecewise 20"), 0);
         }
 
         // A partition of another map is refused:

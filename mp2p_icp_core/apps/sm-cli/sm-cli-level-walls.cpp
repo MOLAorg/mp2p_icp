@@ -567,6 +567,39 @@ double significance(const mrpt::math::TVector3D& up, const mrpt::math::CMatrixDo
     return std::sqrt(quadForm(I, h));
 }
 
+// The largest significance of some up estimates, and that of all of them
+// together (their information-weighted mean: a tilt they share adds up)
+std::pair<double, double> significances(
+    const std::vector<std::pair<mrpt::math::TVector3D, mrpt::math::CMatrixDouble22>>& estimates)
+{
+    double                      best = 0;
+    mrpt::math::CMatrixDouble22 sumI;
+    mrpt::math::TVector2D       sumV(0, 0);
+    sumI.setZero();
+    for (const auto& [up, cov] : estimates)
+    {
+        best              = std::max(best, significance(up, cov));
+        const auto [h, I] = upInfo(up, cov);
+        for (int r = 0; r < 2; r++)
+        {
+            for (int c = 0; c < 2; c++)
+            {
+                sumI(r, c) += I(r, c);
+            }
+        }
+        sumV.x += I(0, 0) * h.x + I(0, 1) * h.y;
+        sumV.y += I(1, 0) * h.x + I(1, 1) * h.y;
+    }
+    if (estimates.empty())
+    {
+        return {0.0, 0.0};
+    }
+    const auto                  cov = inverse2(sumI);
+    const mrpt::math::TVector2D mean(
+        cov(0, 0) * sumV.x + cov(0, 1) * sumV.y, cov(1, 0) * sumV.x + cov(1, 1) * sumV.y);
+    return {best, std::sqrt(quadForm(sumI, mean))};
+}
+
 // --min-significance, with the default of each mode
 double minSignificance(bool bySubmap)
 {
@@ -734,6 +767,25 @@ int levelPiecewise(
             maxTilt, cli->arg_max_correction_deg);
         setConsoleNormalColor();
         return 1;
+    }
+    if (const double th = minSignificance(false); th > 0)
+    {
+        std::vector<std::pair<mrpt::math::TVector3D, mrpt::math::CMatrixDouble22>> estimates;
+        for (const auto& w : windows)
+        {
+            if (w.usable)
+            {
+                estimates.emplace_back(w.est->up, w.est->up_cov);
+            }
+        }
+        const auto [best, together] = significances(estimates);
+        std::cout << mrpt::format(
+            "Correction: largest window %.2f sigma, all windows together %.2f sigma\n", best,
+            together);
+        if (std::max(best, together) < th)
+        {
+            return notSignificant(std::max(best, together), th, "the map is");
+        }
     }
     std::vector<mrpt::poses::CPose3D> poses;
     poses.reserve(sm.size());
@@ -929,33 +981,15 @@ int levelBySubmap(
     std::cout << mrpt::format("\nBy submap: %zu of %zu submaps used\n", used, groups.size());
     {
         // Each submap against its own uncertainty, and all of them together
-        // (a tilt shared by the whole map adds up over its submaps)
-        double                      best = 0;
-        mrpt::math::CMatrixDouble22 sumI;
-        mrpt::math::TVector2D       sumV(0, 0);
-        sumI.setZero();
+        std::vector<std::pair<mrpt::math::TVector3D, mrpt::math::CMatrixDouble22>> estimates;
         for (const auto& u : ups)
         {
             if (u)
             {
-                best              = std::max(best, significance(u->up, u->cov));
-                const auto [h, I] = upInfo(u->up, u->cov);
-                for (int r = 0; r < 2; r++)
-                {
-                    for (int c = 0; c < 2; c++)
-                    {
-                        sumI(r, c) += I(r, c);
-                    }
-                }
-                sumV.x += I(0, 0) * h.x + I(0, 1) * h.y;
-                sumV.y += I(1, 0) * h.x + I(1, 1) * h.y;
+                estimates.emplace_back(u->up, u->cov);
             }
         }
-        // The information-weighted mean, and its distance from vertical:
-        const auto                  cov = inverse2(sumI);
-        const mrpt::math::TVector2D mean(
-            cov(0, 0) * sumV.x + cov(0, 1) * sumV.y, cov(1, 0) * sumV.x + cov(1, 1) * sumV.y);
-        const double together = std::sqrt(quadForm(sumI, mean));
+        const auto [best, together] = significances(estimates);
         std::cout << mrpt::format(
             "Correction: largest submap %.2f sigma, all submaps together %.2f sigma\n", best,
             together);
