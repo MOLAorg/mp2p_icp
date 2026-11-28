@@ -194,7 +194,7 @@ bool same_file(const std::string& a, const std::string& b)
         std::error_code e;
         return fs::equivalent(pa, pb, e) && !e;
     }
-    const auto ca = fs::weakly_canonical(pa, ea);
-    const auto cb = fs::weakly_canonical(pb, eb);
+    const auto ca = fs::weakly_canonical(fs::absolute(pa), ea);
+    const auto cb = fs::weakly_canonical(fs::absolute(pb), eb);
     return !ea && !eb && ca == cb;
 }

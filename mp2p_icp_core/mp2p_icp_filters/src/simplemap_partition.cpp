@@ -39,7 +39,6 @@
 #include <cmath>
 #include <fstream>
 #include <functional>
-#include <iterator>
 #include <map>
 
 #if defined(MP2P_HAS_TBB)
@@ -106,59 +105,27 @@ mrpt::maps::CSimplePointsMap pointsOf(
     return mergedPoints(mm);
 }
 
-// Signature of keyframe k, each range observation with its own sensor as the
-// origin of its points
+// Signature of keyframe k, with the sensor as the origin of its points. The
+// whole keyframe is converted at once, as the pipeline expects; with several
+// range sensors, the origin is their mean position.
 KeyframeSignature signatureOf(
     const mrpt::maps::CSimpleMap& sm, const mrpt::containers::yaml& pipeline, size_t k,
     const KeyframeSignatureParams& params)
 {
-    const auto&                               kf    = sm.get(k);
-    const auto                                robot = kf.pose->getMeanVal();
-    std::vector<mrpt::obs::CObservation::Ptr> ranges;
+    const auto&          kf    = sm.get(k);
+    const auto           robot = kf.pose->getMeanVal();
+    mrpt::math::TPoint3D sensorSum(0, 0, 0);
+    size_t               sensorCount = 0;
     for (const auto& obs : *kf.sf)
     {
         if (obs && isRangeObservation(*obs))
         {
-            ranges.push_back(obs);
+            sensorSum += (robot + obs->getSensorPose()).translation();
+            sensorCount++;
         }
     }
-    // One sensor, or several at the same place: one signature of all points
-    bool sameOrigin = true;
-    for (const auto& r : ranges)
-    {
-        sameOrigin = sameOrigin && (r->getSensorPose().translation() -
-                                    ranges.front()->getSensorPose().translation())
-                                           .norm() < 1e-3;
-    }
-    if (ranges.empty() || sameOrigin)
-    {
-        const auto origin = ranges.empty()
-                                ? robot.translation()
-                                : (robot + ranges.front()->getSensorPose()).translation();
-        return keyframe_signature(pointsOf(sm, pipeline, k), origin, params);
-    }  // Sensors at different places: one keyframe per sensor, each with the other
-    // (non-range) observations, then the union of the signatures
-    KeyframeSignature sig;
-    for (const auto& r : ranges)
-    {
-        auto one = mrpt::obs::CSensoryFrame::Create();
-        for (const auto& obs : *kf.sf)
-        {
-            if (obs && (obs == r || !isRangeObservation(*obs)))
-            {
-                one->insert(obs);
-            }
-        }
-        mrpt::maps::CSimpleMap single;
-        single.insert(kf.pose, one, kf.localTwist);
-        const auto part = keyframe_signature(
-            pointsOf(single, pipeline, 0), (robot + r->getSensorPose()).translation(), params);
-        KeyframeSignature merged;
-        std::set_union(
-            sig.begin(), sig.end(), part.begin(), part.end(), std::back_inserter(merged));
-        sig.swap(merged);
-    }
-    return sig;
+    const auto origin = sensorCount == 0 ? robot.translation() : sensorSum * (1.0 / sensorCount);
+    return keyframe_signature(pointsOf(sm, pipeline, k), origin, params);
 }
 
 double rotationAngle(const mrpt::poses::CPose3D& a, const mrpt::poses::CPose3D& b)

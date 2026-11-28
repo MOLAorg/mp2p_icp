@@ -494,6 +494,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                         smIn + " " + dir + "/new_part.yaml --output-colored-map " + dangling) != 0);
                 ASSERT_(!mrpt::system::fileExists(dir + "/new_part.yaml"));
             }
+            // The same new file, named relative to the working directory in two ways:
+            const auto cwd = std::filesystem::current_path();
+            std::filesystem::current_path(dir);
+            const int same = run("partition", smIn + " same.yaml --output-colored-map ./same.yaml");
+            std::filesystem::current_path(cwd);
+            ASSERT_(same != 0);
+            ASSERT_(!mrpt::system::fileExists(dir + "/same.yaml"));
             ASSERT_(
                 run("level-walls", smIn + " --estimate-only --by-submap " + part + " --input-tum " +
                                        tumIn + " --output-tum " + tumIn) != 0);
