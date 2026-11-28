@@ -158,7 +158,7 @@ struct UpFieldParams
     /// same surface with different corrections draw it twice, apart by about
     /// that difference times the range: this keeps differences between nodes
     /// that share content small, unless the submap estimates demand them.
-    double step_sigma_deg = 1.0;
+    double step_sigma_deg = 0.3;
 
     /// Added to the submap sigmas [deg]: the systematic error of the references
     /// of a place (floors that are not quite level, facades that lean), which

@@ -117,7 +117,7 @@ attitude of a LiDAR-inertial run, estimated from a short accelerometer average.
         [--by-submap <partition.yaml>]      # level each submap (sm-cli partition) on its own
         [--max-link-length 5.0]             # --by-submap: longest same-place link [m]
         [--link-weight 10]                  # --by-submap: weight of same-place links
-        [--up-step-sigma-deg 1.0]           # --by-submap: stiffness of the up field
+        [--up-step-sigma-deg 0.3]           # --by-submap: stiffness of the up field
         [--min-significance K]              # level only if some estimate is K sigma off
         [--walls-only]                      # walls are the only vertical reference
         [--cluster-size 2.0]                # cells grouping normals for the sigmas [m]

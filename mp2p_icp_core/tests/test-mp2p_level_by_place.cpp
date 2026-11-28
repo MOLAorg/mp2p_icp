@@ -539,8 +539,12 @@ void test_keyframe_ups()
         q.node_edges.end());
     q.node_submap[4] = 2;
     const auto e     = keyframe_ups_from_submaps(q, {est(upA, 0.05), est(upB, 0.05), std::nullopt});
-    ASSERT_NEAR_(tiltOf(e[4]), tiltOf(e[3]), 0.05);
-    ASSERT_NEAR_(tiltOf(e[4]), tiltOf(e[5]), 0.05);
+    // ...between its two neighbors (the global mean would be near 0 deg):
+    const double lo = std::min(tiltOf(e[3]), tiltOf(e[5]));
+    const double hi = std::max(tiltOf(e[3]), tiltOf(e[5]));
+    ASSERT_GE_(tiltOf(e[4]), lo - 1e-6);
+    ASSERT_LE_(tiltOf(e[4]), hi + 1e-6);
+    ASSERT_GT_(tiltOf(e[4]), 0.5);
 }
 
 }  // namespace

@@ -63,7 +63,7 @@ struct cli_flags
     std::string arg_by_submap;
     double      arg_max_link_length  = 5.0;
     double      arg_link_weight      = 10.0;
-    double      arg_up_step_sigma    = 1.0;
+    double      arg_up_step_sigma    = 0.3;
     double      arg_min_significance = -1;  // negative: the default of each mode
 
     // partition:
