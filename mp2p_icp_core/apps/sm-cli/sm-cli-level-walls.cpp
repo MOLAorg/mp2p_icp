@@ -30,12 +30,13 @@
 #include <mrpt/core/exceptions.h>
 #include <mrpt/io/lazy_load_path.h>
 #include <mrpt/maps/CSimpleMap.h>
+#include <mrpt/math/CMatrixFixed.h>
 #include <mrpt/math/CQuaternion.h>
+#include <mrpt/math/TPoint2D.h>
 #include <mrpt/obs/CObservationComment.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 #include <mrpt/system/filesystem.h>
 
-#include <Eigen/Dense>
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -528,23 +529,42 @@ void writeWindowsOut(const std::vector<WindowEstimate>& windows)
 // testing whether a correction is needed at all [deg]
 constexpr double GATE_SYSTEMATIC_DEG = 0.1;
 
+// Inverse of a symmetric 2x2 matrix
+mrpt::math::CMatrixDouble22 inverse2(const mrpt::math::CMatrixDouble22& m)
+{
+    const double                det = m(0, 0) * m(1, 1) - m(0, 1) * m(1, 0);
+    mrpt::math::CMatrixDouble22 inv;
+    inv(0, 0) = m(1, 1) / det;
+    inv(1, 1) = m(0, 0) / det;
+    inv(0, 1) = -m(0, 1) / det;
+    inv(1, 0) = -m(1, 0) / det;
+    return inv;
+}
+
+// x^T m x
+double quadForm(const mrpt::math::CMatrixDouble22& m, const mrpt::math::TVector2D& x)
+{
+    return m(0, 0) * x.x * x.x + (m(0, 1) + m(1, 0)) * x.x * x.y + m(1, 1) * x.y * x.y;
+}
+
 // The horizontal components of up and their information, with the systematic
 // error of the references added to the covariance
-std::pair<Eigen::Vector2d, Eigen::Matrix2d> upInfo(
+std::pair<mrpt::math::TVector2D, mrpt::math::CMatrixDouble22> upInfo(
     const mrpt::math::TVector3D& up, const mrpt::math::CMatrixDouble22& cov)
 {
-    const double    f = mrpt::DEG2RAD(GATE_SYSTEMATIC_DEG);
-    const auto      u = up * (1.0 / up.norm());
-    Eigen::Matrix2d C = cov.asEigen();
-    C += f * f * Eigen::Matrix2d::Identity();
-    return {Eigen::Vector2d(u.x, u.y), C.inverse()};
+    const double f = mrpt::DEG2RAD(GATE_SYSTEMATIC_DEG);
+    const auto   u = up * (1.0 / up.norm());
+    auto         C = cov;
+    C(0, 0) += f * f;
+    C(1, 1) += f * f;
+    return {mrpt::math::TVector2D(u.x, u.y), inverse2(C)};
 }
 
 // How many sigmas an up estimate is from vertical (its Mahalanobis distance)
 double significance(const mrpt::math::TVector3D& up, const mrpt::math::CMatrixDouble22& cov)
 {
     const auto [h, I] = upInfo(up, cov);
-    return std::sqrt(h.dot(I * h));
+    return std::sqrt(quadForm(I, h));
 }
 
 // --min-significance, with the default of each mode
@@ -910,21 +930,32 @@ int levelBySubmap(
     {
         // Each submap against its own uncertainty, and all of them together
         // (a tilt shared by the whole map adds up over its submaps)
-        double          best = 0;
-        Eigen::Matrix2d sumI = Eigen::Matrix2d::Zero();
-        Eigen::Vector2d sumV = Eigen::Vector2d::Zero();
+        double                      best = 0;
+        mrpt::math::CMatrixDouble22 sumI;
+        mrpt::math::TVector2D       sumV(0, 0);
+        sumI.setZero();
         for (const auto& u : ups)
         {
             if (u)
             {
                 best              = std::max(best, significance(u->up, u->cov));
                 const auto [h, I] = upInfo(u->up, u->cov);
-                sumI += I;
-                sumV += I * h;
+                for (int r = 0; r < 2; r++)
+                {
+                    for (int c = 0; c < 2; c++)
+                    {
+                        sumI(r, c) += I(r, c);
+                    }
+                }
+                sumV.x += I(0, 0) * h.x + I(0, 1) * h.y;
+                sumV.y += I(1, 0) * h.x + I(1, 1) * h.y;
             }
         }
-        const Eigen::Vector2d mean     = sumI.ldlt().solve(sumV);
-        const double          together = std::sqrt(mean.dot(sumI * mean));
+        // The information-weighted mean, and its distance from vertical:
+        const auto                  cov = inverse2(sumI);
+        const mrpt::math::TVector2D mean(
+            cov(0, 0) * sumV.x + cov(0, 1) * sumV.y, cov(1, 0) * sumV.x + cov(1, 1) * sumV.y);
+        const double together = std::sqrt(quadForm(sumI, mean));
         std::cout << mrpt::format(
             "Correction: largest submap %.2f sigma, all submaps together %.2f sigma\n", best,
             together);
