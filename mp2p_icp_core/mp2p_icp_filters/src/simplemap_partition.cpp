@@ -33,9 +33,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
-#include <iostream>
 #include <map>
-#include <set>
 
 #if defined(MP2P_HAS_TBB)
 #include <tbb/blocked_range.h>
@@ -156,11 +154,11 @@ std::size_t SimplemapPartition::submap_count() const
     std::size_t n = 0;
     for (const auto s : keyframe_submap)
     {
-        n = std::max<std::size_t>(n, s + 1);
+        n = std::max<std::size_t>(n, static_cast<std::size_t>(s) + 1);
     }
     for (const auto s : node_submap)
     {
-        n = std::max<std::size_t>(n, s + 1);
+        n = std::max<std::size_t>(n, static_cast<std::size_t>(s) + 1);
     }
     return n;
 }
@@ -256,6 +254,15 @@ SimplemapPartition SimplemapPartition::load_from_file(const std::string& file)
         }
     }
     ASSERT_EQUAL_(p.keyframe_count(), y["keyframe_count"].as<size_t>());
+    const auto nSubmaps = y["submap_count"].as<size_t>();
+    for (const auto sm : p.node_submap)
+    {
+        ASSERTMSG_(sm < nSubmaps, "Partition file: node submap out of range");
+    }
+    for (const auto sm : p.keyframe_submap)
+    {
+        ASSERTMSG_(sm < nSubmaps, "Partition file: keyframe submap out of range");
+    }
 
     const size_t nNodes = p.node_keyframe.size();
     for (const auto kf : p.node_keyframe)

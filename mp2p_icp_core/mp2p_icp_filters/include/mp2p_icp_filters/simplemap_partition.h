@@ -48,7 +48,7 @@ struct SimplemapPartitionParams
     double sample_angle_deg = 30.0;
 
     /// Voxel size [m] the keyframe points are decimated to before their
-    /// signature is computed. 0: no decimation.
+    /// signature is computed, with the default pipeline (must be > 0).
     double decimation_voxel = 0.1;
 
     KeyframeSignatureParams          signature;

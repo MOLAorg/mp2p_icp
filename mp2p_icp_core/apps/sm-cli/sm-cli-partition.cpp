@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <unordered_set>
 
@@ -105,6 +106,21 @@ int commandPartition()
 
     const std::string inFile  = lstCmds.at(1);
     const std::string outFile = lstCmds.at(2);
+
+    // Checked before the map is loaded: no output may overwrite the input or another output
+    {
+        const auto same = [](const std::string& a, const std::string& b)
+        {
+            std::error_code ec;
+            return std::filesystem::weakly_canonical(a, ec) ==
+                   std::filesystem::weakly_canonical(b, ec);
+        };
+        const std::string& mapOut = cli->arg_output_colored_map;
+        ASSERTMSG_(!same(outFile, inFile), "The partition file must not be the input simple-map");
+        ASSERTMSG_(
+            mapOut.empty() || (!same(mapOut, inFile) && !same(mapOut, outFile)),
+            "--output-colored-map must not be the input simple-map nor the partition file");
+    }
 
     mrpt::maps::CSimpleMap sm = read_input_sm_from_cli(inFile);
     ASSERT_(!sm.empty());

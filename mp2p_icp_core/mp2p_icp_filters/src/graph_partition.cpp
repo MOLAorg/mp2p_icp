@@ -406,6 +406,11 @@ std::vector<double> fiedler_vector(
     {
         f[active[k]] = fs[k];
     }
+    // Isolated nodes, or several components: the graph is disconnected
+    if (lambda2 && (active.size() < nodeCount || components(s).size() > 1))
+    {
+        *lambda2 = 0;
+    }
     return f;
     MRPT_END
 }

@@ -23,7 +23,6 @@
 
 #include <Eigen/Eigenvalues>
 #include <algorithm>
-#include <array>
 #include <cmath>
 
 namespace mp2p_icp_filters
@@ -166,8 +165,8 @@ double signature_similarity(const KeyframeSignature& a, const KeyframeSignature&
 std::vector<std::pair<uint32_t, uint32_t>> KeyframeOverlapGraph::sharedCounts(
     const KeyframeSignature& sig) const
 {
-    std::vector<uint32_t> count(sizes_.size(), 0);
-    std::vector<uint32_t> touched;
+    // Only the nodes reached through a shared voxel are counted:
+    std::unordered_map<uint32_t, uint32_t> count;
     for (const uint64_t key : sig)
     {
         const auto it = index_.find(key);
@@ -177,19 +176,11 @@ std::vector<std::pair<uint32_t, uint32_t>> KeyframeOverlapGraph::sharedCounts(
         }
         for (const uint32_t node : it->second)
         {
-            if (count[node]++ == 0)
-            {
-                touched.push_back(node);
-            }
+            count[node]++;
         }
     }
-    std::sort(touched.begin(), touched.end());
-    std::vector<std::pair<uint32_t, uint32_t>> out;
-    out.reserve(touched.size());
-    for (const uint32_t node : touched)
-    {
-        out.emplace_back(node, count[node]);
-    }
+    std::vector<std::pair<uint32_t, uint32_t>> out(count.begin(), count.end());
+    std::sort(out.begin(), out.end());
     return out;
 }
 

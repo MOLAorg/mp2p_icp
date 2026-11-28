@@ -164,6 +164,16 @@ void test_fiedler_vs_dense()
     ASSERT_GT_(c, 0.9999);
 }
 
+void test_fiedler_disconnected()
+{
+    // An isolated node makes the graph disconnected: lambda2 is 0
+    double     lambda2 = -1;
+    const auto f       = fiedler_vector(3, {{0, 1, 1.0}}, {}, &lambda2);
+    ASSERT_EQUAL_(f.size(), 3UL);
+    ASSERT_NEAR_(lambda2, 0.0, 1e-12);
+    ASSERT_NEAR_(f[2], 0.0, 1e-12);
+}
+
 void test_normalized_cut()
 {
     std::vector<WeightedEdge> e = {{0, 1, 1.0}, {1, 2, 0.5}, {2, 3, 1.0}};
@@ -183,6 +193,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_components();
         test_chain_segments();
         test_fiedler_vs_dense();
+        test_fiedler_disconnected();
         test_normalized_cut();
         std::cout << "All tests passed.\n";
         return 0;
