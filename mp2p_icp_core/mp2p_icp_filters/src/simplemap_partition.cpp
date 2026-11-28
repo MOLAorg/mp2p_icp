@@ -122,13 +122,21 @@ KeyframeSignature signatureOf(
             ranges.push_back(obs);
         }
     }
-    if (ranges.size() <= 1)
+    // One sensor, or several at the same place: one signature of all points
+    bool sameOrigin = true;
+    for (const auto& r : ranges)
     {
-        const auto origin = ranges.empty() ? robot.translation()
-                                           : (robot + ranges[0]->getSensorPose()).translation();
-        return keyframe_signature(pointsOf(sm, pipeline, k), origin, params);
+        sameOrigin = sameOrigin && (r->getSensorPose().translation() -
+                                    ranges.front()->getSensorPose().translation())
+                                           .norm() < 1e-3;
     }
-    // Several sensors: one keyframe per sensor, each with the other
+    if (ranges.empty() || sameOrigin)
+    {
+        const auto origin = ranges.empty()
+                                ? robot.translation()
+                                : (robot + ranges.front()->getSensorPose()).translation();
+        return keyframe_signature(pointsOf(sm, pipeline, k), origin, params);
+    }  // Sensors at different places: one keyframe per sensor, each with the other
     // (non-range) observations, then the union of the signatures
     KeyframeSignature sig;
     for (const auto& r : ranges)

@@ -484,6 +484,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 ASSERT_(run("level-walls", smIn + " " + link + " --by-submap " + part) != 0);
             }
             ASSERT_(run("level-walls", smIn + " " + part + " --by-submap " + part) != 0);
+            // A dangling link to the partition file it is about to write:
+            const std::string dangling = dir + "/dangling.mm";
+            std::filesystem::create_symlink("new_part.yaml", dangling, ec);
+            if (!ec)
+            {
+                ASSERT_(
+                    run("partition",
+                        smIn + " " + dir + "/new_part.yaml --output-colored-map " + dangling) != 0);
+                ASSERT_(!mrpt::system::fileExists(dir + "/new_part.yaml"));
+            }
             ASSERT_(
                 run("level-walls", smIn + " --estimate-only --by-submap " + part + " --input-tum " +
                                        tumIn + " --output-tum " + tumIn) != 0);

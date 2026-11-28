@@ -169,14 +169,32 @@ mrpt::maps::CSimpleMap read_input_sm_from_cli(const std::string& inFile)
 
 bool same_file(const std::string& a, const std::string& b)
 {
+    namespace fs = std::filesystem;
+    // Follow symbolic links, also dangling ones, to the file they would write:
+    const auto resolve = [](fs::path p)
+    {
+        std::error_code ec;
+        for (int i = 0; i < 40 && fs::is_symlink(p, ec); i++)
+        {
+            const auto t = fs::read_symlink(p, ec);
+            if (ec)
+            {
+                break;
+            }
+            p = t.is_absolute() ? t : p.parent_path() / t;
+        }
+        return p;
+    };
+    const auto      pa = resolve(a);
+    const auto      pb = resolve(b);
     std::error_code ea;
     std::error_code eb;
-    if (std::filesystem::exists(a, ea) && std::filesystem::exists(b, eb))
+    if (fs::exists(pa, ea) && fs::exists(pb, eb))
     {
         std::error_code e;
-        return std::filesystem::equivalent(a, b, e) && !e;
+        return fs::equivalent(pa, pb, e) && !e;
     }
-    const auto pa = std::filesystem::weakly_canonical(a, ea);
-    const auto pb = std::filesystem::weakly_canonical(b, eb);
-    return !ea && !eb && pa == pb;
+    const auto ca = fs::weakly_canonical(pa, ea);
+    const auto cb = fs::weakly_canonical(pb, eb);
+    return !ea && !eb && ca == cb;
 }

@@ -361,6 +361,58 @@ void test_revisit_consistency()
     ASSERT_LT_((mid[0].translation() - avg).norm(), 1e-9);
 }
 
+// Two sensors at the same place give the signature of all their points: a
+// keyframe split into two observations partitions as the whole one
+void test_two_observations_same_sensor()
+{
+    const Pts              roomA = room(0.0, 8.0, 0.0, 6.0, 0.0, 3.0);
+    mrpt::maps::CSimpleMap one;
+    mrpt::maps::CSimpleMap two;
+    for (int k = 0; k < 15; k++)
+    {
+        const mrpt::poses::CPose3D pose(1.0 + 0.4 * k, 3.0, 1.2, 0, 0, 0);
+        addKeyframe(one, roomA, pose, k);
+        auto a = mrpt::maps::CSimplePointsMap::Create();
+        auto b = mrpt::maps::CSimplePointsMap::Create();
+        for (size_t i = 0; i < roomA.size(); i++)
+        {
+            const auto l = pose.inverseComposePoint(roomA[i]);
+            (i % 2 ? a : b)
+                ->insertPoint(
+                    static_cast<float>(l.x), static_cast<float>(l.y), static_cast<float>(l.z));
+        }
+        auto sf = mrpt::obs::CSensoryFrame::Create();
+        for (const auto& pc : {a, b})
+        {
+            auto obs         = mrpt::obs::CObservationPointCloud::Create();
+            obs->timestamp   = mrpt::Clock::fromDouble(k);
+            obs->sensorLabel = "lidar";
+            obs->pointcloud  = pc;
+            sf->insert(obs);
+        }
+        auto pdf  = mrpt::poses::CPose3DPDFGaussian::Create();
+        pdf->mean = pose;
+        two.insert(pdf, sf);
+    }
+    SimplemapPartitionParams p;
+    p.sample_distance  = 1.0;
+    p.decimation_voxel = 0.001;  // so the split does not change which points are kept
+    const auto pa      = partition_simplemap(one, p);
+    const auto pb      = partition_simplemap(two, p);
+    // The same partition and nearly the same similarities (points of each
+    // observation are decimated and summed apart):
+    ASSERT_(pa.keyframe_submap == pb.keyframe_submap);
+    ASSERT_EQUAL_(pa.node_edges.size(), pb.node_edges.size());
+    for (size_t n = 0; n < pa.node_voxels.size(); n++)
+    {
+        ASSERT_NEAR_(pa.node_voxels[n], pb.node_voxels[n], 0.05 * pa.node_voxels[n]);
+    }
+    for (size_t e = 0; e < pa.node_edges.size(); e++)
+    {
+        ASSERT_NEAR_(pa.node_edges[e].w, pb.node_edges[e].w, 0.05);
+    }
+}
+
 void test_single_keyframe()
 {
     mrpt::maps::CSimpleMap sm;
@@ -502,6 +554,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         test_partition_two_floors(1.2);
         test_partition_two_floors(0.0);  // pose at floor level, sensor above it
         test_single_keyframe();
+        test_two_observations_same_sensor();
         test_constant_up_is_rigid();
         test_revisit_consistency();
         test_keyframe_ups();
