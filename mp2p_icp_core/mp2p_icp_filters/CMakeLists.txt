@@ -64,7 +64,11 @@ set(LIB_SRCS
   src/PointCloudToVoxelGridAverage.cpp
   src/PointCloudToVoxelGridSingle.cpp
   src/estimate_up_from_normals.cpp
+  src/graph_partition.cpp
+  src/keyframe_overlap.cpp
+  src/level_by_place.cpp
   src/plane_segmentation.cpp
+  src/simplemap_partition.cpp
   src/sm2mm.cpp
   #
   src/register.cpp # This must be last
@@ -118,7 +122,11 @@ set(LIB_PUBLIC_HDRS
   include/mp2p_icp_filters/PointCloudToVoxelGridAverage.h
   include/mp2p_icp_filters/PointCloudToVoxelGridSingle.h
   include/mp2p_icp_filters/estimate_up_from_normals.h
+  include/mp2p_icp_filters/graph_partition.h
+  include/mp2p_icp_filters/keyframe_overlap.h
+  include/mp2p_icp_filters/level_by_place.h
   include/mp2p_icp_filters/plane_segmentation.h
+  include/mp2p_icp_filters/simplemap_partition.h
   include/mp2p_icp_filters/sm2mm.h
 )
 

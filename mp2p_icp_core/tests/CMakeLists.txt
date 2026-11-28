@@ -102,6 +102,8 @@ mp2p_add_test(mp2p_WeightParameters)
 
 mp2p_add_test(mp2p_class_factory EXTRA_LIBS mp2p_icp_filters)
 mp2p_add_test(mp2p_estimate_up_from_normals EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_graph_partition EXTRA_LIBS mp2p_icp_filters)
+mp2p_add_test(mp2p_level_by_place EXTRA_LIBS mp2p_icp_filters)
 # Runs the sm-cli binary (skipped, exit code 77, if apps are not built):
 mp2p_add_test(mp2p_sm_cli_level_walls_guard EXTRA_LIBS mp2p_icp_filters)
 target_compile_definitions(test-mp2p_sm_cli_level_walls_guard
