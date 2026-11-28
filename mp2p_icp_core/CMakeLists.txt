@@ -110,6 +110,10 @@ add_subdirectory(mp2p_icp)
 # Basic filters library:
 add_subdirectory(mp2p_icp_filters)
 
+# Learned model files (e.g. IncrementCovarianceModel), found at
+# <prefix>/share/mp2p_icp_core/models/:
+install(DIRECTORY models DESTINATION share/${PROJECT_NAME})
+
 # -----------------------
 # define tests:
 # -----------------------
